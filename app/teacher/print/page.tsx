@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { 
-  Printer, Columns, Type, Layout, 
-  Minus, Plus, Smartphone, Grid, ZoomIn, ZoomOut, 
-  CheckSquare, FileText, Download, ScanLine, 
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  Printer, Columns, Type, Layout,
+  Minus, Plus, Smartphone, Grid, ZoomIn, ZoomOut,
+  CheckSquare, ScanLine,
   List, Grid3X3, Shuffle, Settings, Edit3, ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
@@ -12,7 +12,7 @@ import LatexRenderer from '@/components/LatexRenderer';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import DownloadPdfButton from '@/app/teacher/print/_components/DownloadPdfButton';
 
-// --- 1. TRANSLATION DICTIONARY ---
+// --- TRANSLATION DICTIONARY ---
 const PRINT_TRANSLATIONS = {
   uz: {
     title: "Chop Etish Studiyasi", back: "Ortga", shuffle: "Savollarni Aralashtirish",
@@ -52,6 +52,40 @@ const getContentText = (content: any) => {
   return content.uz || content.en || content.ru || content.text || JSON.stringify(content);
 };
 
+// ─── A4 dimensions at 96dpi (browser px) ───────────────────────────────────
+// 210mm × 297mm  →  794px × 1123px
+const A4_W_PX = 794;
+const A4_H_PX = 1123;
+
+// ─── Shared print styles injected once into <head> ─────────────────────────
+const PRINT_CSS = `
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: white !important; }
+  body * { visibility: hidden; }
+  #print-pages-root, #print-pages-root * { visibility: visible; }
+  #print-pages-root {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+    transform: none !important;
+  }
+  .print-page {
+    width: 210mm !important;
+    height: 297mm !important;
+    padding: 15mm !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden !important;
+  }
+  .print-page:last-child { page-break-after: avoid; break-after: avoid; }
+  .katex { line-height: normal !important; }
+  .katex-html { padding-top: 0.2em; padding-bottom: 0.2em; }
+}
+`;
+
 export default function PrintStudioPage() {
   const { lang } = useTeacherLanguage();
   const t = PRINT_TRANSLATIONS[lang] || PRINT_TRANSLATIONS['en'];
@@ -60,7 +94,7 @@ export default function PrintStudioPage() {
   const [originalData, setOriginalData] = useState<{ title: string; questions: any[] } | null>(null);
   const [activeQuestions, setActiveQuestions] = useState<any[]>([]);
 
-  // --- CONFIGURATION ---
+  // ─── Config ────────────────────────────────────────────────────────────────
   const [columns, setColumns] = useState<1 | 2 | 3>(2);
   const [showLines, setShowLines] = useState(true);
   const [headerInfo, setHeaderInfo] = useState({ school: '', teacher: '' });
@@ -68,10 +102,18 @@ export default function PrintStudioPage() {
   const [fontSize, setFontSize] = useState<number>(11);
   const [showAnswers, setShowAnswers] = useState<'none' | 'inline' | 'end'>('none');
   const [answerSheet, setAnswerSheet] = useState<'none' | 'standard' | 'writein' | 'grid'>('none');
-  const [previewZoom, setPreviewZoom] = useState(1);
-  
+  const [previewZoom, setPreviewZoom] = useState(0.75);
+
+  // ─── Pagination state ──────────────────────────────────────────────────────
+  // pages[i] = array of question indices that belong on page i
+  const [pages, setPages] = useState<number[][]>([]);
+
+  // Ref to the hidden measurement container
+  const measureRef = useRef<HTMLDivElement>(null);
+  // Ref to the print pages root (for PDF download)
   const printRootRef = useRef<HTMLDivElement>(null);
 
+  // ─── Load data ─────────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const stored = localStorage.getItem('print_payload');
@@ -80,366 +122,600 @@ export default function PrintStudioPage() {
         setOriginalData(parsed);
         setActiveQuestions(parsed.questions || []);
       }
-    } catch (e) { console.error("Load error"); } 
+    } catch (e) { console.error("Load error"); }
     finally { setIsLoaded(true); }
   }, []);
 
+  // ─── Inject print CSS once ─────────────────────────────────────────────────
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = PRINT_CSS;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
+  // ─── Pagination engine ─────────────────────────────────────────────────────
+  // We measure each question's rendered height inside a hidden off-screen div
+  // that exactly mirrors the A4 content-area width, then bin questions into pages.
+  const paginate = useCallback(() => {
+    if (!measureRef.current || activeQuestions.length === 0) return;
+
+    const container = measureRef.current;
+
+    // A4 content area height in px (A4_H_PX minus top+bottom padding)
+    // padding: 15mm each side → 15/25.4*96 ≈ 56.7px per side
+    const MM_TO_PX = 96 / 25.4;
+    const PAD_TOP = 15 * MM_TO_PX;    // 15mm top padding
+    const PAD_BOTTOM = 15 * MM_TO_PX; // 15mm bottom padding
+    // First page also has the header block — measured dynamically below
+    const contentHeight = A4_H_PX - PAD_TOP - PAD_BOTTOM;
+
+    // Measure the header height (rendered once in the measure container)
+    const headerEl = container.querySelector<HTMLElement>('.measure-header');
+    const headerH = headerEl ? headerEl.getBoundingClientRect().height + 20 : 120; // +20 for margin
+
+    // Measure the answer-sheet section height
+    const ansEl = container.querySelector<HTMLElement>('.measure-anssheet');
+    const ansH = ansEl ? ansEl.getBoundingClientRect().height + 48 : 0; // +48 for border/padding
+
+    // Measure each question item
+    const questionEls = container.querySelectorAll<HTMLElement>('.measure-question');
+    const qHeights: number[] = [];
+    questionEls.forEach(el => {
+      qHeights.push(el.getBoundingClientRect().height + 24); // +24 for mb-6 gap
+    });
+
+    // ── Bin into pages ─────────────────────────────────────────────────────
+    // For multi-column layout we divide content height into column height.
+    // Questions flow left-to-right across columns on a page.
+    const newPages: number[][] = [];
+    let currentPage: number[] = [];
+    // Columns per page
+    const colCount = columns;
+    // Each column has its own fill level
+    let colFills = new Array(colCount).fill(0); // px filled in each column
+    let currentCol = 0;
+
+    const firstPageColHeight = (contentHeight - headerH) / colCount > 0
+      ? contentHeight - headerH  // total height minus header, then columns share it
+      : contentHeight;
+
+    // Actually: columns run in parallel, so available height = contentHeight - headerH (page 1)
+    const pageColHeight = (isFirstPage: boolean) =>
+      isFirstPage ? contentHeight - headerH : contentHeight;
+
+    let isFirst = true;
+
+    for (let i = 0; i < activeQuestions.length; i++) {
+      const qH = qHeights[i] ?? 80;
+      const availH = pageColHeight(isFirst);
+
+      // Find a column on the current page that fits
+      let placed = false;
+      for (let c = currentCol; c < colCount; c++) {
+        if (colFills[c] + qH <= availH) {
+          colFills[c] += qH;
+          currentPage.push(i);
+          currentCol = c;
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) {
+        // No column fits → start a new page
+        newPages.push(currentPage);
+        currentPage = [i];
+        colFills = new Array(colCount).fill(0);
+        colFills[0] = qH;
+        currentCol = 0;
+        isFirst = false;
+      }
+    }
+
+    if (currentPage.length > 0) {
+      newPages.push(currentPage);
+    }
+
+    setPages(newPages);
+  }, [activeQuestions, columns, fontSize, headerInfo, showStudentHeader, answerSheet]);
+
+  // Re-paginate whenever relevant config changes
+  useEffect(() => {
+    // Small delay so React has rendered the measure container
+    const id = setTimeout(paginate, 100);
+    return () => clearTimeout(id);
+  }, [paginate]);
+
   const handleShuffle = () => {
-    const shuffled = [...activeQuestions].sort(() => 0.5 - Math.random());
-    setActiveQuestions(shuffled);
+    setActiveQuestions(prev => [...prev].sort(() => 0.5 - Math.random()));
   };
 
-  // 🟢 NATIVE PRINT TRIGGER
-  const handleNativePrint = () => {
-    window.print();
+  const handleNativePrint = () => window.print();
+
+  // ─── Render helpers ────────────────────────────────────────────────────────
+  const renderQuestion = (q: any, idx: number, globalIdx: number) => {
+    const sortedOptions = Object.entries(q.options || {}).sort(([a], [b]) =>
+      String(a).localeCompare(String(b))
+    );
+    return (
+      <div
+        key={q.id || globalIdx}
+        className="mb-6"
+        style={{ breakInside: 'avoid-column', display: 'inline-block', width: '100%', paddingTop: '0.2rem' }}
+      >
+        <div className="flex items-start gap-2 mb-2.5">
+          <span className="font-bold text-black shrink-0 text-[1.1em] mt-[0.1em]">
+            {globalIdx + 1}.
+          </span>
+          <div className="text-black leading-relaxed text-[1em] py-1">
+            <LatexRenderer latex={getContentText(q.question)} />
+          </div>
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: columns === 3 ? '1fr' : 'repeat(2, 1fr)',
+          gap: '0.75rem 1rem',
+          marginLeft: '1.5rem'
+        }}>
+          {sortedOptions.map(([key, val]: any) => {
+            const isCorrect = key === q.answer;
+            const showCorrect = showAnswers === 'inline' && isCorrect;
+            const rawText = getContentText(val);
+            const safeText = rawText ? rawText.replace(/\$\$/g, '$') : '';
+            return (
+              <div key={key} className={`flex items-start gap-1.5 ${showCorrect ? 'font-bold text-black' : 'text-slate-900'}`}>
+                <span className={`font-bold shrink-0 mt-[0.15em] text-[0.95em] ${showCorrect ? 'text-black' : 'text-slate-900'}`}>
+                  {key}.
+                </span>
+                <span className="text-[0.95em] leading-relaxed break-words py-0.5">
+                  <LatexRenderer latex={safeText} />
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderHeader = () => (
+    <div className="mb-5 pb-3 border-b-2 border-slate-800">
+      <div className="flex justify-between items-start">
+        <div className="flex-1 pr-4">
+          {headerInfo.school && (
+            <h3 className="text-[1.1em] font-black uppercase tracking-widest text-slate-500 mb-1">
+              {headerInfo.school}
+            </h3>
+          )}
+          <h1 className="text-[2em] font-black text-black uppercase leading-tight">
+            {originalData?.title}
+          </h1>
+          {headerInfo.teacher && (
+            <div className="text-[0.9em] font-bold text-slate-600 mt-1">
+              {t.teacherPlace}: {headerInfo.teacher}
+            </div>
+          )}
+        </div>
+        <div className="text-right shrink-0">
+          <div className="font-bold text-slate-500 text-[0.8em] uppercase tracking-widest">
+            {t.total}: <span className="text-black text-[1.2em] ml-1">{activeQuestions.length}</span>
+          </div>
+        </div>
+      </div>
+      {showStudentHeader && (
+        <div className="flex gap-4 mt-5 pt-2 text-[0.9em]">
+          <div className="flex-1 flex items-end gap-2">
+            <span className="font-bold uppercase tracking-wide shrink-0">{t.name}:</span>
+            <div className="flex-1 border-b border-slate-400 h-4"></div>
+          </div>
+          <div className="w-32 flex items-end gap-2">
+            <span className="font-bold uppercase tracking-wide shrink-0">{t.date}:</span>
+            <div className="flex-1 border-b border-slate-400 h-4"></div>
+          </div>
+          <div className="w-24 flex items-end gap-2">
+            <span className="font-bold uppercase tracking-wide shrink-0">{t.group}:</span>
+            <div className="flex-1 border-b border-slate-400 h-4"></div>
+          </div>
+          <div className="w-20 flex items-end gap-2">
+            <span className="font-bold uppercase tracking-wide shrink-0">{t.score}:</span>
+            <div className="flex-1 border-b border-slate-400 h-4"></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderAnswerSheet = () => {
+    if (answerSheet === 'none') return null;
+    return (
+      <div className="mt-8 pt-6 border-t-2 border-black">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-[1.2em] font-black uppercase tracking-widest">{t.answers}</h2>
+          <div className="flex items-end gap-2">
+            <span className="text-[0.9em] font-bold uppercase tracking-wide">{t.score}:</span>
+            <div className="w-16 h-8 border-2 border-black rounded-md"></div>
+          </div>
+        </div>
+        {answerSheet === 'standard' && (
+          <div style={{ columnCount: columns === 1 ? 2 : columns === 2 ? 3 : 4, columnGap: '2rem', fontSize: '0.9em' }}>
+            {activeQuestions.map((q, idx) => (
+              <div key={idx} className="flex items-center gap-3 mb-2" style={{ breakInside: 'avoid' }}>
+                <span className="font-black w-6 text-right">{idx + 1}.</span>
+                <div className="flex gap-1.5">
+                  {['A', 'B', 'C', 'D'].map(opt => (
+                    <div key={opt} className="w-5 h-5 rounded-full border-2 border-slate-400 flex items-center justify-center font-bold text-[0.7em] text-slate-500">
+                      {opt}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {answerSheet === 'writein' && (
+          <div style={{ columnCount: columns === 1 ? 2 : columns === 2 ? 4 : 5, columnGap: '1.5rem', fontSize: '0.9em' }}>
+            {activeQuestions.map((q, idx) => (
+              <div key={idx} className="flex items-end gap-2 mb-3" style={{ breakInside: 'avoid' }}>
+                <span className="font-black w-6 text-right">{idx + 1}.</span>
+                <div className="w-10 h-6 border-b-2 border-black bg-slate-50/50"></div>
+              </div>
+            ))}
+          </div>
+        )}
+        {answerSheet === 'grid' && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${columns === 1 ? 2 : columns === 2 ? 4 : 5}, 1fr)`,
+            gap: '0.75rem',
+            fontSize: '0.85em'
+          }}>
+            {activeQuestions.map((q, idx) => (
+              <div key={idx} className="border-2 border-slate-300 p-2 rounded-lg flex justify-between items-center bg-slate-50/50">
+                <span className="font-black mr-2">{idx + 1}</span>
+                <div className="flex gap-1">
+                  {['A', 'B', 'C', 'D'].map(opt => (
+                    <div key={opt} className="w-4 h-4 rounded-full border border-slate-400 flex items-center justify-center text-[0.65em] font-bold text-slate-500 bg-white">
+                      {opt}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderAnswerKey = () => {
+    if (showAnswers !== 'end') return null;
+    return (
+      <div className="mt-8 pt-6 border-t-2 border-dashed border-slate-400">
+        <h3 className="font-black text-[1.2em] text-black mb-4 uppercase tracking-widest flex items-center gap-2">
+          <CheckSquare size={18} /> {t.keys}
+        </h3>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-[1em] font-mono">
+          {activeQuestions.map((q: any, idx: number) => (
+            <span key={idx} className="inline-block bg-slate-50 px-2 py-1 border border-slate-200 rounded">
+              <strong className="text-slate-500 mr-1">{idx + 1}.</strong>
+              <span className="font-black">{q.answer}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ─── A4 page paper style ───────────────────────────────────────────────────
+  const paperStyle: React.CSSProperties = {
+    width: `${A4_W_PX}px`,
+    height: `${A4_H_PX}px`,
+    padding: '15mm',
+    fontSize: `${fontSize}pt`,
+    overflow: 'hidden',
+    flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   if (!isLoaded) return null;
-  if (!originalData) return <div className="p-10 text-center font-bold text-slate-500">No data found. Please return to the library and select a test to print.</div>;
+  if (!originalData) return (
+    <div className="p-10 text-center font-bold text-slate-500">
+      No data found. Please return to the library and select a test to print.
+    </div>
+  );
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col md:flex-row font-sans text-slate-900 print:bg-white print:block">
-      
-      {/* --- SIDEBAR CONTROLS (Vercel Style) --- */}
-      <div className="w-full md:w-80 bg-white border-r border-slate-200/80 h-auto md:h-screen overflow-y-auto shrink-0 shadow-xl z-20 flex flex-col print:hidden">
-        
+    /*
+      ROOT: full viewport, no overflow, flex row
+      - Sidebar: fixed width, independent scroll
+      - Preview: flex-1, overflow-hidden (its inner scroller handles scroll)
+    */
+    <div className="h-screen overflow-hidden bg-[#FAFAFA] flex flex-row font-sans text-slate-900 print:bg-white print:block print:h-auto print:overflow-visible">
+
+      {/* ── SIDEBAR ──────────────────────────────────────────────────────────── */}
+      <aside className="w-80 shrink-0 bg-white border-r border-slate-200/80 h-screen overflow-y-auto flex flex-col shadow-xl z-20 print:hidden">
+
         <div className="p-5 border-b border-slate-100 bg-white sticky top-0 z-10 flex items-center justify-between">
           <h2 className="font-black text-[16px] text-slate-900 tracking-tight flex items-center gap-2">
-            <Printer size={18} className="text-indigo-600"/> {t.title}
+            <Printer size={18} className="text-indigo-600" /> {t.title}
           </h2>
           <Link href="/teacher/library" className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
-            <ArrowLeft size={16} strokeWidth={2.5}/>
+            <ArrowLeft size={16} strokeWidth={2.5} />
           </Link>
         </div>
 
-        <div className="p-5 space-y-5 flex-1 custom-scrollbar">
-          
+        <div className="p-5 space-y-5 flex-1 overflow-y-auto">
+
           <button onClick={handleShuffle} className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-[1rem] flex items-center justify-center gap-2 transition-colors border border-indigo-100 active:scale-95">
             <Shuffle size={18} strokeWidth={2.5} /> {t.shuffle}
           </button>
 
-          {/* Layout Block */}
+          {/* Layout */}
           <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Layout size={14}/> {t.layout}</label>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Layout size={14} /> {t.layout}</label>
             <div className="grid grid-cols-3 gap-2">
-               {[1, 2, 3].map(col => (
-                 <button key={col} onClick={() => setColumns(col as any)} className={`p-2 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all ${columns === col ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
-                   {col === 1 ? <Smartphone size={16}/> : col === 2 ? <Columns size={16}/> : <Grid size={16}/>} {t.cols.replace("{n}", col.toString())}
-                 </button>
-               ))}
+              {[1, 2, 3].map(col => (
+                <button key={col} onClick={() => setColumns(col as any)} className={`p-2 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all ${columns === col ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
+                  {col === 1 ? <Smartphone size={16} /> : col === 2 ? <Columns size={16} /> : <Grid size={16} />}
+                  {t.cols.replace("{n}", col.toString())}
+                </button>
+              ))}
             </div>
             {columns > 1 && (
               <label className="flex items-center gap-2 cursor-pointer mt-3 text-[12px] font-bold text-slate-600">
-                <input type="checkbox" checked={showLines} onChange={() => setShowLines(!showLines)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"/> {t.lines}
+                <input type="checkbox" checked={showLines} onChange={() => setShowLines(!showLines)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /> {t.lines}
               </label>
             )}
           </div>
 
-          {/* Header Info Block */}
+          {/* Header Info */}
           <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Settings size={14}/> {t.header}</label>
-             <input type="text" placeholder={t.schoolPlace} value={headerInfo.school} onChange={e => setHeaderInfo({...headerInfo, school: e.target.value})} className="w-full px-3 py-2.5 text-[13px] bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none font-medium transition-colors" />
-             <input type="text" placeholder={t.teacherPlace} value={headerInfo.teacher} onChange={e => setHeaderInfo({...headerInfo, teacher: e.target.value})} className="w-full px-3 py-2.5 text-[13px] bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none font-medium transition-colors" />
-             <label className="flex items-center gap-2 cursor-pointer mt-2 text-[12px] font-bold text-slate-600">
-                <input type="checkbox" checked={showStudentHeader} onChange={() => setShowStudentHeader(!showStudentHeader)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"/> {t.studentInfo}
-             </label>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Settings size={14} /> {t.header}</label>
+            <input type="text" placeholder={t.schoolPlace} value={headerInfo.school} onChange={e => setHeaderInfo({ ...headerInfo, school: e.target.value })} className="w-full px-3 py-2.5 text-[13px] bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none font-medium transition-colors" />
+            <input type="text" placeholder={t.teacherPlace} value={headerInfo.teacher} onChange={e => setHeaderInfo({ ...headerInfo, teacher: e.target.value })} className="w-full px-3 py-2.5 text-[13px] bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none font-medium transition-colors" />
+            <label className="flex items-center gap-2 cursor-pointer mt-2 text-[12px] font-bold text-slate-600">
+              <input type="checkbox" checked={showStudentHeader} onChange={() => setShowStudentHeader(!showStudentHeader)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /> {t.studentInfo}
+            </label>
           </div>
 
-          {/* Typography Block */}
+          {/* Typography */}
           <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-             <div className="flex justify-between items-center">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Type size={14}/> {t.typography}</label>
-                <span className="text-[10px] font-black bg-slate-100 px-2 py-0.5 rounded-md text-slate-500">{fontSize}pt</span>
-             </div>
-             <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                <button onClick={() => setFontSize(Math.max(8, fontSize - 1))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg shadow-sm"><Minus size={14}/></button>
-                <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                   <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${((fontSize - 8) / 16) * 100}%` }}></div>
-                </div>
-                <button onClick={() => setFontSize(Math.min(24, fontSize + 1))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg shadow-sm"><Plus size={14}/></button>
-             </div>
+            <div className="flex justify-between items-center">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Type size={14} /> {t.typography}</label>
+              <span className="text-[10px] font-black bg-slate-100 px-2 py-0.5 rounded-md text-slate-500">{fontSize}pt</span>
+            </div>
+            <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+              <button onClick={() => setFontSize(Math.max(8, fontSize - 1))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg shadow-sm"><Minus size={14} /></button>
+              <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${((fontSize - 8) / 16) * 100}%` }}></div>
+              </div>
+              <button onClick={() => setFontSize(Math.min(24, fontSize + 1))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg shadow-sm"><Plus size={14} /></button>
+            </div>
           </div>
 
-          {/* Answer Sheet Block */}
+          {/* Answer Sheet */}
           <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><ScanLine size={14}/> {t.answers}</label>
-             <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setAnswerSheet('none')} className={`p-2 rounded-xl border text-[11px] font-bold ${answerSheet === 'none' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}>{t.ansStyles.none}</button>
-                <button onClick={() => setAnswerSheet('standard')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'standard' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><List size={14}/> {t.ansStyles.standard}</button>
-                <button onClick={() => setAnswerSheet('writein')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'writein' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><Edit3 size={14}/> {t.ansStyles.writein}</button>
-                <button onClick={() => setAnswerSheet('grid')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'grid' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><Grid3X3 size={14}/> {t.ansStyles.grid}</button>
-             </div>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><ScanLine size={14} /> {t.answers}</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setAnswerSheet('none')} className={`p-2 rounded-xl border text-[11px] font-bold ${answerSheet === 'none' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}>{t.ansStyles.none}</button>
+              <button onClick={() => setAnswerSheet('standard')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'standard' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><List size={14} /> {t.ansStyles.standard}</button>
+              <button onClick={() => setAnswerSheet('writein')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'writein' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><Edit3 size={14} /> {t.ansStyles.writein}</button>
+              <button onClick={() => setAnswerSheet('grid')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'grid' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><Grid3X3 size={14} /> {t.ansStyles.grid}</button>
+            </div>
           </div>
 
-          {/* Answer Key Block */}
+          {/* Answer Key */}
           <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><CheckSquare size={14}/> {t.keys}</label>
-             <select value={showAnswers} onChange={(e) => setShowAnswers(e.target.value as any)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-colors cursor-pointer">
-               <option value="none">{t.keyStyles.none}</option>
-               <option value="inline">{t.keyStyles.inline}</option>
-               <option value="end">{t.keyStyles.end}</option>
-             </select>
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><CheckSquare size={14} /> {t.keys}</label>
+            <select value={showAnswers} onChange={(e) => setShowAnswers(e.target.value as any)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-colors cursor-pointer">
+              <option value="none">{t.keyStyles.none}</option>
+              <option value="inline">{t.keyStyles.inline}</option>
+              <option value="end">{t.keyStyles.end}</option>
+            </select>
           </div>
 
         </div>
 
+        {/* Bottom actions */}
         <div className="p-5 border-t border-slate-200/80 bg-white sticky bottom-0 space-y-3 z-10">
-          
-          {/* NEW: Standalone PDF Download Component */}
-          <DownloadPdfButton 
-            targetRef={printRootRef as any} 
+          <DownloadPdfButton
+            targetRef={printRootRef as any}
             fileName={`${originalData?.title || 'Test'}_Edify.pdf`}
             buttonText={lang === 'uz' ? "PDF Yuklab Olish" : lang === 'ru' ? "Скачать PDF" : "Download PDF"}
           />
-
-          {/* EXISTING: Native Print Button (Untouched) */}
           <button onClick={handleNativePrint} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2 transition-all active:scale-95">
             <Printer size={18} /> {t.print}
           </button>
-          
         </div>
-      </div>
+      </aside>
 
-      {/* --- PREVIEW AREA --- */}
-      <div className="flex-1 bg-slate-200/50 relative overflow-hidden flex flex-col print:bg-white print:p-0 print:overflow-visible">
-        
+      {/* ── PREVIEW AREA ─────────────────────────────────────────────────────── */}
+      {/*
+        This div is flex-1, overflow-hidden.
+        Its child (the scroll container) gets overflow-y-auto so ONLY this scrolls.
+      */}
+      <div className="flex-1 relative overflow-hidden flex flex-col bg-slate-200/60 print:hidden">
+
         {/* Zoom Controls */}
-        <div className="absolute top-4 right-4 z-10 flex gap-1.5 bg-white/90 backdrop-blur-md p-1.5 rounded-xl shadow-sm border border-slate-200/80 print:hidden">
-          <button onClick={() => setPreviewZoom(Math.max(0.5, previewZoom - 0.1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-500"><ZoomOut size={16}/></button>
+        <div className="absolute top-4 right-4 z-10 flex gap-1.5 bg-white/90 backdrop-blur-md p-1.5 rounded-xl shadow-sm border border-slate-200/80">
+          <button onClick={() => setPreviewZoom(z => Math.max(0.4, parseFloat((z - 0.1).toFixed(1))))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-500"><ZoomOut size={16} /></button>
           <span className="text-[12px] font-black self-center w-12 text-center text-slate-700">{Math.round(previewZoom * 100)}%</span>
-          <button onClick={() => setPreviewZoom(Math.min(1.5, previewZoom + 0.1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-500"><ZoomIn size={16}/></button>
+          <button onClick={() => setPreviewZoom(z => Math.min(1.5, parseFloat((z + 0.1).toFixed(1))))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-500"><ZoomIn size={16} /></button>
         </div>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center print:p-0 print:block custom-scrollbar">
-          
-          {/* --- A4 PAPER CANVAS --- */}
-          <div 
-            id="print-root" 
-            ref={printRootRef}
-            className="bg-white shadow-2xl transition-transform duration-200 origin-top print:shadow-none print:w-full print:scale-100 print:transform-none font-serif tracking-tight"
+        {/* Page count badge */}
+        {pages.length > 0 && (
+          <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-sm border border-slate-200/80 text-[12px] font-black text-slate-600">
+            {pages.length} {pages.length === 1 ? 'page' : 'pages'}
+          </div>
+        )}
+
+        {/*
+          SCROLL CONTAINER — this is the element that scrolls vertically.
+          Using overflow-y-auto and h-full so it fills the parent exactly.
+        */}
+        <div className="h-full overflow-y-auto overflow-x-auto">
+          <div
+            id="preview-pages-scaler"
+            className="flex flex-col items-center py-8 gap-6"
             style={{
+              // Scale the entire stack of pages together
               transform: `scale(${previewZoom})`,
-              width: '210mm',
-              minHeight: '297mm', 
-              padding: '5mm 15mm 15mm 15mm', // 🟢 CHANGED: 5mm top padding, 15mm sides
-              fontSize: `${fontSize}pt`
+              transformOrigin: 'top center',
+              // Make the container tall enough for the scaled content
+              minHeight: `${(A4_H_PX * previewZoom + 24) * Math.max(pages.length, 1) + 64}px`,
+              width: `${A4_W_PX * previewZoom}px`,
+              margin: '0 auto',
             }}
           >
-            {/* INJECTED PRINT CSS */}
-            <style dangerouslySetInnerHTML={{__html: `
-              @media print {
-                /* 1. Set margin to 0 to forcefully hide Browser URLs and Dates */
-                @page { size: A4; margin: 0; }
-                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
-                
-                /* 2. Hide ALL global Next.js Layout elements (Navbars, Sidebars) */
-                body * { visibility: hidden; }
-                
-                /* 3. Extract ONLY our A4 paper and make it visible */
-                #print-root, #print-root * { visibility: visible; }
-                
-                /* 4. Snap the paper to the absolute top-left of the real printer page */
-                #print-root { 
-                  position: absolute; 
-                  left: 0; 
-                  top: 0; 
-                  width: 100%; 
-                  padding: 15mm !important; /* Our custom safe margin */
-                  transform: none !important; /* Ignore the UI zoom level */
-                }
-                
-                .avoid-break { break-inside: avoid-column; page-break-inside: avoid; }
-                .break-before { page-break-before: always; }
-
-                .katex { line-height: normal !important; }
-                .katex-html { padding-top: 0.2em; padding-bottom: 0.2em; }
-              }
-            `}} />
-
-            {/* HEADER */}
-            <div className="mb-5 pb-3 border-b-2 border-slate-800">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 pr-4">
-                  {headerInfo.school && <h3 className="text-[1.1em] font-black uppercase tracking-widest text-slate-500 mb-1">{headerInfo.school}</h3>}
-                  <h1 className="text-[2em] font-black text-black uppercase leading-tight">{originalData.title}</h1>
-                  {headerInfo.teacher && <div className="text-[0.9em] font-bold text-slate-600 mt-1">{t.teacherPlace}: {headerInfo.teacher}</div>}
+            {/* Render stacked A4 pages */}
+            {pages.length === 0 ? (
+              // Fallback single page while paginating
+              <div
+                className="bg-white shadow-2xl font-serif tracking-tight"
+                style={{ ...paperStyle, transformOrigin: 'top center' }}
+              >
+                {renderHeader()}
+                <div style={{
+                  columnCount: columns,
+                  columnGap: columns > 1 ? '2rem' : '0',
+                  columnRule: columns > 1 && showLines ? '1px solid #cbd5e1' : 'none',
+                  flex: 'none',
+                  columnFill: 'balance',
+                }}>
+                  {activeQuestions.map((q, idx) => renderQuestion(q, idx, idx))}
                 </div>
-                <div className="text-right shrink-0">
-                   <div className="font-bold text-slate-500 text-[0.8em] uppercase tracking-widest">
-                      {t.total}: <span className="text-black text-[1.2em] ml-1">{activeQuestions.length}</span>
-                   </div>
-                </div>
+                {renderAnswerKey()}
+                {renderAnswerSheet()}
               </div>
-              
-              {showStudentHeader && (
-                <div className="flex gap-4 mt-5 pt-2 text-[0.9em]">
-                    <div className="flex-1 flex items-end gap-2">
-                      <span className="font-bold uppercase tracking-wide shrink-0">{t.name}:</span>
-                      <div className="flex-1 border-b border-slate-400 h-4"></div>
-                    </div>
-                    <div className="w-32 flex items-end gap-2">
-                      <span className="font-bold uppercase tracking-wide shrink-0">{t.date}:</span>
-                      <div className="flex-1 border-b border-slate-400 h-4"></div>
-                    </div>
-                    <div className="w-24 flex items-end gap-2">
-                      <span className="font-bold uppercase tracking-wide shrink-0">{t.group}:</span>
-                      <div className="flex-1 border-b border-slate-400 h-4"></div>
-                    </div>
-                    <div className="w-20 flex items-end gap-2">
-                      <span className="font-bold uppercase tracking-wide shrink-0">{t.score}:</span>
-                      <div className="flex-1 border-b border-slate-400 h-4"></div>
-                    </div>
-                </div>
-              )}
-            </div>
-
-            {/* 🟢 FIXED: INLINE STYLES FOR COLUMNS (Prevents Tailwind Stripping) */}
-            <div style={{
-                columnCount: columns,
-                columnGap: columns > 1 ? '2rem' : '0',
-                columnRule: (columns > 1 && showLines) ? '1px solid #cbd5e1' : 'none'
-            }}>
-              {activeQuestions.map((q: any, idx: number) => {
-                const sortedOptions = Object.entries(q.options || {}).sort(([keyA], [keyB]) => 
-                  String(keyA).localeCompare(String(keyB))
-                );
-
+            ) : (
+              pages.map((pageQIndices, pageNum) => {
+                const isLastPage = pageNum === pages.length - 1;
                 return (
-                  <div 
-                    key={q.id || idx} 
-                    className="mb-6 avoid-break" 
-                    style={{ breakInside: 'avoid-column', display: 'inline-block', width: '100%', paddingTop: '0.2rem' }}
+                  <div
+                    key={pageNum}
+                    className="a4-capture-page bg-white shadow-2xl font-serif tracking-tight relative"
+                    style={paperStyle}
                   >
-                    
-                    <div className="flex items-start gap-2 mb-2.5">
-                      {/* 🟢 CHANGED: font-black -> font-bold */}
-                      <span className="font-bold text-black shrink-0 text-[1.1em] mt-[0.1em]">
-                        {idx + 1}.
-                      </span>
-                      {/* 🟢 CHANGED: Removed font-medium so it reads cleanly */}
-                      <div className="text-black leading-relaxed text-[1em] py-1">
-                        <LatexRenderer latex={getContentText(q.question)} />
-                      </div>
+                    {/* Page number */}
+                    <div className="absolute bottom-3 right-4 text-[8pt] text-slate-300 font-bold select-none">
+                      {pageNum + 1} / {pages.length}
                     </div>
-                    
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: columns === 3 ? '1fr' : 'repeat(2, 1fr)',
-                        gap: '0.75rem 1rem', 
-                        marginLeft: '1.5rem'
-                    }}>
-                      {sortedOptions.map(([key, val]: any) => {
-                        const isCorrect = key === q.answer;
-                        const showCorrect = (showAnswers === 'inline' && isCorrect);
-                        
-                        const rawText = getContentText(val);
-                        const safeInlineText = rawText ? rawText.replace(/\$\$/g, '$') : "";
 
-                        return (
-                          <div key={key} className={`flex items-start gap-1.5 ${showCorrect ? 'font-bold text-black' : 'text-slate-900'}`}>
-                            
-                            {/* 🟢 CHANGED: font-black -> font-bold */}
-                            <span className={`font-bold shrink-0 mt-[0.15em] text-[0.95em] ${showCorrect ? 'text-black' : 'text-slate-900'}`}>
-                              {key}.
-                            </span>
-                            
-                            <span className="text-[0.95em] leading-relaxed break-words py-0.5">
-                              <LatexRenderer latex={safeInlineText} />
-                            </span>
-                            
-                          </div>
-                        );
-                      })}
+                    {/* Header only on first page */}
+                    {pageNum === 0 && renderHeader()}
+
+                    {/* Questions for this page */}
+                    <div style={{
+                      columnCount: columns,
+                      columnGap: columns > 1 ? '2rem' : '0',
+                      columnRule: columns > 1 && showLines ? '1px solid #cbd5e1' : 'none',
+                      flex: isLastPage ? 'none' : 1,
+                      minHeight: 0,
+                      columnFill: isLastPage ? 'balance' : 'auto',
+                    }}>
+                      {pageQIndices.map((qIdx) =>
+                        renderQuestion(activeQuestions[qIdx], qIdx, qIdx)
+                      )}
                     </div>
+
+                    {/* Answer key + bubble sheet on last page */}
+                    {isLastPage && renderAnswerKey()}
+                    {isLastPage && renderAnswerSheet()}
                   </div>
                 );
-              })}
-            </div>
-
-            {/* TEACHER KEY */}
-            {showAnswers === 'end' && (
-              <div className="break-before mt-8 pt-6 border-t-2 border-dashed border-slate-400">
-                <h3 className="font-black text-[1.2em] text-black mb-4 uppercase tracking-widest flex items-center gap-2"><CheckSquare size={18}/> {t.keys}</h3>
-                <div className="flex flex-wrap gap-x-6 gap-y-2 text-[1em] font-mono">
-                  {activeQuestions.map((q: any, idx: number) => (
-                    <span key={idx} className="inline-block bg-slate-50 px-2 py-1 border border-slate-200 rounded">
-                      <strong className="text-slate-500 mr-1">{idx + 1}.</strong> <span className="font-black">{q.answer}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
+              })
             )}
-
-            {/* 🟢 FIXED: INLINE STYLES FOR ANSWER SHEETS */}
-            {answerSheet !== 'none' && (
-               <div className="avoid-break mt-8 pt-6 border-t-2 border-black">
-                  
-                  <div className="flex justify-between items-center mb-6">
-                     <h2 className="text-[1.2em] font-black uppercase tracking-widest">{t.answers}</h2>
-                     <div className="flex items-end gap-2">
-                        <span className="text-[0.9em] font-bold uppercase tracking-wide">{t.score}:</span>
-                        <div className="w-16 h-8 border-2 border-black rounded-md"></div>
-                     </div>
-                  </div>
-
-                  {/* 1. STANDARD BUBBLES */}
-                  {answerSheet === 'standard' && (
-                     <div style={{ columnCount: columns === 1 ? 2 : columns === 2 ? 3 : 4, columnGap: '2rem', fontSize: '0.9em' }}>
-                       {activeQuestions.map((q, idx) => (
-                         <div key={idx} className="flex items-center gap-3 mb-2 avoid-break" style={{ breakInside: 'avoid' }}>
-                            <span className="font-black w-6 text-right">{idx + 1}.</span>
-                            <div className="flex gap-1.5">
-                               {['A','B','C','D'].map(opt => (
-                                 <div key={opt} className="w-5 h-5 rounded-full border-2 border-slate-400 flex items-center justify-center font-bold text-[0.7em] text-slate-500">
-                                   {opt}
-                                 </div>
-                               ))}
-                            </div>
-                         </div>
-                       ))}
-                     </div>
-                  )}
-
-                  {/* 2. WRITE-IN STYLE */}
-                  {answerSheet === 'writein' && (
-                     <div style={{ columnCount: columns === 1 ? 2 : columns === 2 ? 4 : 5, columnGap: '1.5rem', fontSize: '0.9em' }}>
-                       {activeQuestions.map((q, idx) => (
-                         <div key={idx} className="flex items-end gap-2 mb-3 avoid-break" style={{ breakInside: 'avoid' }}>
-                            <span className="font-black w-6 text-right">{idx + 1}.</span>
-                            <div className="w-10 h-6 border-b-2 border-black bg-slate-50/50"></div>
-                         </div>
-                       ))}
-                     </div>
-                  )}
-
-                  {/* 3. GRID STYLE */}
-                  {answerSheet === 'grid' && (
-                     <div style={{ 
-                       display: 'grid', 
-                       gridTemplateColumns: `repeat(${columns === 1 ? 2 : columns === 2 ? 4 : 5}, 1fr)`, 
-                       gap: '0.75rem', 
-                       fontSize: '0.85em' 
-                     }}>
-                       {activeQuestions.map((q, idx) => (
-                         <div key={idx} className="border-2 border-slate-300 p-2 rounded-lg flex justify-between items-center bg-slate-50/50">
-                            <span className="font-black mr-2">{idx + 1}</span>
-                            <div className="flex gap-1">
-                               {['A','B','C','D'].map(opt => (
-                                 <div key={opt} className="w-4 h-4 rounded-full border border-slate-400 flex items-center justify-center text-[0.65em] font-bold text-slate-500 bg-white">
-                                   {opt}
-                                 </div>
-                               ))}
-                            </div>
-                         </div>
-                       ))}
-                     </div>
-                  )}
-               </div>
-            )}
-
           </div>
         </div>
       </div>
+
+      {/* ── HIDDEN MEASUREMENT CONTAINER ─────────────────────────────────────── */}
+      {/*
+        Positioned off-screen (not display:none — we need actual layout/heights).
+        Matches A4 content-area width minus padding so heights are accurate.
+      */}
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          // Content width: A4_W_PX minus left+right 15mm padding
+          width: `${A4_W_PX - 2 * 15 * (96 / 25.4)}px`,
+          fontSize: `${fontSize}pt`,
+          fontFamily: 'serif',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+        }}
+      >
+        {/* Measure header */}
+        <div className="measure-header mb-5 pb-3 border-b-2 border-slate-800">
+          {renderHeader()}
+        </div>
+
+        {/* Measure each question */}
+        {activeQuestions.map((q, idx) => (
+          <div key={q.id || idx} className="measure-question">
+            {renderQuestion(q, idx, idx)}
+          </div>
+        ))}
+
+        {/* Measure answer sheet */}
+        <div className="measure-anssheet">
+          {renderAnswerSheet()}
+        </div>
+      </div>
+
+      {/* ── PRINT OUTPUT (invisible in UI, used for native print + PDF) ──────── */}
+      <div
+        id="print-pages-root"
+        ref={printRootRef}
+        className="hidden print:block"
+        style={{ fontFamily: 'serif' }}
+      >
+        {pages.map((pageQIndices, pageNum) => {
+          const isLastPage = pageNum === pages.length - 1;
+          return (
+            <div
+              key={pageNum}
+              className="print-page"
+              style={{
+                width: '210mm',
+                height: '297mm',
+                padding: '15mm',
+                fontSize: `${fontSize}pt`,
+                overflow: 'hidden',
+                pageBreakAfter: isLastPage ? 'avoid' : 'always',
+                position: 'relative',
+                fontFamily: 'serif',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {pageNum === 0 && renderHeader()}
+              <div style={{
+                columnCount: columns,
+                columnGap: columns > 1 ? '2rem' : '0',
+                columnRule: columns > 1 && showLines ? '1px solid #cbd5e1' : 'none',
+                flex: isLastPage ? 'none' : 1,
+                minHeight: 0,
+                columnFill: isLastPage ? 'balance' : 'auto',
+              }}>
+                {pageQIndices.map((qIdx) =>
+                  renderQuestion(activeQuestions[qIdx], qIdx, qIdx)
+                )}
+              </div>
+              {isLastPage && renderAnswerKey()}
+              {isLastPage && renderAnswerSheet()}
+            </div>
+          );
+        })}
+      </div>
+
     </div>
   );
 }
