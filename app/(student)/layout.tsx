@@ -11,11 +11,11 @@ import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore'; 
 
-// Icons
+// Icons (Added Gamepad2)
 import { 
   LayoutDashboard, BookOpen, User as UserIcon, 
   LogOut, Sparkles, Flame, Trophy, ChevronDown, Check,
-  Settings, Menu, BookMarked, Compass, X
+  Settings, Menu, BookMarked, Compass, X, Gamepad2
 } from 'lucide-react';
 
 // Components
@@ -44,19 +44,19 @@ export function useStudentLanguage() {
 // ============================================================================
 const LAYOUT_TRANSLATIONS: any = {
   uz: {
-    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", leaderboard: "Reyting", profile: "Profil" },
+    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", profile: "Profil" },
     topbar: { streak: "Seriya", profile: "Profil", settings: "Sozlamalar", logout: "Chiqish", language: "Til" },
     loading: "Yuklanmoqda...",
     logoutConfirm: { title: "Tizimdan chiqish", desc: "Haqiqatan ham hisobingizdan chiqmoqchimisiz?", cancel: "Bekor qilish", confirm: "Ha, chiqish" }
   },
   en: {
-    menu: { dashboard: "Dashboard", classes: "Classes", explore: "Courses", library: "Library", leaderboard: "Rank", profile: "Profile" },
+    menu: { dashboard: "Dashboard", classes: "Classes", explore: "Courses", library: "Library", games: "Games", leaderboard: "Rank", profile: "Profile" },
     topbar: { streak: "Streak", profile: "Profile", settings: "Settings", logout: "Sign Out", language: "Language" },
     loading: "Loading...",
     logoutConfirm: { title: "Sign Out", desc: "Are you sure you want to sign out of your account?", cancel: "Cancel", confirm: "Yes, Sign Out" }
   },
   ru: {
-    menu: { dashboard: "Главная", classes: "Классы", explore: "Курсы", library: "Библиотека", leaderboard: "Рейтинг", profile: "Профиль" },
+    menu: { dashboard: "Главная", classes: "Классы", explore: "Курсы", library: "Библиотека", games: "Игры", leaderboard: "Рейтинг", profile: "Профиль" },
     topbar: { streak: "Серия", profile: "Профиль", settings: "Настройки", logout: "Выйти", language: "Язык" },
     loading: "Загрузка...",
     logoutConfirm: { title: "Выход", desc: "Вы уверены, что хотите выйти из аккаунта?", cancel: "Отмена", confirm: "Да, выйти" }
@@ -157,12 +157,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }
   if (!user) return null; 
 
-  // MENU ITEMS
+  // MENU ITEMS (Added Games)
   const menuItems = [
     { name: t.menu.dashboard, href: '/dashboard', icon: LayoutDashboard },
     { name: t.menu.classes, href: '/classes', icon: BookOpen },
     { name: t.menu.explore, href: '/explore', icon: Compass }, 
     { name: t.menu.library, href: '/library', icon: BookMarked, hideOnMobile: true }, 
+    { name: t.menu.games, href: '/games', icon: Gamepad2 }, 
     { name: t.menu.leaderboard, href: '/leaderboard', icon: Trophy },
     { name: t.menu.profile, href: '/profile', icon: UserIcon },
   ];
