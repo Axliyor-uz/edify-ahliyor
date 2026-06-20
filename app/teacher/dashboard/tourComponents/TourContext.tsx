@@ -236,7 +236,7 @@ function TourOverlay() {
   };
 
   // Global uniform easing setup shared across coordinates, backdrop clip, and tooltips
-  const transitionConfig = { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] };
+  const transitionConfig = { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] as [number, number, number, number] };
 
   if (typeof window === 'undefined') return null;
 
