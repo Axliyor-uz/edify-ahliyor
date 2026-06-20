@@ -122,7 +122,7 @@ const PolicyModal = ({ isOpen, onClose, title, content, icon: Icon, closeText }:
                 <p><strong>5. Bekor qilish</strong><br/>Biz istalgan sababga ko'ra, oldindan ogohlantirmasdan yoki javobgarliksiz xizmatimizga kirishni darhol bekor qilishimiz yoki to'xtatib qo'yishimiz mumkin.</p>
                  <p><strong>6. Javobgarlik</strong><br/>Hech qanday holatda platforma har qanday bilvosita, tasodifiy, maxsus, oqibatli yoki jazo tarzidagi zararlar uchun javobgar bo'lmaydi.</p>
                  <br/><br/><br/><br/> {/* Skeykrolni sinash uchun qo'shimcha joy */}
-                 <p><em>So'nggi marta yangilangan: 1-yanvar, 2025-yil</em></p>
+                 <p><em>So'nggi marta yangilangan: 1-yanvar, 2026-yil</em></p>
               </div>
             </div>
 

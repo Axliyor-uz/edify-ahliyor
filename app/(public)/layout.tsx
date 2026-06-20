@@ -261,11 +261,13 @@ const Navbar = () => {
 // --- 5. MAIN LAYOUT (Light Theme Wrapper) ---
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<LangType>('uz');
+  const pathname = usePathname();
+  const isAuthPage = pathname.includes('/auth/');
 
   return (
     <LanguageContext.Provider value={{ lang, setLang }}>
       <div className="min-h-screen bg-[#FAFAFA] flex flex-col font-sans text-slate-900 selection:bg-blue-100 selection:text-blue-900">
-        <Navbar />
+        {!isAuthPage && <Navbar />}
         <main className="flex-1">
           {children}
         </main>
