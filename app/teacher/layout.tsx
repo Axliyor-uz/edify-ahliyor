@@ -127,6 +127,26 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
   useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
 
+  // Handle tour step changes for mobile sidebar
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const handleTourStepChange = (e: any) => {
+      const stepId = e.detail;
+      
+      if (window.innerWidth < 768) {
+        if (stepId && stepId.startsWith('tour-sidebar-')) {
+          setMobileMenuOpen(true);
+        } else {
+          setMobileMenuOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('tour-step-change', handleTourStepChange);
+    return () => window.removeEventListener('tour-step-change', handleTourStepChange);
+  }, []);
+
   if (loading || !isAuthorized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAFA]">
@@ -140,17 +160,17 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const navItems = [
     { name: t.menu.overview, href: '/teacher/dashboard', icon: LayoutDashboard },
     { name: t.create, href: '/teacher/create', icon: FilePlus, isAI: true },
-    { name: t.menu.classes, href: '/teacher/classes', icon: Users }, 
+    { name: t.menu.classes, href: '/teacher/classes', icon: Users , tourId: 'tour-sidebar-classes' }, 
     { name: t.menu.ielts, href: '/teacher/ielts', icon: Globe, isAI: true }, // <-- NEW ITEM
     { name: t.menu.library, href: '/teacher/library', icon: FolderOpen },
-    { name: t.menu.onlineLibrary, href: '/teacher/online-books', icon: Library },
+    { name: t.menu.onlineLibrary, href: '/teacher/online-books', icon: Library, tourId: 'tour-sidebar-online-books' },
     { name: t.menu.analytics, href: '/teacher/analytics', icon: Sparkles, isAI: true },
     { name: t.menu.subscription, href: '/teacher/subscription', icon: CreditCard },
   ];
 
   // --- 🖥️ DESKTOP SIDEBAR RENDERER ---
   const renderSidebarContent = (collapsed: boolean, isMobile: boolean = false) => (
-    <div className="flex flex-col h-full bg-white relative transition-all duration-300 z-10 rounded-[20px]">
+    <div className="flex flex-col h-full bg-white relative transition-all duration-300 z-0 rounded-[20px]">
       
       {/* Brand Header */}
       <div className={`p-4 flex flex-col gap-5 border-b border-slate-100/60 shrink-0 ${collapsed ? 'items-center' : ''}`}>
@@ -174,7 +194,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/teacher/dashboard' && pathname.startsWith(item.href));
           return (
-            <Link key={item.href} href={item.href} className={`group flex items-center px-3 py-2.5 rounded-[12px] text-[14px] font-medium transition-all relative ${isActive ? 'bg-slate-100/80 text-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.02)]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'} ${collapsed ? 'justify-center' : 'justify-between'}`} title={collapsed ? item.name : ''}>
+            <Link key={item.href} href={item.href} data-tour={item.tourId} className={`group flex items-center px-3 py-2.5 rounded-[12px] text-[14px] font-medium transition-all relative ${isActive ? 'bg-slate-100/80 text-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.02)]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50/50'} ${collapsed ? 'justify-center' : 'justify-between'}`} title={collapsed ? item.name : ''}>
               <div className="flex items-center gap-3">
                 <item.icon size={18} className={`shrink-0 transition-colors ${isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-700'}`} strokeWidth={isActive ? 2.5 : 2} /> 
                 {!collapsed && (
