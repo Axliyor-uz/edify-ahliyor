@@ -10,54 +10,108 @@ interface DownloadPdfButtonProps {
   buttonText?: string;
 }
 
-export default function DownloadPdfButton({ 
-  targetRef, 
+// A4 at 96dpi: 210mm × 297mm → 794px × 1123px
+const A4_W_PX = 794;
+const A4_H_PX = 1123;
+
+export default function DownloadPdfButton({
+  targetRef,
   fileName = "Edify_Test_Document.pdf",
-  buttonText = "PDF Yuklab Olish" 
+  buttonText = "PDF Yuklab Olish",
 }: DownloadPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownload = async () => {
-    if (!targetRef.current) return toast.error("Hujjat topilmadi!");
-
     setIsGenerating(true);
-    const element = targetRef.current;
-
-    // 1. Temporarily remove the UI zoom scale so the PDF captures at 100% quality
-    const originalTransform = element.style.transform;
-    element.style.transform = "none";
 
     try {
-      // 2. Dynamically import the library (fixes Next.js SSR issues)
-      const html2pdf = (await import("html2pdf.js")).default;
+      const htmlToImage = await import("html-to-image");
+      const { jsPDF } = await import("jspdf");
 
-      // 3. Configure PDF settings
-      const opt: any = {
-        margin:       0, 
-        filename:     fileName,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] } 
-      };
+      const A4_W_MM = 210;
+      const A4_H_MM = 297;
 
-      // 4. Generate and Save
-      await html2pdf().set(opt).from(element).save();
+      const scaler = document.getElementById("preview-pages-scaler");
+      if (!scaler) {
+        toast.error("Preview container not found!");
+        return;
+      }
+
+      const previewPages = scaler.querySelectorAll<HTMLElement>(".a4-capture-page");
+      if (previewPages.length === 0) {
+        toast.error("No pages to capture!");
+        return;
+      }
+
+      // Save original transform
+      const origTransform = scaler.style.transform;
+      const origTransformOrigin = scaler.style.transformOrigin;
+      const origWidth = scaler.style.width;
+      const origMinHeight = scaler.style.minHeight;
+
+      // Reset zoom to 1:1
+      scaler.style.transform = "scale(1)";
+      scaler.style.transformOrigin = "top left";
+      scaler.style.width = `${A4_W_PX}px`;
+      scaler.style.minHeight = "auto";
+
+      // Wait for layout
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      for (let i = 0; i < previewPages.length; i++) {
+        const page = previewPages[i];
+
+        // Temporarily remove shadow
+        const origBoxShadow = page.style.boxShadow;
+        page.style.boxShadow = "none";
+
+        const imgData = await htmlToImage.toJpeg(page, {
+          quality: 0.95,
+          pixelRatio: 2,
+          backgroundColor: "#ffffff",
+          width: A4_W_PX,
+          height: A4_H_PX,
+          style: {
+            margin: '0',
+            transform: 'none',
+          }
+        });
+
+        // Restore shadow
+        page.style.boxShadow = origBoxShadow;
+
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        pdf.addImage(imgData, "JPEG", 0, 0, A4_W_MM, A4_H_MM);
+      }
+
+      // Restore original preview zoom
+      scaler.style.transform = origTransform;
+      scaler.style.transformOrigin = origTransformOrigin;
+      scaler.style.width = origWidth;
+      scaler.style.minHeight = origMinHeight;
+
+      pdf.save(fileName);
       toast.success("PDF muvaffaqiyatli yuklandi!");
-
     } catch (error) {
-      console.error("PDF avlodida xatolik:", error);
+      console.error("PDF generation error:", error);
       toast.error("PDF yaratishda xatolik yuz berdi.");
     } finally {
-      // 5. Restore the UI zoom scale
-      element.style.transform = originalTransform;
       setIsGenerating(false);
     }
   };
 
   return (
-    <button 
-      onClick={handleDownload} 
+    <button
+      onClick={handleDownload}
       disabled={isGenerating}
       className="w-full py-3.5 bg-white border-2 border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
     >
