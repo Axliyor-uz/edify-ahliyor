@@ -191,7 +191,7 @@ function EcosystemSVG() {
         <circle cx="-141" cy="-95" r="4" fill="#F59E0B" />
         <circle cx="-127" cy="-95" r="4" fill="#10B981" />
         {/* URL bar */}
-        <rect x="-100" cy="-103" x="-100" y="-103" width="140" height="14" rx="7" fill="rgba(255,255,255,0.05)" />
+        <rect x="-100" y="-103" width="140" height="14" rx="7" fill="rgba(255,255,255,0.05)" />
 
         {/* — App layout — */}
         {/* Left sidebar */}
