@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 export default function MatchingParagraphInfoBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
   
   // 1. LOCAL STATE FIX for smooth typing
-  const [optsInput, setOptsInput] = useState(qb.options.join(', '));
+  // Change Line 9 to this:
+const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '');
 
   // Sync local state if parent changes (e.g., from database load)
   useEffect(() => {
@@ -14,11 +15,10 @@ export default function MatchingParagraphInfoBlock({ qb, qbIdx, updateBlock, del
   }, [qb.options]);
 
   const handleOptsBlur = () => {
-    // When the user clicks away, clean the string, make it uppercase, and save to JSON
     const cleanArray = optsInput
       .split(',')
-      .map(s => s.trim().toUpperCase())
-      .filter(Boolean); // removes empty spaces
+      .map((s: string) => s.trim().toUpperCase()) // <-- fixed here
+      .filter(Boolean);
     
     updateBlock(qbIdx, 'options', cleanArray);
     setOptsInput(cleanArray.join(', ')); // Re-format the input box beautifully

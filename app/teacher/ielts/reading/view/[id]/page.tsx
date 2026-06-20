@@ -99,13 +99,13 @@ export default function AuthenticIELTSViewSimulator() {
       const span = document.createElement('span');
       span.className = 'bg-yellow-300 text-black px-0.5 rounded-sm cursor-pointer transition-colors hover:bg-red-200';
       span.title = 'Click to remove';
-      span.onclick = function() {
-        const parent = this.parentNode;
-        if(parent) {
-            parent.replaceChild(document.createTextNode(this.textContent || ''), this);
-            parent.normalize();
-        }
-      };
+      span.onclick = () => {
+  const parent = span.parentNode;
+  if (parent) {
+      parent.replaceChild(document.createTextNode(span.textContent || ''), span);
+      parent.normalize();
+  }
+};
       try {
         range.surroundContents(span);
         selection.removeAllRanges();

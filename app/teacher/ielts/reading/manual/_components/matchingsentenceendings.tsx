@@ -19,8 +19,8 @@ export default function MatchingSentenceEndingsBlock({ qb, qbIdx, updateBlock, d
     const optionRegex = /^([a-zA-Z])[\.\)]\s+(.+)/;
     const questionRegex = /^(\d+)[\.\)]\s+(.+)/;
 
-    const hasOptions = lines.some(l => optionRegex.test(l));
-    const hasQuestions = lines.some(l => questionRegex.test(l));
+    const hasOptions = lines.some((l: string) => optionRegex.test(l));
+const hasQuestions = lines.some((l: string) => questionRegex.test(l));
 
     if (hasOptions && hasQuestions) {
       let extractedInstructions: string[] = [];
