@@ -79,9 +79,9 @@ export const PLANS_CONFIG: Record<PlanId, PlanConfig> = {
     pricing: {
       isFree: false,
       // OYLIK CHEGIRMA: Eski narx 69,000, hozirgi narx 49,000 (Agar chegirma xohlamasangiz ikkalasiga ham 49000 yozing)
-      monthly: { price: 49000, originalPrice: 99000, periodLabel: "so'm / oy" },
+      monthly: { price: 149000, originalPrice: 199000, periodLabel: "so'm / oy" },
       // 6 OYLIK CHEGIRMA: Eski narx 414,000 (69k x 6), hozirgi narx 235,000
-      sixMonth: { price: 235000, originalPrice: 414000, periodLabel: "so'm / 6 oy" } 
+      sixMonth: { price: 599000, originalPrice: 1199000, periodLabel: "so'm / 6 oy" } 
     },
     paymentIds: { payme: "prod_pro_monthly", click: "srv_pro_123" },
     limits: { maxClasses: 5, maxStudents: 200, monthlyAiQuestions: 1000 },
@@ -96,9 +96,9 @@ export const PLANS_CONFIG: Record<PlanId, PlanConfig> = {
     pricing: {
       isFree: false,
       // OYLIK CHEGIRMA
-      monthly: { price: 149000, originalPrice: 199000, periodLabel: "so'm / oy" },
+      monthly: { price: 249000, originalPrice: 399000, periodLabel: "so'm / oy" },
       // 6 OYLIK CHEGIRMA
-      sixMonth: { price: 415000, originalPrice: 774000, periodLabel: "so'm / 6 oy" } 
+      sixMonth: { price: 1499000, originalPrice: 2394000, periodLabel: "so'm / 6 oy" } 
     },
     paymentIds: { payme: "prod_vip_monthly", click: "srv_vip_123" },
     limits: { maxClasses: 9999, maxStudents: 99999, monthlyAiQuestions: 5000 },

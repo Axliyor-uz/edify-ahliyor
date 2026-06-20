@@ -15,7 +15,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { 
   LayoutDashboard, Users, FilePlus, FolderOpen, Library, 
   Sparkles, Settings, LogOut, Menu, X, 
-  ChevronLeft, ChevronDown, Check, Zap, BookOpen, UserIcon, CreditCard
+  ChevronLeft, ChevronDown, Check, Zap, BookOpen, UserIcon, CreditCard,Globe
 } from 'lucide-react';
 
 // ============================================================================
@@ -42,21 +42,21 @@ export function useTeacherLanguage() {
 const LAYOUT_TRANSLATIONS = {
   uz: {
     brandSubtitle: "O'QITUVCHI PORTALI",
-    menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", subscription: "Obuna", profile: "Profil" },
+    menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", subscription: "Obuna", profile: "Profil", ielts: "IELTS Moduli" },
     create: "Yangi Test", signOut: "Chiqish", settings: "Sozlamalar",
     aiLimit: { title: "Oylik AI Balans", remaining: "savol", upgrade: "Kredit Olish", used: "ishlatildi" },
     logoutConfirm: { title: "Tizimdan chiqish", desc: "Haqiqatan ham hisobingizdan chiqmoqchimisiz?", cancel: "Bekor qilish", confirm: "Chiqish" }
   },
   en: {
     brandSubtitle: "INSTRUCTOR PORTAL",
-    menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", subscription: "Subscription", profile: "Profile" },
+    menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", subscription: "Subscription", profile: "Profile", ielts: "IELTS Module" },
     create: "New Test", signOut: "Sign Out", settings: "Settings",
     aiLimit: { title: "Monthly AI Balance", remaining: "questions", upgrade: "Buy Credits", used: "used" },
     logoutConfirm: { title: "Sign Out", desc: "Are you sure you want to sign out of your account?", cancel: "Cancel", confirm: "Sign Out" }
   },
   ru: {
     brandSubtitle: "ПОРТАЛ УЧИТЕЛЯ",
-    menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", subscription: "Подписка", profile: "Профиль" },
+    menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", subscription: "Подписка", profile: "Профиль", ielts: "Модуль IELTS" },
     create: "Новый Тест", signOut: "Выйти", settings: "Настройки",
     aiLimit: { title: "Месячный баланс ИИ", remaining: "вопросов", upgrade: "Купить кредиты", used: "использовано" },
     logoutConfirm: { title: "Выход", desc: "Вы уверены, что хотите выйти из аккаунта?", cancel: "Отмена", confirm: "Выйти" }
@@ -141,6 +141,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     { name: t.menu.overview, href: '/teacher/dashboard', icon: LayoutDashboard },
     { name: t.create, href: '/teacher/create', icon: FilePlus, isAI: true },
     { name: t.menu.classes, href: '/teacher/classes', icon: Users }, 
+    { name: t.menu.ielts, href: '/teacher/ielts', icon: Globe, isAI: true }, // <-- NEW ITEM
     { name: t.menu.library, href: '/teacher/library', icon: FolderOpen },
     { name: t.menu.onlineLibrary, href: '/teacher/online-books', icon: Library },
     { name: t.menu.analytics, href: '/teacher/analytics', icon: Sparkles, isAI: true },

@@ -1,0 +1,217 @@
+'use client';
+
+import { Plus, Trash2, X, Repeat, ChevronDown, ChevronUp, Edit3 } from 'lucide-react';
+import { useState } from 'react';
+
+export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
+  
+  // UX State: Hide the bulky options template by default to keep the UI clean
+  const [showOptions, setShowOptions] = useState(false);
+  const isYesNo = qb.options?.[0]?.label === 'YES';
+
+  // Handlers
+  const updateRow = (rIdx: number, key: string, val: any) => {
+    const updatedQs = [...qb.questions];
+    updatedQs[rIdx][key] = val;
+    updateBlock(qbIdx, 'questions', updatedQs);
+  };
+
+  const addRow = () => {
+    const updatedQs = [...qb.questions];
+    updatedQs.push({ 
+      question_number: 0, // Parent Global Engine will instantly fix this!
+      statement: '', 
+      correct_answer: isYesNo ? 'YES' : 'TRUE', 
+      passage_reference: '' // Will save as "" if the user leaves it blank
+    });
+    updateBlock(qbIdx, 'questions', updatedQs);
+  };
+
+  const deleteRow = (rIdx: number) => {
+    const updatedQs = [...qb.questions];
+    updatedQs.splice(rIdx, 1);
+    updateBlock(qbIdx, 'questions', updatedQs);
+  };
+
+  // Toggle Variant & Reset Templates
+  const toggleVariant = () => {
+    const newIsYesNo = !isYesNo;
+    const newOptions = newIsYesNo 
+      ? [
+          { label: 'YES', description: 'if the statement agrees with the claims of the writer' },
+          { label: 'NO', description: 'if the statement contradicts the claims of the writer' },
+          { label: 'NOT GIVEN', description: 'if it is impossible to say what the writer thinks about this' }
+        ] 
+      : [
+          { label: 'TRUE', description: 'if the statement agrees with the information' },
+          { label: 'FALSE', description: 'if the statement contradicts the information' },
+          { label: 'NOT GIVEN', description: 'if there is no information on this' }
+        ];
+    
+    const newQs = qb.questions.map((q: any) => {
+      let mappedAns = q.correct_answer;
+      if (newIsYesNo) {
+        if (mappedAns === 'TRUE') mappedAns = 'YES';
+        if (mappedAns === 'FALSE') mappedAns = 'NO';
+      } else {
+        if (mappedAns === 'YES') mappedAns = 'TRUE';
+        if (mappedAns === 'NO') mappedAns = 'FALSE';
+      }
+      return { ...q, correct_answer: mappedAns };
+    });
+
+    updateBlock(qbIdx, 'options', newOptions);
+    updateBlock(qbIdx, 'questions', newQs);
+  };
+
+  // Fluid Keyboard Entry
+  const handleKeyDown = (e: any, rIdx: number) => {
+    if (e.key === 'Enter' && rIdx === qb.questions.length - 1) {
+      e.preventDefault();
+      addRow();
+    }
+  };
+
+  // Smart Paste
+  const handlePaste = (e: any, rIdx: number) => {
+    const pastedText = e.clipboardData.getData('Text');
+    if (pastedText.includes('\n')) {
+      e.preventDefault();
+      const lines = pastedText.split('\n').map((l: string) => l.replace(/^[0-9]+[\.\)]\s*/, '').trim()).filter(Boolean);
+      const updatedQs = [...qb.questions];
+      updatedQs[rIdx].statement = lines[0]; 
+      for (let i = 1; i < lines.length; i++) {
+        updatedQs.splice(rIdx + i, 0, { question_number: 0, statement: lines[i], correct_answer: isYesNo ? 'YES' : 'TRUE', passage_reference: '' });
+      }
+      updateBlock(qbIdx, 'questions', updatedQs);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg shadow-sm group/block">
+      
+      {/* 1. HEADER ROW */}
+      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between rounded-t-lg">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-[3px]">
+            <span className="text-[9px] font-black uppercase tracking-wider">
+              {isYesNo ? 'YNNG' : 'TFNG'}
+            </span>
+            <button onClick={toggleVariant} className="hover:text-indigo-900 transition-colors" title="Change to YES/NO/NOT GIVEN">
+              <Repeat size={10} strokeWidth={3} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold">
+            Qs:
+            {/* MADE READ-ONLY: So teachers don't break the global numbering */}
+            <input 
+              type="number" value={qb.start_question} readOnly
+              className="w-8 h-5 text-center bg-white border border-slate-200 rounded px-1 outline-none font-bold text-slate-800 cursor-default" 
+            />
+            -
+            <span className="w-8 h-5 flex items-center justify-center bg-slate-100 border border-slate-200 rounded text-slate-500 font-bold select-none">
+              {qb.end_question}
+            </span>
+          </div>
+        </div>
+        <button onClick={() => deleteBlock(qbIdx)} className="text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover/block:opacity-100">
+          <Trash2 size={14}/>
+        </button>
+      </div>
+
+      <div className="p-3">
+        
+        {/* 2. META DATA (Instructions & Collapsible Options) */}
+        <div className="mb-4 bg-slate-50/50 p-2 rounded border border-transparent hover:border-slate-100 transition-colors">
+          
+          <textarea 
+            placeholder="Instructions (e.g. Do the following statements agree...)" value={qb.instructions} 
+            onChange={e => {
+              updateBlock(qbIdx, 'instructions', e.target.value);
+              e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px";
+            }} 
+            className="w-full bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none p-0 resize-none overflow-hidden min-h-[16px]" 
+          />
+          
+          <button 
+            onClick={() => setShowOptions(!showOptions)} 
+            className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-wider mt-1 transition-colors"
+          >
+            <Edit3 size={10} /> {showOptions ? 'Hide option descriptions' : 'Edit option descriptions'}
+            {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+          </button>
+
+          {showOptions && (
+            <div className="mt-2 space-y-1.5 pt-2 border-t border-slate-100">
+              {qb.options?.map((opt: any, oIdx: number) => (
+                <div key={oIdx} className="flex items-center gap-2">
+                  <span className="w-16 text-[9px] font-black tracking-wider text-slate-500 bg-white border border-slate-200 px-1 py-1 rounded text-center select-none shrink-0">
+                    {opt.label}
+                  </span>
+                  <input 
+                    type="text" value={opt.description} 
+                    onChange={e => {
+                      const newOptions = [...qb.options];
+                      newOptions[oIdx].description = e.target.value;
+                      updateBlock(qbIdx, 'options', newOptions);
+                    }}
+                    className="flex-1 bg-white border border-slate-200 rounded py-1 px-2 text-[11px] font-medium text-slate-600 outline-none focus:border-indigo-400 transition-colors"
+                    placeholder="Description of this option..."
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* 3. INLINE DATA GRID FOR ROWS */}
+        <div className="space-y-1">
+          {qb.questions.map((row: any, rIdx: number) => (
+            <div key={rIdx} className="flex items-center gap-2 group/row">
+              <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-slate-400 bg-slate-50 border border-slate-100 rounded select-none shrink-0">
+                {row.question_number}
+              </span>
+              
+              <input 
+                type="text" placeholder="Statement text..." 
+                value={row.statement} 
+                onChange={e => updateRow(rIdx, 'statement', e.target.value)} 
+                onPaste={e => handlePaste(e, rIdx)}
+                className="flex-1 h-7 text-[12px] bg-white border border-slate-200 rounded px-2 outline-none focus:border-indigo-400 placeholder:text-slate-300 font-medium" 
+              />
+              
+              <select 
+                value={row.correct_answer} 
+                onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)} 
+                className="w-[88px] h-7 text-[10px] font-bold bg-white border border-slate-200 rounded px-1 outline-none text-indigo-700 focus:border-indigo-400 cursor-pointer shrink-0"
+              >
+                {isYesNo ? (
+                  <><option value="YES">YES</option><option value="NO">NO</option><option value="NOT GIVEN">NOT GIVEN</option></>
+                ) : (
+                  <><option value="TRUE">TRUE</option><option value="FALSE">FALSE</option><option value="NOT GIVEN">NOT GIVEN</option></>
+                )}
+              </select>
+              
+              <input 
+                type="text" placeholder="Ref" 
+                value={row.passage_reference} 
+                onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
+                onKeyDown={e => handleKeyDown(e, rIdx)}
+                className="w-10 h-7 text-[10px] text-center font-bold bg-white border border-slate-200 rounded outline-none placeholder:text-slate-300 uppercase focus:border-indigo-400 shrink-0" 
+              />
+              
+              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 flex items-center justify-center text-slate-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0">
+                <X size={14}/>
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={addRow} className="text-[11px] font-bold text-indigo-600 hover:underline flex items-center gap-1 mt-3 transition-colors">
+          <Plus size={12} /> Add Row
+        </button>
+      </div>
+    </div>
+  );
+}
