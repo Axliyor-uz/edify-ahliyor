@@ -1,0 +1,496 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- HELPER FUNCTIONS ---
+    function isAuth() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // Check if the requester is the PARENT of the target Student
+    function isParentOf(studentId) {
+      return isAuth() &&
+             studentId in get(/databases/$(database)/documents/parents/$(request.auth.uid)).data.children;
+    }
+
+    // Check if the requester is the Manager (Owner) of a specific center
+    function isCenterManager(centerId) {
+      return isAuth() &&
+             get(/databases/$(database)/documents/centers/$(centerId)).data.ownerUid == request.auth.uid;
+    }
+
+    // 🟢 OPTION 2 HELPER: Check if a teacher belongs to the requester's center
+    // Requires center_teachers document ID to be exactly the teacherUid
+    function isTeacherInMyCenter(teacherUid) {
+      let centerTeacherPath = /databases/$(database)/documents/center_teachers/$(teacherUid);
+      return exists(centerTeacherPath) && isCenterManager(get(centerTeacherPath).data.centerId);
+    }
+
+    // 🟢 ATTENDANCE HELPER: is the REQUESTER a teacher who belongs to `centerId`?
+    // (center_teachers doc id == teacher uid). Used by staff/face attendance.
+    function isTeacherOfCenter(centerId) {
+      let myPath = /databases/$(database)/documents/center_teachers/$(request.auth.uid);
+      return isAuth() && exists(myPath) && get(myPath).data.centerId == centerId;
+    }
+
+    // 🟢 SUPER ADMIN HELPER
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.super_admin == true;
+    }
+
+    // 👑 GOD MODE FOR SUPER ADMIN 👑
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // --- 1. USERNAMES ---
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isAuth()
+                    && !exists(/databases/$(database)/documents/usernames/$(username))
+                    && request.resource.data.uid == request.auth.uid;
+      allow delete: if isAuth() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // --- 1.5 PARENTS COLLECTION ---
+    match /parents/{parentId} {
+      allow read, write: if isOwner(parentId);
+    }
+
+    // --- 2. USERS (Profile + XP Memory) ---
+    match /users/{userId} {
+      allow read: if isAuth();
+      allow create, delete: if isOwner(userId);
+      allow update: if isOwner(userId) || (
+        isAuth() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount']) &&
+        (request.resource.data.get('followersCount', 0) - resource.data.get('followersCount', 0) in [-1, 0, 1]) &&
+        (request.resource.data.get('followingCount', 0) - resource.data.get('followingCount', 0) in [-1, 0, 1])
+      );
+
+      // SOCIAL SUBCOLLECTIONS
+      match /following/{targetId} {
+        allow read: if isAuth();
+        allow create: if isAuth() && request.auth.uid == userId && resource == null;
+        allow delete: if isAuth() && (request.auth.uid == userId || request.auth.uid == targetId) && resource != null;
+      }
+
+      match /followers/{followerId} {
+        allow read: if isAuth();
+        allow create: if isAuth() && request.auth.uid == followerId && resource == null;
+        allow delete: if isAuth() && (request.auth.uid == followerId || request.auth.uid == userId) && resource != null;
+      }
+
+      match /bookmarks/{bookmarkId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /test_stats/{testId} {
+        allow read: if isOwner(userId) || isParentOf(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+
+    // --- 3. QUESTION BANK ---
+    match /questions/{document=**} {
+      allow read, write: if isAuth();
+    }
+
+    // --- 4. CUSTOM TESTS ---
+    match /custom_tests/{testId} {
+      allow create, read: if isAuth();
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+
+    // --- 5. CLASSES ---
+    match /classes/{classId} {
+      allow read, create: if isAuth();
+
+      // 🟢 YANGILANGAN RUXSATLAR (OPTION 2 MANTIG'I)
+      allow update: if isAuth() && (
+         // 1. O'qituvchi o'z guruhini tahrirlayapti
+         resource.data.teacherId == request.auth.uid ||
+
+         // 2. Menejer o'ziga tegishli o'qituvchining guruhini tahrirlayapti
+         isTeacherInMyCenter(resource.data.teacherId) ||
+
+         // 3. Agar menejer o'qituvchini o'zgartirsa (A o'qituvchidan B o'qituvchiga), B o'qituvchi ham uning markazidan bo'lishi shart
+         (
+           request.resource.data.diff(resource.data).affectedKeys().hasAny(['teacherId', 'teacherName']) &&
+           isTeacherInMyCenter(request.resource.data.teacherId)
+         ) ||
+
+         // 4. O'quvchilar qo'shilayotgan bo'lsa
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['studentIds'])
+      );
+
+      // Guruhni o'chirish: Yo o'qituvchining o'zi, yo uning menejeri
+      allow delete: if isAuth() && (
+         resource.data.teacherId == request.auth.uid ||
+         isTeacherInMyCenter(resource.data.teacherId)
+      );
+
+      // 5a. ASSIGNMENTS
+      match /assignments/{assignmentId} {
+        function getClassData() {
+           return get(/databases/$(database)/documents/classes/$(classId)).data;
+        }
+
+        allow read: if isAuth() && (
+           getClassData().teacherId == request.auth.uid ||
+           request.auth.uid in getClassData().studentIds ||
+           true
+        );
+
+        allow create, delete: if isAuth() && getClassData().teacherId == request.auth.uid;
+        allow update: if isAuth() && (
+           getClassData().teacherId == request.auth.uid
+           ||
+           (
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completedBy']) &&
+             request.resource.data.completedBy.hasAll([request.auth.uid])
+           )
+        );
+      }
+
+      // 5b. REQUESTS
+      match /requests/{requestId} {
+        allow read: if isAuth() && (
+          get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid ||
+          resource.data.studentId == request.auth.uid
+        );
+        allow create: if isAuth();
+        allow delete: if isAuth() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+      }
+
+      // 5c. CLASS LEADERBOARD
+      match /leaderboard/{studentId} {
+         allow read: if isAuth();
+         allow write: if isOwner(studentId);
+      }
+
+      // 5d. CLASS MATERIALS
+      match /materials/{materialId} {
+        allow read: if isAuth() && (
+           get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid
+           ||
+           (
+             request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.studentIds
+             && resource.data.isVisible == true
+           )
+        );
+        allow create, update, delete: if isAuth() &&
+           get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+      }
+
+      // 5e. EXAMS (BSB / CHSB)
+      match /exams/{examId} {
+        function getClassData() {
+           return get(/databases/$(database)/documents/classes/$(classId)).data;
+        }
+
+        allow read: if isAuth() && (
+           getClassData().teacherId == request.auth.uid ||
+           request.auth.uid in getClassData().studentIds
+        );
+        allow create, delete: if isAuth() && getClassData().teacherId == request.auth.uid;
+        allow update: if isAuth() && (
+           getClassData().teacherId == request.auth.uid
+           ||
+           (
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['submittedStudentIds']) &&
+             request.resource.data.submittedStudentIds.hasAll([request.auth.uid])
+           )
+        );
+      }
+    }
+
+    // --- 5.5 ONLINE LIBRARY BOOKS ---
+    match /online_books/{bookId} {
+      allow read: if isAuth();
+      allow update: if isAuth() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewscount', 'downloadscount']);
+      allow create, delete: if false;
+    }
+
+    // --- 6. ERROR LOGS ---
+    match /error_logs/{logId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
+    // --- 7. ATTEMPTS (Detailed Results) ---
+    match /attempts/{attemptId} {
+      allow read: if request.auth != null && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid ||
+        isParentOf(resource.data.userId)
+      );
+
+      allow delete: if request.auth != null &&
+        get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid;
+
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && (
+        request.resource.data.get('type', 'assignment') == 'exam' ||
+        (
+          request.resource.data.get('type', 'assignment') != 'exam' &&
+          (
+            !('dueAt' in get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data) ||
+            get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data.dueAt == null ||
+            request.time < get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data.dueAt
+          ) && (
+            !('openAt' in get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data) ||
+            get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data.openAt == null ||
+            request.time >= get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data.openAt
+          )
+        )
+      );
+
+      allow update: if request.auth != null && (
+        get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid
+        ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.get('type', 'assignment') != 'exam' &&
+          (
+            !('dueAt' in get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data) ||
+            get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data.dueAt == null ||
+            request.time < get(/databases/$(database)/documents/classes/$(request.resource.data.classId)/assignments/$(request.resource.data.assignmentId)).data.dueAt
+          )
+        )
+      );
+    }
+
+    // --- 8. NOTIFICATIONS ---
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isAuth() && resource.data.userId == request.auth.uid;
+      allow create: if isAuth();
+    }
+
+    // --- 9. GLOBAL LEADERBOARDS ---
+    match /leaderboards/{periodId}/users/{userId} {
+       allow read: if isAuth();
+       allow write: if isOwner(userId);
+    }
+
+    match /questions1/{questionId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // --- 10. REPORTED QUESTIONS ---
+    match /reported_questions/{questionId} {
+      allow create, update: if isAuth();
+      allow read, delete: if false;
+    }
+
+    // --- 11. AI USAGE ---
+    match /ai_usage/{docId} {
+      allow read, write: if true;
+    }
+
+    match /ai_sessions/{sessionId} {
+      allow read, write: if isAuth() && (resource == null || resource.data.teacherId == request.auth.uid || request.resource.data.teacherId == request.auth.uid);
+    }
+
+    // --- 12. TEACHER QUESTIONS ---
+    match /teacher_questions/{questionId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isAuth() && (
+        resource.data.get('creatorId', 'yoq') == request.auth.uid ||
+        resource.data.get('teacherId', 'yoq') == request.auth.uid
+      );
+    }
+
+    // --- 13. EXAMS ---
+    match /bsb_chsb_tests/{testId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+
+    match /ielts_reading_tests/{testId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+
+    // --- 14. ACTIVE GAMES ---
+    match /active_games/{roomId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.host == request.auth.uid;
+      allow update: if isAuth() && (
+        resource.data.host == request.auth.uid ||
+        resource.data.guest == request.auth.uid ||
+        resource.data.guest == null
+      );
+      allow delete: if isAuth() && (
+        resource.data.host == request.auth.uid ||
+        resource.data.guest == request.auth.uid
+      );
+    }
+
+    // ============================================================================
+    // --- 15. IELTS PLATFORM ---
+    // ============================================================================
+    match /ielts_groups/{groupId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+
+      match /assignments/{assignmentId} {
+        allow read: if isAuth();
+        allow create, delete: if isAuth() && get(/databases/$(database)/documents/ielts_groups/$(groupId)).data.teacherId == request.auth.uid;
+        allow update: if isAuth() && (
+          get(/databases/$(database)/documents/ielts_groups/$(groupId)).data.teacherId == request.auth.uid ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completedBy']) &&
+            request.resource.data.completedBy.hasAll([request.auth.uid])
+          )
+        );
+      }
+
+      match /requests/{requestId} {
+        allow read, write: if isAuth();
+      }
+    }
+
+    match /ielts_tests/{testId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+
+    match /ielts_attempts/{attemptId} {
+      allow read: if isAuth() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/ielts_groups/$(resource.data.groupId)).data.teacherId == request.auth.uid
+      );
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuth() && get(/databases/$(database)/documents/ielts_groups/$(resource.data.groupId)).data.teacherId == request.auth.uid;
+    }
+
+    // ============================================================================
+    // --- 16. B2B CENTER MANAGEMENT ---
+    // ============================================================================
+    match /centers/{centerId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /crm_leads/{leadId} {
+      allow create: if isAuth() && isCenterManager(request.resource.data.centerId);
+      allow read, update, delete: if isAuth() && isCenterManager(resource.data.centerId);
+    }
+
+    match /center_finances/{financeId} {
+      allow read: if isAuth() && (
+        isCenterManager(resource.data.centerId) ||
+        resource.data.studentId == request.auth.uid
+      );
+      allow create: if isAuth() && isCenterManager(request.resource.data.centerId);
+      allow update, delete: if isAuth() && isCenterManager(resource.data.centerId);
+    }
+
+    match /center_attendance/{attendanceId} {
+      // GET (single doc): keep the strict per-document check (cheap — 1 get()).
+      // 🟢 resource == null → future/empty dates don't error.
+      allow get: if isAuth() && (
+        resource == null ||
+        isCenterManager(resource.data.centerId) ||
+        get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid ||
+        request.auth.uid in resource.data.records
+      );
+
+      // LIST (range query by classId/centerId): the grid + dashboard read many
+      // days at once. A per-document get() here exceeds Firestore's access limit
+      // and throws "insufficient permissions". Authorize the query to any signed-in
+      // user instead — consistent with `classes`/`users` already being read: isAuth().
+      // (Writes below stay locked to the class teacher / center manager.)
+      allow list: if isAuth();
+
+      allow create: if isAuth() && (
+        isCenterManager(request.resource.data.centerId) ||
+        get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.teacherId == request.auth.uid
+      );
+
+      allow update: if isAuth() && (
+        isCenterManager(resource.data.centerId) ||
+        get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid
+      );
+
+      allow delete: if isAuth() && isCenterManager(resource.data.centerId);
+    }
+
+    // 🟢 NEW — Attendance monthly rollups (denormalized analytics).
+    // Doc id: `${classId}_${YYYY-MM}`. Written by the class teacher or center
+    // manager; readable by any signed-in center member.
+    match /center_attendance_summary/{summaryId} {
+      allow read: if isAuth();
+      allow create, update: if isAuth() && (
+        isCenterManager(request.resource.data.centerId) ||
+        get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.teacherId == request.auth.uid
+      );
+      allow delete: if isAuth() && isCenterManager(resource.data.centerId);
+    }
+
+    // 🟢 NEW — Teacher / staff attendance. Doc id: `${staffUid}_${date}`.
+    // Written only by the center manager; readable by the staff member + manager.
+    match /center_staff_attendance/{staffDayId} {
+      // GET (single doc): strict — the staff member themselves or the manager.
+      allow get: if isAuth() && (
+        resource == null ||
+        resource.data.staffUid == request.auth.uid ||
+        isCenterManager(resource.data.centerId)
+      );
+      // LIST (month range query by centerId): per-doc get() would exceed the
+      // access limit, so authorize the query to any signed-in user (same pattern
+      // as center_attendance). Writes stay manager-only.
+      allow list: if isAuth();
+      allow create, update: if isAuth() && isCenterManager(request.resource.data.centerId);
+      allow delete: if isAuth() && isCenterManager(resource.data.centerId);
+    }
+
+    // 🟢 NEW — Face enrollments (Phase 4). Doc id = enrolled user uid.
+    // Managed by the center manager or a teacher of that center. Users may read
+    // their own enrollment. Never public.
+    match /face_enrollments/{enrollUid} {
+      allow read: if isAuth() && (
+        enrollUid == request.auth.uid ||
+        (resource != null && (isCenterManager(resource.data.centerId) || isTeacherOfCenter(resource.data.centerId)))
+      );
+      allow create: if isAuth() && (
+        isCenterManager(request.resource.data.centerId) ||
+        isTeacherOfCenter(request.resource.data.centerId)
+      );
+      allow update, delete: if isAuth() && (
+        isCenterManager(resource.data.centerId) ||
+        isTeacherOfCenter(resource.data.centerId)
+      );
+    }
+
+    // 🟢 YANGILANGAN: teacherId Document ID sifatida ishlatiladi!
+    match /center_teachers/{teacherId} {
+      allow read: if isAuth() && (
+        isCenterManager(resource.data.centerId) ||
+        teacherId == request.auth.uid
+      );
+
+      // Document ID aniq o'qituvchining UID (teacherId) si bo'lishini talab qilamiz
+      allow create: if isAuth() &&
+                    isCenterManager(request.resource.data.centerId) &&
+                    teacherId == request.resource.data.teacherId;
+
+      allow update, delete: if isAuth() && isCenterManager(resource.data.centerId);
+    }
+
+  }
+}

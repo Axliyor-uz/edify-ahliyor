@@ -1,7 +1,7 @@
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-export type NotificationType = 'assignment' | 'submission' | 'request' | 'result' | 'alert';
+export type NotificationType = 'assignment' | 'submission' | 'request' | 'result' | 'alert' | 'attendance';
 
 export async function sendNotification(
   userId: string, // The person RECEIVING the notification

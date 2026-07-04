@@ -108,7 +108,15 @@ export default function ManagerStudentsPage() {
         await Promise.all(
           todayClasses.map(async (c) => {
             const s = await getDoc(doc(db, "center_attendance", `${c.id}_${today}`));
-            sessMap[c.id] = s.exists() ? (s.data().records || {}) : {};
+            const raw = s.exists() ? (s.data().records || {}) : {};
+            // records values are now objects ({ status, ... }); tolerate the legacy string shape.
+            const statusMap: Record<string, AttendanceStatus> = {};
+            Object.keys(raw).forEach((uid) => {
+              const v = raw[uid];
+              const st = typeof v === "string" ? v : v?.status;
+              if (st) statusMap[uid] = st as AttendanceStatus;
+            });
+            sessMap[c.id] = statusMap;
           })
         );
 

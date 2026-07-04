@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, GraduationCap, Layers, Users, Wallet, LogOut, Menu, X, BookOpen, ChevronDown, CalendarCheck } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Layers, Users, Wallet, LogOut, Menu, X, BookOpen, ChevronDown, CalendarCheck, UserCheck } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import toast from "react-hot-toast";
@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { name: "Guruhlar", href: "/manager/groups", icon: Layers },
   { name: "O'quvchilar", href: "/manager/students", icon: Users },
   { name: "Davomat", href: "/manager/attendance", icon: CalendarCheck },
+  { name: "Xodimlar davomati", href: "/manager/staff-attendance", icon: UserCheck },
   { name: "Moliya", href: "/manager/finance", icon: Wallet },
 ];
 
@@ -171,7 +172,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
           className={
             // Attendance uses the full width (its wide grid needs the room);
             // every other manager page keeps the centered, max-width layout.
-            pathname?.startsWith("/manager/attendance")
+            pathname?.startsWith("/manager/attendance") || pathname?.startsWith("/manager/staff-attendance")
               ? "flex-1 w-full p-3 sm:p-4 lg:p-5"
               : "flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8"
           }

@@ -6,7 +6,8 @@ import { doc, getDoc, updateDoc, arrayRemove, collection, query, getDocs, orderB
 import { Trash2, UserX, ChevronRight, Loader2, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StudentDetailsModal from './StudentDetailsModal';
-import { useTeacherLanguage } from '@/app/teacher/layout'; 
+import ConfirmDialog from './ConfirmDialog';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 // ============================================================================
 // 🟢 1. GLOBAL CACHE (Survives Tab Switches, 0 Reads on Back Navigation)
@@ -23,23 +24,17 @@ const CACHE_LIFESPAN = 60 * 1000; // 60 seconds
 
 // --- TRANSLATION DICTIONARY ---
 const ROSTER_TRANSLATIONS: any = {
-  uz: { loading: "Jurnal yuklanmoqda...", empty: "Bu sinfda hali o'quvchilar yo'q.", unknown: "Noma'lum", deleted: "o'chirilgan", confirmRemove: "Bu o'quvchini sinfdan o'chirasizmi?", removed: "O'quvchi o'chirildi", errRemove: "O'quvchini o'chirishda xatolik", errLoad: "Sinf ma'lumotlarini yuklab bo'lmadi", hint: "Baholarni ko'rish uchun bosing", details: "Batafsil", removeBtn: "Sinfdan o'chirish" },
-  en: { loading: "Loading roster...", empty: "No students in this class yet.", unknown: "Unknown", deleted: "deleted", confirmRemove: "Remove this student from the class?", removed: "Student removed", errRemove: "Error removing student", errLoad: "Could not load class data", hint: "Click to view grades", details: "Details", removeBtn: "Remove from class" },
-  ru: { loading: "Загрузка списка...", empty: "В этом классе пока нет учеников.", unknown: "Неизвестно", deleted: "удален", confirmRemove: "Удалить этого ученика из класса?", removed: "Ученик удален", errRemove: "Ошибка удаления ученика", errLoad: "Не удалось загрузить данные класса", hint: "Нажмите для просмотра оценок", details: "Подробнее", removeBtn: "Удалить из класса" }
+  uz: { loading: "Jurnal yuklanmoqda...", empty: "Bu sinfda hali o'quvchilar yo'q.", unknown: "Noma'lum", deleted: "o'chirilgan", confirmRemove: "Bu o'quvchini sinfdan o'chirasizmi?", confirmTitle: "O'quvchini o'chirish", confirmBtn: "O'chirish", cancelBtn: "Bekor qilish", removed: "O'quvchi o'chirildi", errRemove: "O'quvchini o'chirishda xatolik", errLoad: "Sinf ma'lumotlarini yuklab bo'lmadi", hint: "Baholarni ko'rish uchun bosing", details: "Batafsil", removeBtn: "Sinfdan o'chirish" },
+  en: { loading: "Loading roster...", empty: "No students in this class yet.", unknown: "Unknown", deleted: "deleted", confirmRemove: "Remove this student from the class?", confirmTitle: "Remove student", confirmBtn: "Remove", cancelBtn: "Cancel", removed: "Student removed", errRemove: "Error removing student", errLoad: "Could not load class data", hint: "Click to view grades", details: "Details", removeBtn: "Remove from class" },
+  ru: { loading: "Загрузка списка...", empty: "В этом классе пока нет учеников.", unknown: "Неизвестно", deleted: "удален", confirmRemove: "Удалить этого ученика из класса?", confirmTitle: "Удалить ученика", confirmBtn: "Удалить", cancelBtn: "Отмена", removed: "Ученик удален", errRemove: "Ошибка удаления ученика", errLoad: "Не удалось загрузить данные класса", hint: "Нажмите для просмотра оценок", details: "Подробнее", removeBtn: "Удалить из класса" }
 };
 
-// PREMIUM VIBRANT PALETTE
-const STUDENT_COLORS = ['#3B82F6', '#A855F7', '#10B981', '#F59E0B', '#F43F5E', '#06B6D4'];
-
-const getStudentColor = (uid: string) => {
-  let hash = 0;
-  for (let i = 0; i < uid.length; i++) hash = uid.charCodeAt(i) + ((hash << 5) - hash);
-  return STUDENT_COLORS[Math.abs(hash) % STUDENT_COLORS.length];
-};
-
-const hexToRgba = (hex: string, alpha: number) => {
-  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+// "Kamronbek Toshpulatov" -> "KT", "Madina" -> "MA"
+const getInitials = (name: string) => {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'S';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 };
 
 interface Props {
@@ -66,6 +61,10 @@ export default function RosterTab({ classId, studentIds }: Props) {
   // UI State
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  // Removal confirmation state
+  const [removeTarget, setRemoveTarget] = useState<any>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -218,25 +217,34 @@ export default function RosterTab({ classId, studentIds }: Props) {
     setIsDetailsOpen(true);
   };
 
-  const handleRemove = async (e: React.MouseEvent, studentUid: string) => {
-    e.stopPropagation(); 
-    if (!confirm(t.confirmRemove)) return;
+  const handleRemoveClick = (e: React.MouseEvent, student: any) => {
+    e.stopPropagation();
+    setRemoveError(null);
+    setRemoveTarget(student);
+  };
+
+  const confirmRemove = async () => {
+    if (!removeTarget) return;
+    setRemoveError(null);
     try {
-      await updateDoc(doc(db, 'classes', classId), { studentIds: arrayRemove(studentUid) });
+      await updateDoc(doc(db, 'classes', classId), { studentIds: arrayRemove(removeTarget.uid) });
       toast.success(t.removed);
-    } catch (e) { toast.error(t.errRemove); }
+      setRemoveTarget(null);
+    } catch (e) {
+      setRemoveError(t.errRemove);
+    }
   };
 
   // --- 3. RENDER (Elegant Teacher UI Preserved) ---
   if (loadingInitial && students.length === 0) {
-    return <div className="py-12 flex flex-col items-center justify-center gap-3"><Loader2 className="animate-spin text-indigo-500" size={28}/></div>;
+    return <div className="py-16 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" size={28}/></div>;
   }
 
   if (students.length === 0) {
     return (
-      <div className="py-12 md:py-16 flex flex-col items-center justify-center text-center bg-slate-50/50 rounded-2xl md:rounded-3xl border-2 border-dashed border-slate-200 mx-2 md:mx-0">
-        <div className="w-12 h-12 md:w-16 md:h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3 md:mb-4"><Users size={24} className="text-slate-300 md:w-8 md:h-8"/></div>
-        <p className="text-[14px] md:text-[16px] font-black text-slate-700">{t.empty}</p>
+      <div className="py-14 md:py-16 flex flex-col items-center justify-center text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+        <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center border border-slate-200 mb-4"><Users size={26} className="text-slate-300"/></div>
+        <p className="text-sm font-semibold text-slate-700">{t.empty}</p>
       </div>
     );
   }
@@ -245,73 +253,91 @@ export default function RosterTab({ classId, studentIds }: Props) {
     <>
       <StudentDetailsModal isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} student={selectedStudent} assignments={assignments} classId={classId} />
 
-      <div className="space-y-2.5 md:space-y-4">
-        {students.map((student, index) => {
-          const color = getStudentColor(student.uid);
-          const isLastElement = index === students.length - 1;
+      <ConfirmDialog
+        isOpen={!!removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onConfirm={confirmRemove}
+        title={t.confirmTitle}
+        message={t.confirmRemove}
+        confirmLabel={t.confirmBtn}
+        cancelLabel={t.cancelBtn}
+        error={removeError}
+        subject={
+          removeTarget && (
+            <>
+              <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-[12px] bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600">
+                {(removeTarget.photoURL || removeTarget.photoUrl || removeTarget.avatar) ? (
+                  <img src={removeTarget.photoURL || removeTarget.photoUrl || removeTarget.avatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  getInitials(removeTarget.displayName)
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-[14px] text-slate-900 truncate">{removeTarget.displayName}</p>
+                <p className="text-[12px] font-medium text-slate-400 truncate">@{removeTarget.username || 'student'}</p>
+              </div>
+            </>
+          )
+        }
+      />
 
-          // Premium Angled Gradient Match (Compact for mobile)
-          const bgGradient = student.isDeleted 
-            ? 'linear-gradient(135deg, #FAFAFA 0%, #FAFAFA 100%)' 
-            : `linear-gradient(135deg, ${hexToRgba(color, 0.08)} 0%, #FFFFFF 40%, #FFFFFF 100%)`;
-          const borderColor = student.isDeleted ? '#F8FAFC' : hexToRgba(color, 0.15);
+      <div className="space-y-2">
+        {students.map((student, index) => {
+          const isLastElement = index === students.length - 1;
+          const photo = student.photoURL || student.photoUrl || student.avatar;
 
           return (
-            <div 
-              key={student.uid} 
+            <div
+              key={student.uid}
               ref={isLastElement ? lastElementRef : null}
+              role={!student.isDeleted ? 'button' : undefined}
+              tabIndex={!student.isDeleted ? 0 : undefined}
               onClick={() => handleShowDetails(student)}
-              style={{ background: bgGradient, borderColor: borderColor }}
-              className={`p-3 md:p-5 rounded-2xl md:rounded-[1.2rem] border flex items-center justify-between gap-2 md:gap-4 group transition-all duration-200 ${!student.isDeleted ? 'cursor-pointer active:scale-[0.98] md:active:scale-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-0.5' : ''}`}
+              onKeyDown={(e) => { if (!student.isDeleted && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleShowDetails(student); } }}
+              className={`group flex items-center gap-3 p-3 md:p-4 rounded-2xl border bg-white transition-all ${
+                student.isDeleted
+                  ? 'border-slate-100 opacity-70'
+                  : 'border-slate-200 cursor-pointer hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400'
+              }`}
             >
-              
-              <div className="flex items-center gap-2.5 md:gap-4 min-w-0 flex-1">
-                <div style={{ color: student.isDeleted ? '#94A3B8' : hexToRgba(color, 0.6) }} className="text-[11px] md:text-[13px] font-black w-4 md:w-6 text-center shrink-0">
-                  {index + 1}
-                </div>
-                
-                {/* 🟢 Profile Picture Render Fix + overflow-hidden */}
-                <div 
-                  style={{ backgroundColor: student.isDeleted ? '#F1F5F9' : hexToRgba(color, 0.15), borderColor: student.isDeleted ? '#E2E8F0' : hexToRgba(color, 0.3), color: student.isDeleted ? '#94A3B8' : color }} 
-                  className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-[1rem] border flex items-center justify-center font-black text-[14px] md:text-[18px] shrink-0 overflow-hidden shadow-sm"
-                >
-                  {student.isDeleted ? (
-                    <UserX size={18} className="md:w-5 md:h-5"/> 
-                  ) : student.photoURL || student.photoUrl || student.avatar ? (
-                    <img 
-                      src={student.photoURL || student.photoUrl || student.avatar} 
-                      alt="Avatar" 
-                      className="w-full h-full object-cover" 
-                    />
-                  ) : (
-                    student.displayName?.[0]?.toUpperCase() || 'S'
-                  )}
-                </div>
-                
-                <div className="min-w-0 pr-2 flex-1">
-                  <p style={{ color: student.isDeleted ? '#64748B' : '#0F172A' }} className="font-black text-[14px] md:text-[15px] truncate leading-tight">
-                    {student.isDeleted ? t.deleted : student.displayName}
-                  </p>
-                  <p style={{ color: student.isDeleted ? '#94A3B8' : '#64748B' }} className="text-[11px] md:text-[12px] font-bold truncate mt-0.5">
-                    @{student.username || 'student'}
-                  </p>
-                </div>
+              {/* Number */}
+              <span className="text-[12px] font-semibold text-slate-400 tabular-nums w-5 text-center shrink-0">{index + 1}</span>
+
+              {/* Avatar */}
+              <div className="w-10 h-10 md:w-11 md:h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-[13px] bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600">
+                {student.isDeleted ? (
+                  <UserX size={18} className="text-slate-400" />
+                ) : photo ? (
+                  <img src={photo} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  getInitials(student.displayName)
+                )}
               </div>
 
-              <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
-                
-                <button 
-                  onClick={(e) => handleRemove(e, student.uid)} 
-                  className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-white md:bg-slate-50 text-slate-300 md:text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors z-10 active:scale-95 shadow-sm md:shadow-none border border-slate-100 md:border-transparent" 
-                  title={t.removeBtn}
-                >
-                  <Trash2 size={14} className="md:w-[18px] md:h-[18px]" strokeWidth={2.5}/>
-                </button>
+              {/* Name + username */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className={`font-semibold text-[14px] md:text-[15px] truncate ${student.isDeleted ? 'text-slate-500' : 'text-slate-900'}`}>
+                    {student.displayName}
+                  </p>
+                  {student.isDeleted && (
+                    <span className="px-1.5 py-0.5 bg-slate-100 text-slate-400 text-[10px] font-semibold rounded-md shrink-0">{t.deleted}</span>
+                  )}
+                </div>
+                <p className="text-[12px] font-medium text-slate-400 truncate mt-0.5">@{student.username || 'student'}</p>
+              </div>
 
+              {/* Actions */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={(e) => handleRemoveClick(e, student)}
+                  title={t.removeBtn}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors active:scale-95"
+                >
+                  <Trash2 size={16} strokeWidth={2.25} />
+                </button>
                 {!student.isDeleted && (
-                  <div style={{ color: hexToRgba(color, 0.5) }} className="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center md:group-hover:translate-x-1 transition-transform">
-                    <ChevronRight size={18} className="md:w-6 md:h-6" strokeWidth={2.5} />
-                  </div>
+                  <ChevronRight size={18} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all" />
                 )}
               </div>
             </div>
@@ -319,13 +345,10 @@ export default function RosterTab({ classId, studentIds }: Props) {
         })}
 
         {loadingMore && (
-        <div className="py-4 flex justify-center">
-          <Loader2 
-            size={20} 
-            className="animate-spin text-indigo-500 md:w-6 md:h-6" 
-          />
-        </div>
-      )}
+          <div className="py-4 flex justify-center">
+            <Loader2 size={22} className="animate-spin text-slate-400" />
+          </div>
+        )}
       </div>
     </>
   );

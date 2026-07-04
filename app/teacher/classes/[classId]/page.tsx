@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc, collection, query } from 'firebase/firestore';
-import { 
-  Users, UserPlus, Hash, ChevronLeft, Inbox, 
-  FileText, UploadCloud, FolderOpen, Loader2, 
-  Settings, Lock, Trophy, Plus, FileBadge 
+import { doc, onSnapshot, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { useAuth } from '@/lib/AuthContext';
+import {
+  Users, UserPlus, Hash, ChevronLeft, Inbox,
+  FileText, UploadCloud, FolderOpen, Loader2,
+  Settings, Lock, Trophy, Plus, FileBadge, CalendarCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,39 +26,42 @@ import UploadMaterialModal from './_components/UploadMaterialModal';
 import ClassSettingsModal from './_components/ClassSettingsModal'; 
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import LeaderboardTab from './_components/LeaderboardTab';
+import AttendanceTab from './_components/AttendanceTab';
 
 // --- TRANSLATION DICTIONARY ---
 const DETAILS_TRANSLATIONS = {
   uz: {
     back: "Sinflarga", noDesc: "Tavsif berilmagan.", code: "Kod", studentsCount: "O'quvchi", locked: "Qulflangan",
     buttons: { add: "O'quvchi Qo'shish", assign: "Test Biriktirish", assignExam: "BSB/CHSB Biriktirish", upload: "Material Yuklash", settings: "Sozlamalar" },
-    tabs: { students: "O'quvchilar", assignments: "Topshiriqlar", exams: "Imtihonlar", materials: "Materiallar", requests: "So'rovlar", leaderboard: "Reyting" },
+    tabs: { students: "O'quvchilar", assignments: "Topshiriqlar", attendance: "Davomat", exams: "Imtihonlar", materials: "Materiallar", requests: "So'rovlar", leaderboard: "Reyting" },
     loading: "Sinf yuklanmoqda...", unknown: "Noma'lum Foydalanuvchi"
   },
   en: {
     back: "Classes", noDesc: "No description provided.", code: "Code", studentsCount: "Students", locked: "Locked",
     buttons: { add: "Add Student", assign: "Assign Test", assignExam: "Assign BSB/CHSB", upload: "Upload Material", settings: "Settings" },
-    tabs: { students: "Students", assignments: "Assignments", exams: "Exams", requests: "Requests", materials: "Materials", leaderboard: "Leaderboard" },
+    tabs: { students: "Students", assignments: "Assignments", attendance: "Attendance", exams: "Exams", requests: "Requests", materials: "Materials", leaderboard: "Leaderboard" },
     loading: "Loading Class...", unknown: "Unknown User"
   },
   ru: {
     back: "Классы", noDesc: "Описание отсутствует.", code: "Код", studentsCount: "Учеников", locked: "Закрыт",
     buttons: { add: "Добавить Ученика", assign: "Назначить Тест", assignExam: "Назначить БСБ/ЧСБ", upload: "Загрузить Материал", settings: "Настройки" },
-    tabs: { students: "Ученики", assignments: "Задания", exams: "Экзамены", requests: "Запросы", materials: "Материалы", leaderboard: "Рейтинг" },
+    tabs: { students: "Ученики", assignments: "Задания", attendance: "Посещаемость", exams: "Экзамены", requests: "Запросы", materials: "Материалы", leaderboard: "Рейтинг" },
     loading: "Загрузка класса...", unknown: "Неизвестный пользователь"
   }
 };
 
-type TabType = 'students' | 'assignments' | 'exams' | 'materials' | 'leaderboard' | 'requests';
+type TabType = 'students' | 'assignments' | 'attendance' | 'exams' | 'materials' | 'leaderboard' | 'requests';
 
 export default function ClassDetailsPage() {
   const { classId } = useParams() as { classId: string };
   const { lang } = useTeacherLanguage();
   const t = DETAILS_TRANSLATIONS[lang] || DETAILS_TRANSLATIONS['en'];
+  const { user } = useAuth();
 
   const [classData, setClassData] = useState<any>(null);
   const [rosterData, setRosterData] = useState<any[]>([]);
   const [requestCount, setRequestCount] = useState(0);
+  const [centerId, setCenterId] = useState(""); // resolved from the teacher's center membership
   
   const [activeTab, setActiveTab] = useState<TabType>('students');
   
@@ -86,6 +90,24 @@ export default function ClassDetailsPage() {
     const unsubscribe = onSnapshot(q, (snapshot) => setRequestCount(snapshot.size));
     return () => unsubscribe();
   }, [classId]);
+
+  // Resolve the teacher's centerId (if they belong to a center) so attendance
+  // records carry the same centerId the manager view uses. Empty for standalone teachers.
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const snap = await getDocs(
+          query(collection(db, 'center_teachers'), where('teacherId', '==', user.uid), limit(1))
+        );
+        if (mounted && !snap.empty) setCenterId(snap.docs[0].data().centerId || "");
+      } catch (err) {
+        console.error("centerId lookup error:", err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user]);
 
   useEffect(() => {
     const fetchRoster = async () => {
@@ -120,6 +142,7 @@ export default function ClassDetailsPage() {
   const TABS_CONFIG = [
     { id: 'students', label: t.tabs.students, icon: Users, badge: 0 },
     { id: 'assignments', label: t.tabs.assignments, icon: FileText, badge: 0 },
+    { id: 'attendance', label: t.tabs.attendance, icon: CalendarCheck, badge: 0 },
     { id: 'exams', label: t.tabs.exams, icon: FileBadge, badge: 0 }, 
     { id: 'materials', label: t.tabs.materials, icon: FolderOpen, badge: 0 },
     { id: 'leaderboard', label: t.tabs.leaderboard, icon: Trophy, badge: 0 }, 
@@ -221,38 +244,47 @@ export default function ClassDetailsPage() {
 
       </header>
 
-      {/* --- MAIN BODY --- */}
-      <div className="flex-1 w-full max-w-6xl mx-auto flex flex-col md:px-8 md:py-6">
+      {/* --- MAIN BODY (full width) --- */}
+      <div className="flex-1 w-full flex flex-col md:px-6 md:py-6">
         
-        {/* --- FIXED TAB BAR --- */}
-        <div className="bg-white md:bg-transparent border-b border-slate-200/80 md:border-none px-2 md:px-0 pt-2 pb-0 md:pb-4 shrink-0 z-20 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-          <div className="flex justify-between items-end md:bg-slate-200/50 md:p-1.5 md:rounded-[1.2rem] md:shadow-inner min-w-max md:min-w-0 w-full gap-2 px-2 md:px-0">
-            {TABS_CONFIG.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabType)}
-                className={`
-                  relative flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 pb-2 md:pb-0 md:py-2.5 px-3 md:px-0 flex-1 transition-all active:scale-95
-                  ${activeTab === tab.id ? 'text-indigo-600 md:bg-white md:shadow-[0_2px_10px_rgb(0,0,0,0.04)] md:ring-1 md:ring-slate-200/50 md:rounded-xl' : 'text-slate-400 hover:text-slate-600 md:hover:bg-slate-200/50 md:rounded-xl'}
-                `}
-              >
-                <div className="relative">
-                  <tab.icon size={22} strokeWidth={activeTab === tab.id ? 2.5 : 2} className="md:w-[18px] md:h-[18px]" />
-                  {tab.badge > 0 && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></div>}
-                </div>
-                <span className={`text-[10px] md:text-[13px] font-bold tracking-tight md:tracking-normal ${activeTab === tab.id ? 'md:font-black' : ''}`}>
-                  {tab.id === 'leaderboard' ? 'Reyting' : tab.label}
-                </span>
-                {activeTab === tab.id && (
-                  <motion.div layoutId="activeTabIndicator" className="absolute bottom-0 left-0 right-0 h-[3px] bg-indigo-600 rounded-t-full md:hidden" />
-                )}
-              </button>
-            ))}
+        {/* --- UNDERLINE TAB BAR (minimalist, scrollable) --- */}
+        <div className="border-b border-slate-200 px-2 md:px-1 shrink-0 z-20 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-1 md:gap-3 min-w-max">
+            {TABS_CONFIG.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as TabType)}
+                  className={`relative flex items-center gap-2 px-3 md:px-3.5 py-3 text-[13px] font-semibold whitespace-nowrap transition-colors active:scale-95 ${
+                    active ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span className="relative flex items-center justify-center">
+                    <tab.icon size={17} strokeWidth={active ? 2.5 : 2} />
+                    {tab.badge > 0 && (
+                      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                        {tab.badge}
+                      </span>
+                    )}
+                  </span>
+                  <span>{tab.label}</span>
+                  {active && (
+                    <motion.div layoutId="teacherTabUnderline" className="absolute left-1 right-1 -bottom-px h-[2.5px] bg-indigo-600 rounded-full" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* --- CONTENT CANVAS (NO SWIPE LOGIC) --- */}
-        <div className="flex-1 bg-[#FAFAFA] md:bg-white md:rounded-[2rem] md:border border-slate-200/80 md:shadow-sm p-3 md:p-8 min-h-[500px] overflow-x-hidden relative pb-[100px]">
+        {/* --- CONTENT CANVAS --- */}
+        {/* Attendance renders edge-to-edge (its grid is already a card); other tabs get the white canvas card. */}
+        <div className={`flex-1 min-h-[500px] overflow-x-hidden relative ${
+          activeTab === 'attendance'
+            ? 'px-2 md:px-0 pt-3 md:pt-4 pb-8'
+            : 'bg-[#FAFAFA] md:bg-white md:rounded-[2rem] md:border border-slate-200/80 md:shadow-sm p-3 md:p-8 pb-[100px]'
+        }`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -264,6 +296,15 @@ export default function ClassDetailsPage() {
             >
               {activeTab === 'students' && <RosterTab classId={classId} studentIds={classData.studentIds || []} />}
               {activeTab === 'assignments' && <AssignmentsTab classId={classId} roster={rosterData} totalRosterSize={classData.studentIds?.length || 0} onEdit={handleEditAssignment} onAdd={handleCreateAssignment} />}
+              {activeTab === 'attendance' && (
+                <AttendanceTab
+                  classId={classId}
+                  centerId={centerId}
+                  studentIds={classData.studentIds || []}
+                  recordedBy={user?.uid || ''}
+                  schedule={classData.schedule || []}
+                />
+              )}
               
               {/* 🟢 NEW: Exams Tab with onEdit wiring */}
               {activeTab === 'exams' && (

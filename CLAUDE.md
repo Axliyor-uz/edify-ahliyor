@@ -21,6 +21,10 @@ Next.js 16 (App Router) · React 19 with the **React Compiler enabled** (`reactC
 
 ## Architecture
 
+> **Attendance work:** read [docs/ATTENDANCE.md](docs/ATTENDANCE.md) first — it's the source of truth
+> for the student + staff attendance system (data model, security rules, deploy, and the non-obvious
+> traps). It supersedes the one-line `center_attendance` note in the data model below.
+
 ### Multi-role platform
 The app serves four roles, each with its own top-level route tree and role-guarded layout:
 
@@ -42,6 +46,55 @@ Layouts are `'use client'` and enforce auth via `onAuthStateChanged` / `useAuth`
 - [lib/AuthContext.tsx](lib/AuthContext.tsx) — `AuthProvider` (wraps the app in the root layout) + `useAuth()` hook exposing `{ user, loading }`. Children only render after `loading` resolves.
 
 Firestore is the source of truth for users, questions, attempts, classes, IELTS tests, AI usage, etc. Business logic lives in **[services/](services/)** (`userService`, `quizService`, `ieltsService`, `historyService`, `notificationService`) — prefer adding data logic there rather than inline in components.
+
+### Firestore data model
+Reconstructed from actual reads/writes across services + route `_components`. Field types are inferred; **timestamps are inconsistent** across the codebase — some writers use `serverTimestamp()` (Timestamp), some `new Date()` (Timestamp), some `new Date().toISOString()` (string), some `Date.now()` (number). Check the specific writer before comparing/ordering. Doc IDs noted per collection.
+
+**Accounts & identity**
+- `users/{uid}` — master account doc for **all roles**; doc ID = Auth uid. Union of role-specific fields: identity (`email`, `username` (lowercased), `displayName`, `role` ∈ student|teacher|manager|admin, `phone`, `birthDate`, `gender`, `institution`, `location{country,region,district}`, `photoURL`, `bio`, `createdAt` ISO). Student gamification: `totalXP`, `currentStreak`, `level`, `lastStudyDate`/`lastActiveDate`, `dailyHistory{dateStr:number}`, `progress{completedTopicIndex,completedChapterIndex,completedSubtopicIndex}`, `dailyGoal`, `recentActivity[]`. Teacher: `subject`, `grade`, `verifiedTeacher`, `experience`, `createdTests[]`, cloud-generated `activeClassCount`/`totalStudents`. Manager: `centerId`. **Legacy daily AI limits**: `aiDailyQuestionLimit`/`aiQuestionUsedToday`/`aiQuestionLastResetDate`. **SaaS monthly engine**: `subscription{planId,billingCycle,status,expiresAt}`, `currentLimits{maxClasses,maxStudents,monthlyAiQuestions}`, `includedFeatures`, `usage{aiQuestionsUsed,aiLimitResetDate}`. Social: `followersCount`/`followingCount`. Moderation: `isActive`. Queried by `role ==`, `email ==`.
+- `users/{uid}/following/{targetUid}` & `users/{uid}/followers/{followerUid}` — social graph edges (doc ID = other user's uid), field `followedAt`. See [lib/social.ts](lib/social.ts).
+- `usernames/{lowercaseUsername}` — uniqueness reservation; doc ID = lowercased username, field `uid`. `checkUsernameUnique()` checks existence.
+
+**Question banks** (note: **three separate** question stores)
+- `questions1/{autoId}` — global master bank, **bulk-imported externally, read-only in app**. Query fields are **strings, zero-padded**: `topicId`, `chapterId`/`subtopicId` (`"05"`), `difficultyId` **number** 1/2/3, `orderBy uploadedAt desc`. Content shape (`question{uz,ru,en}`, `options{A,B,C,D}`, `answer`) per [types/index.ts](types/index.ts). Needs composite index topicId+chapterId+subtopicId+difficultyId+uploadedAt.
+- `teacher_questions/{autoId}` — teacher-owned bank (AI/image/manual). `creatorId`, `creationMethod`, `track`, `difficulty` (lowercase string) + `difficultyId` (number), `tags[]`, `language[]`, `solutions[]`, spread question content. Queried by `creatorId ==`, `difficulty ==`, `creationMethod ==`.
+- `reported_questions/{questionId}` — moderation reports (doc ID = reported question id, dedupes). `reasons[]`/`reportedBy[]` (arrayUnion), `reportCount` (increment), `status`.
+
+**Classes & center management**
+- `classes/{classId}` — teacher- or center-owned class. `title`, `joinCode`, `teacherId`, `teacherName`, `studentIds[]`, `studentCount`, `isLocked`, `schedule[{dayOfWeek,startTime,endTime}]`. Queried by `teacherId ==`/`in`, `joinCode ==`, `studentIds array-contains`.
+  - `.../assignments/{autoId}` — practice test assigned to class; `testId`→`custom_tests`, `openAt`/`dueAt`, `assignedTo` ('all'|uid[]), `allowedAttempts`, `completedBy[]` (arrayUnion on submit).
+  - `.../exams/{autoId}` — scheduled graded exam; `testId`→`bsb_chsb_tests`, `examDate`, `hideResults`, `submittedStudentIds[]`.
+  - `.../materials/{autoId}` — files/links; `fileUrl`, `storagePath`, `isVisible`/`isArchived`, `viewCount`/`downloadCount`, `orderIndex`.
+  - `.../requests/{autoId | studentUid}` — join requests (doc ID varies by entry point). `studentId`, `studentName`, `status`.
+  - `.../leaderboard/{uid}` — per-class XP mirror; `xp` (increment), `lastActive`.
+- `centers/{centerId}` — learning center (created at manager signup). `name`, `slug`, `ownerUid`, `subscription{plan,validUntil}`.
+- `center_teachers/{teacherUid}` — center↔teacher link (doc ID = teacher uid). `centerId`, `teacherName`, `teacherEmail`, `addedAt`. Queried by `centerId ==`.
+- `center_attendance/{classId}_{YYYY-MM-DD}` — daily attendance; doc ID = `${classId}_${date}`. `records` is now `{ studentUid: { status, method, markedBy, markedAt, note?, confidence? } }` plus `lessonStatus`/`weekday`; also `center_staff_attendance/{staffUid}_{date}` for teacher attendance. **See [docs/ATTENDANCE.md](docs/ATTENDANCE.md) for full shapes — the old flat `records{uid:status}` is legacy-tolerated but no longer written.**
+
+**Tests & submissions**
+- `custom_tests/{autoId}` — teacher practice tests; `teacherId`, `accessCode`, `duration`, `shuffle`, `resultsVisibility`, `questions[]`, `questionCount`.
+- `bsb_chsb_tests/{autoId}` — formal graded assessments; `teacherId`, `assessmentType`, `grade`, `subject`, `totalPoints`, `questions[]`. Index teacherId+createdAt desc.
+- `attempts/{autoId}` — **polymorphic** submission doc (shape depends on `type`). Common: `userId`, `userName`, `classId`, `assignmentId`, `type` ('assignment'|'exam'), `testId`, `answers`, `tabSwitches`, `submittedAt`. Assignment adds `score`/`xpEarned`; exam adds `autoScore`/`teacherScore`/`totalPoints`, then on grading `manualScores`/`status:'graded'`. **Legacy practice shape** (`historyService.QuizAttempt`): `subtopicName`, `date`, `results[{questionId,isCorrect,questionPath,...}]` where `questionPath` is a full doc path used for review lookups. Heavily queried: `userId ==`, `classId ==`, `assignmentId ==`/`in`, `type ==`, `orderBy submittedAt desc`.
+
+**IELTS** (partly unbuilt — see warning below)
+- `ielts_groups/{groupId}` — study group; `targetBand`, `joinCode` (starts `"I-"`), `teacherId`, `studentIds[]`. Type `IeltsGroup` in [types/ielts.ts](types/ielts.ts).
+  - `.../requests/{autoId}` — join requests; `studentId`, `requestedAt`.
+- `ielts_reading_tests/{test_id}` — reading test content (doc ID = provided `test_id`); spreads arbitrary payload + `teacherId`, `status:'published'`. Written by [services/ieltsService.ts](services/ieltsService.ts).
+- ⚠️ **`types/ielts.ts` also declares `IeltsMasterTest` (`ielts_tests`), `IeltsAssignment` (`ielts_groups/{id}/assignments`), `IeltsAttempt` (`ielts_attempts`) — but no live reads/writes exist for these. They are planned/not-yet-wired; don't assume they hold data.**
+
+**Leaderboards, library, AI, games**
+- `leaderboards/{periodId}/users/{uid}` — global leaderboards bucketed by period (`getPeriodIds()`); `xp` (increment), `lastActive`.
+- `online_books/{bookId}` — library catalog (bulk-managed). ⚠️ counters are **`viewscount`/`downloadscount`** (not camelCase); `description{en,uz,ru}`, `parts[]`.
+- `ai_sessions/{sessionId}` — saved teacher AI-analytics chats; `teacherId`, `messages[]`.
+- `ai_usage/{userId}_{YYYY-MM-DD}` — server-side daily AI counter (rate limiting, doc ID = `${userId}_${date}`), `count`. **Distinct from** the `usage.aiQuestionsUsed` field on `users`.
+- `notifications/{autoId}` — recipient in `userId`, `type` ∈ assignment|submission|request|result|alert, `read`, `link`, `createdAt`. Index userId+createdAt desc and userId+read.
+- `active_games/{code}` — realtime checkers state (doc ID = 4-digit room code); `host`/`guest`, `status`, `board` (JSON string), `turn`, `winner`.
+
+**Known schema inconsistencies to watch** (don't "fix" blindly — external writers/rules may depend on them):
+- Question content differs between `questions1` (`difficultyId` number) and `teacher_questions`/`attempts` (`difficulty` lowercase string).
+- `online_books` counters are `viewscount`/`downloadscount`, not camelCase.
+- `attempts` is polymorphic across three shapes (assignment / exam / legacy practice) — always branch on `type` (or presence of `results`).
+- Timestamp field types are not uniform (see intro above).
 
 ### Content data (local JSON, not Firestore)
 The syllabus/navigation hierarchy is stored as **local JSON files** under `data/<track>/<class>/<subject>/syllabus.json`, where track ∈ `maktab` (school), `ixtisoslashtirilgan_maktab`, `abiturient`. Served to the client through API routes rather than imported directly:
