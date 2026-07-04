@@ -39,11 +39,14 @@ export interface UserProfile {
 
   // Metadata
   createdAt?: string;
-  role?: 'student' | 'teacher' | 'admin'; // 👈 UPDATED: Added 'teacher'
+  role?: 'student' | 'teacher' | 'manager' | 'admin';
   
   // Teacher Specific (Optional)
   createdTests?: string[];
   verifiedTeacher?: boolean;
+
+  // Manager Specific (Optional)
+  centerId?: string;
 }
 
 // --- 2. Helper: Get Today's Date ---

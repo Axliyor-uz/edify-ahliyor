@@ -6,6 +6,7 @@ import { LanguageContext } from "@/app/(public)/layout";
 import { Step0Role } from "./_components/FormSteps";
 import TeacherSignupFlow from "./_components/TeacherSignupFlow";
 import StudentSignupFlow from "./_components/StudentSignupFlow";
+import ManagerSignupFlow from "./_components/ManagerSignupFlow";
 import { BookOpen } from "lucide-react";
 
 // --- 1. TURBO TRANSLATION DICTIONARY ---
@@ -20,9 +21,10 @@ export const SIGNUP_TRANSLATIONS = {
     },
     roles: {
       student: { title: "Men O'quvchiman", desc: "Fanlarni o'rganish, XP yig'ish va natijalarni kuzatish." },
-      teacher: { title: "Men O'qituvchiman", desc: "Testlar yaratish va o'quvchilarni boshqarish." }
+      teacher: { title: "Men O'qituvchiman", desc: "Testlar yaratish va o'quvchilarni boshqarish." },
+      manager: { title: "Men Menejerman", desc: "O'quv markazini ro'yxatdan o'tkazish va boshqarish." }
     },
-    inputs: { email: "Email manzili", username: "Foydalanuvchi nomi", password: "Parol", fullname: "To'liq ism (F.I.O)" },
+    inputs: { email: "Email manzili", username: "Foydalanuvchi nomi", password: "Parol", fullname: "To'liq ism (F.I.O)", phone: "Telefon raqam", centerName: "Markaz nomi", studentCount: "O'quvchilar soni" },
     buttons: { next: "Keyingi qadam", back: "Ortga", complete: "Ro'yxatdan o'tish", loginLink: "Hisobingiz bormi? Kirish" },
     validation: { fillAll: "Iltimos, barcha maydonlarni to'ldiring.", userTaken: "Bu nom band qilingan.", welcome: "Xush kelibsiz, {role}!" },
     terms: {
@@ -48,9 +50,10 @@ export const SIGNUP_TRANSLATIONS = {
     },
     roles: {
       student: { title: "I am a Student", desc: "Learn, earn XP, and track progress." },
-      teacher: { title: "I am a Teacher", desc: "Create tests and manage students." }
+      teacher: { title: "I am a Teacher", desc: "Create tests and manage students." },
+      manager: { title: "I am a Manager", desc: "Register a learning center and manage operations." }
     },
-    inputs: { email: "Email Address", username: "Username", password: "Password", fullname: "Full Name" },
+    inputs: { email: "Email Address", username: "Username", password: "Password", fullname: "Full Name", phone: "Phone Number", centerName: "Center Name", studentCount: "Student Count" },
     buttons: { next: "Next Step", back: "Back", complete: "Complete Registration", loginLink: "Already have an account? Log in" },
     validation: { fillAll: "Please fill in all fields.", userTaken: "Username is taken.", welcome: "Welcome, {role}!" },
     terms: {
@@ -76,9 +79,10 @@ export const SIGNUP_TRANSLATIONS = {
     },
     roles: {
       student: { title: "Я Ученик", desc: "Учиться, получать XP и следить за прогрессом." },
-      teacher: { title: "Я Учитель", desc: "Создавать тесты и управлять учениками." }
+      teacher: { title: "Я Учитель", desc: "Создавать тесты и управлять учениками." },
+      manager: { title: "Я Менеджер", desc: "Зарегистрировать учебный центр и управлять им." }
     },
-    inputs: { email: "Эл. почта", username: "Имя пользователя", password: "Пароль", fullname: "Ф.И.О" },
+    inputs: { email: "Эл. почта", username: "Имя пользователя", password: "Пароль", fullname: "Ф.И.О", phone: "Телефон", centerName: "Название центра", studentCount: "Кол-во учеников" },
     buttons: { next: "Далее", back: "Назад", complete: "Завершить", loginLink: "Уже есть аккаунт? Войти" },
     validation: { fillAll: "Пожалуйста, заполните все поля.", userTaken: "Имя пользователя занято.", welcome: "Добро пожаловать, {role}!" },
     terms: {
@@ -434,7 +438,7 @@ export default function SignupPage() {
   const setLang = context?.setLang || (() => {});
   const t = SIGNUP_TRANSLATIONS[lang] || SIGNUP_TRANSLATIONS['uz'];
 
-  const [role, setRole] = useState<"student" | "teacher" | null>(null);
+  const [role, setRole] = useState<"student" | "teacher" | "manager" | null>(null);
 
   return (
     <div className="min-h-screen flex font-['Inter',sans-serif]">
@@ -507,6 +511,12 @@ export default function SignupPage() {
             {role === "student" && (
               <motion.div key="student" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
                 <StudentSignupFlow onBack={() => setRole(null)} t={t} />
+              </motion.div>
+            )}
+
+            {role === "manager" && (
+              <motion.div key="manager" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                <ManagerSignupFlow onBack={() => setRole(null)} t={t} />
               </motion.div>
             )}
           </AnimatePresence>

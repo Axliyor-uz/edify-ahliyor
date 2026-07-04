@@ -4,7 +4,7 @@ import { auth } from "@/lib/firebase";
 import Link from "next/link";
 import { 
   Users, GraduationCap, School, BookOpen, 
-  BarChart, ShieldCheck, ChevronRight 
+  BarChart, ShieldCheck, ChevronRight, CreditCard 
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -13,87 +13,105 @@ export default function AdminDashboardPage() {
   // 🟢 Array of all our ecosystem modules
   const adminModules = [
     {
+      title: "Memberships & Plans",
+      description: "Manage teacher subscriptions, plan limits, and AI overrides.",
+      icon: <CreditCard size={28} className="text-amber-500" />,
+      href: "/admin/membership",
+      bgColor: "bg-amber-50",
+      iconBg: "bg-white",
+      borderColor: "border-amber-200"
+    },
+    {
       title: "Teachers",
       description: "Manage teacher profiles, verifications, and subjects.",
-      icon: <Users size={28} className="text-[#3B82F6]" />,
+      icon: <Users size={28} className="text-indigo-600" />,
       href: "/admin/teachers",
-      color: "from-[#3B82F6]/20 to-transparent",
-      borderColor: "group-hover:border-[#3B82F6]"
+      bgColor: "bg-indigo-50",
+      iconBg: "bg-white",
+      borderColor: "border-indigo-200"
     },
     {
       title: "Students",
       description: "View student progress, XP, and accounts.",
-      icon: <GraduationCap size={28} className="text-emerald-400" />,
-      href: "/admin/students", // We will build this later
-      color: "from-emerald-400/20 to-transparent",
-      borderColor: "group-hover:border-emerald-400"
+      icon: <GraduationCap size={28} className="text-emerald-600" />,
+      href: "/admin/students", 
+      bgColor: "bg-emerald-50",
+      iconBg: "bg-white",
+      borderColor: "border-emerald-200"
     },
     {
       title: "Active Classes",
       description: "Monitor class sizes and teacher assignments.",
-      icon: <School size={28} className="text-purple-400" />,
-      href: "/admin/classes", // We will build this later
-      color: "from-purple-400/20 to-transparent",
-      borderColor: "group-hover:border-purple-400"
+      icon: <School size={28} className="text-purple-600" />,
+      href: "#", // Coming soon
+      bgColor: "bg-purple-50",
+      iconBg: "bg-white",
+      borderColor: "border-purple-200"
     },
     {
       title: "Test Library",
       description: "Review system-wide tests and questions.",
-      icon: <BookOpen size={28} className="text-amber-400" />,
-      href: "/admin/tests", // We will build this later
-      color: "from-amber-400/20 to-transparent",
-      borderColor: "group-hover:border-amber-400"
+      icon: <BookOpen size={28} className="text-cyan-600" />,
+      href: "#", // Coming soon
+      bgColor: "bg-cyan-50",
+      iconBg: "bg-white",
+      borderColor: "border-cyan-200"
     },
     {
       title: "System Stats",
       description: "Platform analytics and user growth.",
-      icon: <BarChart size={28} className="text-pink-400" />,
-      href: "/admin/stats", // We will build this later
-      color: "from-pink-400/20 to-transparent",
-      borderColor: "group-hover:border-pink-400"
+      icon: <BarChart size={28} className="text-rose-600" />,
+      href: "#", // Coming soon
+      bgColor: "bg-rose-50",
+      iconBg: "bg-white",
+      borderColor: "border-rose-200"
     }
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto p-6 md:p-10 space-y-8">
       {/* HEADER */}
-      <div className="rounded-3xl bg-[#1E293B] p-8 md:p-10 shadow-lg border border-[#334155] relative overflow-hidden">
-        <div className="relative z-10">
+      <div className="rounded-2xl bg-white p-8 md:p-10 shadow-sm border border-slate-200 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="relative z-10 flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <ShieldCheck className="text-[#3B82F6]" size={32} />
-            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">Ecosystem Hub</h1>
+            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
+              <ShieldCheck size={28} />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Ecosystem Hub</h1>
           </div>
-          <p className="text-[#94A3B8] text-lg">
-            Welcome back, <span className="text-white font-bold">{adminEmail}</span>.
+          <p className="text-slate-500 text-lg font-medium ml-[60px]">
+            Welcome back, <span className="text-slate-900 font-bold">{adminEmail}</span>.
           </p>
         </div>
-        
-        {/* Background glow effect */}
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#3B82F6] opacity-10 blur-3xl rounded-full" />
       </div>
 
       {/* MODULE GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {adminModules.map((module) => (
-          <Link href={module.href} key={module.title} className="block group">
-            <div className={`h-full rounded-2xl bg-[#1E293B] border border-[#334155] p-6 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${module.borderColor} relative overflow-hidden`}>
+          <Link href={module.href} key={module.title} className={`block group ${module.href === '#' ? 'opacity-60 cursor-not-allowed' : ''}`}>
+            <div className={`h-full rounded-2xl bg-white border border-slate-200 p-6 transition-all duration-300 hover:shadow-md hover:border-slate-300 ${module.href !== '#' ? 'hover:-translate-y-1' : ''} relative overflow-hidden flex flex-col`}>
               
-              {/* Subtle gradient background on hover */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${module.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-              
-              <div className="relative z-10">
-                <div className="w-14 h-14 rounded-xl bg-[#0F172A] border border-[#334155] flex items-center justify-center mb-6 shadow-inner">
+              <div className="relative z-10 flex-1">
+                <div className={`w-14 h-14 rounded-xl ${module.bgColor} border ${module.borderColor} flex items-center justify-center mb-6 shadow-sm transition-transform group-hover:scale-110`}>
                   {module.icon}
                 </div>
                 
-                <h2 className="text-xl font-black text-white mb-2 flex items-center justify-between">
+                <h2 className="text-lg font-black text-slate-900 mb-2 flex items-center justify-between">
                   {module.title}
-                  <ChevronRight size={20} className="text-[#94A3B8] group-hover:text-white group-hover:translate-x-1 transition-all" />
+                  {module.href !== '#' && <ChevronRight size={20} className="text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />}
                 </h2>
-                <p className="text-[#94A3B8] text-sm leading-relaxed">
+                <p className="text-slate-500 text-[13px] font-medium leading-relaxed mb-4">
                   {module.description}
                 </p>
               </div>
+
+              {module.href === '#' && (
+                <div className="mt-auto">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200">
+                    Coming Soon
+                  </span>
+                </div>
+              )}
             </div>
           </Link>
         ))}

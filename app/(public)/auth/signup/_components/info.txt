@@ -1,128 +1,58 @@
-================================================================================
-EDIFY: SIGNUP DATABASE ARCHITECTURE & DATA FLOW (100K SCALE)
-================================================================================
+# 🚀 TestEdify - Signup Flow Architecture & Analysis
 
-This document outlines exactly how user data is processed, validated, and saved 
-to Firebase Firestore during the registration process for both Students and Teachers.
+The signup flow in TestEdify is a highly polished, multi-step, animated onboarding experience designed for both Teachers and Students. It utilizes Next.js (App Router), Firebase (Auth & Firestore), Framer Motion (animations), and Tailwind CSS.
 
---------------------------------------------------------------------------------
-1. THE REGISTRATION FLOW (HOW IT WORKS)
---------------------------------------------------------------------------------
-When a user registers, the system does NOT just blindly save data. It follows a 
-strict, enterprise-grade flow to protect the database and minimize costs:
+## 1. 🏗️ Layout & Core Structure (`page.tsx`)
+- **Split Screen Design:** The page uses a two-panel layout.
+  - **Left Panel (55%):** Visible only on desktop. Features a vibrant blue gradient and a complex, custom-built SVG (`EcosystemSVG`) illustrating the platform's digital environment (monitor, tablet, book stack with glowing animations).
+  - **Right Panel (45%):** The interactive form area, centered and scrollable. Includes a mobile logo and an absolute-positioned Language Toggler.
+- **Internationalization (i18n):** Uses a local `SIGNUP_TRANSLATIONS` dictionary and a React `LanguageContext` to seamlessly switch between Uzbek (`uz`), English (`en`), and Russian (`ru`).
+- **State Routing:** The `SignupPage` component acts as a mini-router using the `role` state (`"student" | "teacher" | null`). It wraps the steps in Framer Motion's `<AnimatePresence>` for smooth entry/exit sliding animations.
 
-1. Local Cache & Debounce (Cost Saver): As the user types a username, the app 
-   waits 800ms. It then checks a local browser cache (useRef). If the username 
-   was already checked, it skips the database. If not, it queries Firestore.
-2. Form Validation: The UI ensures all required fields (including the new Gender 
-   and Subject fields) are filled out before the "Complete" button is enabled.
-3. Auth Creation: Firebase Authentication creates the account (Email/Pass or Google).
-4. Atomic Batch Write: A Firestore `writeBatch` is used to simultaneously save 
-   the profile to the `users` collection AND reserve the name in the `usernames` 
-   collection. 
-5. Rollback Protection: If the Firestore batch fails (e.g., network drop or a 
-   hacker stole the username 1 millisecond earlier), the app automatically 
-   DELETES the Firebase Auth account so the user doesn't become a "Ghost Account."
+## 2. 🎭 Step 0: Role Selection (`FormSteps.tsx`)
+- When the user first lands (`role === null`), the `Step0Role` component is rendered.
+- Presents two large, tactile cards with hover effects (translating arrows, glowing borders, scaling icons).
+- Allows the user to choose between:
+  - **Teacher:** Indigo theme, `School` icon.
+  - **Student:** Emerald theme, `GraduationCap` icon.
+- Also provides a prominent "Already have an account? Log in" link.
 
---------------------------------------------------------------------------------
-2. THE 'usernames' COLLECTION (THE INDEX)
---------------------------------------------------------------------------------
-To make searching fast, we do not query the giant `users` collection to check 
-if a name is taken. We use a dedicated, lightweight index collection.
+## 3. 🔄 The Multi-Step Flows (`TeacherSignupFlow.tsx` & `StudentSignupFlow.tsx`)
+Once a role is selected, the respective flow component mounts. Both flows share similar logic but write different payloads to the database.
 
-Document ID: {username_in_lowercase} (e.g., "alisher_99")
-Fields Saved:
-{
-  "uid": "aB1cD2eF3gH4..." // Links to the actual user
-}
-*Security Rule:* The database strictly enforces that a document can only be 
-created here if it DOES NOT already exist (!exists). This prevents race conditions.
+### State Management
+Each flow maintains its own state:
+- `step`: Tracks the current form step (1 or 2).
+- `formData`: Stores `email`, `password`, `fullName`, `username`, and a role-specific field (`gradeLevel` for students, `schoolSubject` for teachers).
+- Real-time Validation States: `isCheckingUser`, `usernameAvailable`, `usernameError`.
 
---------------------------------------------------------------------------------
-3. THE 'users' COLLECTION: STUDENT PAYLOAD
---------------------------------------------------------------------------------
-When a STUDENT signs up manually, this exact JSON structure is saved:
+### Step 1: Authentication (`Step1Auth`)
+- Collects `email` and `password`.
+- Features an eye-toggle for password visibility.
+- Validates that the password is at least 8 characters long before allowing the user to proceed to Step 2.
 
-{
-  "uid": "aB1cD2eF3gH4...",
-  "email": "student@example.com",
-  "username": "student_01",
-  "displayName": "Aliyev Vali",
-  "phone": "+998 (90) 123-45-67",
-  "birthDate": "2008-05-15",
-  "gender": "male",                <-- [NEW]
-  "role": "student",
-  "institution": "15-maktab",
-  "location": {
-    "country": "Uzbekistan",
-    "region": "Tashkent City",
-    "district": "Yunusabad"
-  },
-  "createdAt": "2026-04-04T10:00:00.000Z",
-  
-  // Student-Specific Gamification & App Data
-  "grade": "school_9",
-  "totalXP": 0,
-  "currentStreak": 0,
-  "level": 1,
-  "dailyHistory": {},
-  "progress": {
-    "completedTopicIndex": 0,
-    "completedChapterIndex": 0,
-    "completedSubtopicIndex": 0
-  }
-}
+### Step 2: Personal Profile (`Step2Profile`)
+- Collects `fullName` and `username`.
+- **Debounced Username Validation:**
+  - Uses a `useEffect` with an 800ms debounce to prevent spamming the database while typing.
+  - Validates format locally (min 5 chars, starts with a letter, alphanumeric/underscores only).
+  - Calls `checkUsernameUnique` (queries the `usernames` Firestore collection).
+  - Uses a `useRef` map as an in-memory cache to remember already-checked usernames.
+  - Displays real-time UI feedback (Spinning loader, Red X, Amber X, Green Checkmark).
+- **Role-Specific Dropdown:** 
+  - Students select their `gradeLevel` (1-11 or university).
+  - Teachers select their primary `schoolSubject` (Math, Physics, etc.).
+- **Legal Agreements:** A required checkbox for Terms of Service and Privacy Policy. Clicking the links opens a beautifully animated React Portal modal (`PolicyModal`).
 
---------------------------------------------------------------------------------
-4. THE 'users' COLLECTION: TEACHER PAYLOAD
---------------------------------------------------------------------------------
-When a TEACHER signs up manually, the gamification stats are replaced with 
-professional teaching attributes:
+## 4. 💾 Database Commit & Rollback Strategy
+When the user submits Step 2, the `handleSignup` function executes a secure, atomic write process:
 
-{
-  "uid": "tE5aC6hE7r...",
-  "email": "teacher@school.uz",
-  "username": "physics_guru",
-  "displayName": "Azizova Malika",
-  "phone": "+998 (99) 987-65-43",
-  "birthDate": "1985-10-20",
-  "gender": "female",              <-- [NEW]
-  "role": "teacher",
-  "institution": "Prezident Maktabi",
-  "location": {
-    "country": "Uzbekistan",
-    "region": "Samarkand",
-    "district": "Samarkand City"
-  },
-  "createdAt": "2026-04-04T10:05:00.000Z",
-
-  // Teacher-Specific App Data
-  "grade": "Teacher",
-  "subject": "fizika",             <-- [NEW]
-  "experience": 0,                 <-- [NEW] Saved strictly as an Integer (Number)
-  "verifiedTeacher": false
-  
-  // NOTE: 'createdTests: []' was intentionally REMOVED for 100k scalability.
-  // Tests are queried dynamically using where("teacherId", "==", uid) to 
-  // prevent the user document size from exploding over time.
-}
-
---------------------------------------------------------------------------------
-5. GOOGLE AUTH EXCEPTIONS (THE NULL FALLBACKS)
---------------------------------------------------------------------------------
-If a user signs up via Google, they skip Steps 2, 3, and 4 in the UI. 
-Because of this, the database gracefully handles missing data by saving `null`.
-
-Extra Fields Added for Google Users:
-- "photoURL": "http://googleusercontent.com/..."
-
-Fields Saved as `null` (To be filled out later in Settings):
-- "phone": null
-- "birthDate": null
-- "institution": null
-- "location": { "country": "Uzbekistan", "region": null, "district": null }
-- "grade": null (For Students only. Teachers still select Subject/Gender in Step 10).
-
-The frontend UI (Dashboard and Settings) is specifically coded to use Optional 
-Chaining (e.g., `user.location?.region || 'Not provided'`) to ensure these `null` 
-values never crash the application.
+1. **Auth Creation:** Creates the user in Firebase Auth (`createUserWithEmailAndPassword`) and updates their Auth Profile with their `displayName`.
+2. **Atomic Batch Write:** Prepares a Firestore `writeBatch` to write two documents simultaneously:
+   - **User Document (`users/{uid}`):** Stores the `formData`, role, and sets up "Progressive Profiling" fields (empty strings for phone, gender, etc., ensuring the app doesn't crash on nulls later).
+     - *Student Payload defaults:* Initializes the gamification engine (`totalXP: 0`, `currentStreak: 0`, `level: 1`, `dailyHistory: {}`, and `progress`).
+     - *Teacher Payload defaults:* Initializes professional fields (`grade: "Teacher"`, `verifiedTeacher: false`, `experience: 0`).
+   - **Username Document (`usernames/{lowerUsername}`):** Maps the chosen username to the `uid` to reserve it globally.
+3. **Commit:** Executes `batch.commit()`.
+4. **Rollback 🛡️:** If the Firestore batch write fails (e.g., due to a lost connection or a sudden permissions issue), the `catch` block deletes the newly created Firebase Auth user (`deleteUser(auth.currentUser)`) to prevent orphaned auth accounts that have no database record.
+5. **Redirection:** On success, toasts a welcome message and redirects to `/dashboard` (Student) or `/teacher/dashboard` (Teacher).

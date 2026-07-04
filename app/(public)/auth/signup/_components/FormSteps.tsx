@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, CheckCircle, XCircle, GraduationCap, School, User, Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, X, FileText, ShieldCheck } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, GraduationCap, School, User, Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, X, FileText, ShieldCheck, Building } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
@@ -45,6 +45,26 @@ export const Step0Role = ({ setRole, t }: any) => (
         </div>
       </div>
       <div className="relative z-10 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shrink-0 transform group-hover:translate-x-1 border border-slate-200 group-hover:border-emerald-600 shadow-sm">
+        <ArrowRight size={16} strokeWidth={2.5} />
+      </div>
+    </button>
+
+    <button 
+      type="button" 
+      onClick={() => setRole("manager")} 
+      className="group relative p-5 md:p-6 rounded-[1.5rem] bg-white border-2 border-slate-100 hover:border-amber-500 hover:shadow-[0_12px_40px_-15px_rgba(245,158,11,0.2)] transition-all duration-300 text-left flex items-center justify-between active:scale-[0.98] overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-amber-50/0 to-amber-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="relative flex items-center gap-5 z-10">
+        <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 shadow-sm group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
+          <Building size={28} strokeWidth={2} />
+        </div>
+        <div>
+          <h3 className="text-[17px] font-black text-slate-900 group-hover:text-amber-600 transition-colors">{t.roles.manager.title}</h3>
+          <p className="text-[14px] font-medium text-slate-500 mt-0.5 leading-relaxed pr-4">{t.roles.manager.desc}</p>
+        </div>
+      </div>
+      <div className="relative z-10 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-600 group-hover:text-white transition-all duration-300 shrink-0 transform group-hover:translate-x-1 border border-slate-200 group-hover:border-amber-600 shadow-sm">
         <ArrowRight size={16} strokeWidth={2.5} />
       </div>
     </button>

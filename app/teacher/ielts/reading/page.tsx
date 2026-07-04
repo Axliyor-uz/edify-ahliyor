@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { BookOpen, Plus, Search, Sparkles, Database, Clock, MoreVertical, FileText, Globe, Loader2, Trash2, Copy, Send, Eye } from 'lucide-react';
+import { BookOpen, Plus, Search, Sparkles, Database, Clock, MoreVertical, FileText, Globe, Loader2, Trash2, Copy, Send, Eye, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -20,7 +20,7 @@ export default function ReadingDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  
+
   const [myTests, setMyTests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -64,7 +64,7 @@ export default function ReadingDashboard() {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Haqiqatan ham bu testni butunlay o'chirib tashlamoqchimisiz?")) return;
-    
+
     try {
       await deleteDoc(doc(db, 'ielts_reading_tests', id));
       setMyTests(prev => prev.filter(test => test.id !== id));
@@ -75,17 +75,20 @@ export default function ReadingDashboard() {
     setOpenDropdownId(null);
   };
 
-  const filteredData = (activeTab === 'myTests' ? myTests : DATABASE_TESTS).filter(test => 
+  const filteredData = (activeTab === 'myTests' ? myTests : DATABASE_TESTS).filter(test =>
     test.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="p-6 md:p-10 max-w-6xl mx-auto w-full animate-in fade-in duration-500 font-sans text-slate-800">
-      
+
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
+            <Link href="/teacher/ielts" className="w-8 h-8 rounded-xl bg-white border border-slate-200/80 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all shrink-0 mr-1 shadow-sm">
+              <ChevronLeft size={16} strokeWidth={2.5} />
+            </Link>
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
               <BookOpen size={20} strokeWidth={2.5} />
             </div>
@@ -153,14 +156,14 @@ export default function ReadingDashboard() {
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className={`px-2 py-0.5 rounded-sm text-[9px] font-black uppercase tracking-widest ${test.difficulty === 'easy' ? 'bg-green-100 text-green-700' : test.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{test.difficulty}</span>
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500"><BookOpen size={12}/> {test.wordCount} ta so'z</span>
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500"><Clock size={12}/> {test.qCount} savol</span>
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500"><BookOpen size={12} /> {test.wordCount} ta so'z</span>
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500"><Clock size={12} /> {test.qCount} savol</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 self-end md:self-auto relative">
-                  
+
                   {/* 🌟 VIEW BUTTON ROUTED TO NEW PAGE */}
                   <Link href={`/teacher/ielts/reading/view/${test.id}`} className="px-3 py-2 bg-slate-100 text-slate-700 text-[12px] font-bold rounded-lg hover:bg-slate-200 transition-colors shadow-sm flex items-center gap-1.5">
                     <Eye size={14} /> Ko'rish
@@ -195,7 +198,7 @@ export default function ReadingDashboard() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-[300px] text-center px-4">
-             <Search className="text-slate-300 mb-2" size={32} />
+            <Search className="text-slate-300 mb-2" size={32} />
             <h3 className="text-[15px] font-bold text-slate-900">Natija topilmadi</h3>
           </div>
         )}

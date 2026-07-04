@@ -460,6 +460,8 @@ export default function LoginPage() {
       toast.success(t.welcomeBack.replace("{name}", profile.displayName || "User"), { duration: 4000 });
       if (profile.role === "teacher") {
         router.push("/teacher/dashboard");
+      } else if (profile.role === "manager") {
+        router.push("/manager/dashboard");
       } else {
         router.push("/dashboard");
       }

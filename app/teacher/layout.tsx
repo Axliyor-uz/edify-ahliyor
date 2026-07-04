@@ -117,7 +117,8 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         if (!user) router.push('/auth/login');
         else {
           const profile = await getUserProfile(user.uid);
-          if (profile?.role !== 'teacher') router.push('/dashboard');
+          if (profile?.role === 'manager') router.push('/manager/dashboard');
+          else if (profile?.role !== 'teacher') router.push('/dashboard');
           else setIsAuthorized(true);
         }
       }
@@ -161,7 +162,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     { name: t.menu.overview, href: '/teacher/dashboard', icon: LayoutDashboard },
     { name: t.create, href: '/teacher/create', icon: FilePlus, isAI: true },
     { name: t.menu.classes, href: '/teacher/classes', icon: Users , tourId: 'tour-sidebar-classes' }, 
-    { name: t.menu.ielts, href: '/teacher/ielts', icon: Globe, isAI: true }, // <-- NEW ITEM
+    // { name: t.menu.ielts, href: '/teacher/ielts', icon: Globe, isAI: true }, // <-- NEW ITEM
     { name: t.menu.library, href: '/teacher/library', icon: FolderOpen },
     { name: t.menu.onlineLibrary, href: '/teacher/online-books', icon: Library, tourId: 'tour-sidebar-online-books' },
     { name: t.menu.analytics, href: '/teacher/analytics', icon: Sparkles, isAI: true },
