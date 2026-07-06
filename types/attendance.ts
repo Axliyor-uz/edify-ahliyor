@@ -9,6 +9,9 @@ export interface ScheduleEntry {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  /** Assigned room for this slot (center-only; optional so non-center classes are unaffected). */
+  roomId?: string;
+  roomName?: string;
 }
 
 /** Per-student attendance status for a single lesson. */

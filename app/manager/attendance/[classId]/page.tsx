@@ -1,21 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, notFound } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
-import { CalendarCheck, Clock, ArrowLeft, Loader2, Users } from "lucide-react";
+import { CalendarCheck, Clock, ArrowLeft, Loader2, Users, DoorOpen, Pencil, CalendarX2 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import ScheduleTab from "./_components/ScheduleTab";
 import AttendanceTab from "./_components/AttendanceTab";
+
+const DAY_LABEL = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export interface ScheduleEntry {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  roomId?: string;
+  roomName?: string;
 }
 
 export interface AttendanceClassDocument {
@@ -38,6 +42,7 @@ export default function AttendanceClassPage() {
   const [classData, setClassData] = useState<AttendanceClassDocument | null>(null);
   const [centerId, setCenterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [missing, setMissing] = useState(false); // bad classId → branded 404
   const [activeTab, setActiveTab] = useState<"schedule" | "attendance">("attendance");
 
   useEffect(() => {
@@ -51,7 +56,7 @@ export default function AttendanceClassPage() {
         setCenterId(profile.centerId);
 
         const snap = await getDoc(doc(db, "classes", classId));
-        if (!snap.exists()) throw new Error("Guruh topilmadi.");
+        if (!snap.exists()) { setMissing(true); return; } // → not-found boundary
 
         setClassData({ id: snap.id, ...snap.data() } as AttendanceClassDocument);
       } catch (err) {
@@ -73,6 +78,7 @@ export default function AttendanceClassPage() {
     );
   }
 
+  if (missing) notFound(); // renders app/manager/not-found.tsx
   if (!classData) return null;
 
   return (
@@ -138,13 +144,48 @@ export default function AttendanceClassPage() {
       {/* Tab Content */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm min-h-[400px] overflow-hidden">
         {activeTab === "schedule" && (
-          <ScheduleTab
-            classId={classData.id}
-            currentSchedule={classData.schedule || []}
-            onUpdate={(newSchedule) =>
-              setClassData((prev) => prev ? { ...prev, schedule: newSchedule } : null)
-            }
-          />
+          <div className="p-4 sm:p-5">
+            {/* Read-only view — editing lives on the group page (single source of truth). */}
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <p className="text-[13px] text-slate-500">
+                Dars jadvali va xonalar shu yerda ko&apos;rsatiladi. Tahrirlash guruh sahifasida.
+              </p>
+              <Link
+                href={`/manager/groups/${classData.id}`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-[12.5px] font-bold transition-colors shrink-0"
+              >
+                <Pencil size={14} /> Jadvalni tahrirlash
+              </Link>
+            </div>
+
+            {(classData.schedule?.length || 0) === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center py-16 px-6">
+                <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3"><CalendarX2 size={26} /></div>
+                <h3 className="text-sm font-semibold text-slate-700">Jadval belgilanmagan</h3>
+                <p className="text-[13px] text-slate-500 mt-1.5 max-w-[320px]">Bu guruh uchun hali dars jadvali kiritilmagan. Guruh sahifasida qo&apos;shing.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {[...(classData.schedule || [])]
+                  .sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek) - WEEK_ORDER.indexOf(b.dayOfWeek))
+                  .map((s, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-2xl">
+                      <div className="min-w-0">
+                        <p className="text-[13.5px] font-bold text-slate-900">{DAY_LABEL[s.dayOfWeek]}</p>
+                        <p className="text-[12.5px] text-slate-500 tabular-nums mt-0.5">{s.startTime}–{s.endTime}</p>
+                      </div>
+                      {s.roomName ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-[12px] font-semibold shrink-0">
+                          <DoorOpen size={13} /> {s.roomName}
+                        </span>
+                      ) : (
+                        <span className="text-[11.5px] text-slate-400 shrink-0">Xona belgilanmagan</span>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
         )}
         {activeTab === "attendance" && centerId && (
           <AttendanceTab

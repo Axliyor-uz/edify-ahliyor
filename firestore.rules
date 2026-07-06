@@ -391,6 +391,19 @@ service cloud.firestore {
       allow read, update, delete: if isAuth() && isCenterManager(resource.data.centerId);
     }
 
+    // 🟢 NEW — Rooms (center-only). Managed by the center manager; readable by
+    // center members. Query-safe list (same pattern as attendance).
+    match /rooms/{roomId} {
+      allow get: if isAuth() && (
+        resource == null ||
+        isCenterManager(resource.data.centerId) ||
+        isTeacherOfCenter(resource.data.centerId)
+      );
+      allow list: if isAuth();
+      allow create, update: if isAuth() && isCenterManager(request.resource.data.centerId);
+      allow delete: if isAuth() && isCenterManager(resource.data.centerId);
+    }
+
     match /center_finances/{financeId} {
       allow read: if isAuth() && (
         isCenterManager(resource.data.centerId) ||

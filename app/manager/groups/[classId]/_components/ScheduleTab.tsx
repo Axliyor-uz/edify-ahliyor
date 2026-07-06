@@ -1,19 +1,31 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import {
   Save, Loader2, Clock, CalendarDays, Edit3, CalendarX2, Hourglass,
-  Trash2, Sunrise, Sunset, ArrowRight, Check, Sparkles,
+  Trash2, Sunrise, Sunset, ArrowRight, Check, Sparkles, DoorOpen, AlertTriangle, Wand2, User,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { ScheduleEntry } from "../page";
+import type { ScheduleEntry } from "@/types/attendance";
+import { useCenterRooms } from "@/hooks/useCenterRooms";
+import { useCenterClasses } from "@/hooks/useCenterClasses";
+import { findScheduleConflicts } from "@/services/roomService";
+import { roomTheme } from "@/lib/roomColors";
 
 interface Props {
   classId: string;
+  centerId: string;
+  teacherId: string;
+  studentCount: number;
   currentSchedule: ScheduleEntry[];
   onUpdate: (newSchedule: ScheduleEntry[]) => void;
+  /** Open straight in edit mode (used when embedded in the timetable drawer). */
+  autoEdit?: boolean;
+  /** Pre-enable a day (and optionally assign a room) — for scheduling into an empty timetable cell. */
+  prefill?: { dayOfWeek: number; roomId?: string };
 }
 
 const DAYS = [
@@ -52,9 +64,13 @@ const formatDuration = (start: string, end: string) => {
   return `${m} daqiqa`;
 };
 
-type DayState = { enabled: boolean; startTime: string; endTime: string };
+type DayState = { enabled: boolean; startTime: string; endTime: string; roomId?: string };
 
-function buildInitialState(schedule: ScheduleEntry[]): Record<number, DayState> {
+function buildInitialState(
+  schedule: ScheduleEntry[],
+  prefill?: { dayOfWeek: number; roomId?: string }
+): Record<number, DayState> {
+  const uniform = detectUniform(schedule);
   const state: Record<number, DayState> = {};
   for (const d of DAYS) {
     const existing = schedule.find((s) => s.dayOfWeek === d.dayOfWeek);
@@ -62,6 +78,18 @@ function buildInitialState(schedule: ScheduleEntry[]): Record<number, DayState> 
       enabled: !!existing,
       startTime: existing?.startTime || "14:00",
       endTime: existing?.endTime || "15:30",
+      roomId: existing?.roomId,
+    };
+  }
+  // Scheduling into an empty timetable cell: turn on that day (inheriting the
+  // group's uniform time when it has one) and assign the clicked room.
+  if (prefill && state[prefill.dayOfWeek]) {
+    const cur = state[prefill.dayOfWeek];
+    state[prefill.dayOfWeek] = {
+      enabled: true,
+      startTime: cur.enabled ? cur.startTime : uniform.uniStart,
+      endTime: cur.enabled ? cur.endTime : uniform.uniEnd,
+      roomId: prefill.roomId ?? cur.roomId,
     };
   }
   return state;
@@ -73,6 +101,14 @@ function detectUniform(schedule: ScheduleEntry[]) {
   const first = schedule[0];
   const same = schedule.every((s) => s.startTime === first.startTime && s.endTime === first.endTime);
   return { sameTime: same, uniStart: first.startTime, uniEnd: first.endTime };
+}
+
+// Do all saved lessons use one room? Then one picker can drive them all.
+function detectUniformRoom(schedule: ScheduleEntry[]) {
+  if (schedule.length === 0) return { sameRoom: true, uniRoom: "" };
+  const first = schedule[0].roomId || "";
+  const same = schedule.every((s) => (s.roomId || "") === first);
+  return { sameRoom: same, uniRoom: first };
 }
 
 const PRESETS = [
@@ -118,17 +154,74 @@ function TimeSelect({
   );
 }
 
-export default function ScheduleTab({ classId, currentSchedule, onUpdate }: Props) {
+export default function ScheduleTab({ classId, centerId, teacherId, studentCount, currentSchedule, onUpdate, autoEdit, prefill }: Props) {
   const initUniform = useMemo(() => detectUniform(currentSchedule), [currentSchedule]);
+  const initRoom = useMemo(() => detectUniformRoom(currentSchedule), [currentSchedule]);
 
-  const [isEditing, setIsEditing] = useState(currentSchedule.length === 0);
-  const [dayStates, setDayStates] = useState<Record<number, DayState>>(() => buildInitialState(currentSchedule));
+  const { rooms } = useCenterRooms(centerId);
+  const { classes } = useCenterClasses(centerId);
+  const activeRooms = useMemo(() => rooms.filter((r) => r.isActive), [rooms]);
+  const roomById = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
+
+  const [isEditing, setIsEditing] = useState(currentSchedule.length === 0 || !!autoEdit);
+  const [dayStates, setDayStates] = useState<Record<number, DayState>>(() => buildInitialState(currentSchedule, prefill));
   const [sameTime, setSameTime] = useState(initUniform.sameTime);
   const [uniStart, setUniStart] = useState(initUniform.uniStart);
   const [uniEnd, setUniEnd] = useState(initUniform.uniEnd);
+  // When scheduling into a specific room via prefill, keep per-day rooms so we
+  // don't overwrite the group's other rooms with one uniform pick.
+  const [sameRoom, setSameRoom] = useState(prefill?.roomId ? false : initRoom.sameRoom);
+  const [uniRoom, setUniRoom] = useState(initRoom.uniRoom);
   const [isSaving, setIsSaving] = useState(false);
 
   const enabledDays = DAYS.filter((d) => dayStates[d.dayOfWeek].enabled);
+
+  const setDayRoom = (dayOfWeek: number, roomId: string) => {
+    setDayStates((prev) => ({ ...prev, [dayOfWeek]: { ...prev[dayOfWeek], roomId: roomId || undefined } }));
+  };
+
+  // The schedule the user is currently building — used for both conflict checks and save.
+  const proposed: ScheduleEntry[] = enabledDays.map((d) => {
+    const st = dayStates[d.dayOfWeek];
+    const startTime = sameTime ? uniStart : st.startTime;
+    const endTime = sameTime ? uniEnd : st.endTime;
+    const roomId = sameRoom ? uniRoom : st.roomId;
+    const entry: ScheduleEntry = { dayOfWeek: d.dayOfWeek, startTime, endTime };
+    if (roomId) {
+      entry.roomId = roomId;
+      const r = roomById.get(roomId);
+      if (r) entry.roomName = r.name;
+    }
+    return entry;
+  });
+
+  const conflicts = findScheduleConflicts(classes, classId, teacherId, proposed);
+  const capacityWarnings = proposed.filter((s) => {
+    if (!s.roomId) return false;
+    const r = roomById.get(s.roomId);
+    return r ? studentCount > r.capacity : false;
+  });
+  const hasIssues = conflicts.roomClashes.length > 0 || conflicts.teacherClashes.length > 0 || capacityWarnings.length > 0;
+
+  // Suggest a room with no clashes + enough capacity for the current day/time set (uniform mode).
+  const suggestFreeRoom = () => {
+    const base = enabledDays.map((d) => ({
+      dayOfWeek: d.dayOfWeek,
+      startTime: sameTime ? uniStart : dayStates[d.dayOfWeek].startTime,
+      endTime: sameTime ? uniEnd : dayStates[d.dayOfWeek].endTime,
+    }));
+    for (const r of activeRooms) {
+      if (r.capacity < studentCount) continue;
+      const test: ScheduleEntry[] = base.map((s) => ({ ...s, roomId: r.id, roomName: r.name }));
+      if (findScheduleConflicts(classes, classId, teacherId, test).roomClashes.length === 0) {
+        setSameRoom(true);
+        setUniRoom(r.id);
+        toast.success(`Bo'sh xona: ${r.name}`);
+        return;
+      }
+    }
+    toast.error("Mos bo'sh xona topilmadi.");
+  };
 
   const toggleDay = (dayOfWeek: number) => {
     setDayStates((prev) => ({ ...prev, [dayOfWeek]: { ...prev[dayOfWeek], enabled: !prev[dayOfWeek].enabled } }));
@@ -154,6 +247,36 @@ export default function ScheduleTab({ classId, currentSchedule, onUpdate }: Prop
     });
   };
 
+  // Turning off "same room" seeds each enabled day from the shared room first.
+  const toggleSameRoom = () => {
+    const next = !sameRoom;
+    if (!next) {
+      setDayStates((prev) => {
+        const copy = { ...prev };
+        DAYS.forEach((d) => { if (copy[d.dayOfWeek].enabled) copy[d.dayOfWeek] = { ...copy[d.dayOfWeek], roomId: uniRoom || undefined }; });
+        return copy;
+      });
+    }
+    setSameRoom(next);
+  };
+
+  // Native room dropdown with a color dot preview. A plain render fn (not a
+  // component) so it doesn't trip the static-components lint.
+  const renderRoomSelect = (value: string, onChange: (v: string) => void) => {
+    const r = value ? roomById.get(value) : undefined;
+    const th = r ? roomTheme(r.color) : null;
+    return (
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <span className={`w-3 h-3 rounded-full shrink-0 ${th ? th.bar : "bg-slate-200"}`} />
+        <select value={value} onChange={(e) => onChange(e.target.value)}
+          className="flex-1 min-w-0 appearance-none px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-[13px] font-medium text-slate-800 outline-none focus:border-indigo-400 cursor-pointer">
+          <option value="">Xona tanlanmagan</option>
+          {activeRooms.map((rm) => <option key={rm.id} value={rm.id}>{rm.name} · {rm.capacity} o&apos;rin</option>)}
+        </select>
+      </div>
+    );
+  };
+
   // When switching to per-day times, seed each day from the shared time first.
   const toggleSameTime = () => {
     const next = !sameTime;
@@ -171,10 +294,13 @@ export default function ScheduleTab({ classId, currentSchedule, onUpdate }: Prop
 
   const handleCancel = () => {
     const u = detectUniform(currentSchedule);
+    const r = detectUniformRoom(currentSchedule);
     setDayStates(buildInitialState(currentSchedule));
     setSameTime(u.sameTime);
     setUniStart(u.uniStart);
     setUniEnd(u.uniEnd);
+    setSameRoom(r.sameRoom);
+    setUniRoom(r.uniRoom);
     setIsEditing(false);
   };
 
@@ -183,29 +309,20 @@ export default function ScheduleTab({ classId, currentSchedule, onUpdate }: Prop
       toast.error("Kamida bitta kun tanlang.");
       return;
     }
-
-    const newSchedule: ScheduleEntry[] = [];
-    if (sameTime) {
-      if (uniStart >= uniEnd) {
-        toast.error("Boshlanish vaqti tugash vaqtidan oldin bo'lishi kerak.");
+    // Validate times on the proposed schedule (covers uniform + per-day).
+    for (const s of proposed) {
+      if (s.startTime >= s.endTime) {
+        const label = DAYS.find((d) => d.dayOfWeek === s.dayOfWeek)?.label || "";
+        toast.error(`${label}: boshlanish vaqti tugash vaqtidan oldin bo'lishi kerak.`);
         return;
       }
-      enabledDays.forEach((d) => newSchedule.push({ dayOfWeek: d.dayOfWeek, startTime: uniStart, endTime: uniEnd }));
-    } else {
-      for (const d of enabledDays) {
-        const st = dayStates[d.dayOfWeek];
-        if (st.startTime >= st.endTime) {
-          toast.error(`${d.label}: boshlanish vaqti tugash vaqtidan oldin bo'lishi kerak.`);
-          return;
-        }
-        newSchedule.push({ dayOfWeek: d.dayOfWeek, startTime: st.startTime, endTime: st.endTime });
-      }
     }
+    // Conflicts are a soft warning — the manager can override intentionally.
 
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, "classes", classId), { schedule: newSchedule });
-      onUpdate(newSchedule);
+      await updateDoc(doc(db, "classes", classId), { schedule: proposed });
+      onUpdate(proposed);
       setIsEditing(false);
       toast.success("Dars jadvali saqlandi!");
     } catch (err) {
@@ -315,11 +432,18 @@ export default function ScheduleTab({ classId, currentSchedule, onUpdate }: Prop
                       </div>
                       <div className="min-w-0">
                         <span className="block text-sm font-semibold text-slate-900 truncate">{dayObj?.label}</span>
-                        {duration && (
-                          <span className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
-                            <Hourglass size={11} /> {duration}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {duration && (
+                            <span className="flex items-center gap-1 text-xs text-slate-400">
+                              <Hourglass size={11} /> {duration}
+                            </span>
+                          )}
+                          {entry.roomName && (
+                            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-md ${roomTheme(roomById.get(entry.roomId || "")?.color).soft} ${roomTheme(roomById.get(entry.roomId || "")?.color).text}`}>
+                              <DoorOpen size={10} /> {entry.roomName}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded-lg shrink-0">
@@ -349,7 +473,41 @@ export default function ScheduleTab({ classId, currentSchedule, onUpdate }: Prop
 
       {/* ================= EDIT MODE ================= */}
       {isEditing && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="space-y-6">
+
+          {/* Conflict warnings (soft — the manager can still save) */}
+          {hasIssues && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center gap-2 text-amber-800 font-bold text-[13px] mb-2">
+                <AlertTriangle size={15} /> Diqqat: jadval ziddiyatlari
+              </div>
+              <ul className="space-y-1.5 text-[12.5px] text-amber-800">
+                {conflicts.roomClashes.map((c, i) => (
+                  <li key={`r${i}`} className="flex items-start gap-1.5">
+                    <DoorOpen size={13} className="mt-0.5 shrink-0" />
+                    <span><b>{DAYS.find((d) => d.dayOfWeek === c.dayOfWeek)?.label}</b> {c.startTime}–{c.endTime} · «{c.roomName}» band: «{c.otherClassTitle}» ({c.otherStart}–{c.otherEnd})</span>
+                  </li>
+                ))}
+                {conflicts.teacherClashes.map((c, i) => (
+                  <li key={`t${i}`} className="flex items-start gap-1.5">
+                    <User size={13} className="mt-0.5 shrink-0" />
+                    <span>O&apos;qituvchi band: <b>{DAYS.find((d) => d.dayOfWeek === c.dayOfWeek)?.label}</b> {c.startTime}–{c.endTime} · «{c.otherClassTitle}»</span>
+                  </li>
+                ))}
+                {capacityWarnings.map((s, i) => {
+                  const cap = s.roomId ? roomById.get(s.roomId)?.capacity : undefined;
+                  return (
+                    <li key={`c${i}`} className="flex items-start gap-1.5">
+                      <User size={13} className="mt-0.5 shrink-0" />
+                      <span>Sig&apos;im yetarli emas: <b>{DAYS.find((d) => d.dayOfWeek === s.dayOfWeek)?.label}</b> · «{s.roomName}» ({studentCount} o&apos;quvchi &gt; {cap} o&apos;rin)</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
           {/* LEFT — days */}
           <div className="lg:col-span-2 space-y-4">
@@ -498,6 +656,54 @@ export default function ScheduleTab({ classId, currentSchedule, onUpdate }: Prop
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+          </div>
+
+          {/* STEP 3 — room assignment */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[12px] font-bold flex items-center justify-center">3</span>
+                <span className="text-[14px] font-semibold text-slate-800">Xonani biriktiring <span className="text-slate-400 font-normal">(ixtiyoriy)</span></span>
+              </div>
+              {enabledDays.length > 0 && activeRooms.length > 0 && (
+                <button type="button" onClick={toggleSameRoom} role="switch" aria-checked={sameRoom}
+                  className="flex items-center gap-2 text-[12px] font-medium text-slate-500">
+                  Hamma kun bir xona
+                  <span className={`relative w-9 h-5 rounded-full transition-colors ${sameRoom ? "bg-indigo-600" : "bg-slate-300"}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sameRoom ? "translate-x-4" : ""}`} />
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {activeRooms.length === 0 ? (
+              <div className="flex items-center gap-2 px-4 py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-[13px] text-slate-500">
+                <DoorOpen size={16} className="text-slate-400" /> Hali xona qo&apos;shilmagan.
+                <Link href="/manager/rooms" className="font-semibold text-indigo-600 hover:underline">Xona qo&apos;shish →</Link>
+              </div>
+            ) : enabledDays.length === 0 ? (
+              <div className="flex items-center gap-2 px-4 py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-[13px] text-slate-400">
+                <DoorOpen size={16} /> Avval kunlarni tanlang
+              </div>
+            ) : sameRoom ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {renderRoomSelect(uniRoom, setUniRoom)}
+                <button type="button" onClick={suggestFreeRoom}
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-[12.5px] font-semibold transition-colors shrink-0">
+                  <Wand2 size={14} /> Bo&apos;sh xona
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {enabledDays.map((d) => (
+                  <div key={d.dayOfWeek} className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl">
+                    <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold bg-slate-100 text-slate-600 shrink-0">{d.short}</span>
+                    {renderRoomSelect(dayStates[d.dayOfWeek].roomId || "", (v) => setDayRoom(d.dayOfWeek, v))}
+                  </div>
+                ))}
               </div>
             )}
           </div>

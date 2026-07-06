@@ -45,6 +45,7 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
         title: title.trim(),
         description: description.trim(),
         joinCode,
+        centerId,
         teacherId: selectedTeacherId,
         teacherName,
         studentIds: [],

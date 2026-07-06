@@ -38,11 +38,14 @@ and staff attendance.
 | `types/attendance.ts` | **Single source of truth** for all attendance types. Import from here; don't re-declare `AttendanceStatus`/`ScheduleEntry`. |
 | `lib/dateUtils.ts` | Asia/Tashkent date-key helpers. |
 | `services/attendanceService.ts` | Analytics + fetch helpers (`tallyStudent`, `rateOfSessions`, `fetchCenterSessions`, `fetchStaffSessions`, `hoursBetween`, `normalizeRecords`). Put data logic here, not in components. |
+| `services/checkInService.ts` | **Walk-in / front-desk check-in** — the engine-agnostic capture core: `buildCenterRoster` (center-wide student search list), `resolveTodayLessons` (a student's lessons today), `checkInStudent` (**surgical** single-student merge into a day-doc — preserves everyone else). Reused as-is by the future face kiosk (Phase 4). |
+| `app/manager/attendance/_components/WalkInCheckIn.tsx` | Student-centric marking UI (search a student → confirm today's lessons → mark present/late for all in one action). A tab on `app/manager/attendance/page.tsx`, alongside the group grid. |
 | `components/attendance/AttendanceGrid.tsx` | **The** student attendance spreadsheet (marking, statuses, notes, lesson lifecycle, makeup days, autosave, per-student % + timeline drawer). Shared by teacher + manager. |
 | `components/attendance/StaffAttendanceGrid.tsx` | Staff attendance month board (teachers × days, check-in/out, hours, autosave). |
 | `app/teacher/classes/[classId]/_components/AttendanceTab.tsx` | Thin wrapper → `AttendanceGrid` (passes `recordedBy = teacher uid`). |
 | `app/manager/attendance/[classId]/_components/AttendanceTab.tsx` | Thin wrapper → `AttendanceGrid` (passes `recordedBy = managerId`). |
-| `app/manager/attendance/page.tsx` · `[classId]/page.tsx` · `_components/ScheduleTab.tsx` | Manager attendance: group grid → class detail (Davomat + Dars Jadvali tabs). |
+| `app/manager/attendance/page.tsx` · `[classId]/page.tsx` | Manager attendance: group grid + walk-in tab → class detail. The class-detail "Dars jadvali" tab is **read-only** (a link to the group page); schedule **editing** moved to the group. |
+| `app/manager/groups/[classId]/_components/ScheduleTab.tsx` | **Schedule + room editor** (moved here from attendance). Group detail's "Jadval & xona" tab. Writes `classes/{id}.schedule` directly. |
 | `app/manager/staff-attendance/page.tsx` | Staff attendance page (resolves centerId, feeds teachers into `StaffAttendanceGrid`). |
 | `app/manager/dashboard/page.tsx` | Real analytics dashboard (today rate, monthly rate, chronic absentees, per-group bars, today's lessons). |
 | `app/manager/students/page.tsx` | **Consumer** of today's `records` — reads `.status` (tolerant of legacy string). |
@@ -111,7 +114,7 @@ deliberately undecided.
 ### `classes/{id}.schedule` — the lesson calendar source
 `{ dayOfWeek: 0-6, startTime: "HH:MM", endTime: "HH:MM" }[]`. Student lesson dates are **derived** from this
 (not stored per-day) over a ±31-day window, unioned with persisted docs (for makeup days). Edited by
-`ScheduleTab`. Do not confuse with `app/admin/students/[id]/_components/ClassesTab.tsx` which treats
+`ScheduleTab` (now under `app/manager/groups/[classId]/_components/`). Do not confuse with `app/admin/students/[id]/_components/ClassesTab.tsx` which treats
 `schedule` as a legacy string.
 
 ### centerId / role resolution (needed for every attendance surface)
@@ -197,10 +200,11 @@ Run the dev server and exercise the flow (per `CLAUDE.md`):
 | 1 — shared `AttendanceGrid` (new record shape, excused, notes, lesson lifecycle, makeup, autosave, Tashkent keys) | ✅ Done |
 | 2 — analytics (`attendanceService`, % + timeline drawer, real manager dashboard) | ✅ Done |
 | 3 — staff attendance (grid + page + nav + query-safe rules) | ✅ Done |
-| 4 — face recognition kiosk (enrollment, kiosk, secure API, pluggable matcher) | ⏳ Not started — `face_enrollments` shape + rules ready, engine TBD |
+| 3.5 — walk-in / front-desk check-in (student-centric marking, `checkInService`) | ✅ Done — the manual precursor to the face kiosk; already exercises the face-ready `method` field. No new rules/indexes (manager already has `create`/`update` on `center_attendance`). |
+| 4 — face recognition kiosk (enrollment, kiosk, secure API, pluggable matcher) | ⏳ Not started — `face_enrollments` shape + rules ready, engine TBD. Will reuse `checkInStudent({ ..., method: "face", confidence })` verbatim. |
 
 **Deferred by choice:** absence notifications (would use the existing `parents` collection + `sendNotification`
 with type `'attendance'`); monthly summary rollup docs.
 
-**Pre-existing, unrelated:** `app/manager/layout.tsx` has a `react-hooks/static-components` lint error
-(`SidebarContent` defined during render) — predates this work.
+**Resolved:** the old `react-hooks/static-components` lint error in `app/manager/layout.tsx` is gone —
+the sidebar was extracted into a proper top-level `Sidebar` component during the 2026-07 nav redesign.

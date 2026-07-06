@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import type { ScheduleEntry } from "@/types/attendance";
 
 // ─── Interfaces ───────────────────────────────────────────────
 export interface ClassData {
@@ -14,7 +15,7 @@ export interface ClassData {
   studentCount: number;
   isLocked: boolean;
   createdAt: any;
-  schedule?: { dayOfWeek: number; startTime: string; endTime: string }[];
+  schedule?: ScheduleEntry[];
 }
 
 export interface CenterTeacher {

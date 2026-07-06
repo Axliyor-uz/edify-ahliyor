@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Users, Clock, Loader2, CalendarCheck, CalendarX2, ArrowRight, GraduationCap } from "lucide-react";
+import { Users, Clock, Loader2, CalendarCheck, CalendarX2, ArrowRight, GraduationCap, LayoutGrid, UserCheck } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import { useCenterClasses, ClassData } from "@/hooks/useCenterClasses";
+import WalkInCheckIn from "./_components/WalkInCheckIn";
 
 type Schedule = { dayOfWeek: number; startTime: string; endTime: string }[];
 
@@ -36,9 +37,12 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+type Tab = "groups" | "walkin";
+
 export default function AttendancePage() {
   const { user } = useAuth();
   const [centerId, setCenterId] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("groups");
 
   useEffect(() => {
     if (!user) return;
@@ -65,9 +69,11 @@ export default function AttendancePage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Davomat</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Guruh tanlang va davomatni belgilang</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {tab === "groups" ? "Guruh tanlang va davomatni belgilang" : "O'quvchini toping va bugungi darslarga belgilang"}
+          </p>
         </div>
-        {!isLoading && classes.length > 0 && (
+        {!isLoading && classes.length > 0 && tab === "groups" && (
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[12px] font-semibold text-slate-600">
               <CalendarCheck size={14} className="text-slate-400" /> {classes.length} guruh
@@ -84,15 +90,47 @@ export default function AttendancePage() {
         )}
       </div>
 
+      {/* Tab switcher */}
+      <div className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-2xl">
+        {([
+          { id: "groups" as Tab, label: "Guruhlar", Icon: LayoutGrid },
+          { id: "walkin" as Tab, label: "Tez davomat", Icon: UserCheck },
+        ]).map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-bold transition-all ${
+                active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <t.Icon size={15} /> {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Walk-in (front-desk) check-in ── */}
+      {tab === "walkin" && (
+        isLoading || !centerId || !user ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="animate-spin text-slate-400" size={32} />
+          </div>
+        ) : (
+          <WalkInCheckIn centerId={centerId} classes={classes} markedBy={user.uid} />
+        )
+      )}
+
       {/* Loading */}
-      {isLoading && (
+      {tab === "groups" && isLoading && (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="animate-spin text-slate-400" size={32} />
         </div>
       )}
 
       {/* Empty */}
-      {!isLoading && classes.length === 0 && (
+      {tab === "groups" && !isLoading && classes.length === 0 && (
         <div className="bg-white border border-slate-200 rounded-3xl p-16 flex flex-col items-center justify-center text-center">
           <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 mb-4">
             <CalendarX2 size={28} />
@@ -105,7 +143,7 @@ export default function AttendancePage() {
       )}
 
       {/* Class Grid */}
-      {!isLoading && classes.length > 0 && (
+      {tab === "groups" && !isLoading && classes.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {classes.map((cls) => (
             <ClassCard key={cls.id} cls={cls} todayWeekday={todayWeekday} />

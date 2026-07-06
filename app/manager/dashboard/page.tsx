@@ -6,11 +6,12 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import {
   Users, CheckCircle, CalendarDays, Clock, AlertTriangle, TrendingUp,
-  Loader2, ArrowRight, GraduationCap, UserPlus,
+  Loader2, ArrowRight, GraduationCap, UserPlus, DoorOpen,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
+import { useCenterRooms } from "@/hooks/useCenterRooms";
 import { getTodayKey, parseDateKey } from "@/lib/dateUtils";
 import { fetchCenterSessions, rateOfSessions, tallyStudent, type CenterSession } from "@/services/attendanceService";
 
@@ -51,6 +52,17 @@ export default function ManagerDashboard() {
   }, [user]);
 
   const { classes, isLoading: loadingClasses } = useCenterClasses(centerId);
+  const { rooms } = useCenterRooms(centerId);
+
+  // Rooms occupied right now (a lesson today whose time window contains the current Tashkent time).
+  const nowTime = useMemo(() => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Tashkent" }), []);
+  const roomsInUse = useMemo(() => {
+    const inUse = new Set<string>();
+    for (const c of classes)
+      for (const s of c.schedule || [])
+        if (s.dayOfWeek === todayWeekday && s.roomId && s.startTime <= nowTime && nowTime < s.endTime) inUse.add(s.roomId);
+    return inUse;
+  }, [classes, todayWeekday, nowTime]);
 
   const [sessions, setSessions] = useState<CenterSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -158,7 +170,14 @@ export default function ManagerDashboard() {
         {/* Today's lessons */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-[18px] font-black text-slate-900 tracking-tight">Bugungi darslar</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[18px] font-black text-slate-900 tracking-tight">Bugungi darslar</h2>
+              {rooms.length > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {roomsInUse.size}/{rooms.length} xona band
+                </span>
+              )}
+            </div>
             <Link href="/manager/attendance" className="text-[13px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline underline-offset-4 transition-colors">Barchasi</Link>
           </div>
 
@@ -183,7 +202,10 @@ export default function ManagerDashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">{l.title}</p>
-                        <p className="text-[12px] text-slate-500 truncate">{l.teacherName || "O'qituvchi yo'q"}</p>
+                        <p className="text-[12px] text-slate-500 truncate flex items-center gap-1.5">
+                          {l.teacherName || "O'qituvchi yo'q"}
+                          {l.slot?.roomName && <span className="inline-flex items-center gap-0.5 text-indigo-600 font-semibold"><DoorOpen size={11} /> {l.slot.roomName}</span>}
+                        </p>
                       </div>
                       <div className="shrink-0 text-right">
                         {l.rate !== null && <p className={`text-[14px] font-black tabular-nums ${rateColor(l.rate)}`}>{l.rate}%</p>}

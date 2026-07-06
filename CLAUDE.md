@@ -24,6 +24,10 @@ Next.js 16 (App Router) · React 19 with the **React Compiler enabled** (`reactC
 > **Attendance work:** read [docs/ATTENDANCE.md](docs/ATTENDANCE.md) first — it's the source of truth
 > for the student + staff attendance system (data model, security rules, deploy, and the non-obvious
 > traps). It supersedes the one-line `center_attendance` note in the data model below.
+>
+> **Room / timetable work:** read [docs/ROOMS.md](docs/ROOMS.md) first — the `rooms` collection,
+> per-slot room assignment on `classes.schedule`, the conflict engine (`services/roomService.ts`), and
+> the weekly timetable. Center-only; standalone teachers are unaffected.
 
 ### Multi-role platform
 The app serves four roles, each with its own top-level route tree and role-guarded layout:
