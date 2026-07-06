@@ -199,6 +199,8 @@ export default function ManagerSignupFlow({ onBack, t }: any) {
         slug: formData.centerSlug,
         ownerUid: user.uid,
         size: formData.studentCount,
+        // New centers wait for super-admin approval; rules enforce 'pending' here.
+        status: "pending",
         subscription: {
           plan: "free_trial",
           validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()

@@ -58,7 +58,17 @@ export default function AttendanceClassPage() {
         const snap = await getDoc(doc(db, "classes", classId));
         if (!snap.exists()) { setMissing(true); return; } // → not-found boundary
 
-        setClassData({ id: snap.id, ...snap.data() } as AttendanceClassDocument);
+        const data = { id: snap.id, ...snap.data() } as AttendanceClassDocument;
+
+        // The class must belong to this center: its teacher has to be a member
+        // (same check as the group detail page — URLs must not leak other centers' classes).
+        const membershipSnap = await getDoc(doc(db, "center_teachers", data.teacherId));
+        if (!membershipSnap.exists() || membershipSnap.data().centerId !== profile.centerId) {
+          setMissing(true);
+          return;
+        }
+
+        setClassData(data);
       } catch (err) {
         toast.error((err as Error)?.message || "Xatolik yuz berdi.");
         router.push("/manager/attendance");

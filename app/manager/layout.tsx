@@ -13,6 +13,7 @@ import { auth, db } from "@/lib/firebase";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
+import ApprovalGate, { type CenterApprovalStatus } from "./_components/ApprovalGate";
 
 // Flat menu — no section headers (they read as noise). Related items are
 // grouped visually with hairline dividers instead.
@@ -132,6 +133,9 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
 
   const [userName, setUserName] = useState("");
   const [centerName, setCenterName] = useState("Markaz");
+  // Approval gate: writes are blocked by Firestore rules until the center is
+  // 'active'; this drives the matching UX. Unknown/missing status → 'pending'.
+  const [centerStatus, setCenterStatus] = useState<CenterApprovalStatus>("pending");
 
   // Logout confirmation dialog
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -144,21 +148,32 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
         else {
           try {
             const profile = await getUserProfile(user.uid);
-            if (profile?.role === 'student' || !profile?.role) router.push('/dashboard');
-            else if (profile?.role === 'teacher') router.push('/teacher/dashboard');
-            else {
-              setIsAuthorized(true);
+            if (profile?.role === 'manager') {
               setUserName(profile.displayName || "");
-              // Real center name for the brand area (best-effort).
+              // Resolve center name + approval status BEFORE rendering children,
+              // so gated pages never flash as usable. Any failure → 'pending'.
               if (profile.centerId) {
-                getDoc(doc(db, "centers", profile.centerId))
-                  .then((snap) => { if (snap.exists()) setCenterName(snap.data().name || "Markaz"); })
-                  .catch(() => {});
+                try {
+                  const snap = await getDoc(doc(db, "centers", profile.centerId));
+                  if (snap.exists()) {
+                    const data = snap.data();
+                    setCenterName(data.name || "Markaz");
+                    setCenterStatus(
+                      data.status === 'active' ? 'active'
+                      : data.status === 'suspended' ? 'suspended'
+                      : 'pending'
+                    );
+                  }
+                } catch { /* stays 'pending' */ }
               }
+              setIsAuthorized(true);
             }
+            else if (profile?.role === 'teacher') router.push('/teacher/dashboard');
+            else router.push('/dashboard');
           } catch (error) {
+            // Fail closed: an unreadable profile must not grant access.
             console.error(error);
-            setIsAuthorized(true);
+            router.push('/auth/login');
           }
         }
       }
@@ -315,7 +330,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
               : "flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8"
           }
         >
-          {children}
+          <ApprovalGate status={centerStatus}>{children}</ApprovalGate>
         </div>
       </main>
 

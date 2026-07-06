@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
+import { getTodayKey, parseDateKey } from "@/lib/dateUtils";
 import { Users, Search, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight, X } from "lucide-react";
 
 type TodayStatus = "present" | "late" | "absent" | "unmarked" | "nolesson";
@@ -27,13 +28,6 @@ const WEEKDAY_FULL = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Paysha
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 const isWeekend = (d: number) => d === 0 || d === 6;
-
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -72,8 +66,9 @@ export default function ManagerStudentsPage() {
   const [todaySessions, setTodaySessions] = useState<Record<string, Record<string, AttendanceStatus>>>({});
   const [loadingExtra, setLoadingExtra] = useState(true);
 
-  const today = useMemo(() => formatDate(new Date()), []);
-  const todayWeekday = useMemo(() => new Date().getDay(), []);
+  // Center time (Asia/Tashkent), not device-local — see ATTENDANCE.md rule #3.
+  const today = useMemo(() => getTodayKey(), []);
+  const todayWeekday = useMemo(() => parseDateKey(getTodayKey()).getDay(), []);
 
   // Fetch student profiles + today's attendance sessions once classes are known.
   useEffect(() => {

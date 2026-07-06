@@ -36,7 +36,25 @@ The app serves four roles, each with its own top-level route tree and role-guard
 - **`app/(public)/`** — landing, login, signup (route group).
 - **`app/teacher/`** — test creation, library, classes, analytics, IELTS, subscription.
 - **`app/manager/`** — learning-center management (groups, teachers, attendance).
-- **`app/admin/`** — super-admin (teachers, memberships).
+- **`app/admin/`** — super-admin (teachers, memberships, learning centers).
+
+> **Admin center management:** `app/admin/centers/` (directory, detail tabs, creation) is built on
+> [services/centerAdminService.ts](services/centerAdminService.ts) (client reads via god-mode rules) and
+> `app/api/admin/centers/*` API routes (Admin SDK) for privileged ops: create center+manager, password
+> reset link, transfer ownership, cascade delete. Every `/api/admin/*` route must call `requireSuperAdmin()`
+> from [lib/server/verifySuperAdmin.ts](lib/server/verifySuperAdmin.ts); the client calls them through
+> [lib/adminApi.ts](lib/adminApi.ts) (attaches the ID token). Plan/decisions: [docs/ADMIN_CENTERS_PLAN.md](docs/ADMIN_CENTERS_PLAN.md).
+> `centers.adminStatus` ('active'|'archived') and `centers.adminNotes` are admin-only bookkeeping fields.
+>
+> **Center approval gate:** `centers.status` ∈ 'pending'|'active'|'suspended' (missing = pending).
+> Public manager signup writes 'pending'; rules REQUIRE 'pending' on create and only let owners edit
+> name/slug/size. All manager WRITE privileges in [firestore.rules](firestore.rules) go through
+> `isActiveCenterManager()` (status must be 'active'); reads use plain `isCenterManager()` so a pending
+> manager still sees their (empty) panel. The manager layout wraps pages in
+> [app/manager/_components/ApprovalGate.tsx](app/manager/_components/ApprovalGate.tsx) — a notice card +
+> click-blocking overlay with the admin's contact info. Admin approves/suspends via `/admin/centers`
+> (quick Approve on pending rows) or the detail Overview tab. Teacher attendance writes are NOT gated
+> (deliberate: lessons continue during disputes). Rules changes need `firebase deploy --only firestore:rules`.
 
 **Two different authorization mechanisms — do not confuse them:**
 - **Admin** access is gated by a Firebase **custom claim** `super_admin`, checked via `user.getIdTokenResult()` in [app/admin/layout.tsx](app/admin/layout.tsx).

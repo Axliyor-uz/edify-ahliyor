@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase"; 
 import Link from "next/link";
-import { ShieldCheck, LogOut, LayoutDashboard, Users, CreditCard, Loader2 } from "lucide-react";
+import { ShieldCheck, LogOut, LayoutDashboard, Users, CreditCard, Loader2, Building2 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isChecking, setIsChecking] = useState(true);
@@ -52,6 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navLinks = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/centers', label: 'Centers', icon: Building2 },
     { href: '/admin/teachers', label: 'Teachers', icon: Users },
     { href: '/admin/membership', label: 'Memberships', icon: CreditCard },
   ];

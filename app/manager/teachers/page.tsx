@@ -192,21 +192,17 @@ export default function TeachersPage() {
         throw new Error("Bu foydalanuvchi o'qituvchi emas.");
       }
       
-      // 3. Duplicate Check
-      const ctRef = collection(db, "center_teachers");
-      const duplicateQuery = query(
-        ctRef,
-        where("centerId", "==", centerId),
-        where("teacherId", "==", foundUserUid)
-      );
-      const duplicateSnapshot = await getDocs(duplicateQuery);
-      
-      if (!duplicateSnapshot.empty) {
-        throw new Error("Bu o'qituvchi markazga allaqachon qo'shilgan.");
+      // 3. Membership check (doc ID = teacher uid, so one center per teacher).
+      // Never silently overwrite another center's membership.
+      const ctDocRef = doc(db, "center_teachers", foundUserUid);
+      const existingMembership = await getDoc(ctDocRef);
+
+      if (existingMembership.exists()) {
+        if (existingMembership.data().centerId === centerId) {
+          throw new Error("Bu o'qituvchi markazga allaqachon qo'shilgan.");
+        }
+        throw new Error("Bu o'qituvchi boshqa markazga biriktirilgan. Avval u markazdan chiqarilishi kerak.");
       }
-      
-      const ctDocId = foundUserUid;
-      const ctDocRef = doc(db, "center_teachers", ctDocId);
       
       // 4. The Write
       await setDoc(ctDocRef, {

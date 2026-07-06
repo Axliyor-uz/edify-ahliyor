@@ -2,9 +2,9 @@
 
 import { auth } from "@/lib/firebase";
 import Link from "next/link";
-import { 
-  Users, GraduationCap, School, BookOpen, 
-  BarChart, ShieldCheck, ChevronRight, CreditCard 
+import {
+  Users, GraduationCap, School, BookOpen,
+  BarChart, ShieldCheck, ChevronRight, CreditCard, Building2
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -20,6 +20,15 @@ export default function AdminDashboardPage() {
       bgColor: "bg-amber-50",
       iconBg: "bg-white",
       borderColor: "border-amber-200"
+    },
+    {
+      title: "Learning Centers",
+      description: "Manage centers, their managers, teachers, and groups.",
+      icon: <Building2 size={28} className="text-blue-600" />,
+      href: "/admin/centers",
+      bgColor: "bg-blue-50",
+      iconBg: "bg-white",
+      borderColor: "border-blue-200"
     },
     {
       title: "Teachers",

@@ -16,17 +16,30 @@ service cloud.firestore {
              studentId in get(/databases/$(database)/documents/parents/$(request.auth.uid)).data.children;
     }
 
-    // Check if the requester is the Manager (Owner) of a specific center
+    // Check if the requester is the Manager (Owner) of a specific center.
+    // Grants READ-level access only — write rules must use isActiveCenterManager.
     function isCenterManager(centerId) {
       return isAuth() &&
              get(/databases/$(database)/documents/centers/$(centerId)).data.ownerUid == request.auth.uid;
     }
 
+    // 🟢 APPROVAL GATE: manager of a center that a super admin has APPROVED
+    // (centers.status == 'active'). ALL manager WRITE privileges flow through
+    // this, so a pending/suspended center can see its data but change nothing.
+    // A missing status field (legacy docs) counts as NOT approved.
+    function isActiveCenterManager(centerId) {
+      let center = get(/databases/$(database)/documents/centers/$(centerId)).data;
+      return isAuth() &&
+             center.ownerUid == request.auth.uid &&
+             center.get('status', '') == 'active';
+    }
+
     // 🟢 OPTION 2 HELPER: Check if a teacher belongs to the requester's center
-    // Requires center_teachers document ID to be exactly the teacherUid
+    // Requires center_teachers document ID to be exactly the teacherUid.
+    // Only used on WRITE paths (classes update/delete) → requires approved center.
     function isTeacherInMyCenter(teacherUid) {
       let centerTeacherPath = /databases/$(database)/documents/center_teachers/$(teacherUid);
-      return exists(centerTeacherPath) && isCenterManager(get(centerTeacherPath).data.centerId);
+      return exists(centerTeacherPath) && isActiveCenterManager(get(centerTeacherPath).data.centerId);
     }
 
     // 🟢 ATTENDANCE HELPER: is the REQUESTER a teacher who belongs to `centerId`?
@@ -382,13 +395,22 @@ service cloud.firestore {
     // ============================================================================
     match /centers/{centerId} {
       allow read: if isAuth();
-      allow create: if isAuth() && request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if isAuth() && resource.data.ownerUid == request.auth.uid;
+      // Self-signup must start as 'pending' — only a super admin (god mode
+      // above) or the Admin SDK can create/flip a center to 'active'.
+      allow create: if isAuth() &&
+                    request.resource.data.ownerUid == request.auth.uid &&
+                    request.resource.data.get('status', '') == 'pending';
+      // The owner may edit display fields only — never status/subscription/ownerUid.
+      allow update: if isAuth() &&
+                    resource.data.ownerUid == request.auth.uid &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'slug', 'size']);
+      allow delete: if isAuth() && resource.data.ownerUid == request.auth.uid;
     }
 
     match /crm_leads/{leadId} {
-      allow create: if isAuth() && isCenterManager(request.resource.data.centerId);
-      allow read, update, delete: if isAuth() && isCenterManager(resource.data.centerId);
+      allow create: if isAuth() && isActiveCenterManager(request.resource.data.centerId);
+      allow read: if isAuth() && isCenterManager(resource.data.centerId);
+      allow update, delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
     // 🟢 NEW — Rooms (center-only). Managed by the center manager; readable by
@@ -400,8 +422,8 @@ service cloud.firestore {
         isTeacherOfCenter(resource.data.centerId)
       );
       allow list: if isAuth();
-      allow create, update: if isAuth() && isCenterManager(request.resource.data.centerId);
-      allow delete: if isAuth() && isCenterManager(resource.data.centerId);
+      allow create, update: if isAuth() && isActiveCenterManager(request.resource.data.centerId);
+      allow delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
     match /center_finances/{financeId} {
@@ -409,8 +431,8 @@ service cloud.firestore {
         isCenterManager(resource.data.centerId) ||
         resource.data.studentId == request.auth.uid
       );
-      allow create: if isAuth() && isCenterManager(request.resource.data.centerId);
-      allow update, delete: if isAuth() && isCenterManager(resource.data.centerId);
+      allow create: if isAuth() && isActiveCenterManager(request.resource.data.centerId);
+      allow update, delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
     match /center_attendance/{attendanceId} {
@@ -431,16 +453,16 @@ service cloud.firestore {
       allow list: if isAuth();
 
       allow create: if isAuth() && (
-        isCenterManager(request.resource.data.centerId) ||
+        isActiveCenterManager(request.resource.data.centerId) ||
         get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.teacherId == request.auth.uid
       );
 
       allow update: if isAuth() && (
-        isCenterManager(resource.data.centerId) ||
+        isActiveCenterManager(resource.data.centerId) ||
         get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid
       );
 
-      allow delete: if isAuth() && isCenterManager(resource.data.centerId);
+      allow delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
     // 🟢 NEW — Attendance monthly rollups (denormalized analytics).
@@ -449,10 +471,10 @@ service cloud.firestore {
     match /center_attendance_summary/{summaryId} {
       allow read: if isAuth();
       allow create, update: if isAuth() && (
-        isCenterManager(request.resource.data.centerId) ||
+        isActiveCenterManager(request.resource.data.centerId) ||
         get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.teacherId == request.auth.uid
       );
-      allow delete: if isAuth() && isCenterManager(resource.data.centerId);
+      allow delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
     // 🟢 NEW — Teacher / staff attendance. Doc id: `${staffUid}_${date}`.
@@ -468,8 +490,8 @@ service cloud.firestore {
       // access limit, so authorize the query to any signed-in user (same pattern
       // as center_attendance). Writes stay manager-only.
       allow list: if isAuth();
-      allow create, update: if isAuth() && isCenterManager(request.resource.data.centerId);
-      allow delete: if isAuth() && isCenterManager(resource.data.centerId);
+      allow create, update: if isAuth() && isActiveCenterManager(request.resource.data.centerId);
+      allow delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
     // 🟢 NEW — Face enrollments (Phase 4). Doc id = enrolled user uid.
@@ -481,11 +503,11 @@ service cloud.firestore {
         (resource != null && (isCenterManager(resource.data.centerId) || isTeacherOfCenter(resource.data.centerId)))
       );
       allow create: if isAuth() && (
-        isCenterManager(request.resource.data.centerId) ||
+        isActiveCenterManager(request.resource.data.centerId) ||
         isTeacherOfCenter(request.resource.data.centerId)
       );
       allow update, delete: if isAuth() && (
-        isCenterManager(resource.data.centerId) ||
+        isActiveCenterManager(resource.data.centerId) ||
         isTeacherOfCenter(resource.data.centerId)
       );
     }
@@ -497,12 +519,13 @@ service cloud.firestore {
         teacherId == request.auth.uid
       );
 
-      // Document ID aniq o'qituvchining UID (teacherId) si bo'lishini talab qilamiz
+      // Document ID aniq o'qituvchining UID (teacherId) si bo'lishini talab qilamiz.
+      // ⚠️ Faqat ADMIN TASDIQLAGAN markaz o'qituvchi qo'sha oladi (approval gate).
       allow create: if isAuth() &&
-                    isCenterManager(request.resource.data.centerId) &&
+                    isActiveCenterManager(request.resource.data.centerId) &&
                     teacherId == request.resource.data.teacherId;
 
-      allow update, delete: if isAuth() && isCenterManager(resource.data.centerId);
+      allow update, delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
   }
