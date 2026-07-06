@@ -463,8 +463,14 @@ export default function TeachersPage() {
 
       {/* Teacher Info Slide-Over */}
       {viewingTeacher && viewingTeacher.id && (
-        <ManagerTeacherInfoPanel 
-          teacherUid={viewingTeacher.teacherId} 
+        <ManagerTeacherInfoPanel
+          teacherUid={viewingTeacher.teacherId}
+          onPhotoChange={(url) =>
+            setProfiles((prev) => ({
+              ...prev,
+              [viewingTeacher.teacherId]: { ...prev[viewingTeacher.teacherId], photoURL: url || undefined },
+            }))
+          }
           onClose={() => setViewingTeacher(null)}
         />
       )}

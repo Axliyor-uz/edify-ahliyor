@@ -24,9 +24,10 @@ export interface UserProfile {
   email: string;
   username: string; 
   displayName: string;
-  phone?: string;   
-  birthDate?: string; 
-  location?: UserLocation; 
+  phone?: string;
+  birthDate?: string;
+  photoURL?: string | null;
+  location?: UserLocation;
   education?: UserEducation; 
   
   // Gamification (Student Only)

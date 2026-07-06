@@ -8,7 +8,7 @@ import {
   BookOpen, CalendarCheck, UserCheck, DoorOpen, CalendarRange, Loader2, Building2,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/AuthContext";
@@ -44,12 +44,13 @@ function getInitials(name: string): string {
 
 // Proper top-level component (was previously created during render — lint error).
 function Sidebar({
-  pathname, centerName, userName, userEmail, onNavigate, onLogout,
+  pathname, centerName, userName, userEmail, userPhoto, onNavigate, onLogout,
 }: {
   pathname: string | null;
   centerName: string;
   userName: string;
   userEmail: string;
+  userPhoto: string | null;
   onNavigate: () => void;
   onLogout: () => void;
 }) {
@@ -104,13 +105,20 @@ function Sidebar({
       {/* User card + logout */}
       <div className="p-3 border-t border-slate-100 shrink-0">
         <div className="flex items-center gap-2.5 px-2 py-2 rounded-2xl hover:bg-slate-50 transition-colors">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-amber-800 font-bold text-[13px] shrink-0">
-            {getInitials(userName)}
-          </div>
-          <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-[13px] font-bold text-slate-900 truncate">{userName || "Menejer"}</span>
-            <span className="text-[11px] text-slate-400 truncate">{userEmail}</span>
-          </div>
+          <Link href="/manager/profile" onClick={onNavigate} title="Profilim" className="flex items-center gap-2.5 min-w-0 flex-1">
+            {userPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={userPhoto} alt={userName || "Menejer"} className="w-10 h-10 rounded-full object-cover shrink-0 border border-amber-100" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-amber-800 font-bold text-[13px] shrink-0">
+                {getInitials(userName)}
+              </div>
+            )}
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-[13px] font-bold text-slate-900 truncate">{userName || "Menejer"}</span>
+              <span className="text-[11px] text-slate-400 truncate">{userEmail}</span>
+            </div>
+          </Link>
           <button
             onClick={onLogout}
             title="Tizimdan chiqish"
@@ -132,6 +140,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   const [userName, setUserName] = useState("");
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [centerName, setCenterName] = useState("Markaz");
   // Approval gate: writes are blocked by Firestore rules until the center is
   // 'active'; this drives the matching UX. Unknown/missing status → 'pending'.
@@ -150,6 +159,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
             const profile = await getUserProfile(user.uid);
             if (profile?.role === 'manager') {
               setUserName(profile.displayName || "");
+              setUserPhoto(profile.photoURL || null);
               // Resolve center name + approval status BEFORE rendering children,
               // so gated pages never flash as usable. Any failure → 'pending'.
               if (profile.centerId) {
@@ -180,6 +190,19 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
     }
     checkRole();
   }, [user, loading, router]);
+
+  // Keep the sidebar avatar/name in sync — e.g. right after the manager
+  // uploads a photo on /manager/profile — without needing a full reload.
+  useEffect(() => {
+    if (!isAuthorized || !user) return;
+    const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      setUserName(data.displayName || "");
+      setUserPhoto(data.photoURL || null);
+    }, () => { /* keep last known values on error */ });
+    return () => unsub();
+  }, [isAuthorized, user]);
 
   // Lock body scroll while the mobile drawer is open.
   useEffect(() => {
@@ -231,6 +254,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
           centerName={centerName}
           userName={userName}
           userEmail={user?.email || ""}
+          userPhoto={userPhoto}
           onNavigate={() => {}}
           onLogout={requestLogout}
         />
@@ -256,10 +280,17 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
             </div>
           </div>
         </div>
-        {/* Identity chip on the right */}
-        <div className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-amber-800 font-bold text-[12px]">
-          {getInitials(userName)}
-        </div>
+        {/* Identity chip on the right → manager profile */}
+        <Link href="/manager/profile" title="Profilim" className="shrink-0 active:scale-95 transition-transform">
+          {userPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={userPhoto} alt={userName || "Menejer"} className="w-9 h-9 rounded-full object-cover border border-amber-100" />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-amber-800 font-bold text-[12px]">
+              {getInitials(userName)}
+            </div>
+          )}
+        </Link>
       </div>
 
       {/* Mobile Drawer */}
@@ -279,6 +310,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
               centerName={centerName}
               userName={userName}
               userEmail={user?.email || ""}
+              userPhoto={userPhoto}
               onNavigate={() => setIsMobileMenuOpen(false)}
               onLogout={requestLogout}
             />

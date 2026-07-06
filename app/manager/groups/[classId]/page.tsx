@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
-import { Users, Activity, Settings, Hash, ArrowLeft, Loader2, DoorOpen, CalendarDays } from "lucide-react";
+import { Users, Activity, Settings, ArrowLeft, DoorOpen, CalendarDays, Copy } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import type { ScheduleEntry } from "@/types/attendance";
@@ -33,21 +33,31 @@ export interface ClassDocument {
   schedule?: ScheduleEntry[];
 }
 
+type TabKey = "roster" | "schedule" | "oversight" | "settings";
+
+const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
+  { key: "roster", label: "O'quvchilar", icon: Users },
+  { key: "schedule", label: "Jadval", icon: CalendarDays },
+  { key: "oversight", label: "Nazorat", icon: Activity },
+  { key: "settings", label: "Sozlamalar", icon: Settings },
+];
+
 export default function GroupDetailPage() {
   const params = useParams();
   const router = useRouter();
   const classId = params.classId as string;
   const { user } = useAuth() as any;
-  
+
   const [managerCenterId, setManagerCenterId] = useState<string | null>(null);
   const [classData, setClassData] = useState<ClassDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false); // bad classId → branded 404
-  const [activeTab, setActiveTab] = useState<"roster" | "schedule" | "oversight" | "settings">("roster");
+  const [activeTab, setActiveTab] = useState<TabKey>("roster");
 
-  const loadData = async () => {
+  // silent: refresh data without tearing the page down (keeps modals/tabs mounted)
+  const loadData = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      if (!opts?.silent) setLoading(true);
       const profile = await getUserProfile(user.uid);
       if (!profile?.centerId) throw new Error("Manager centerId topilmadi.");
       setManagerCenterId(profile.centerId);
@@ -55,9 +65,9 @@ export default function GroupDetailPage() {
       const classRef = doc(db, "classes", classId);
       const classSnap = await getDoc(classRef);
       if (!classSnap.exists()) { setMissing(true); return; } // → not-found boundary
-      
+
       const data = { id: classSnap.id, ...classSnap.data() } as ClassDocument;
-      
+
       const ctQuery = query(
         collection(db, "center_teachers"),
         where("centerId", "==", profile.centerId),
@@ -72,7 +82,7 @@ export default function GroupDetailPage() {
       toast.error(err.message || "Xatolik yuz berdi");
       router.push("/manager/groups");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   };
 
@@ -81,10 +91,23 @@ export default function GroupDetailPage() {
     loadData();
   }, [user, classId, router]);
 
+  const handleCopyCode = () => {
+    if (!classData) return;
+    navigator.clipboard.writeText(classData.joinCode);
+    toast.success("Kod nusxalandi!");
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+      <div className="space-y-5 animate-pulse">
+        <div className="h-4 w-40 bg-slate-200 rounded" />
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-3">
+          <div className="h-6 w-1/2 bg-slate-200 rounded" />
+          <div className="h-4 w-1/3 bg-slate-100 rounded" />
+          <div className="h-4 w-2/3 bg-slate-100 rounded" />
+        </div>
+        <div className="h-14 bg-slate-100 rounded-2xl" />
+        <div className="h-64 bg-white border border-slate-200 rounded-2xl" />
       </div>
     );
   }
@@ -93,108 +116,91 @@ export default function GroupDetailPage() {
   if (!classData) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Back Button & Header */}
       <div>
-        <Link 
+        <Link
           href="/manager/groups"
           className="inline-flex items-center gap-2 text-[13px] font-bold text-slate-500 hover:text-amber-600 mb-4 transition-colors"
         >
           <ArrowLeft size={16} /> Guruhlar ro'yxatiga qaytish
         </Link>
-        <div className="bg-white rounded-[1.5rem] p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-2xl md:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
-              {classData.title}
-            </h1>
-            <p className="text-[14px] font-medium text-slate-500 mt-1">
-              O'qituvchi: <span className="font-bold text-slate-700">{classData.teacherName}</span>
-            </p>
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
+                {classData.title}
+              </h1>
+              <p className="text-sm text-slate-500 mt-1">
+                O'qituvchi: <span className="font-semibold text-slate-700">{classData.teacherName}</span>
+              </p>
+            </div>
+            <button
+              onClick={handleCopyCode}
+              title="Kirish kodini nusxalash"
+              className="self-start flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors shrink-0"
+            >
+              <span className="text-[11px] font-semibold text-slate-400">Kod:</span>
+              <span className="text-[13px] font-mono font-bold text-slate-800 tracking-widest">{classData.joinCode}</span>
+              <Copy size={13} className="text-slate-400 ml-0.5" />
+            </button>
+          </div>
 
-            {/* Schedule + room summary */}
-            {classData.schedule && classData.schedule.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                {[...classData.schedule]
-                  .sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek) - WEEK_ORDER.indexOf(b.dayOfWeek))
-                  .map((s, i) => (
-                    <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[12px]">
-                      <span className="font-bold text-slate-700">{DAY_SHORT[s.dayOfWeek]}</span>
-                      <span className="text-slate-400 tabular-nums">{s.startTime}</span>
-                      {s.roomName && (
-                        <span className="inline-flex items-center gap-1 text-indigo-600 font-semibold border-l border-slate-200 pl-1.5">
-                          <DoorOpen size={11} /> {s.roomName}
-                        </span>
-                      )}
-                    </span>
-                  ))}
-              </div>
-            ) : (
-              <p className="text-[12.5px] text-slate-400 mt-3 flex items-center gap-1.5"><CalendarDays size={13} /> Jadval belgilanmagan</p>
-            )}
-          </div>
-          <div className="flex flex-col items-end gap-3 shrink-0">
-             <div className="flex flex-col items-end">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Kirish kodi</span>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg mt-1">
-                  <Hash size={14} className="text-slate-400" />
-                  <span className="text-[14px] font-mono font-black text-slate-800 tracking-widest">{classData.joinCode}</span>
-                </div>
-             </div>
-             <button onClick={() => setActiveTab("schedule")}
-               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-[12.5px] font-bold transition-colors">
-               <CalendarDays size={14} /> Jadval & xona
-             </button>
-          </div>
+          {/* Schedule + room summary */}
+          {classData.schedule && classData.schedule.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5 mt-3">
+              {[...classData.schedule]
+                .sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek) - WEEK_ORDER.indexOf(b.dayOfWeek))
+                .map((s, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <span className="font-bold text-slate-700">{DAY_SHORT[s.dayOfWeek]}</span>
+                    <span className="text-slate-400 tabular-nums">{s.startTime}</span>
+                    {s.roomName && (
+                      <span className="inline-flex items-center gap-1 text-amber-700 font-semibold border-l border-slate-200 pl-1.5">
+                        <DoorOpen size={11} /> {s.roomName}
+                      </span>
+                    )}
+                  </span>
+                ))}
+            </div>
+          ) : (
+            <p className="text-[12.5px] text-slate-400 mt-3 flex items-center gap-1.5"><CalendarDays size={13} /> Jadval belgilanmagan</p>
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2">
-        <button
-          onClick={() => setActiveTab("roster")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] transition-all shrink-0 ${
-            activeTab === "roster"
-              ? "bg-slate-900 text-white shadow-md"
-              : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-          }`}
-        >
-          <Users size={16} /> O'quvchilar
-        </button>
-        <button
-          onClick={() => setActiveTab("schedule")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] transition-all shrink-0 ${
-            activeTab === "schedule"
-              ? "bg-slate-900 text-white shadow-md"
-              : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-          }`}
-        >
-          <CalendarDays size={16} /> Jadval & xona
-        </button>
-        <button
-          onClick={() => setActiveTab("oversight")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] transition-all shrink-0 ${
-            activeTab === "oversight"
-              ? "bg-slate-900 text-white shadow-md"
-              : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-          }`}
-        >
-          <Activity size={16} /> O'zlashtirish
-        </button>
-        <button
-          onClick={() => setActiveTab("settings")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] transition-all shrink-0 ${
-            activeTab === "settings"
-              ? "bg-slate-900 text-white shadow-md"
-              : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-          }`}
-        >
-          <Settings size={16} /> Sozlamalar
-        </button>
+      {/* Segmented tabs — all 4 always visible, no horizontal scroll */}
+      <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-2xl">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 px-1 rounded-xl text-[11px] sm:text-[13px] font-bold transition-all ${
+                isActive
+                  ? "bg-white text-amber-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Icon size={16} className="shrink-0" />
+              <span className="truncate max-w-full">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm min-h-[400px] overflow-hidden">
-        {activeTab === "roster" && <ManagerRosterTab classId={classData.id} studentIds={classData.studentIds} onRefresh={loadData} />}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm min-h-[400px] overflow-hidden">
+        {activeTab === "roster" && managerCenterId && (
+          <ManagerRosterTab
+            classId={classData.id}
+            centerId={managerCenterId}
+            studentIds={classData.studentIds}
+            onRefresh={() => loadData({ silent: true })}
+          />
+        )}
         {activeTab === "schedule" && managerCenterId && (
           <ScheduleTab
             classId={classData.id}
@@ -207,8 +213,8 @@ export default function GroupDetailPage() {
         )}
         {activeTab === "oversight" && <ManagerOversightTab classId={classData.id} />}
         {activeTab === "settings" && managerCenterId && (
-          <ManagerSettingsTab 
-            classData={classData} 
+          <ManagerSettingsTab
+            classData={classData}
             centerId={managerCenterId}
             onUpdate={(updatedFields) => setClassData(prev => prev ? { ...prev, ...updatedFields } : null)}
           />

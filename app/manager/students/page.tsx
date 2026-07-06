@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { collection, query, where, getDocs, getDoc, doc, documentId } from "firebase/firestore";
+import { collection, query, where, getDocs, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
+import { fetchCenterSessions } from "@/services/attendanceService";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import { getTodayKey, parseDateKey } from "@/lib/dateUtils";
 import { Users, Search, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight, X } from "lucide-react";
+import ManagerStudentInfoPanel from "./_components/ManagerStudentInfoPanel";
 
 type TodayStatus = "present" | "late" | "absent" | "unmarked" | "nolesson";
 type AttendanceStatus = "present" | "late" | "absent";
@@ -17,6 +19,7 @@ interface StudentRow {
   id: string;
   displayName: string;
   username?: string;
+  photoURL?: string;
   groups: { id: string; title: string }[];
   scheduleDays: number[];       // union of weekdays across their groups
   uniformTime: string | null;   // "14:00–15:30" if all lessons share it, else null
@@ -61,7 +64,7 @@ export default function ManagerStudentsPage() {
 
   const { classes, isLoading: loadingClasses } = useCenterClasses(centerId);
 
-  const [profiles, setProfiles] = useState<Record<string, { displayName: string; username?: string }>>({});
+  const [profiles, setProfiles] = useState<Record<string, { displayName: string; username?: string; photoURL?: string }>>({});
   // todaySessions[classId][studentId] = status
   const [todaySessions, setTodaySessions] = useState<Record<string, Record<string, AttendanceStatus>>>({});
   const [loadingExtra, setLoadingExtra] = useState(true);
@@ -73,7 +76,7 @@ export default function ManagerStudentsPage() {
   // Fetch student profiles + today's attendance sessions once classes are known.
   useEffect(() => {
     if (loadingClasses) return;
-    if (classes.length === 0) {
+    if (classes.length === 0 || !centerId) {
       setProfiles({});
       setTodaySessions({});
       setLoadingExtra(false);
@@ -82,51 +85,52 @@ export default function ManagerStudentsPage() {
     let mounted = true;
     (async () => {
       setLoadingExtra(true);
+
+      // Profiles — chunked `in` queries (max 10 ids each). Kept in their own
+      // try/catch so an attendance failure can never blank the student list.
+      const profileMap: Record<string, { displayName: string; username?: string; photoURL?: string }> = {};
       try {
         const ids = [...new Set(classes.flatMap((c) => c.studentIds || []))];
-
-        // Profiles — chunked `in` queries (max 10 ids each).
-        const profileMap: Record<string, { displayName: string; username?: string }> = {};
         await Promise.all(
           chunk(ids, 10).map(async (part) => {
             if (part.length === 0) return;
             const snap = await getDocs(query(collection(db, "users"), where(documentId(), "in", part)));
             snap.docs.forEach((d) => {
-              profileMap[d.id] = { displayName: d.data()?.displayName || "Noma'lum", username: d.data()?.username };
+              profileMap[d.id] = {
+                displayName: d.data()?.displayName || "Noma'lum",
+                username: d.data()?.username,
+                photoURL: d.data()?.photoURL || undefined,
+              };
             });
           })
         );
-
-        // Today's sessions — only for classes that actually meet today.
-        const todayClasses = classes.filter((c) => c.schedule?.some((s) => s.dayOfWeek === todayWeekday));
-        const sessMap: Record<string, Record<string, AttendanceStatus>> = {};
-        await Promise.all(
-          todayClasses.map(async (c) => {
-            const s = await getDoc(doc(db, "center_attendance", `${c.id}_${today}`));
-            const raw = s.exists() ? (s.data().records || {}) : {};
-            // records values are now objects ({ status, ... }); tolerate the legacy string shape.
-            const statusMap: Record<string, AttendanceStatus> = {};
-            Object.keys(raw).forEach((uid) => {
-              const v = raw[uid];
-              const st = typeof v === "string" ? v : v?.status;
-              if (st) statusMap[uid] = st as AttendanceStatus;
-            });
-            sessMap[c.id] = statusMap;
-          })
-        );
-
-        if (mounted) {
-          setProfiles(profileMap);
-          setTodaySessions(sessMap);
-        }
       } catch (err) {
-        console.error(err);
-      } finally {
-        if (mounted) setLoadingExtra(false);
+        console.error("Profiles error:", err);
       }
+      if (mounted) setProfiles(profileMap);
+
+      // Today's sessions — ONE centerId+date list query instead of per-class
+      // getDoc()s: the strict per-document GET rule denies docs with a
+      // missing/stale centerId, while `allow list` only needs isAuth().
+      try {
+        const sessions = await fetchCenterSessions(centerId, today, today);
+        const sessMap: Record<string, Record<string, AttendanceStatus>> = {};
+        for (const s of sessions) {
+          const statusMap: Record<string, AttendanceStatus> = {};
+          Object.keys(s.records).forEach((uid) => {
+            statusMap[uid] = s.records[uid].status as AttendanceStatus;
+          });
+          sessMap[s.classId] = statusMap;
+        }
+        if (mounted) setTodaySessions(sessMap);
+      } catch (err) {
+        console.error("Attendance error:", err);
+      }
+
+      if (mounted) setLoadingExtra(false);
     })();
     return () => { mounted = false; };
-  }, [classes, loadingClasses, today, todayWeekday]);
+  }, [classes, loadingClasses, centerId, today]);
 
   // Build one row per student (A→Z), aggregating their groups + today's status.
   const rows = useMemo<StudentRow[]>(() => {
@@ -138,7 +142,7 @@ export default function ManagerStudentsPage() {
         if (!prof) continue;
         let row = byStudent.get(sid);
         if (!row) {
-          row = { id: sid, displayName: prof.displayName, username: prof.username, groups: [], scheduleDays: [], uniformTime: null, todayStatus: "nolesson" };
+          row = { id: sid, displayName: prof.displayName, username: prof.username, photoURL: prof.photoURL, groups: [], scheduleDays: [], uniformTime: null, todayStatus: "nolesson" };
           byStudent.set(sid, row);
         }
         row.groups.push({ id: c.id, title: c.title });
@@ -178,6 +182,9 @@ export default function ManagerStudentsPage() {
 
     return [...byStudent.values()].sort((a, b) => a.displayName.localeCompare(b.displayName, "uz", { sensitivity: "base" }));
   }, [classes, profiles, todaySessions, todayWeekday]);
+
+  // Student info slide-over ("dialog card" — same pattern as the teachers page).
+  const [viewingStudent, setViewingStudent] = useState<StudentRow | null>(null);
 
   // ── Filters ──
   const [search, setSearch] = useState("");
@@ -289,15 +296,24 @@ export default function ManagerStudentsPage() {
                 {filtered.map((r, i) => {
                   const st = STATUS_UI[r.todayStatus];
                   return (
-                    <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                    <tr
+                      key={r.id}
+                      onClick={() => setViewingStudent(r)}
+                      className="hover:bg-slate-50/60 transition-colors cursor-pointer"
+                    >
                       <td className="py-2.5 pl-5 pr-2 text-[12px] font-semibold text-slate-400 tabular-nums">{i + 1}</td>
 
                       {/* Student */}
                       <td className="py-2.5 px-2">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 font-bold text-[11px] flex items-center justify-center">
-                            {getInitials(r.displayName)}
-                          </span>
+                          {r.photoURL ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.photoURL} alt={r.displayName} className="w-8 h-8 shrink-0 rounded-full object-cover border border-slate-100" />
+                          ) : (
+                            <span className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 font-bold text-[11px] flex items-center justify-center">
+                              {getInitials(r.displayName)}
+                            </span>
+                          )}
                           <div className="min-w-0">
                             <p className="text-[13px] font-semibold text-slate-900 truncate">{r.displayName}</p>
                             {r.username && <p className="text-[11px] text-slate-400 truncate">@{r.username}</p>}
@@ -312,6 +328,7 @@ export default function ManagerStudentsPage() {
                             <Link
                               key={g.id}
                               href={`/manager/attendance/${g.id}`}
+                              onClick={(e) => e.stopPropagation()}
                               className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md text-[11px] font-semibold transition-colors max-w-[160px]"
                             >
                               <span className="truncate">{g.title}</span>
@@ -370,6 +387,23 @@ export default function ManagerStudentsPage() {
           </div>
         )}
       </div>
+
+      {/* Student Info Slide-Over */}
+      {viewingStudent && (
+        <ManagerStudentInfoPanel
+          studentUid={viewingStudent.id}
+          fallbackName={viewingStudent.displayName}
+          groups={viewingStudent.groups}
+          todayBadge={STATUS_UI[viewingStudent.todayStatus]}
+          onPhotoChange={(url) =>
+            setProfiles((prev) => ({
+              ...prev,
+              [viewingStudent.id]: { ...prev[viewingStudent.id], photoURL: url || undefined },
+            }))
+          }
+          onClose={() => setViewingStudent(null)}
+        />
+      )}
     </div>
   );
 }

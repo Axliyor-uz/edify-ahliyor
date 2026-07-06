@@ -135,7 +135,7 @@ function TimeSelect({
     <div className="flex-1 min-w-0">
       <span className="block text-[11px] font-semibold text-slate-400 mb-1.5">{label}</span>
       <div className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border-2 bg-white transition-colors ${
-        invalid ? "border-rose-300" : "border-slate-200 focus-within:border-indigo-400"
+        invalid ? "border-rose-300" : "border-slate-200 focus-within:border-amber-400"
       }`}>
         <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tone}`}>
           <Icon size={16} />
@@ -269,7 +269,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <span className={`w-3 h-3 rounded-full shrink-0 ${th ? th.bar : "bg-slate-200"}`} />
         <select value={value} onChange={(e) => onChange(e.target.value)}
-          className="flex-1 min-w-0 appearance-none px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-[13px] font-medium text-slate-800 outline-none focus:border-indigo-400 cursor-pointer">
+          className="flex-1 min-w-0 appearance-none px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-[13px] font-medium text-slate-800 outline-none focus:border-amber-400 cursor-pointer">
           <option value="">Xona tanlanmagan</option>
           {activeRooms.map((rm) => <option key={rm.id} value={rm.id}>{rm.name} · {rm.capacity} o&apos;rin</option>)}
         </select>
@@ -352,7 +352,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
       {/* Card header: title (left) + actions (top-right) */}
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0">
+          <div className="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
             <CalendarDays size={20} />
           </div>
           <div>
@@ -387,7 +387,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
               <button
                 onClick={handleSave}
                 disabled={isSaving || !canSave}
-                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[14px] rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-indigo-600/25"
+                className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[14px] rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-amber-500/25"
               >
                 {isSaving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
                 Saqlash
@@ -410,7 +410,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
             </p>
             <button
               onClick={() => setIsEditing(true)}
-              className="mt-5 px-5 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 font-semibold text-[13px] rounded-xl transition-colors active:scale-[0.98] shadow-sm shadow-indigo-600/25"
+              className="mt-5 px-5 py-2.5 bg-amber-500 text-white hover:bg-amber-600 font-semibold text-[13px] rounded-xl transition-colors active:scale-[0.98] shadow-sm shadow-amber-500/25"
             >
               Jadval qo&apos;shish
             </button>
@@ -426,7 +426,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                   <div key={entry.dayOfWeek} className="flex items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-xl">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-[14px] font-bold shrink-0 ${
-                        weekend ? "bg-rose-50 text-rose-500" : "bg-indigo-50 text-indigo-600"
+                        weekend ? "bg-rose-50 text-rose-500" : "bg-amber-50 text-amber-600"
                       }`}>
                         {dayObj?.short}
                       </div>
@@ -447,7 +447,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded-lg shrink-0">
-                      <Clock size={14} className="text-indigo-400" />
+                      <Clock size={14} className="text-amber-400" />
                       <span className="text-[13px] font-bold text-slate-700 tabular-nums">
                         {entry.startTime}<span className="text-slate-300 font-normal mx-0.5">–</span>{entry.endTime}
                       </span>
@@ -457,12 +457,12 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
               })}
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 bg-indigo-50/60 border border-indigo-100 rounded-xl">
-              <span className="flex items-center gap-2 text-[13px] font-semibold text-indigo-700">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 bg-amber-50/60 border border-amber-100 rounded-xl">
+              <span className="flex items-center gap-2 text-[13px] font-semibold text-amber-700">
                 <CalendarDays size={15} /> Haftasiga {sortedSchedule.length} ta dars
               </span>
               {weeklyMinutes > 0 && (
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-indigo-700">
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-amber-700">
                   <Hourglass size={15} /> Jami {weeklyHours > 0 && `${weeklyHours} soat`} {weeklyRemMin > 0 && `${weeklyRemMin} daq`}
                 </span>
               )}
@@ -512,7 +512,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
           {/* LEFT — days */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[12px] font-bold flex items-center justify-center">1</span>
+              <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-[12px] font-bold flex items-center justify-center">1</span>
               <span className="text-[14px] font-semibold text-slate-800">Dars kunlarini tanlang</span>
             </div>
 
@@ -533,12 +533,12 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                       on
                         ? weekend
                           ? "bg-rose-500 text-white shadow-md shadow-rose-500/30 scale-105"
-                          : "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-105"
-                        : "bg-slate-50 text-slate-400 border border-slate-200 group-hover:border-indigo-300 group-hover:text-slate-600"
+                          : "bg-amber-500 text-white shadow-md shadow-amber-500/30 scale-105"
+                        : "bg-slate-50 text-slate-400 border border-slate-200 group-hover:border-amber-300 group-hover:text-slate-600"
                     }`}>
                       {on ? <Check size={18} strokeWidth={3} /> : d.short}
                     </span>
-                    <span className={`text-[10px] font-medium ${on ? (weekend ? "text-rose-600" : "text-indigo-600") : "text-slate-400"}`}>
+                    <span className={`text-[10px] font-medium ${on ? (weekend ? "text-rose-600" : "text-amber-600") : "text-slate-400"}`}>
                       {d.short}
                     </span>
                   </button>
@@ -553,7 +553,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                   key={p.label}
                   type="button"
                   onClick={() => applyPreset(p.days)}
-                  className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-[12px] font-semibold rounded-full transition-colors active:scale-95"
+                  className="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 text-[12px] font-semibold rounded-full transition-colors active:scale-95"
                 >
                   {p.label}
                 </button>
@@ -575,7 +575,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                 <span className="text-[12px] font-medium text-slate-500 mr-0.5">Tanlandi:</span>
                 {enabledDays.map((d) => (
                   <span key={d.dayOfWeek} className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${
-                    isWeekend(d.dayOfWeek) ? "bg-rose-100 text-rose-600" : "bg-indigo-100 text-indigo-700"
+                    isWeekend(d.dayOfWeek) ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-700"
                   }`}>
                     {d.short}
                   </span>
@@ -588,7 +588,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
           <div className="lg:col-span-3 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[12px] font-bold flex items-center justify-center">2</span>
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-[12px] font-bold flex items-center justify-center">2</span>
                 <span className="text-[14px] font-semibold text-slate-800">Dars vaqtini kiriting</span>
               </div>
               <button
@@ -599,7 +599,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                 className="flex items-center gap-2 text-[12px] font-medium text-slate-500"
               >
                 Har kuni bir xil
-                <span className={`relative w-9 h-5 rounded-full transition-colors ${sameTime ? "bg-indigo-600" : "bg-slate-300"}`}>
+                <span className={`relative w-9 h-5 rounded-full transition-colors ${sameTime ? "bg-amber-500" : "bg-slate-300"}`}>
                   <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sameTime ? "translate-x-4" : ""}`} />
                 </span>
               </button>
@@ -614,7 +614,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                 <div className="flex flex-wrap items-end gap-3">
                   <TimeSelect icon={Sunrise} tone="bg-amber-100 text-amber-600" label="Boshlanishi" value={uniStart} onChange={setUniStart} invalid={uniInvalid} />
                   <ArrowRight size={18} className="text-slate-300 mb-2.5 shrink-0" />
-                  <TimeSelect icon={Sunset} tone="bg-indigo-100 text-indigo-600" label="Tugashi" value={uniEnd} onChange={setUniEnd} invalid={uniInvalid} />
+                  <TimeSelect icon={Sunset} tone="bg-rose-100 text-rose-500" label="Tugashi" value={uniEnd} onChange={setUniEnd} invalid={uniInvalid} />
                   <div className="ml-auto mb-1">
                     {uniInvalid ? (
                       <span className="text-[12px] font-medium text-rose-500">Tugash vaqti kechroq bo&apos;lsin</span>
@@ -637,7 +637,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                     <div key={d.dayOfWeek} className="p-3 bg-white border-2 border-slate-100 rounded-xl">
                       <div className="flex items-center gap-2 mb-2.5">
                         <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold ${
-                          weekend ? "bg-rose-50 text-rose-500" : "bg-indigo-50 text-indigo-600"
+                          weekend ? "bg-rose-50 text-rose-500" : "bg-amber-50 text-amber-600"
                         }`}>
                           {d.short}
                         </span>
@@ -651,7 +651,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                       <div className="flex items-end gap-2">
                         <TimeSelect icon={Sunrise} tone="bg-amber-100 text-amber-600" label="Boshlanishi" value={st.startTime} onChange={(v) => updateDayTime(d.dayOfWeek, "startTime", v)} invalid={invalid} />
                         <ArrowRight size={16} className="text-slate-300 mb-2.5 shrink-0" />
-                        <TimeSelect icon={Sunset} tone="bg-indigo-100 text-indigo-600" label="Tugashi" value={st.endTime} onChange={(v) => updateDayTime(d.dayOfWeek, "endTime", v)} invalid={invalid} />
+                        <TimeSelect icon={Sunset} tone="bg-rose-100 text-rose-500" label="Tugashi" value={st.endTime} onChange={(v) => updateDayTime(d.dayOfWeek, "endTime", v)} invalid={invalid} />
                       </div>
                     </div>
                   );
@@ -665,14 +665,14 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[12px] font-bold flex items-center justify-center">3</span>
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-[12px] font-bold flex items-center justify-center">3</span>
                 <span className="text-[14px] font-semibold text-slate-800">Xonani biriktiring <span className="text-slate-400 font-normal">(ixtiyoriy)</span></span>
               </div>
               {enabledDays.length > 0 && activeRooms.length > 0 && (
                 <button type="button" onClick={toggleSameRoom} role="switch" aria-checked={sameRoom}
                   className="flex items-center gap-2 text-[12px] font-medium text-slate-500">
                   Hamma kun bir xona
-                  <span className={`relative w-9 h-5 rounded-full transition-colors ${sameRoom ? "bg-indigo-600" : "bg-slate-300"}`}>
+                  <span className={`relative w-9 h-5 rounded-full transition-colors ${sameRoom ? "bg-amber-500" : "bg-slate-300"}`}>
                     <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sameRoom ? "translate-x-4" : ""}`} />
                   </span>
                 </button>
@@ -682,7 +682,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
             {activeRooms.length === 0 ? (
               <div className="flex items-center gap-2 px-4 py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-[13px] text-slate-500">
                 <DoorOpen size={16} className="text-slate-400" /> Hali xona qo&apos;shilmagan.
-                <Link href="/manager/rooms" className="font-semibold text-indigo-600 hover:underline">Xona qo&apos;shish →</Link>
+                <Link href="/manager/rooms" className="font-semibold text-amber-600 hover:underline">Xona qo&apos;shish →</Link>
               </div>
             ) : enabledDays.length === 0 ? (
               <div className="flex items-center gap-2 px-4 py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-[13px] text-slate-400">
@@ -692,7 +692,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
               <div className="flex flex-wrap items-center gap-2">
                 {renderRoomSelect(uniRoom, setUniRoom)}
                 <button type="button" onClick={suggestFreeRoom}
-                  className="flex items-center gap-1.5 px-3 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-[12.5px] font-semibold transition-colors shrink-0">
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl text-[12.5px] font-semibold transition-colors shrink-0">
                   <Wand2 size={14} /> Bo&apos;sh xona
                 </button>
               </div>

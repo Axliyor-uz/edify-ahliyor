@@ -6,6 +6,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CenterTeacher } from "@/hooks/useCenterClasses";
 import toast from "react-hot-toast";
+import ManagerSheet from "@/app/manager/_components/ManagerSheet";
 
 interface Props {
   centerId: string;
@@ -65,12 +66,8 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-        onClick={() => !isSubmitting && onClose()}
-      ></div>
-      <div className="relative bg-white w-full max-w-md rounded-[2rem] p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+    <ManagerSheet onClose={onClose} dismissible={!isSubmitting}>
+      <div className="p-6 sm:p-7">
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
@@ -78,7 +75,7 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
             <Layers size={24} strokeWidth={2.5} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
               Yangi guruh yaratish
             </h2>
             <p className="text-[13px] text-slate-500 font-medium">
@@ -179,6 +176,6 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
         </form>
 
       </div>
-    </div>
+    </ManagerSheet>
   );
 }

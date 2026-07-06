@@ -79,11 +79,11 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
   };
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-5 sm:p-6 max-w-2xl">
       <form onSubmit={handleSave} className="space-y-6">
-        
+
         <div className="space-y-4">
-          <h3 className="text-[12px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+          <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
             <Settings size={14} /> Umumiy ma'lumotlar
           </h3>
           
@@ -113,7 +113,7 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
 
         <div className="pt-6 border-t border-slate-100 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="text-[12px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
               <Users size={14} /> O'qituvchini almashtirish
             </h3>
             <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">
@@ -145,10 +145,10 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
         </div>
 
         <div className="pt-6">
-          <button 
+          <button
             type="submit"
             disabled={isSaving || !title.trim() || !selectedTeacherId}
-            className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-black text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50"
+            className="w-full sm:w-auto px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm shadow-amber-500/25 active:scale-[0.98] disabled:opacity-50"
           >
             {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             Sozlamalarni saqlash
