@@ -4,40 +4,194 @@
       "collectionGroup": "center_attendance",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "classId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" }
+        {
+          "fieldPath": "classId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "center_attendance",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "centerId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" }
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "center_staff_attendance",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "centerId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" }
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "center_staff_attendance",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "staffUid", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" }
+        {
+          "fieldPath": "staffUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "rooms",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "centerId", "order": "ASCENDING" },
-        { "fieldPath": "orderIndex", "order": "ASCENDING" }
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "orderIndex",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "center_charges",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dueDate",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "center_charges",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "studentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "periodStart",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "center_charges",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "periodStart",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "center_payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "center_payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "studentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "center_payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paidAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "center_student_finance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "balance",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "center_expenses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
       ]
     }
   ],

@@ -393,6 +393,7 @@ export default function ManagerStudentsPage() {
         <ManagerStudentInfoPanel
           studentUid={viewingStudent.id}
           fallbackName={viewingStudent.displayName}
+          centerId={centerId}
           groups={viewingStudent.groups}
           todayBadge={STATUS_UI[viewingStudent.todayStatus]}
           onPhotoChange={(url) =>

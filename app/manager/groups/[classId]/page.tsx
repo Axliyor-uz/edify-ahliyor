@@ -31,6 +31,8 @@ export interface ClassDocument {
   isLocked: boolean;
   createdAt: any;
   schedule?: ScheduleEntry[];
+  /** Finance: integer so'm per month; missing/0 → group is not billed. */
+  monthlyFee?: number;
 }
 
 type TabKey = "roster" | "schedule" | "oversight" | "settings";

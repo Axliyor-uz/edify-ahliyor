@@ -1,0 +1,345 @@
+# Finance Module — Implementation Plan (Phase 1: Tuition Core)
+
+> Status: **Phase 1 (tuition) + Phase 3 (payroll & expenses) code complete (2026-07-07)** —
+> build passes; the §8.6 manual walkthrough is still pending. Decisions were made with the
+> product owner (2026-07-07). Once verified in production, convert this into a living
+> reference doc like `ATTENDANCE.md`.
+>
+> **Quick reference:** [FINANCE_DATABASE.md](FINANCE_DATABASE.md) maps every collection and,
+> per UI action, exactly which documents change — read that first for "where does my data go".
+
+## 0. Locked product decisions
+
+| Decision | Choice |
+|---|---|
+| Billing model | Monthly fixed fee per group (`classes.monthlyFee`) + per-student overrides/discounts |
+| Billing cycle | Per-center setting: `calendar` month **or** `enrollment` (rolling from join date) |
+| Money out | Salaries + expenses (Phase 3) |
+| Salary % base | Per-center setting: % of collected vs % of charged (Phase 3) |
+| Collection | Manual recording by manager, integration-ready for Payme/Click |
+| Visibility | Manager-only (student/teacher views later) |
+| Receipts / SMS reminders | Later phases |
+| Contracts / branches / multi-currency / cashier role | Out of scope; UZS only; manager records payments |
+
+## 1. Iron rules (violating these creates money bugs)
+
+1. **Append-only money.** `center_charges` and `center_payments` are never edited or deleted —
+   only status-cancelled (`cancelledBy`, `cancelledAt`, `cancelReason`). Corrections = cancel + re-enter.
+2. **Charges are snapshots.** Price, student name, class title are *copied into* the charge at
+   generation. Later price/discount changes never touch existing charges.
+3. **All money is integer so'm.** No floats, no decimals. Proration rounds to the nearest 1,000 so'm.
+4. **All writes go through `/api/manager/finance/*`** (Admin SDK, transactions). The client never
+   writes finance collections directly — this is what makes a Payme/Click webhook a drop-in later.
+5. **Every client query filters `where('centerId','==',X)`.** Both for tenancy and because the
+   security list rules are only provable with that filter (see §6).
+6. **Deterministic charge IDs** — `${classId}_${studentId}_${periodKey}` — make generation
+   idempotent. Server uses Admin SDK `create()` (fails if exists) so double-clicks/races cannot double-charge.
+7. **Dates**: `YYYY-MM-DD` keys in Asia/Tashkent via `lib/dateUtils.ts` (same as attendance).
+   Timestamps for audit fields (`createdAt` etc.) are Firestore `Timestamp`s.
+8. **Never write `undefined`** (Firestore throws). Build optional fields conditionally.
+9. **`classes` docs have no `centerId`.** Resolve a center's classes server-side via
+   `center_teachers (centerId ==)` → `classes (teacherId in ...)` chunked by 10 — same as
+   `useCenterClasses`. Every finance doc stores `centerId` explicitly (snapshot at write time).
+
+## 2. Balance semantics (sign convention)
+
+`center_student_finance.balance` is a **cached** value, maintained transactionally:
+
+```
+balance = Σ confirmed payments − Σ confirmed refunds − Σ amount of all NON-CANCELLED charges
+```
+
+- `balance < 0` → student owes money (qarz)
+- `balance > 0` → prepayment credit (avans)
+- Waiving a charge forgives only its **unpaid remainder**: balance += (amount − paidAmount), then
+  **amount is reduced to paidAmount** and status → `waived`. A waived charge therefore stays in the
+  balance sum contributing exactly −paidAmount (the money actually consumed) — this is why the sum
+  is over non-cancelled charges, not just pending|partial|paid. Cancelling requires `paidAmount == 0`
+  (a cancelled charge contributes 0). If a payment allocated to a waived charge is later cancelled,
+  decrement both `paidAmount` and `amount` to keep the waived invariant `amount == paidAmount`.
+- The debtor list is driven by **charge docs** (per-month rows), not by balance — balance is the
+  headline number, charges are the receipts behind it.
+- (Phase 2: an admin "recalculate balance" repair that re-derives from the ledger.)
+
+## 3. Data model
+
+### 3.1 `center_finance_settings/{centerId}` — created lazily with defaults on first finance visit
+```ts
+{
+  centerId: string,
+  billingAnchor: 'calendar' | 'enrollment',   // default 'calendar'
+  prorateFirstMonth: boolean,                 // default true
+  dueDayOfMonth: number,                      // calendar mode: charge due on this day (default 5)
+  dueDaysAfterStart: number,                  // rolling mode: due N days after periodStart (default 5)
+  percentBase: 'collected' | 'charged',       // Phase 3 payroll; stored now (default 'collected')
+  expenseCategories: string[],                // Phase 3; seeded defaults
+  createdAt, updatedAt: Timestamp,
+}
+```
+
+### 3.2 `classes/{classId}` — one new field
+```ts
+monthlyFee?: number   // integer so'm; missing or 0 → group is not billed
+```
+Edited in the group settings tab (client write — `classes` is already manager-writable).
+
+### 3.3 `center_student_finance/{centerId}_{studentUid}` — per-student finance profile (lazy)
+```ts
+{
+  centerId, studentId: string,
+  balance: number,                            // cached; see §2
+  discountPercent?: number,                   // 0–100, applies to every group the student is in
+  priceOverrides?: { [classId]: number },     // absolute monthly price for that group (wins over discount)
+  financeStatus: 'active' | 'frozen',         // frozen → skipped at charge generation
+  frozenAt?: string,                          // YYYY-MM-DD
+  enrollmentDates?: { [classId]: string },    // YYYY-MM-DD; needed for rolling cycles + proration
+  updatedAt: Timestamp,
+}
+```
+`enrollmentDates` is stamped best-effort when the manager adds a student
+(`ManagerAddStudentModal`); if missing at generation time (student joined via join-code, or
+pre-finance data), the engine assumes "enrolled before period start" (full charge) and the manager
+can correct the date or waive/adjust the charge.
+
+### 3.4 `center_charges/{classId}_{studentId}_{periodKey}`
+`periodKey`: calendar → `"2026-07"` (`monthKeyOf`); rolling → the cycle's start date `"2026-07-15"`.
+```ts
+{
+  centerId, classId, studentId: string,
+  classTitle, studentName: string,            // snapshots for fast lists (no N user reads)
+  periodKey: string,
+  periodStart, periodEnd: string,             // YYYY-MM-DD inclusive
+  baseAmount: number,                         // resolved price BEFORE discount/proration
+  discountAmount: number,                     // 0 if none
+  proratedFrom?: string,                      // set when first month was prorated (actual start date)
+  amount: number,                             // what the student owes (after discount + proration)
+  paidAmount: number,                         // cached Σ of confirmed allocations
+  status: 'pending' | 'partial' | 'paid' | 'waived' | 'cancelled',
+  dueDate: string,                            // YYYY-MM-DD
+  note?: string,
+  createdAt: Timestamp, createdBy: string,    // manager uid (generation is manager-triggered)
+  adjustedAt?, adjustedBy?: ...,              // only while paidAmount == 0
+  cancelledAt?, cancelledBy?, cancelReason?: ...,
+}
+```
+**Price resolution order:** `priceOverrides[classId]` → `monthlyFee × (1 − discountPercent/100)`
+→ `monthlyFee`. Result rounded to nearest 1,000.
+
+**Proration (first period only, when enabled):** count the class's scheduled lesson weekdays
+(`classes.schedule`) remaining in the period from the enrollment date ÷ total scheduled weekdays in
+the period; fall back to calendar-day ratio when the class has no schedule. Round to nearest 1,000.
+
+### 3.5 `center_payments/{autoId}`
+```ts
+{
+  centerId, studentId: string,
+  studentName: string,                        // snapshot
+  type: 'payment' | 'refund',
+  amount: number,                             // always positive; direction comes from `type`
+  method: 'cash' | 'card' | 'click' | 'payme' | 'transfer' | 'other',
+  source: 'manual',                           // future: 'payme_gateway' | 'click_gateway'
+  externalId?: string,                        // future gateway transaction id
+  allocations: { chargeId: string, amount: number }[],
+  unallocatedAmount: number,                  // the avans part
+  paidAt: string,                             // YYYY-MM-DD business date — BACKDATABLE (paper-notebook onboarding)
+  note?: string,
+  receivedBy: string,                         // manager uid
+  createdAt: Timestamp,
+  status: 'confirmed' | 'cancelled',
+  cancelledAt?, cancelledBy?, cancelReason?: ...,
+}
+```
+
+### 3.6 Phase 3 — payroll & expenses schemas
+Built — see **§9** for the as-built shapes (`center_expenses`, `center_payouts`,
+`center_teachers.salary` map) and the calculation rules. Types live in `types/finance.ts`
+(`Expense`, `Payout`, `TeacherSalaryConfig`, `PayrollRow`).
+
+## 4. Core flows
+
+### 4.1 Charge generation (manager-triggered, idempotent)
+Trigger: banner on the finance page — *"Iyul uchun hisob-kitob yaratilmagan — N ta o'quvchi,
+jami X so'm. [Yaratish]"*. `POST /charges/generate { dryRun: true }` computes the preview; the
+button repeats it with `dryRun: false`.
+
+Server algorithm:
+1. Resolve center classes (rule #9). Skip classes with no/zero `monthlyFee`.
+2. Load all `center_student_finance` profiles for the roster (chunked `in`).
+3. For each (class, student): skip `frozen`; compute the period —
+   **calendar**: the requested month's bounds; **rolling**: walk cycles from
+   `enrollmentDates[classId]` (missing → treat as pre-existing) and emit every cycle whose
+   `periodStart <= today` that has no charge yet (catches up missed cycles).
+4. Resolve price (§3.4), prorate the first period if applicable, compute `dueDate` from settings.
+5. Per student, in one transaction: `create()` the charge docs (idempotent — existing IDs are
+   skipped, never overwritten) + decrement `balance` (creating the profile doc if missing).
+6. **Avans auto-apply:** if the student has payments with `unallocatedAmount > 0`, allocate them
+   (oldest `paidAt` first) to the new charges inside the same transaction — updating the payments'
+   `allocations`/`unallocatedAmount` and the charges' `paidAmount`/`status`. Balance is unchanged
+   by allocation (it already counted the payment).
+7. Return `{ created, skipped, totalAmount, perClass[] }` for the toast/banner.
+
+### 4.2 Recording a payment
+`POST /payments { studentId, amount, method, type, paidAt?, note? }` — one transaction:
+1. Guard: student has a finance profile in this center OR is on a center class roster (allows
+   prepay before first charge; profile created lazily).
+2. Load the student's `pending|partial` charges ordered by `dueDate` asc; allocate oldest-first;
+   remainder → `unallocatedAmount`.
+3. Write the payment; update touched charges (`paidAmount`, `partial`/`paid` status); update
+   `balance` (+amount for payment, −amount for refund; refunds don't allocate — they're records
+   of money returned, with mandatory `note`).
+4. Response includes the post-payment state for the confirmation screen ("Iyul to'landi ✓,
+   avans: 200 000 so'm").
+
+### 4.3 Cancellations
+- **Cancel payment**: reverse its allocations (decrement charges' `paidAmount`, recompute statuses),
+  set status + audit fields, adjust balance. One transaction.
+- **Waive charge**: forgive unpaid remainder (§2).
+- **Cancel charge**: only while `paidAmount == 0`; else the manager must cancel/reallocate payments first.
+- **Adjust charge** (`amount`/`discountAmount`): only while `paidAmount == 0`; stamps `adjustedBy/At`.
+
+## 5. API routes — all `POST`, all start with `requireActiveCenterManager(request)`
+
+| Route | Body | Notes |
+|---|---|---|
+| `/api/manager/finance/settings` | full settings patch | upsert |
+| `/api/manager/finance/charges/generate` | `{ periodKey?, dryRun? }` | §4.1; `periodKey` only meaningful for calendar mode |
+| `/api/manager/finance/charges/waive` | `{ chargeId, reason }` | verifies `charge.centerId` matches caller |
+| `/api/manager/finance/charges/cancel` | `{ chargeId, reason }` | `paidAmount == 0` guard |
+| `/api/manager/finance/charges/adjust` | `{ chargeId, amount, discountAmount?, note? }` | `paidAmount == 0` guard |
+| `/api/manager/finance/payments` | `{ studentId, amount, type, method, paidAt?, note? }` | §4.2 |
+| `/api/manager/finance/payments/cancel` | `{ paymentId, reason }` | §4.3 |
+| `/api/manager/finance/student` | `{ studentId, patch }` | discount, overrides, freeze/unfreeze, enrollmentDates fixes |
+
+Guard: the PRE-EXISTING `lib/server/verifyCenterManager.ts` (`requireActiveCenterManager`,
+throws `ManagerApiError` with user-facing Uzbek messages) — verifies the bearer ID token,
+requires `users/{uid}.role == 'manager'` + a `centerId`, and the center's `status == 'active'`
+(approval-gate parity: pending/suspended centers cannot move money). All finance routes go
+through the `financePostHandler` factory in `lib/server/financeRoute.ts`.
+
+Client transport: the pre-existing `lib/managerApi.ts` (`managerApiFetch`, a re-export of
+`adminApiFetch`) — attaches the ID token and normalizes JSON errors for toasts.
+
+## 6. Security rules & indexes
+
+Reads are client-side (codebase convention); writes are API-only:
+
+```
+// FINANCE — reads: center manager only. Writes: API routes (Admin SDK) only.
+match /center_finance_settings/{centerId} {
+  allow read: if isCenterManager(centerId);
+  allow write: if false;
+}
+match /center_student_finance/{profileId} {
+  allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+  allow list: if isCenterManager(resource.data.centerId);   // provable: queries filter centerId ==
+  allow write: if false;
+}
+match /center_charges/{chargeId} {
+  allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+  allow list: if isCenterManager(resource.data.centerId);
+  allow write: if false;
+}
+match /center_payments/{paymentId} {
+  allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+  allow list: if isCenterManager(resource.data.centerId);
+  allow write: if false;
+}
+```
+
+Unlike attendance, finance list rules must **not** relax to `isAuth()` — payments are the most
+sensitive data in the app. The `list` rules above stay within the document-access limit because the
+mandatory `centerId ==` filter (iron rule #5) makes `resource.data.centerId` provable, so
+`isCenterManager` performs exactly **one** `get()` per query (constant path — unlike the per-doc
+varying `classes/$(resource.data.classId)` lookups that broke attendance lists).
+**Contingency:** if real-world queries still hit permission errors, flip reads to
+`GET /api/manager/finance/*` routes — the data model doesn't change.
+
+New composite indexes (`firestore.indexes.json`, confirm exact set during build):
+- `center_charges`: `centerId ASC, status ASC, dueDate ASC` (debtors: `status in [pending,partial]` ordered by due date)
+- `center_charges`: `centerId ASC, studentId ASC, periodStart DESC` (student history panel)
+- `center_payments`: `centerId ASC, createdAt DESC` (recent payments feed)
+- `center_payments`: `centerId ASC, studentId ASC, createdAt DESC` (student payment history)
+- `center_payments`: `centerId ASC, paidAt ASC` (monthly collected-total range query)
+- `center_charges`: `centerId ASC, periodStart ASC` (rolling-mode month view: charges whose cycle starts within a month)
+- `center_student_finance`: `centerId ASC, balance ASC` (avans total: `balance > 0`)
+- `center_expenses`: `centerId ASC, date ASC` (month expense list — Phase 3)
+
+`center_expenses` and `center_payouts` have the same rules blocks as above (manager-only read,
+`write: if false`). Calendar month view of charges and payout-by-month queries are equality-only —
+no composite needed.
+
+Deploy: `firebase deploy --only firestore:rules,firestore:indexes`.
+
+## 7. New/changed files (Phase 1)
+
+| File | Purpose |
+|---|---|
+| `types/finance.ts` | Single source of truth for all finance types (like `types/attendance.ts`) |
+| `lib/finance/billingEngine.ts` | **Pure** logic, no Firestore: `resolvePrice`, `computeCalendarPeriod`, `nextRollingCycles`, `prorate`, `allocate` — testable/verifiable in isolation |
+| `lib/finance/money.ts` | `formatUZS` (e.g. `400 000 so'm`), `roundTo1000` |
+| `lib/managerApi.ts` (pre-existing) | Token-attaching fetch (`managerApiFetch`) used by `financeService` |
+| `lib/server/verifyCenterManager.ts` (pre-existing) | `requireActiveCenterManager` guard (§5) |
+| `lib/server/financeRoute.ts` | `financePostHandler` route factory (guard + body parse + error mapping) |
+| `app/api/manager/finance/*` | The 14 routes (§5 + §9) — thin handlers around `lib/server/financeOps.ts` |
+| `lib/server/financeOps.ts` | Server-side transactions: generation, payment+allocation, cancellations. **The future Payme/Click webhook calls these same functions.** |
+| `services/financeService.ts` | Client reads (charges by period, debtors, payments feed, student history, settings) + typed wrappers around the API routes |
+| `app/manager/finance/page.tsx` | Replace placeholder: stat header + tabs (To'lovlar · Qarzdorlar · Hisob-kitob · Sozlamalar) |
+| `app/manager/finance/_components/` | `FinanceStats`, `GenerateChargesBanner`, `ChargesTab`, `PaymentsTab`, `RecordPaymentModal`, `DebtorsTab`, `SettingsTab`, `StudentFinanceSection` |
+| `app/manager/students/_components/ManagerStudentInfoPanel.tsx` | Embed `StudentFinanceSection` (balance, history, discount, freeze) |
+| `app/manager/groups/[classId]/_components/ManagerSettingsTab.tsx` | Add `monthlyFee` field |
+| `app/manager/groups/[classId]/_components/ManagerAddStudentModal.tsx` | Best-effort enrollment-date stamp via `/finance/student` after add |
+| `firestore.rules`, `firestore.indexes.json` | §6 |
+
+## 8. Build order (each step ends runnable)
+
+1. **Foundations** — `types/finance.ts`, `lib/finance/*` (pure engine), `lib/apiFetch.ts`,
+   `lib/server/verifyCenterManager.ts`.
+2. **Rules + indexes** — add §6 blocks, deploy.
+3. **Server ops + routes** — `financeOps.ts`: settings upsert → generation (with dryRun) →
+   payment/allocation → cancellations/waive/adjust → student profile patch; one thin route each.
+4. **Client service** — `financeService.ts` reads + mutation wrappers.
+5. **UI, in usage order** — SettingsTab → group `monthlyFee` field → GenerateChargesBanner +
+   ChargesTab → RecordPaymentModal + PaymentsTab → DebtorsTab (with attendance % per student via
+   existing `attendanceService`) → FinanceStats → StudentFinanceSection + info-panel embed +
+   enrollment stamping.
+6. **Verification walkthrough** (no test suite — dev-server script):
+   set fee → generate July (twice: second is a no-op) → full payment → partial → overpay (avans
+   appears) → generate August (avans auto-applies) → cancel a payment (charge reverts) → waive →
+   freeze student → regenerate (skipped) → rolling-mode center: enroll mid-month, prorated first
+   charge, catch-up cycles → debtor list ordering → backdated payment → dashboard totals match a
+   hand-computed sum.
+
+## 9. Phase 3 — payroll & expenses (BUILT)
+
+- **`center_expenses/{autoId}`** — `{ centerId, category, amount, date (YYYY-MM-DD, not future),
+  note?, teacherId?, payoutId?, createdBy, createdAt, status: 'active'|'cancelled' + cancel audit }`.
+  Append-only. Salary payouts create expenses with the reserved category `'salary'` and a `payoutId`
+  link — **salary-linked expenses cannot be cancelled** (v1). Index: `centerId+date`.
+- **Salary config** = `salary: { fixed?, percent?, perLesson? }` map on `center_teachers/{uid}` —
+  all parts optional, the payout is the SUM of configured parts (no salaryType enum). Edited via
+  `POST /teacher-salary`.
+- **`center_payouts/{teacherUid}_{YYYY-MM}`** — deterministic id; payroll is always
+  calendar-monthly regardless of billing anchor. Lifecycle: live calculation (nothing stored) →
+  **approve** (`/payroll/save` recomputes SERVER-SIDE — the client never sends amounts — and
+  persists breakdown + adjustment) → **mark paid** (`/payroll/mark-paid`, one transaction: status
+  'paid' + the linked salary expense; a zero-sum payout just flips status). Paid payouts are immutable.
+- **Calculation** (`financeOps.calculatePayroll`): fixed = config; % base per
+  `settings.percentBase` — `'collected'` = this month's confirmed payment **allocations** summed
+  per class (chargeId's first `_`-segment IS the classId — Firestore auto-ids and auth uids never
+  contain `_`; avans stays unattributed until allocated, refunds are ignored), `'charged'` = this
+  month's non-cancelled charge amounts per class; per-lesson = `center_attendance` docs with
+  `lessonStatus held|makeup` and `date <= today` per class. Teacher→class mapping is resolved at
+  calc time (current `classes.teacherId`).
+- **Profit** on the dashboard = month collected − month active expenses. Six stat cards.
+- Phase 3 routes (same guard/factory as §5): `/expenses`, `/expenses/cancel`,
+  `/payroll/calculate`, `/payroll/save`, `/payroll/mark-paid`, `/teacher-salary`.
+  UI: `PayrollTab` (config modal + approve modal + mark-paid), `ExpensesTab` (add modal,
+  category totals, cancel), `percentBase` picker in `SettingsTab`.
+
+## 10. Later phases (context for reviewers)
+
+- **Phase 2 polish**: printable receipt, balance-recalculate repair, discount UI polish, richer
+  student-side proration options, editable expense categories UI.
+- **Phase 4**: Payme/Click gateway (webhook → `financeOps.recordPayment` with
+  `source: 'payme_gateway'`), SMS reminders (Eskiz.uz), student/parent-visible balance,
+  teacher-visible salary, un-pay/cancel flow for paid payouts.

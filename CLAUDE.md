@@ -28,6 +28,13 @@ Next.js 16 (App Router) · React 19 with the **React Compiler enabled** (`reactC
 > **Room / timetable work:** read [docs/ROOMS.md](docs/ROOMS.md) first — the `rooms` collection,
 > per-slot room assignment on `classes.schedule`, the conflict engine (`services/roomService.ts`), and
 > the weekly timetable. Center-only; standalone teachers are unaffected.
+>
+> **Finance work:** read [docs/FINANCE_PLAN.md](docs/FINANCE_PLAN.md) first — charges/payments
+> ledger (`center_charges`, `center_payments`, `center_student_finance`, `center_finance_settings`),
+> the iron rules (append-only money, snapshot prices, integer so'm, API-only writes via
+> `/api/manager/finance/*` + [lib/server/financeOps.ts](lib/server/financeOps.ts), every client query
+> filters `centerId ==`), and the pure billing engine in [lib/finance/billingEngine.ts](lib/finance/billingEngine.ts).
+> Collection-by-collection map + which docs change per UI action: [docs/FINANCE_DATABASE.md](docs/FINANCE_DATABASE.md).
 
 ### Multi-role platform
 The app serves four roles, each with its own top-level route tree and role-guarded layout:

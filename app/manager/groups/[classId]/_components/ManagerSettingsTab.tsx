@@ -17,6 +17,7 @@ interface SettingsProps {
 export default function ManagerSettingsTab({ classData, centerId, onUpdate }: SettingsProps) {
   const [title, setTitle] = useState(classData.title);
   const [description, setDescription] = useState(classData.description || "");
+  const [monthlyFee, setMonthlyFee] = useState(classData.monthlyFee ? String(classData.monthlyFee) : "");
   const [selectedTeacherId, setSelectedTeacherId] = useState(classData.teacherId);
   
   const [centerTeachers, setCenterTeachers] = useState<CenterTeacher[]>([]);
@@ -54,6 +55,12 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
     e.preventDefault();
     if (!title.trim() || !selectedTeacherId) return;
 
+    const feeNum = monthlyFee.trim() === "" ? 0 : parseInt(monthlyFee, 10);
+    if (!Number.isInteger(feeNum) || feeNum < 0) {
+      toast.error("Oylik narx noto'g'ri kiritildi.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const selectedTeacher = centerTeachers.find(t => t.teacherId === selectedTeacherId);
@@ -62,6 +69,7 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
       const updates: Partial<ClassDocument> = {
         title: title.trim(),
         description: description.trim(),
+        monthlyFee: feeNum,
         teacherId: selectedTeacherId,
         teacherName: teacherName
       };
@@ -101,13 +109,32 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
 
           <div className="space-y-1.5">
             <label className="text-[13px] font-bold text-slate-700 ml-1">Tavsif</label>
-            <textarea 
+            <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={isSaving}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all resize-none disabled:opacity-60"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-bold text-slate-700 ml-1">Oylik narx (so&apos;m)</label>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1000}
+              value={monthlyFee}
+              onChange={(e) => setMonthlyFee(e.target.value)}
+              disabled={isSaving}
+              placeholder="Masalan: 400000"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all disabled:opacity-60"
+            />
+            <p className="text-[12px] font-medium text-slate-500 ml-1 leading-snug">
+              Moliya bo&apos;limi shu narx asosida oylik hisob yaratadi. Bo&apos;sh yoki 0 — guruh hisob-kitobga kirmaydi.
+              Narx o&apos;zgarishi faqat KEYINGI oylarga ta&apos;sir qiladi.
+            </p>
           </div>
         </div>
 

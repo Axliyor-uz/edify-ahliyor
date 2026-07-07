@@ -11,11 +11,14 @@ import {
 import toast from "react-hot-toast";
 import PhotoCropperModal from "@/app/manager/_components/PhotoCropperModal";
 import { managerApiFetch } from "@/lib/managerApi";
+import StudentFinanceSection from "@/app/manager/finance/_components/StudentFinanceSection";
 
 interface Props {
   studentUid: string;
   /** Name already shown in the table — rendered while the doc loads. */
   fallbackName: string;
+  /** Enables the finance section (balance, discount, freeze) when provided. */
+  centerId?: string | null;
   groups: { id: string; title: string }[];
   /** Today's attendance chip, precomputed by the students page. */
   todayBadge?: { label: string; cls: string; dot: string };
@@ -31,7 +34,7 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-export default function ManagerStudentInfoPanel({ studentUid, fallbackName, groups, todayBadge, onPhotoChange, onClose }: Props) {
+export default function ManagerStudentInfoPanel({ studentUid, fallbackName, centerId, groups, todayBadge, onPhotoChange, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
   const [showPhotoViewer, setShowPhotoViewer] = useState(false);
@@ -287,6 +290,9 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, grou
                   </div>
                 )}
               </div>
+
+              {/* Finance Block */}
+              {centerId && <StudentFinanceSection centerId={centerId} studentUid={studentUid} />}
 
               {/* Location & Bio Block */}
               <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 space-y-5">

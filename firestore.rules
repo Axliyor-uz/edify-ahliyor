@@ -528,5 +528,52 @@ service cloud.firestore {
       allow update, delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
+    // ─── 🟢 FINANCE (docs/FINANCE_PLAN.md §6) ─────────────────────────────────
+    // The most sensitive data in the app: reads are CENTER MANAGER ONLY (no
+    // attendance-style `isAuth()` list relaxation), writes are API-routes-only
+    // (Admin SDK bypasses rules; the client must never write money docs).
+    //
+    // The `list` rules stay within the rules-engine document-access limit
+    // because every client query filters `centerId ==` (iron rule #5), making
+    // `resource.data.centerId` provable so isCenterManager() runs ONE constant-
+    // path get() per query — unlike the per-doc varying lookups that broke
+    // attendance lists. If a query ever throws "insufficient permissions",
+    // the fallback is API-route reads, not relaxing these rules.
+
+    match /center_finance_settings/{centerId} {
+      allow read: if isAuth() && isCenterManager(centerId);
+      allow write: if false;
+    }
+
+    match /center_student_finance/{profileId} {
+      allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+      allow list: if isAuth() && isCenterManager(resource.data.centerId);
+      allow write: if false;
+    }
+
+    match /center_charges/{chargeId} {
+      allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+      allow list: if isAuth() && isCenterManager(resource.data.centerId);
+      allow write: if false;
+    }
+
+    match /center_payments/{paymentId} {
+      allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+      allow list: if isAuth() && isCenterManager(resource.data.centerId);
+      allow write: if false;
+    }
+
+    match /center_expenses/{expenseId} {
+      allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+      allow list: if isAuth() && isCenterManager(resource.data.centerId);
+      allow write: if false;
+    }
+
+    match /center_payouts/{payoutId} {
+      allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+      allow list: if isAuth() && isCenterManager(resource.data.centerId);
+      allow write: if false;
+    }
+
   }
 }

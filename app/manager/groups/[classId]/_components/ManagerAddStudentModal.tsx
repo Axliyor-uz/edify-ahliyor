@@ -9,6 +9,8 @@ import { X, Search, UserPlus, Loader2, ArrowRight, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import ManagerSheet from "@/app/manager/_components/ManagerSheet";
+import { patchStudentFinanceApi } from "@/services/financeService";
+import { getTodayKey } from "@/lib/dateUtils";
 
 interface Props {
   classId: string;
@@ -162,6 +164,10 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
     try {
       const classRef = doc(db, "classes", classId);
       await updateDoc(classRef, { studentIds: arrayUnion(uid) });
+
+      // Finance: stamp the join date (drives rolling billing cycles + first-month
+      // proration). Best-effort — generation falls back to a full charge if missing.
+      patchStudentFinanceApi(uid, { enrollmentDates: { [classId]: getTodayKey() } }).catch(() => {});
 
       toast.success(`${displayName || "O'quvchi"} qo'shildi!`);
       setFoundUser(null);

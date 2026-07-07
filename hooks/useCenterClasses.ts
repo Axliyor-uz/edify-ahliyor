@@ -16,6 +16,8 @@ export interface ClassData {
   isLocked: boolean;
   createdAt: any;
   schedule?: ScheduleEntry[];
+  /** Finance: integer so'm per month; missing/0 → group is not billed. */
+  monthlyFee?: number;
 }
 
 export interface CenterTeacher {
