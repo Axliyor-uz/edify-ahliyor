@@ -166,7 +166,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     { name: t.menu.library, href: '/teacher/library', icon: FolderOpen },
     { name: t.menu.onlineLibrary, href: '/teacher/online-books', icon: Library, tourId: 'tour-sidebar-online-books' },
     { name: t.menu.analytics, href: '/teacher/analytics', icon: Sparkles, isAI: true },
-    { name: t.menu.subscription, href: '/teacher/subscription', icon: CreditCard },
+    // { name: t.menu.subscription, href: '/teacher/subscription', icon: CreditCard },
   ];
 
   // --- 🖥️ DESKTOP SIDEBAR RENDERER ---
