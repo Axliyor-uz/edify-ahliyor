@@ -40,13 +40,13 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
         )}
         <button
           onClick={onOpenModal}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-colors"
+          className="flex items-center gap-1.5 px-5 py-3 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-sm rounded-xl transition-all shadow-sm shadow-brand-600/25"
         >
           <Plus size={16} /> To&apos;lov qabul qilish
         </button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
+      <div className="bg-white border border-brand-line rounded-2xl divide-y divide-slate-100">
         {filtered.length === 0 ? (
           <p className="py-12 text-center text-sm text-slate-400">
             {search ? "Hech narsa topilmadi" : "Hali to'lovlar yo'q"}
@@ -56,7 +56,7 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
             const cancelled = p.status === "cancelled";
             const isRefund = p.type === "refund";
             return (
-              <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={p.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-brand-25 transition-colors">
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-bold truncate ${cancelled ? "text-slate-400 line-through" : "text-slate-800"}`}>
                     {p.studentName}
@@ -78,7 +78,7 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
                 )}
                 <p
                   className={`text-sm font-bold tabular-nums shrink-0 ${
-                    cancelled ? "text-slate-300 line-through" : isRefund ? "text-rose-600" : "text-emerald-600"
+                    cancelled ? "text-slate-300 line-through" : isRefund ? "text-rose-600" : "text-brand-700"
                   }`}
                 >
                   {isRefund ? "−" : "+"}

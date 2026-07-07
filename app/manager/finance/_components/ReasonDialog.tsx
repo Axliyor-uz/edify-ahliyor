@@ -44,7 +44,7 @@ export default function ReasonDialog({ title, message, confirmLabel, placeholder
           onChange={(e) => setReason(e.target.value)}
           placeholder={placeholder || "Sababni yozing (majburiy)..."}
           rows={2}
-          className="mt-4 w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none"
+          className="mt-4 w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-200 resize-none"
         />
         <div className="flex gap-3 mt-5">
           <button

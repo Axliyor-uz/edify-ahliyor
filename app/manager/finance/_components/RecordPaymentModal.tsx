@@ -144,7 +144,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
     return (
       <ManagerSheet onClose={onDone}>
         <div className="p-6 sm:p-7 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 size={28} />
           </div>
           <h3 className="text-lg font-bold text-slate-900">
@@ -163,7 +163,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                     <span className="text-slate-600">
                       {charge ? `${periodLabelOf(charge)} · ${charge.classTitle}` : a.chargeId}
                     </span>
-                    <span className="font-bold text-emerald-600 tabular-nums">{formatUZS(a.amount)}</span>
+                    <span className="font-bold text-brand-700 tabular-nums">{formatUZS(a.amount)}</span>
                   </div>
                 );
               })}
@@ -178,13 +178,13 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
 
           <p className="text-[13px] text-slate-500 mt-4">
             Yangi balans:{" "}
-            <span className={`font-bold ${result.newBalance < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+            <span className={`font-bold ${result.newBalance < 0 ? "text-rose-600" : "text-brand-700"}`}>
               {formatUZS(result.newBalance)}
             </span>
           </p>
           <button
             onClick={onDone}
-            className="mt-5 w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-colors"
+            className="mt-5 w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors"
           >
             Yopish
           </button>
@@ -207,7 +207,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="O'quvchini qidiring..."
-                className="w-full pl-10 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                className="w-full pl-10 pr-3.5 py-2.5 border border-brand-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
               />
             </div>
             <div className="mt-3 max-h-[45dvh] overflow-y-auto space-y-1">
@@ -222,7 +222,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                   <button
                     key={s.uid}
                     onClick={() => setSelected(s)}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-brand-25 transition-colors text-left"
                   >
                     {s.photoURL ? (
                       // eslint-disable-next-line @next/next/no-img-element -- photos come from arbitrary auth providers (Google etc.); plain <img> like the rest of the manager panel
@@ -256,7 +256,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
               <div className="min-w-0">
                 <h3 className="text-[16px] font-bold text-slate-900 truncate">{selected.displayName}</h3>
                 {profile && (
-                  <p className={`text-[12.5px] font-semibold ${profile.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                  <p className={`text-[12.5px] font-semibold ${profile.balance < 0 ? "text-rose-600" : "text-brand-700"}`}>
                     Balans: {formatUZS(profile.balance)}
                   </p>
                 )}
@@ -318,13 +318,13 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="Summa (so'm)"
-                    className="w-full px-3.5 py-3 border border-slate-200 rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    className="w-full px-3.5 py-3 border border-brand-line rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
                   />
                   {type === "payment" && totalDebt > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       <button
                         onClick={() => setAmount(String(totalDebt))}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-[12px] font-bold text-slate-600"
+                        className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 rounded-lg text-[12px] font-bold text-brand-800"
                       >
                         Jami qarz · {formatUZS(totalDebt)}
                       </button>
@@ -332,7 +332,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                         <button
                           key={c.id}
                           onClick={() => setAmount(String(openAmountOf(c)))}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-[12px] font-bold text-slate-600"
+                          className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 rounded-lg text-[12px] font-bold text-brand-800"
                         >
                           {periodLabelOf(c)} · {formatUZS(openAmountOf(c))}
                         </button>
@@ -349,8 +349,8 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                       onClick={() => setMethod(m)}
                       className={`px-3.5 py-2 rounded-xl text-[13px] font-bold border transition-colors ${
                         method === m
-                          ? "bg-slate-900 text-white border-slate-900"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          ? "bg-brand-600 text-white border-brand-600"
+                          : "bg-white text-slate-600 border-brand-line hover:border-brand-200"
                       }`}
                     >
                       {label}
@@ -365,13 +365,13 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                     value={paidAt}
                     max={todayKey}
                     onChange={(e) => setPaidAt(e.target.value)}
-                    className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    className="px-3 py-2.5 border border-brand-line rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
                   />
                   <input
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder={type === "refund" ? "Izoh (majburiy)" : "Izoh (ixtiyoriy)"}
-                    className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    className="px-3 py-2.5 border border-brand-line rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
                   />
                 </div>
 
@@ -379,7 +379,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                   onClick={submit}
                   disabled={!amountValid || submitting}
                   className={`w-full py-3.5 font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-white ${
-                    type === "payment" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
+                    type === "payment" ? "bg-brand-600 hover:bg-brand-700" : "bg-rose-600 hover:bg-rose-700"
                   }`}
                 >
                   {submitting && <Loader2 size={16} className="animate-spin" />}

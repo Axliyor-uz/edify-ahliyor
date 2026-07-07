@@ -59,7 +59,7 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
         <MonthNav label={monthLabel} onShift={onShiftMonth} />
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-colors"
+          className="flex items-center gap-1.5 px-5 py-3 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-sm rounded-xl transition-all shadow-sm shadow-brand-600/25"
         >
           <Plus size={16} /> Xarajat qo&apos;shish
         </button>
@@ -71,7 +71,7 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
 
       {byCategory.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          <span className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[12px] font-bold">
+          <span className="px-3 py-1.5 bg-brand-ink text-white rounded-lg text-[12px] font-bold">
             Jami: {formatUZS(total)}
           </span>
           {byCategory.map(([cat, sum]) => (
@@ -82,7 +82,7 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
+      <div className="bg-white border border-brand-line rounded-2xl divide-y divide-slate-100">
         {filtered.length === 0 ? (
           <p className="py-12 text-center text-sm text-slate-400">
             {search ? "Hech narsa topilmadi" : "Bu oy uchun xarajatlar yo'q"}
@@ -91,7 +91,7 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
           filtered.map((e) => {
             const cancelled = e.status === "cancelled";
             return (
-              <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={e.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-brand-25 transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 shrink-0">
                   <Wallet size={15} />
                 </div>
@@ -205,10 +205,10 @@ function AddExpenseModal({
             <button
               key={c}
               onClick={() => setCategory(c)}
-              className={`px-3.5 py-2 rounded-xl text-[13px] font-bold border transition-colors ${
+              className={`px-3.5 py-2.5 rounded-xl text-[13px] font-bold border transition-colors ${
                 category === c
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                  ? "bg-brand-600 text-white border-brand-600"
+                  : "bg-white text-slate-600 border-brand-line hover:border-brand-600"
               }`}
             >
               {categoryLabel(c)}
@@ -224,7 +224,7 @@ function AddExpenseModal({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="Summa (so'm)"
-          className="w-full px-3.5 py-3 border border-slate-200 rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-300"
+          className="w-full px-3.5 py-3 border border-slate-200 rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
         />
 
         <div className="grid grid-cols-2 gap-2.5">
@@ -233,20 +233,20 @@ function AddExpenseModal({
             value={date}
             max={todayKey}
             onChange={(e) => setDate(e.target.value)}
-            className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Izoh (ixtiyoriy)"
-            className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
         </div>
 
         <button
           onClick={submit}
           disabled={!valid || submitting}
-          className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {submitting && <Loader2 size={16} className="animate-spin" />}
           Saqlash

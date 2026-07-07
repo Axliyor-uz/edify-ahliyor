@@ -22,7 +22,7 @@ interface Props {
 const STATUS_CLS: Record<string, string> = {
   pending: "bg-rose-50 text-rose-600",
   partial: "bg-amber-50 text-amber-600",
-  paid: "bg-emerald-50 text-emerald-600",
+  paid: "bg-brand-100 text-brand-800",
   waived: "bg-violet-50 text-violet-500",
   cancelled: "bg-slate-100 text-slate-400",
 };
@@ -100,7 +100,7 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
 
   return (
     <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60">
-      <h3 className="text-[12px] font-black text-amber-500 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+      <h3 className="text-[12px] font-black text-brand-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
         <Wallet size={14} /> Moliya
       </h3>
 
@@ -114,11 +114,11 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
           <div className="flex flex-wrap items-center gap-3">
             <div
               className={`px-4 py-3 rounded-xl border ${
-                balance < 0 ? "bg-rose-50 border-rose-100" : "bg-emerald-50 border-emerald-100"
+                balance < 0 ? "bg-rose-50 border-rose-100" : "bg-brand-50 border-brand-100"
               }`}
             >
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Balans</p>
-              <p className={`text-[16px] font-black tabular-nums ${balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+              <p className={`text-[16px] font-black tabular-nums ${balance < 0 ? "text-rose-600" : "text-brand-700"}`}>
                 {formatUZS(balance)}
               </p>
             </div>
@@ -129,7 +129,7 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
               className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[12.5px] font-bold border transition-colors disabled:opacity-50 ${
                 frozen
                   ? "bg-sky-50 text-sky-600 border-sky-200 hover:bg-sky-100"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                  : "bg-white text-slate-600 border-brand-line hover:border-brand-200"
               }`}
             >
               <Snowflake size={14} />
@@ -145,12 +145,12 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
                   value={discountInput}
                   onChange={(e) => setDiscountInput(e.target.value)}
                   placeholder="%"
-                  className="w-16 px-2.5 py-2 border border-slate-200 rounded-xl text-[13px] font-bold text-center focus:outline-none focus:ring-2 focus:ring-slate-300"
+                  className="w-16 px-2.5 py-2 border border-brand-line rounded-xl text-[13px] font-bold text-center focus:outline-none focus:ring-2 focus:ring-brand-200"
                 />
                 <button
                   onClick={saveDiscount}
                   disabled={busy}
-                  className="px-3 py-2 bg-slate-900 text-white rounded-xl text-[12px] font-bold disabled:opacity-50"
+                  className="px-3 py-2 bg-brand-600 text-white rounded-xl text-[12px] font-bold disabled:opacity-50"
                 >
                   OK
                 </button>
@@ -167,7 +167,7 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
                   setDiscountInput(profile?.discountPercent ? String(profile.discountPercent) : "");
                   setEditingDiscount(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[12.5px] font-bold border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[12.5px] font-bold border bg-white text-slate-600 border-brand-line hover:border-brand-200 transition-colors"
               >
                 <BadgePercent size={14} />
                 {profile?.discountPercent ? `Chegirma ${profile.discountPercent}%` : "Chegirma qo'shish"}
@@ -212,7 +212,7 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
                     </span>
                     <span
                       className={`font-bold tabular-nums shrink-0 ${
-                        p.status === "cancelled" ? "text-slate-300 line-through" : p.type === "refund" ? "text-rose-600" : "text-emerald-600"
+                        p.status === "cancelled" ? "text-slate-300 line-through" : p.type === "refund" ? "text-rose-600" : "text-brand-700"
                       }`}
                     >
                       {p.type === "refund" ? "−" : "+"}

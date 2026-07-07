@@ -25,7 +25,7 @@ interface Props {
 const STATUS_CLS: Record<ChargeStatus, string> = {
   pending: "bg-rose-50 text-rose-600",
   partial: "bg-amber-50 text-amber-600",
-  paid: "bg-emerald-50 text-emerald-600",
+  paid: "bg-brand-100 text-brand-800",
   waived: "bg-violet-50 text-violet-500",
   cancelled: "bg-slate-100 text-slate-400",
 };
@@ -74,7 +74,7 @@ export default function ChargesTab({ charges, monthLabel, onShiftMonth, unbilled
         </div>
         <p className="text-[12.5px] text-slate-500 tabular-nums">
           Hisoblangan <span className="font-bold text-slate-700">{formatUZS(totals.charged)}</span> · To&apos;langan{" "}
-          <span className="font-bold text-emerald-600">{formatUZS(totals.paid)}</span> · Qoldiq{" "}
+          <span className="font-bold text-brand-700">{formatUZS(totals.paid)}</span> · Qoldiq{" "}
           <span className="font-bold text-rose-600">{formatUZS(totals.open)}</span>
         </p>
       </div>
@@ -93,14 +93,14 @@ export default function ChargesTab({ charges, monthLabel, onShiftMonth, unbilled
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
+      <div className="bg-white border border-brand-line rounded-2xl divide-y divide-slate-100">
         {filtered.length === 0 ? (
           <p className="py-12 text-center text-sm text-slate-400">
             {search ? "Hech narsa topilmadi" : "Bu davr uchun hisoblar yo'q"}
           </p>
         ) : (
           filtered.map((c) => (
-            <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+            <div key={c.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-brand-25 transition-colors">
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-bold truncate ${c.status === "cancelled" ? "text-slate-400 line-through" : "text-slate-800"}`}>
                   {c.studentName}
@@ -117,7 +117,7 @@ export default function ChargesTab({ charges, monthLabel, onShiftMonth, unbilled
               <div className="text-right shrink-0 w-[110px]">
                 <p className="text-sm font-bold text-slate-800 tabular-nums">{formatUZS(c.amount)}</p>
                 {c.paidAmount > 0 && c.status !== "paid" && (
-                  <p className="text-[11px] text-emerald-600 tabular-nums">to&apos;landi {formatUZS(c.paidAmount)}</p>
+                  <p className="text-[11px] text-brand-700 tabular-nums">to&apos;landi {formatUZS(c.paidAmount)}</p>
                 )}
               </div>
               <div className="flex gap-0.5 shrink-0">
@@ -238,13 +238,13 @@ function AdjustDialog({ charge, onClose, onDone }: { charge: Charge; onClose: ()
           step={1000}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="mt-4 w-full px-3.5 py-3 border border-slate-200 rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-300"
+          className="mt-4 w-full px-3.5 py-3 border border-slate-200 rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
         />
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Izoh (ixtiyoriy)"
-          className="mt-2.5 w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          className="mt-2.5 w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
         />
         <div className="flex gap-3 mt-5">
           <button
@@ -257,7 +257,7 @@ function AdjustDialog({ charge, onClose, onDone }: { charge: Charge; onClose: ()
           <button
             onClick={submit}
             disabled={!valid || submitting}
-            className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 size={16} className="animate-spin" />}
             Saqlash

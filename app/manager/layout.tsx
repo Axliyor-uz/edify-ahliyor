@@ -224,7 +224,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
 
   if (loading || (user && !isAuthorized)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-brand-page">
         <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-sm animate-pulse">
           <BookOpen size={24} />
         </div>
@@ -246,7 +246,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   const requestLogout = () => { setIsMobileMenuOpen(false); setLogoutOpen(true); };
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex font-['Inter',sans-serif] selection:bg-amber-100 selection:text-amber-900">
+    <div className="min-h-[100dvh] bg-brand-page flex font-['Inter',sans-serif] selection:bg-amber-100 selection:text-amber-900">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:block w-64 h-screen sticky top-0 shrink-0 z-40">
         <Sidebar
@@ -355,10 +355,10 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       <main className="flex-1 min-w-0 flex flex-col pt-14 lg:pt-0 overflow-y-auto">
         <div
           className={
-            // Attendance uses the full width (its wide grid needs the room);
+            // Attendance + finance use the full width (wide grids/tables need the room);
             // every other manager page keeps the centered, max-width layout.
-            pathname?.startsWith("/manager/attendance") || pathname?.startsWith("/manager/staff-attendance") || pathname?.startsWith("/manager/timetable")
-              ? "flex-1 w-full p-3 sm:p-4 lg:p-5"
+            pathname?.startsWith("/manager/attendance") || pathname?.startsWith("/manager/staff-attendance") || pathname?.startsWith("/manager/timetable") || pathname?.startsWith("/manager/finance")
+              ? "flex-1 w-full p-3 sm:p-4 lg:p-6"
               : "flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8"
           }
         >

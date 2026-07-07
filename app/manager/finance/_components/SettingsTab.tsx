@@ -54,9 +54,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
+    <div className="bg-white border border-brand-line rounded-2xl p-5 sm:p-6">
       <div className="flex items-start gap-3 mb-4">
-        <div className="w-7 h-7 rounded-full bg-slate-900 text-white text-[13px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+        <div className="w-7 h-7 rounded-full bg-brand-600 text-white text-[13px] font-bold flex items-center justify-center shrink-0 mt-0.5">
           {n}
         </div>
         <div>
@@ -138,7 +138,7 @@ export default function SettingsTab({ settings, onSaved, classes, onClassesChang
               key={o.value}
               onClick={() => setAnchor(o.value)}
               className={`text-left p-4 rounded-2xl border-2 transition-colors ${
-                anchor === o.value ? "border-slate-900 bg-slate-50" : "border-slate-200 hover:border-slate-300"
+                anchor === o.value ? "border-brand-600 bg-brand-50" : "border-brand-line hover:border-brand-200"
               }`}
             >
               <p className="text-[13.5px] font-bold text-slate-800">{o.title}</p>
@@ -156,7 +156,7 @@ export default function SettingsTab({ settings, onSaved, classes, onClassesChang
               max={31}
               value={dueDay}
               onChange={(e) => setDueDay(e.target.value)}
-              className="w-20 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="w-20 px-3 py-2.5 border border-brand-line rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-brand-200"
             />
             <p className="text-[12px] text-slate-400">Masalan 5 — har oyning 5-sanasigacha. Kechiksa qarzdorlar ro&apos;yxatida ko&apos;rinadi.</p>
           </div>
@@ -169,13 +169,13 @@ export default function SettingsTab({ settings, onSaved, classes, onClassesChang
               max={30}
               value={dueDays}
               onChange={(e) => setDueDays(e.target.value)}
-              className="w-20 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="w-20 px-3 py-2.5 border border-brand-line rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-brand-200"
             />
             <p className="text-[12px] text-slate-400">Masalan 5 — davr boshidan 5 kun ichida.</p>
           </div>
         )}
 
-        <label className="mt-4 flex items-center justify-between gap-3 cursor-pointer bg-slate-50 border border-slate-100 rounded-2xl p-4">
+        <label className="mt-4 flex items-center justify-between gap-3 cursor-pointer bg-brand-25 border border-brand-line rounded-2xl p-4">
           <div>
             <p className="text-[13.5px] font-bold text-slate-800">Birinchi oy qisman hisoblansin</p>
             <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
@@ -186,7 +186,7 @@ export default function SettingsTab({ settings, onSaved, classes, onClassesChang
             type="checkbox"
             checked={prorate}
             onChange={(e) => setProrate(e.target.checked)}
-            className="w-5 h-5 accent-slate-900 shrink-0"
+            className="w-5 h-5 accent-brand-600 shrink-0"
           />
         </label>
       </Section>
@@ -202,7 +202,7 @@ export default function SettingsTab({ settings, onSaved, classes, onClassesChang
               key={o.value}
               onClick={() => setPercentBase(o.value)}
               className={`text-left p-4 rounded-2xl border-2 transition-colors ${
-                percentBase === o.value ? "border-slate-900 bg-slate-50" : "border-slate-200 hover:border-slate-300"
+                percentBase === o.value ? "border-brand-600 bg-brand-50" : "border-brand-line hover:border-brand-200"
               }`}
             >
               <p className="text-[13.5px] font-bold text-slate-800">{o.title}</p>
@@ -216,7 +216,7 @@ export default function SettingsTab({ settings, onSaved, classes, onClassesChang
         <button
           onClick={save}
           disabled={saving || !dirty}
-          className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-40 flex items-center gap-2"
+          className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-40 flex items-center gap-2"
         >
           {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
           Sozlamalarni saqlash

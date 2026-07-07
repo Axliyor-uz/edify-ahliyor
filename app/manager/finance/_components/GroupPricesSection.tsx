@@ -85,7 +85,7 @@ export default function GroupPricesSection({ classes, onSaved }: Props) {
         <SearchInput value={search} onChange={setSearch} placeholder="Guruh yoki o'qituvchini qidiring..." />
       )}
 
-      <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl">
+      <div className="divide-y divide-brand-line/60 border border-brand-line rounded-2xl">
         {filtered.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-400">Guruh topilmadi</p>
         ) : (
@@ -113,7 +113,7 @@ export default function GroupPricesSection({ classes, onSaved }: Props) {
                     value={prices[c.id] ?? ""}
                     onChange={(e) => setPrices((p) => ({ ...p, [c.id]: e.target.value }))}
                     placeholder="0"
-                    className="w-36 pl-3 pr-12 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    className="w-36 pl-3 pr-12 py-2.5 border border-brand-line rounded-xl text-sm font-bold text-slate-900 tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-brand-200"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 pointer-events-none">
                     so&apos;m
@@ -132,7 +132,7 @@ export default function GroupPricesSection({ classes, onSaved }: Props) {
         <button
           onClick={save}
           disabled={saving || changedIds.length === 0}
-          className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-40"
+          className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-40"
         >
           {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
           {changedIds.length > 0 ? `Saqlash (${changedIds.length})` : "Saqlash"}

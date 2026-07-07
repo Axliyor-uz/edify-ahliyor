@@ -20,15 +20,15 @@ interface Props {
  */
 export default function StartGuide({ steps }: Props) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
+    <div className="bg-white border border-brand-line rounded-2xl p-5 sm:p-6">
       <p className="text-[15px] font-bold text-slate-900">Moliya bo&apos;limini boshlash — 3 qadam</p>
       <div className="mt-4 space-y-3">
         {steps.map((s, i) => (
           <div key={s.title} className="flex items-center gap-3">
             {s.done ? (
-              <CheckCircle2 size={26} className="text-emerald-500 shrink-0" />
+              <CheckCircle2 size={26} className="text-brand-600 shrink-0" />
             ) : (
-              <div className="w-[26px] h-[26px] rounded-full bg-slate-900 text-white text-[13px] font-bold flex items-center justify-center shrink-0">
+              <div className="w-[26px] h-[26px] rounded-full bg-brand-600 text-white text-[13px] font-bold flex items-center justify-center shrink-0">
                 {i + 1}
               </div>
             )}
@@ -41,7 +41,7 @@ export default function StartGuide({ steps }: Props) {
             {!s.done && (
               <button
                 onClick={s.onAction}
-                className="shrink-0 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[12px] font-bold transition-colors"
+                className="shrink-0 px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-[12px] font-bold transition-colors"
               >
                 {s.actionLabel}
               </button>

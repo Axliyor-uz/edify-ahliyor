@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
@@ -218,23 +218,31 @@ export default function ManagerFinancePage() {
         profit={stats.profit}
       />
 
-      <div className="flex gap-1 bg-slate-100 rounded-2xl p-1 w-fit max-w-full overflow-x-auto">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-xl text-[13px] font-bold whitespace-nowrap transition-colors ${
-              tab === t.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {t.label}
-            {t.key === "debtors" && debtorCount > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 bg-rose-100 text-rose-600 rounded-full text-[10.5px]">
-                {debtorCount}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* App-style tab bar: white pill container, green active pill; sticky under
+          the mobile top bar (56px) so it stays reachable while scrolling. */}
+      <div className="sticky top-[60px] lg:top-2 z-30 -mx-1 px-1">
+        <div className="flex gap-0.5 bg-white border border-brand-line rounded-2xl p-1 w-fit max-w-full overflow-x-auto shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`px-4 py-2.5 rounded-xl text-[13px] font-bold whitespace-nowrap transition-colors ${
+                tab === t.key ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
+              }`}
+            >
+              {t.label}
+              {t.key === "debtors" && debtorCount > 0 && (
+                <span
+                  className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10.5px] ${
+                    tab === t.key ? "bg-white/25 text-white" : "bg-rose-100 text-rose-600"
+                  }`}
+                >
+                  {debtorCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loadingData && tab !== "settings" ? (
@@ -288,6 +296,15 @@ export default function ManagerFinancePage() {
           }}
         />
       )}
+
+      {/* Mobile FAB — the #1 action (record a payment) is always one thumb away. */}
+      <button
+        onClick={() => setPayModal({ open: true })}
+        aria-label="To'lov qabul qilish"
+        className="sm:hidden fixed bottom-5 right-4 z-40 w-14 h-14 rounded-full bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/40 flex items-center justify-center active:scale-95 transition-transform"
+      >
+        <Plus size={26} strokeWidth={2.5} />
+      </button>
 
       {payModal.open && (
         <RecordPaymentModal

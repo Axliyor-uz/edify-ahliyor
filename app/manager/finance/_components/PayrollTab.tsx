@@ -113,7 +113,7 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
           <Loader2 size={22} className="animate-spin" />
         </div>
       ) : !result || result.rows.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl py-14 text-center">
+        <div className="bg-white border border-brand-line rounded-2xl py-14 text-center">
           <p className="text-sm text-slate-400">Markazda o&apos;qituvchilar yo&apos;q</p>
         </div>
       ) : (
@@ -122,7 +122,7 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
             <SearchInput value={search} onChange={setSearch} placeholder="O'qituvchini qidiring..." />
           )}
           {filteredRows.length === 0 && (
-            <p className="py-10 text-center text-sm text-slate-400 bg-white border border-slate-200 rounded-2xl">
+            <p className="py-10 text-center text-sm text-slate-400 bg-white border border-brand-line rounded-2xl">
               Hech narsa topilmadi
             </p>
           )}
@@ -130,13 +130,13 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
             const paid = r.payout?.status === "paid";
             const approved = r.payout?.status === "approved";
             return (
-              <div key={r.teacherId} className="bg-white border border-slate-200 rounded-2xl p-4">
+              <div key={r.teacherId} className="bg-white border border-brand-line rounded-2xl p-4">
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex-1 min-w-[180px]">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-bold text-slate-800">{r.teacherName}</p>
                       {paid && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[11px] font-bold">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-100 text-brand-800 rounded-full text-[11px] font-bold">
                           <BadgeCheck size={11} /> To&apos;langan
                         </span>
                       )}
@@ -163,7 +163,7 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
                         <button
                           onClick={() => setConfigTarget(r)}
                           title="Oylik sozlamalari"
-                          className="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-500 flex items-center justify-center"
+                          className="w-9 h-9 rounded-lg border border-brand-line hover:border-brand-600 hover:text-brand-700 text-slate-500 flex items-center justify-center transition-colors"
                         >
                           <Settings2 size={14} />
                         </button>
@@ -171,7 +171,7 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
                       {!paid && (
                         <button
                           onClick={() => setApproveTarget(r)}
-                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[12px] font-bold transition-colors"
+                          className="px-3.5 py-2 bg-white border-[1.5px] border-brand-600 text-brand-700 hover:bg-brand-50 rounded-lg text-[12px] font-bold transition-colors"
                         >
                           {approved ? "Qayta hisoblash" : "Tasdiqlash"}
                         </button>
@@ -179,7 +179,7 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
                       {approved && (
                         <button
                           onClick={() => setPayTarget(r)}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[12px] font-bold transition-colors"
+                          className="px-3.5 py-2 bg-brand-600 hover:bg-brand-700 active:scale-95 text-white rounded-lg text-[12px] font-bold transition-all"
                         >
                           To&apos;landi
                         </button>
@@ -276,7 +276,7 @@ function SalaryConfigModal({ row, onClose, onDone }: { row: PayrollRow; onClose:
         value={value}
         onChange={(e) => set(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-300"
+        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
       />
       <p className="text-[11.5px] text-slate-400 mt-1">{hint}</p>
     </div>
@@ -290,8 +290,8 @@ function SalaryConfigModal({ row, onClose, onDone }: { row: PayrollRow; onClose:
           <p className="text-sm text-slate-500 mt-0.5">{row.teacherName} · qismlar yig&apos;indisi to&apos;lanadi</p>
         </div>
         {field("Fiks oylik (so'm)", "Har oy o'zgarmas summa. Bo'sh — yo'q.", fixed, setFixed, "2000000")}
-        {field("Guruh daromadidan foiz (%)", "O'z guruhlari pulidan ulush. Bo'sh — yo'q.", percent, setPercent, "10")}
-        {field("Har dars uchun (so'm)", "Davomatdagi o'tilgan darslar soniga ko'paytiriladi. Bo'sh — yo'q.", perLesson, setPerLesson, "50000")}
+        {field("Guruh daromadidan foiz (%)", "O'z guruhlari pulidan ulush. Bo'sh — yo'q.", percent, setPercent, "0")}
+        {field("Har dars uchun (so'm)", "Davomatdagi o'tilgan darslar soniga ko'paytiriladi. Bo'sh — yo'q.", perLesson, setPerLesson, "0")}
         <div className="flex gap-3 pt-1">
           <button
             onClick={onClose}
@@ -303,7 +303,7 @@ function SalaryConfigModal({ row, onClose, onDone }: { row: PayrollRow; onClose:
           <button
             onClick={submit}
             disabled={submitting}
-            className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 size={16} className="animate-spin" />}
             Saqlash
@@ -369,14 +369,14 @@ function ApprovePayoutModal({
             value={adjustment}
             onChange={(e) => setAdjustment(e.target.value)}
             placeholder="0"
-            className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
         </div>
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder={adj !== 0 ? "Izoh (majburiy)" : "Izoh (ixtiyoriy)"}
-          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
         />
         <p className="text-sm text-slate-600">
           Yakuniy: <span className={`font-bold ${finalAmount < 0 ? "text-rose-600" : "text-slate-900"}`}>{formatUZS(finalAmount)}</span>
@@ -392,7 +392,7 @@ function ApprovePayoutModal({
           <button
             onClick={submit}
             disabled={!valid || submitting || finalAmount < 0}
-            className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 size={16} className="animate-spin" />}
             Tasdiqlash

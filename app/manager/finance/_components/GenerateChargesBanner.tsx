@@ -59,9 +59,9 @@ export default function GenerateChargesBanner({ anchor, monthKey, monthLabel, re
   const scopeLabel = anchor === "calendar" ? `${monthLabel} uchun` : "Yangi davrlar uchun";
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-        <Sparkles size={19} />
+    <div className="bg-[#FFF8EC] border border-[#F3E2BD] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="w-11 h-11 rounded-xl bg-[#FDEDCB] text-amber-600 flex items-center justify-center shrink-0">
+        <Sparkles size={20} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-amber-900">
@@ -75,7 +75,7 @@ export default function GenerateChargesBanner({ anchor, monthKey, monthLabel, re
       <button
         onClick={generate}
         disabled={running}
-        className="shrink-0 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+        className="shrink-0 px-6 py-3 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold text-sm rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2"
       >
         {running && <Loader2 size={15} className="animate-spin" />}
         Yaratish
