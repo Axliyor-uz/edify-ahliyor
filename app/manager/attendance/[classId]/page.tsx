@@ -96,7 +96,7 @@ export default function AttendanceClassPage() {
       {/* Back */}
       <Link
         href="/manager/attendance"
-        className="inline-flex items-center gap-1 text-[12px] font-medium text-slate-500 hover:text-slate-900 transition-colors"
+        className="inline-flex items-center gap-1 text-[12px] font-medium text-slate-500 hover:text-brand-700 transition-colors"
       >
         <ArrowLeft size={14} /> Davomatlarga qaytish
       </Link>
@@ -112,13 +112,13 @@ export default function AttendanceClassPage() {
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-brand-line rounded-full">
             <CalendarCheck size={14} className="text-slate-400" />
             <span className="text-[12px] font-semibold text-slate-700 whitespace-nowrap tabular-nums">
               {classData.schedule?.length || 0} dars
             </span>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-brand-line rounded-full">
             <Users size={14} className="text-slate-400" />
             <span className="text-[12px] font-semibold text-slate-700 whitespace-nowrap tabular-nums">
               {classData.studentIds?.length || 0} o&apos;quvchi
@@ -128,23 +128,23 @@ export default function AttendanceClassPage() {
       </div>
 
       {/* Tabs — clearly differentiable (filled active pill) */}
-      <div className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+      <div className="inline-flex items-center gap-0.5 p-1 bg-white border border-brand-line rounded-full">
         <button
           onClick={() => setActiveTab("attendance")}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg font-semibold text-[13px] transition-all ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-[13px] transition-colors ${
             activeTab === "attendance"
-              ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/25"
-              : "text-slate-500 hover:text-slate-900 hover:bg-white/70"
+              ? "bg-brand-600 text-white shadow-sm shadow-brand-600/25"
+              : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
           }`}
         >
           <CalendarCheck size={15} /> Davomat
         </button>
         <button
           onClick={() => setActiveTab("schedule")}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg font-semibold text-[13px] transition-all ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-[13px] transition-colors ${
             activeTab === "schedule"
-              ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/25"
-              : "text-slate-500 hover:text-slate-900 hover:bg-white/70"
+              ? "bg-brand-600 text-white shadow-sm shadow-brand-600/25"
+              : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
           }`}
         >
           <Clock size={15} /> Dars Jadvali
@@ -152,7 +152,7 @@ export default function AttendanceClassPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm min-h-[400px] overflow-hidden">
+      <div className="bg-white border border-brand-line rounded-3xl min-h-[400px] overflow-hidden">
         {activeTab === "schedule" && (
           <div className="p-4 sm:p-5">
             {/* Read-only view — editing lives on the group page (single source of truth). */}
@@ -162,7 +162,7 @@ export default function AttendanceClassPage() {
               </p>
               <Link
                 href={`/manager/groups/${classData.id}`}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-[12.5px] font-bold transition-colors shrink-0"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-50 text-brand-800 hover:bg-brand-100 rounded-full text-[12.5px] font-bold transition-colors shrink-0"
               >
                 <Pencil size={14} /> Jadvalni tahrirlash
               </Link>
@@ -170,7 +170,7 @@ export default function AttendanceClassPage() {
 
             {(classData.schedule?.length || 0) === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-16 px-6">
-                <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3"><CalendarX2 size={26} /></div>
+                <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3"><CalendarX2 size={26} /></div>
                 <h3 className="text-sm font-semibold text-slate-700">Jadval belgilanmagan</h3>
                 <p className="text-[13px] text-slate-500 mt-1.5 max-w-[320px]">Bu guruh uchun hali dars jadvali kiritilmagan. Guruh sahifasida qo&apos;shing.</p>
               </div>
@@ -179,13 +179,13 @@ export default function AttendanceClassPage() {
                 {[...(classData.schedule || [])]
                   .sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek) - WEEK_ORDER.indexOf(b.dayOfWeek))
                   .map((s, i) => (
-                    <div key={i} className="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-2xl">
+                    <div key={i} className="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-brand-line rounded-2xl">
                       <div className="min-w-0">
                         <p className="text-[13.5px] font-bold text-slate-900">{DAY_LABEL[s.dayOfWeek]}</p>
                         <p className="text-[12.5px] text-slate-500 tabular-nums mt-0.5">{s.startTime}–{s.endTime}</p>
                       </div>
                       {s.roomName ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-[12px] font-semibold shrink-0">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-50 text-brand-800 rounded-full text-[12px] font-semibold shrink-0">
                           <DoorOpen size={13} /> {s.roomName}
                         </span>
                       ) : (

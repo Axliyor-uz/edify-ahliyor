@@ -123,11 +123,11 @@ export default function GroupDetailPage() {
       <div>
         <Link
           href="/manager/groups"
-          className="inline-flex items-center gap-2 text-[13px] font-bold text-slate-500 hover:text-amber-600 mb-4 transition-colors"
+          className="inline-flex items-center gap-2 text-[13px] font-bold text-slate-500 hover:text-brand-700 mb-4 transition-colors"
         >
           <ArrowLeft size={16} /> Guruhlar ro'yxatiga qaytish
         </Link>
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-brand-line">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
@@ -140,7 +140,7 @@ export default function GroupDetailPage() {
             <button
               onClick={handleCopyCode}
               title="Kirish kodini nusxalash"
-              className="self-start flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors shrink-0"
+              className="self-start flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-brand-50 border border-brand-line rounded-full transition-colors shrink-0"
             >
               <span className="text-[11px] font-semibold text-slate-400">Kod:</span>
               <span className="text-[13px] font-mono font-bold text-slate-800 tracking-widest">{classData.joinCode}</span>
@@ -154,11 +154,11 @@ export default function GroupDetailPage() {
               {[...classData.schedule]
                 .sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek) - WEEK_ORDER.indexOf(b.dayOfWeek))
                 .map((s, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                  <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-brand-line rounded-full text-xs">
                     <span className="font-bold text-slate-700">{DAY_SHORT[s.dayOfWeek]}</span>
                     <span className="text-slate-400 tabular-nums">{s.startTime}</span>
                     {s.roomName && (
-                      <span className="inline-flex items-center gap-1 text-amber-700 font-semibold border-l border-slate-200 pl-1.5">
+                      <span className="inline-flex items-center gap-1 text-brand-700 font-semibold border-l border-brand-line pl-1.5">
                         <DoorOpen size={11} /> {s.roomName}
                       </span>
                     )}
@@ -172,7 +172,7 @@ export default function GroupDetailPage() {
       </div>
 
       {/* Segmented tabs — all 4 always visible, no horizontal scroll */}
-      <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-2xl">
+      <div className="grid grid-cols-4 gap-0.5 p-1 bg-white border border-brand-line rounded-2xl">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -180,10 +180,10 @@ export default function GroupDetailPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 px-1 rounded-xl text-[11px] sm:text-[13px] font-bold transition-all ${
+              className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 px-1 rounded-xl text-[11px] sm:text-[13px] font-bold transition-colors ${
                 isActive
-                  ? "bg-white text-amber-700 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+                  ? "bg-brand-600 text-white shadow-sm"
+                  : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
               }`}
             >
               <Icon size={16} className="shrink-0" />
@@ -194,7 +194,7 @@ export default function GroupDetailPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm min-h-[400px] overflow-hidden">
+      <div className="bg-white border border-brand-line rounded-3xl min-h-[400px] overflow-hidden">
         {activeTab === "roster" && managerCenterId && (
           <ManagerRosterTab
             classId={classData.id}

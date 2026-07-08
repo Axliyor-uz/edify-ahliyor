@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { Loader2, Save } from "lucide-react";
 import type { ClassData } from "@/hooks/useCenterClasses";
 import { saveGroupFeesApi } from "@/services/financeService";
-import SearchInput from "./SearchInput";
+import SearchInput from "../../_components/SearchInput";
 
 interface Props {
   classes: ClassData[];

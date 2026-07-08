@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { BadgeCheck, Loader2, Settings2 } from "lucide-react";
+import { BadgeCheck, Loader2, Settings2, Users } from "lucide-react";
 import ManagerSheet from "../../_components/ManagerSheet";
 import ConfirmDialog from "../../_components/ConfirmDialog";
 import type { CalculatePayrollResult, PayrollRow } from "@/types/finance";
@@ -13,8 +13,9 @@ import {
   saveTeacherSalaryApi,
 } from "@/services/financeService";
 import { formatUZS } from "@/lib/finance/money";
+import { initialsOf } from "./financeFormat";
 import MonthNav from "./MonthNav";
-import SearchInput from "./SearchInput";
+import SearchInput from "../../_components/SearchInput";
 
 interface Props {
   monthKey: string;
@@ -113,8 +114,12 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
           <Loader2 size={22} className="animate-spin" />
         </div>
       ) : !result || result.rows.length === 0 ? (
-        <div className="bg-white border border-brand-line rounded-2xl py-14 text-center">
-          <p className="text-sm text-slate-400">Markazda o&apos;qituvchilar yo&apos;q</p>
+        <div className="bg-white border border-brand-line rounded-3xl py-14 px-6 text-center">
+          <div className="w-12 h-12 mx-auto rounded-full bg-brand-50 text-brand-700 flex items-center justify-center">
+            <Users size={22} />
+          </div>
+          <p className="text-sm font-bold text-slate-800 mt-3">Markazda o&apos;qituvchilar yo&apos;q</p>
+          <p className="text-[13px] text-slate-400 mt-1">O&apos;qituvchi qo&apos;shilganda oyliklar shu yerda hisoblanadi</p>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -122,33 +127,41 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
             <SearchInput value={search} onChange={setSearch} placeholder="O'qituvchini qidiring..." />
           )}
           {filteredRows.length === 0 && (
-            <p className="py-10 text-center text-sm text-slate-400 bg-white border border-brand-line rounded-2xl">
-              Hech narsa topilmadi
-            </p>
+            <div className="py-12 px-6 text-center bg-white border border-brand-line rounded-3xl">
+              <p className="text-sm font-bold text-slate-800">Hech narsa topilmadi</p>
+              <p className="text-[13px] text-slate-400 mt-1">Qidiruvni o&apos;zgartirib ko&apos;ring</p>
+            </div>
           )}
           {filteredRows.map((r) => {
             const paid = r.payout?.status === "paid";
             const approved = r.payout?.status === "approved";
             return (
-              <div key={r.teacherId} className="bg-white border border-brand-line rounded-2xl p-4">
+              <div key={r.teacherId} className="bg-white border border-brand-line rounded-3xl p-4">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex-1 min-w-[180px]">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${
+                      paid ? "bg-brand-100 text-brand-800" : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {initialsOf(r.teacherName)}
+                  </div>
+                  <div className="flex-1 min-w-[160px]">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-bold text-slate-800">{r.teacherName}</p>
+                      <p className="text-[14.5px] font-semibold text-slate-900">{r.teacherName}</p>
                       {paid && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-100 text-brand-800 rounded-full text-[11px] font-bold">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-100 text-brand-800 rounded-full text-[11px] font-bold">
                           <BadgeCheck size={11} /> To&apos;langan
                         </span>
                       )}
                       {approved && (
-                        <span className="px-2 py-0.5 bg-sky-50 text-sky-600 rounded-full text-[11px] font-bold">
+                        <span className="px-2.5 py-1 bg-sky-50 text-sky-600 rounded-full text-[11px] font-bold">
                           Tasdiqlangan
                         </span>
                       )}
                     </div>
-                    <p className="text-[12px] text-slate-400 mt-1">{breakdownLine(r)}</p>
+                    <p className="text-[12.5px] text-slate-500 mt-1">{breakdownLine(r)}</p>
                     {r.payout && r.payout.adjustment !== 0 && (
-                      <p className="text-[12px] text-slate-400 mt-0.5">
+                      <p className="text-[12.5px] text-slate-500 mt-0.5">
                         {r.payout.adjustment > 0 ? "Bonus" : "Jarima"}: {formatUZS(Math.abs(r.payout.adjustment))}
                         {r.payout.adjustmentNote && ` (${r.payout.adjustmentNote})`}
                       </p>
@@ -163,7 +176,7 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
                         <button
                           onClick={() => setConfigTarget(r)}
                           title="Oylik sozlamalari"
-                          className="w-9 h-9 rounded-lg border border-brand-line hover:border-brand-600 hover:text-brand-700 text-slate-500 flex items-center justify-center transition-colors"
+                          className="w-9 h-9 rounded-full border border-brand-line hover:border-brand-600 hover:text-brand-700 text-slate-500 flex items-center justify-center transition-colors"
                         >
                           <Settings2 size={14} />
                         </button>
@@ -171,7 +184,7 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
                       {!paid && (
                         <button
                           onClick={() => setApproveTarget(r)}
-                          className="px-3.5 py-2 bg-white border-[1.5px] border-brand-600 text-brand-700 hover:bg-brand-50 rounded-lg text-[12px] font-bold transition-colors"
+                          className="px-4 py-2 bg-brand-50 hover:bg-brand-100 text-brand-800 rounded-full text-[12px] font-bold transition-colors"
                         >
                           {approved ? "Qayta hisoblash" : "Tasdiqlash"}
                         </button>
@@ -179,7 +192,7 @@ export default function PayrollTab({ monthKey, monthLabel, onShiftMonth, onExpen
                       {approved && (
                         <button
                           onClick={() => setPayTarget(r)}
-                          className="px-3.5 py-2 bg-brand-600 hover:bg-brand-700 active:scale-95 text-white rounded-lg text-[12px] font-bold transition-all"
+                          className="px-4 py-2 bg-brand-600 hover:bg-brand-700 active:scale-95 text-white rounded-full text-[12px] font-bold transition-all"
                         >
                           To&apos;landi
                         </button>

@@ -190,7 +190,7 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
       {/* HEADER */}
       <div className="px-5 sm:px-7 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+          <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 shrink-0">
             <UserPlus size={19} strokeWidth={2.5} />
           </div>
           <div>
@@ -209,22 +209,22 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
       {/* BODY */}
       <div className="p-5 sm:p-7">
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors" size={17} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors" size={17} />
           <input
             type="text"
             placeholder="Ism, username yoki email..."
             value={searchInput}
             onChange={(e) => { setSearchInput(e.target.value); setFoundUser(null); }}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="w-full pl-11 pr-14 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 outline-none transition-all"
+            className="w-full pl-11 pr-14 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 outline-none transition-all"
           />
           <button
             onClick={handleSearch}
             disabled={isSearching || !hasInput}
             title="Aniq username/email bo'yicha qidirish"
-            className={`absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+            className={`absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
               hasInput && !isSearching
-                ? "bg-amber-500 text-white hover:bg-amber-600 active:scale-95"
+                ? "bg-brand-600 text-white hover:bg-brand-700 active:scale-95"
                 : "bg-slate-100 text-slate-400 border border-slate-200"
             }`}
           >
@@ -234,8 +234,8 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
 
         {/* Exact search result */}
         {foundUser && (
-          <div className="mt-4 bg-amber-50/60 border border-amber-200 p-3.5 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <div className="w-11 h-11 bg-amber-500 rounded-xl flex items-center justify-center font-bold text-white text-base shrink-0">
+          <div className="mt-4 bg-brand-25 border border-brand-200 p-3.5 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="w-11 h-11 bg-brand-600 rounded-full flex items-center justify-center font-bold text-white text-base shrink-0">
               {foundUser.displayName?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="min-w-0 flex-1">
@@ -247,7 +247,7 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
             <button
               onClick={() => handleAddStudent(foundUser.uid, foundUser.displayName)}
               disabled={isBusy}
-              className="h-10 px-4 bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-bold rounded-xl transition-all disabled:opacity-50 active:scale-95 flex items-center gap-1.5 shrink-0"
+              className="h-10 px-4 bg-brand-600 hover:bg-brand-700 text-white text-[13px] font-bold rounded-full transition-all disabled:opacity-50 active:scale-95 flex items-center gap-1.5 shrink-0"
             >
               {addingUid === foundUser.uid ? <Loader2 className="animate-spin" size={16} /> : <UserPlus size={16} />}
               Qo'shish
@@ -287,8 +287,8 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
           ) : (
             <div className="max-h-[40dvh] overflow-y-auto overscroll-contain -mx-1 px-1 space-y-2">
               {visibleCenterStudents.map((s) => (
-                <div key={s.uid} className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-amber-200 transition-colors">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm shrink-0">
+                <div key={s.uid} className="flex items-center gap-3 p-3 bg-white border border-brand-line rounded-2xl hover:border-brand-200 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-800 flex items-center justify-center font-bold text-sm shrink-0">
                     {s.displayName.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -299,7 +299,7 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
                     onClick={() => handleAddStudent(s.uid, s.displayName)}
                     disabled={isBusy}
                     title="Guruhga qo'shish"
-                    className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white flex items-center justify-center transition-colors disabled:opacity-50 shrink-0"
+                    className="w-9 h-9 rounded-full bg-brand-50 text-brand-700 hover:bg-brand-600 hover:text-white flex items-center justify-center transition-colors disabled:opacity-50 shrink-0"
                   >
                     {addingUid === s.uid ? <Loader2 className="animate-spin" size={16} /> : <UserPlus size={16} />}
                   </button>

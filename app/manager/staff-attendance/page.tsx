@@ -30,12 +30,12 @@ export default function StaffAttendancePage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <UserCheck className="text-amber-500" size={24} /> Xodimlar davomati
+            <UserCheck className="text-brand-600" size={24} /> Xodimlar davomati
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">O&apos;qituvchilar davomati, kelish-ketish va soatlarni belgilang</p>
         </div>
         {!isLoading && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[12px] font-semibold text-slate-600">
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-brand-line rounded-full text-[12px] font-semibold text-slate-600">
             <Users size={14} className="text-slate-400" /> {staff.length} xodim
           </span>
         )}

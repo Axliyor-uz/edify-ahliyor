@@ -75,15 +75,15 @@ export default function AttendancePage() {
         </div>
         {!isLoading && classes.length > 0 && tab === "groups" && (
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[12px] font-semibold text-slate-600">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-brand-line rounded-full text-[12px] font-semibold text-slate-600">
               <CalendarCheck size={14} className="text-slate-400" /> {classes.length} guruh
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[12px] font-semibold text-slate-600">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-brand-line rounded-full text-[12px] font-semibold text-slate-600">
               <Users size={14} className="text-slate-400" /> {totalStudents} o&apos;quvchi
             </span>
             {meetingToday > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl text-[12px] font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Bugun {meetingToday} ta dars
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-100 text-brand-800 rounded-full text-[12px] font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-600" /> Bugun {meetingToday} ta dars
               </span>
             )}
           </div>
@@ -91,7 +91,7 @@ export default function AttendancePage() {
       </div>
 
       {/* Tab switcher */}
-      <div className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-2xl">
+      <div className="inline-flex items-center gap-0.5 p-1 bg-white border border-brand-line rounded-full">
         {([
           { id: "groups" as Tab, label: "Guruhlar", Icon: LayoutGrid },
           { id: "walkin" as Tab, label: "Tez davomat", Icon: UserCheck },
@@ -101,8 +101,8 @@ export default function AttendancePage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-bold transition-all ${
-                active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold transition-colors ${
+                active ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
               }`}
             >
               <t.Icon size={15} /> {t.label}
@@ -131,8 +131,8 @@ export default function AttendancePage() {
 
       {/* Empty */}
       {tab === "groups" && !isLoading && classes.length === 0 && (
-        <div className="bg-white border border-slate-200 rounded-3xl p-16 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 mb-4">
+        <div className="bg-white border border-brand-line rounded-3xl p-14 flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3">
             <CalendarX2 size={28} />
           </div>
           <h3 className="text-[15px] font-semibold text-slate-800">Guruhlar yo&apos;q</h3>
@@ -163,7 +163,7 @@ function ClassCard({ cls, todayWeekday }: { cls: ClassData & { schedule?: Schedu
   return (
     <Link
       href={`/manager/attendance/${cls.id}`}
-      className={`group relative block bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden ${theme.hoverBorder}`}
+      className={`group relative block bg-white rounded-3xl border border-brand-line hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden ${theme.hoverBorder}`}
     >
       {/* Accent bar */}
       <div className={`h-1.5 ${theme.bar}`} />

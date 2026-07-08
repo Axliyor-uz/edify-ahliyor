@@ -103,7 +103,7 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isSaving}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all disabled:opacity-60"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all disabled:opacity-60"
             />
           </div>
 
@@ -114,7 +114,7 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={isSaving}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all resize-none disabled:opacity-60"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all resize-none disabled:opacity-60"
             />
           </div>
 
@@ -129,11 +129,11 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
               onChange={(e) => setMonthlyFee(e.target.value)}
               disabled={isSaving}
               placeholder="Masalan: 400000"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all disabled:opacity-60"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all disabled:opacity-60"
             />
             <p className="text-[12px] font-medium text-slate-500 ml-1 leading-snug">
-              Moliya bo&apos;limi shu narx asosida oylik hisob yaratadi. Bo&apos;sh yoki 0 — guruh hisob-kitobga kirmaydi.
-              Narx o&apos;zgarishi faqat KEYINGI oylarga ta&apos;sir qiladi.
+              Hisob-kitob shu narxdan hisoblanadi. Bo&apos;sh yoki 0 — guruhdan pul olinmaydi.
+              Yangi narx keyingi oydan qo&apos;llanadi.
             </p>
           </div>
         </div>
@@ -143,8 +143,8 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
             <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
               <Users size={14} /> O'qituvchini almashtirish
             </h3>
-            <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">
-              Xavfli amal
+            <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
+              Ehtiyot bo&apos;ling
             </span>
           </div>
 
@@ -155,7 +155,7 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
               value={selectedTeacherId}
               onChange={(e) => setSelectedTeacherId(e.target.value)}
               disabled={isSaving || loadingTeachers}
-              className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all disabled:opacity-60"
+              className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all disabled:opacity-60"
             >
               <option value="" disabled>O'qituvchini tanlang...</option>
               {centerTeachers.map((teacher) => (
@@ -166,7 +166,7 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
             </select>
             {loadingTeachers && <p className="text-[12px] text-slate-500 mt-1 ml-1 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> O'qituvchilar yuklanmoqda...</p>}
             <p className="text-[12px] font-medium text-slate-500 mt-1.5 ml-1 leading-snug">
-              Boshqa o'qituvchini tanlasangiz, guruh ustidan to'liq nazorat yangi o'qituvchiga o'tadi va joriy o'qituvchi guruhni ko'ra olmaydi.
+              Yangi o&apos;qituvchi tanlansa, guruh unga o&apos;tadi. Eski o&apos;qituvchi guruhni ko&apos;ra olmaydi.
             </p>
           </div>
         </div>
@@ -175,7 +175,7 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
           <button
             type="submit"
             disabled={isSaving || !title.trim() || !selectedTeacherId}
-            className="w-full sm:w-auto px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm shadow-amber-500/25 active:scale-[0.98] disabled:opacity-50"
+            className="w-full sm:w-auto px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-full flex items-center justify-center gap-2 transition-all shadow-sm shadow-brand-600/25 active:scale-[0.98] disabled:opacity-50"
           >
             {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             Sozlamalarni saqlash

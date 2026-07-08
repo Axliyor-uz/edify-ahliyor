@@ -151,7 +151,7 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
     <div className={`space-y-1.5 col-span-2 ${span === 1 ? 'md:col-span-1' : ''}`}>
       <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>
       <div className="flex items-center gap-3 px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-800">
-        {Icon && <Icon className="text-indigo-400 shrink-0" size={16} />}
+        {Icon && <Icon className="text-brand-600 shrink-0" size={16} />}
         <span className="text-[14px] font-bold truncate">{value || 'Kiritilmagan'}</span>
       </div>
     </div>
@@ -172,7 +172,7 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 bg-white border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100/50">
+            <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-700">
               <Info size={20} />
             </div>
             <div>
@@ -192,14 +192,14 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
           {loading ? (
             <div className="flex items-center justify-center h-40">
-              <Loader2 className="animate-spin text-indigo-500" size={32} />
+              <Loader2 className="animate-spin text-brand-600" size={32} />
             </div>
           ) : (
             <div className="space-y-6">
 
               {/* Identity block: photo + name + today's status */}
-              <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-indigo-50 to-transparent rounded-bl-full opacity-50 pointer-events-none"></div>
+              <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-brand-line relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-brand-50 to-transparent rounded-bl-full opacity-50 pointer-events-none"></div>
                 <div className="flex items-center gap-4 relative z-10">
                   <div className="relative shrink-0">
                     {formData.photoURL ? (
@@ -208,7 +208,7 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
                         <img src={formData.photoURL} alt={formData.displayName} className="w-20 h-20 rounded-2xl object-cover border border-slate-100" />
                       </button>
                     ) : (
-                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-100 to-indigo-200 text-indigo-700 flex items-center justify-center font-black text-[22px]">
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-100 to-brand-200 text-brand-800 flex items-center justify-center font-black text-[22px]">
                         {getInitials(formData.displayName)}
                       </div>
                     )}
@@ -218,7 +218,7 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isSavingPhoto}
                       title="Rasm o'rnatish"
-                      className="absolute -bottom-1.5 -right-1.5 w-8 h-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center border-[3px] border-white shadow-md transition-transform active:scale-90 disabled:opacity-50 z-10"
+                      className="absolute -bottom-1.5 -right-1.5 w-8 h-8 bg-brand-600 hover:bg-brand-700 text-white rounded-full flex items-center justify-center border-[3px] border-white shadow-md transition-transform active:scale-90 disabled:opacity-50 z-10"
                     >
                       {isSavingPhoto ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} strokeWidth={2.5} />}
                     </button>
@@ -254,8 +254,8 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
               </div>
 
               {/* Main Info Block */}
-              <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 space-y-5">
-                <h3 className="text-[12px] font-black text-indigo-500 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+              <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-brand-line space-y-5">
+                <h3 className="text-[12px] font-black text-brand-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
                   <User size={14}/> Asosiy Ma'lumotlar
                 </h3>
 
@@ -269,8 +269,8 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
               </div>
 
               {/* Groups Block */}
-              <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60">
-                <h3 className="text-[12px] font-black text-emerald-500 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+              <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-brand-line">
+                <h3 className="text-[12px] font-black text-brand-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
                   <Layers size={14}/> Guruhlari
                 </h3>
                 {groups.length === 0 ? (
@@ -281,7 +281,7 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
                       <Link
                         key={g.id}
                         href={`/manager/attendance/${g.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-[13px] font-bold transition-colors max-w-full"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand-50 text-brand-800 hover:bg-brand-100 rounded-full text-[13px] font-bold transition-colors max-w-full"
                       >
                         <span className="truncate">{g.title}</span>
                         <ChevronRight size={13} className="shrink-0 opacity-60" />
@@ -295,8 +295,8 @@ export default function ManagerStudentInfoPanel({ studentUid, fallbackName, cent
               {centerId && <StudentFinanceSection centerId={centerId} studentUid={studentUid} />}
 
               {/* Location & Bio Block */}
-              <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 space-y-5">
-                <h3 className="text-[12px] font-black text-rose-500 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+              <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-brand-line space-y-5">
+                <h3 className="text-[12px] font-black text-brand-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
                   <MapPin size={14}/> Joylashuv & Bio
                 </h3>
 

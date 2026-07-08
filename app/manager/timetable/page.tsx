@@ -184,12 +184,12 @@ export default function TimetablePage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <CalendarDays className="text-amber-500" size={24} /> Haftalik jadval
+              <CalendarDays className="text-brand-600" size={24} /> Haftalik jadval
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">Qaysi xonada, qachon, qaysi guruh va o&apos;qituvchi</p>
           </div>
           {teacherClashCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-xl text-[12px] font-semibold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-full text-[12px] font-semibold">
               <AlertTriangle size={14} /> {teacherClashCount} o&apos;qituvchi ziddiyati
             </span>
           )}
@@ -198,14 +198,14 @@ export default function TimetablePage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
-          <button onClick={() => setDayFilter("all")} className={`px-3 py-1.5 rounded-lg text-[12px] font-bold transition-colors ${dayFilter === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>Hafta</button>
+        <div className="flex items-center gap-0.5 bg-white border border-brand-line rounded-full p-1">
+          <button onClick={() => setDayFilter("all")} className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-colors ${dayFilter === "all" ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"}`}>Hafta</button>
           {DAYS.map((d) => (
-            <button key={d.dayOfWeek} onClick={() => setDayFilter(d.dayOfWeek)} className={`px-2.5 py-1.5 rounded-lg text-[12px] font-bold transition-colors ${dayFilter === d.dayOfWeek ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>{d.short}</button>
+            <button key={d.dayOfWeek} onClick={() => setDayFilter(d.dayOfWeek)} className={`px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${dayFilter === d.dayOfWeek ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"}`}>{d.short}</button>
           ))}
         </div>
         <select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[13px] font-medium text-slate-700 outline-none focus:border-amber-400 cursor-pointer">
+          className="px-4 py-2.5 bg-white border border-brand-line rounded-full text-[13px] font-bold text-slate-600 outline-none focus:border-brand-600 cursor-pointer">
           <option value="all">Barcha o&apos;qituvchilar</option>
           {teachers.map((t) => <option key={t.teacherId} value={t.teacherId}>{t.teacherName}</option>)}
         </select>
@@ -230,18 +230,18 @@ export default function TimetablePage() {
       {loading ? (
         <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-slate-400" size={30} /></div>
       ) : rooms.length === 0 && !hasUnassigned ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-16 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 mb-4"><CalendarDays size={28} /></div>
+        <div className="bg-white border border-brand-line rounded-3xl p-14 flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3"><CalendarDays size={28} /></div>
           <h3 className="text-[15px] font-semibold text-slate-800">Jadval bo&apos;sh</h3>
           <p className="text-sm text-slate-500 mt-1 max-w-[300px]">Xonalar yarating va guruh jadvalida ularni biriktiring.</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-auto [scrollbar-width:thin]">
+        <div className="bg-white border border-brand-line rounded-3xl overflow-auto [scrollbar-width:thin]">
           <table className="border-separate border-spacing-0 w-full table-fixed">
             <thead>
               <tr>
                 <th className={`sticky left-0 top-0 z-30 bg-slate-900 text-left px-3 py-3 ${ROOM_COL} border-r border-slate-700`}>
-                  <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-amber-400">
+                  <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-brand-200">
                     <DoorOpen size={13} /> Xona
                   </span>
                 </th>
@@ -249,11 +249,11 @@ export default function TimetablePage() {
                   const isToday = d.dayOfWeek === todayWeekday;
                   return (
                     <th key={d.dayOfWeek}
-                      className={`sticky top-0 z-20 px-2 py-2.5 ${DAY_COL} border-l border-white/10 ${isToday ? "bg-amber-500" : "bg-slate-800"}`}>
+                      className={`sticky top-0 z-20 px-2 py-2.5 ${DAY_COL} border-l border-white/10 ${isToday ? "bg-brand-600" : "bg-slate-800"}`}>
                       <div className="flex flex-col items-center gap-0.5">
                         <span className={`text-[12.5px] font-bold ${isToday ? "text-white" : "text-slate-100"}`}>{d.label}</span>
                         {isToday
-                          ? <span className="text-[9px] font-black uppercase tracking-widest text-amber-100">Bugun</span>
+                          ? <span className="text-[9px] font-black uppercase tracking-widest text-brand-100">Bugun</span>
                           : <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">{d.short}</span>}
                       </div>
                     </th>
@@ -279,12 +279,12 @@ export default function TimetablePage() {
                       const cell = cellBookings(room.id, d.dayOfWeek);
                       const isToday = d.dayOfWeek === todayWeekday;
                       return (
-                        <td key={d.dayOfWeek} className={`group/cell border-b border-l border-slate-100 px-1.5 py-1.5 ${DAY_COL} align-top ${isToday ? "bg-amber-50/50" : ""}`}>
+                        <td key={d.dayOfWeek} className={`group/cell border-b border-l border-slate-100 px-1.5 py-1.5 ${DAY_COL} align-top ${isToday ? "bg-brand-50/50" : ""}`}>
                           <div className={`flex flex-col gap-1 ${CELL_MIN_H}`}>
                             {cell.map(renderChip)}
                             <button type="button" onClick={() => openPicker(room.id, d.dayOfWeek)}
                               title="Bu xona va kunga guruh qo'shish"
-                              className={`w-full rounded-xl border border-dashed border-slate-200 text-slate-400 flex items-center justify-center gap-1 text-[11px] font-semibold transition-all hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50/40 ${
+                              className={`w-full rounded-xl border border-dashed border-slate-200 text-slate-400 flex items-center justify-center gap-1 text-[11px] font-semibold transition-all hover:border-brand-200 hover:text-brand-700 hover:bg-brand-50/40 ${
                                 cell.length === 0 ? "flex-1 min-h-[40px] opacity-60" : "py-1 opacity-0 group-hover/cell:opacity-100"
                               }`}>
                               <Plus size={13} /> {cell.length === 0 ? "Qo'shish" : ""}
@@ -369,7 +369,7 @@ export default function TimetablePage() {
                     {ctxDay || ctxRoom ? (
                       <span className="inline-flex items-center gap-1.5">
                         {ctxDay && <span className="font-semibold text-slate-600">{ctxDay.label}</span>}
-                        {ctxRoom && <span className="inline-flex items-center gap-1 text-indigo-600 font-semibold"><DoorOpen size={12} /> {ctxRoom.name}</span>}
+                        {ctxRoom && <span className="inline-flex items-center gap-1 text-brand-700 font-semibold"><DoorOpen size={12} /> {ctxRoom.name}</span>}
                       </span>
                     ) : (
                       "Vaqt va xonani tahrirlang"
@@ -387,15 +387,15 @@ export default function TimetablePage() {
                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <input value={pickSearch} onChange={(e) => setPickSearch(e.target.value)} autoFocus
                         placeholder="Guruh yoki o'qituvchi..."
-                        className="w-full pl-9 pr-3 py-2.5 text-[14px] bg-white border border-slate-200 rounded-xl outline-none focus:border-amber-400" />
+                        className="w-full pl-9 pr-3 py-2.5 text-[14px] bg-white border border-slate-200 rounded-full outline-none focus:border-brand-600" />
                     </div>
                     <div className="space-y-1.5">
                       {pickList.length === 0 ? (
                         <p className="py-8 text-center text-[13px] text-slate-400">Guruh topilmadi</p>
                       ) : pickList.map((c) => (
                         <button key={c.id} onClick={() => openEditor(c.id, picking!)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-left hover:border-amber-300 hover:shadow-sm transition-all">
-                          <span className="w-9 h-9 shrink-0 rounded-xl bg-amber-100 text-amber-700 font-bold text-[13px] flex items-center justify-center">
+                          className="w-full flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-left hover:border-brand-200 hover:shadow-sm transition-all">
+                          <span className="w-9 h-9 shrink-0 rounded-full bg-brand-100 text-brand-800 font-bold text-[13px] flex items-center justify-center">
                             {(c.title || "?").charAt(0).toUpperCase()}
                           </span>
                           <div className="min-w-0 flex-1">

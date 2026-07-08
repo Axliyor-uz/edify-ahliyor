@@ -29,6 +29,7 @@ import ExpensesTab from "./_components/ExpensesTab";
 import SettingsTab from "./_components/SettingsTab";
 import RecordPaymentModal from "./_components/RecordPaymentModal";
 import StartGuide from "./_components/StartGuide";
+import StudentInfoDialog from "./_components/StudentInfoDialog";
 import { monthLabelOf, shiftMonthKey } from "./_components/financeFormat";
 
 type Tab = "payments" | "debtors" | "charges" | "payroll" | "expenses" | "settings";
@@ -62,6 +63,7 @@ export default function ManagerFinancePage() {
   const [loadingData, setLoadingData] = useState(true);
   const [attendanceRates, setAttendanceRates] = useState<Record<string, number | null> | null>(null);
   const [payModal, setPayModal] = useState<{ open: boolean; uid?: string }>({ open: false });
+  const [infoStudent, setInfoStudent] = useState<{ uid: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -260,7 +262,9 @@ export default function ManagerFinancePage() {
           openCharges={openCharges}
           attendanceRates={attendanceRates}
           todayKey={todayKey}
+          classes={classes}
           onRecordPayment={(uid) => setPayModal({ open: true, uid })}
+          onShowStudent={(uid, name) => setInfoStudent({ uid, name })}
         />
       ) : tab === "charges" ? (
         <ChargesTab
@@ -268,6 +272,8 @@ export default function ManagerFinancePage() {
           monthLabel={monthLabel}
           onShiftMonth={(delta) => setMonthKey((k) => shiftMonthKey(k, delta))}
           unbilledClassTitles={unbilledClassTitles}
+          classes={classes}
+          onShowStudent={(uid, name) => setInfoStudent({ uid, name })}
           onChanged={reload}
         />
       ) : tab === "payroll" ? (
@@ -315,6 +321,21 @@ export default function ManagerFinancePage() {
           onDone={() => {
             setPayModal({ open: false });
             reload();
+          }}
+        />
+      )}
+
+      {infoStudent && (
+        <StudentInfoDialog
+          key={infoStudent.uid}
+          centerId={centerId}
+          studentId={infoStudent.uid}
+          fallbackName={infoStudent.name}
+          classes={classes}
+          onClose={() => setInfoStudent(null)}
+          onRecordPayment={(uid) => {
+            setInfoStudent(null);
+            setPayModal({ open: true, uid });
           }}
         />
       )}

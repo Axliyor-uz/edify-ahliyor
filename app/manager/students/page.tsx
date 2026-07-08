@@ -9,8 +9,10 @@ import { getUserProfile } from "@/services/userService";
 import { fetchCenterSessions } from "@/services/attendanceService";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import { getTodayKey, parseDateKey } from "@/lib/dateUtils";
-import { Users, Search, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight, X } from "lucide-react";
+import { Users, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight } from "lucide-react";
 import ManagerStudentInfoPanel from "./_components/ManagerStudentInfoPanel";
+import SearchInput from "../_components/SearchInput";
+import FilterSelect from "../_components/FilterSelect";
 
 type TodayStatus = "present" | "late" | "absent" | "unmarked" | "nolesson";
 type AttendanceStatus = "present" | "late" | "absent";
@@ -46,11 +48,11 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 const STATUS_UI: Record<TodayStatus, { label: string; cls: string; dot: string }> = {
-  present:  { label: "Keldi",           cls: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
-  late:     { label: "Kech qoldi",      cls: "bg-amber-50 text-amber-700",     dot: "bg-amber-500" },
-  absent:   { label: "Kelmadi",         cls: "bg-rose-50 text-rose-700",       dot: "bg-rose-500" },
-  unmarked: { label: "Belgilanmagan",   cls: "bg-slate-100 text-slate-500",    dot: "bg-slate-300" },
-  nolesson: { label: "Bugun dars yo'q", cls: "bg-slate-50 text-slate-400",     dot: "bg-slate-200" },
+  present:  { label: "Keldi",           cls: "bg-brand-100 text-brand-800",  dot: "bg-brand-600" },
+  late:     { label: "Kech qoldi",      cls: "bg-amber-50 text-amber-700",   dot: "bg-amber-500" },
+  absent:   { label: "Kelmadi",         cls: "bg-rose-50 text-rose-700",     dot: "bg-rose-500" },
+  unmarked: { label: "Belgilanmagan",   cls: "bg-slate-100 text-slate-500",  dot: "bg-slate-300" },
+  nolesson: { label: "Bugun dars yo'q", cls: "bg-slate-50 text-slate-400",   dot: "bg-slate-200" },
 };
 
 export default function ManagerStudentsPage() {
@@ -188,14 +190,19 @@ export default function ManagerStudentsPage() {
 
   // ── Filters ──
   const [search, setSearch] = useState("");
-  const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [groupFilter, setGroupFilter] = useState<string>("");
   const [quick, setQuick] = useState<"all" | "today" | "absent">("all");
+
+  const groupOptions = useMemo(
+    () => classes.map((c) => ({ value: c.id, label: c.title })).sort((a, b) => a.label.localeCompare(b.label)),
+    [classes]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (q && !r.displayName.toLowerCase().includes(q) && !(r.username || "").toLowerCase().includes(q)) return false;
-      if (groupFilter !== "all" && !r.groups.some((g) => g.id === groupFilter)) return false;
+      if (groupFilter && !r.groups.some((g) => g.id === groupFilter)) return false;
       if (quick === "today" && r.todayStatus === "nolesson") return false;
       if (quick === "absent" && r.todayStatus !== "absent") return false;
       return true;
@@ -224,46 +231,32 @@ export default function ManagerStudentsPage() {
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={<Users size={16} />} tone="bg-indigo-50 text-indigo-600" value={rows.length} label="Jami o'quvchi" />
-        <StatCard icon={<CalendarCheck size={16} />} tone="bg-slate-100 text-slate-600" value={haveLessonToday} label="Bugun darsi bor" />
-        <StatCard icon={<span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />} tone="bg-emerald-50" value={presentToday} label="Bugun keldi" />
+        <StatCard icon={<Users size={16} />} tone="bg-brand-100 text-brand-700" value={rows.length} label="Jami o'quvchi" />
+        <StatCard icon={<CalendarCheck size={16} />} tone="bg-sky-50 text-sky-600" value={haveLessonToday} label="Bugun darsi bor" />
+        <StatCard icon={<span className="w-2.5 h-2.5 rounded-full bg-brand-600" />} tone="bg-brand-50" value={presentToday} label="Bugun keldi" />
         <StatCard icon={<span className="w-2.5 h-2.5 rounded-full bg-rose-500" />} tone="bg-rose-50" value={absentToday} label="Bugun kelmadi" />
       </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ism yoki @username bo'yicha qidirish..."
-            className="w-full pl-9 pr-8 py-2.5 text-[13px] bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-400 transition-colors"
+        <SearchInput value={search} onChange={setSearch} placeholder="Ism yoki @username bo'yicha qidiring..." />
+
+        {classes.length > 1 && (
+          <FilterSelect
+            value={groupFilter}
+            onChange={setGroupFilter}
+            options={groupOptions}
+            allLabel="Barcha guruhlar"
           />
-          {search && (
-            <button onClick={() => setSearch("")} aria-label="Tozalash" className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100">
-              <X size={14} />
-            </button>
-          )}
-        </div>
+        )}
 
-        <select
-          value={groupFilter}
-          onChange={(e) => setGroupFilter(e.target.value)}
-          className="px-3 py-2.5 text-[13px] font-medium bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-400 transition-colors cursor-pointer"
-        >
-          <option value="all">Barcha guruhlar</option>
-          {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-        </select>
-
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+        <div className="flex items-center gap-0.5 p-1 bg-white border border-brand-line rounded-full">
           {([["all", "Hammasi"], ["today", "Bugun darsi bor"], ["absent", "Kelmaganlar"]] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setQuick(key)}
-              className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
-                quick === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
+                quick === key ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
               }`}
             >
               {label}
@@ -273,7 +266,7 @@ export default function ManagerStudentsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-brand-line rounded-3xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-slate-400" size={28} /></div>
         ) : rows.length === 0 ? (
@@ -299,7 +292,7 @@ export default function ManagerStudentsPage() {
                     <tr
                       key={r.id}
                       onClick={() => setViewingStudent(r)}
-                      className="hover:bg-slate-50/60 transition-colors cursor-pointer"
+                      className="hover:bg-brand-25 transition-colors cursor-pointer"
                     >
                       <td className="py-2.5 pl-5 pr-2 text-[12px] font-semibold text-slate-400 tabular-nums">{i + 1}</td>
 
@@ -310,7 +303,7 @@ export default function ManagerStudentsPage() {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={r.photoURL} alt={r.displayName} className="w-8 h-8 shrink-0 rounded-full object-cover border border-slate-100" />
                           ) : (
-                            <span className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 font-bold text-[11px] flex items-center justify-center">
+                            <span className="w-8 h-8 shrink-0 rounded-full bg-brand-100 text-brand-800 font-bold text-[11px] flex items-center justify-center">
                               {getInitials(r.displayName)}
                             </span>
                           )}
@@ -329,14 +322,14 @@ export default function ManagerStudentsPage() {
                               key={g.id}
                               href={`/manager/attendance/${g.id}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md text-[11px] font-semibold transition-colors max-w-[160px]"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-50 text-brand-800 hover:bg-brand-100 rounded-full text-[11px] font-bold transition-colors max-w-[160px]"
                             >
                               <span className="truncate">{g.title}</span>
                               <ChevronRight size={11} className="shrink-0 opacity-60" />
                             </Link>
                           ))}
                           {r.groups.length > 2 && (
-                            <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-md text-[11px] font-semibold">+{r.groups.length - 2}</span>
+                            <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-[11px] font-bold">+{r.groups.length - 2}</span>
                           )}
                         </div>
                       </td>
@@ -354,7 +347,7 @@ export default function ManagerStudentsPage() {
                                   title={WEEKDAY_FULL[d]}
                                   className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${
                                     d === todayWeekday
-                                      ? "bg-indigo-600 text-white"
+                                      ? "bg-brand-600 text-white"
                                       : isWeekend(d)
                                       ? "bg-rose-50 text-rose-500"
                                       : "bg-slate-100 text-slate-500"
@@ -411,8 +404,8 @@ export default function ManagerStudentsPage() {
 
 function StatCard({ icon, tone, value, label }: { icon: React.ReactNode; tone: string; value: number; label: string }) {
   return (
-    <div className="flex items-center gap-3 p-3.5 bg-white border border-slate-200 rounded-2xl">
-      <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>{icon}</span>
+    <div className="flex items-center gap-3 p-3.5 bg-white border border-brand-line rounded-3xl">
+      <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${tone}`}>{icon}</span>
       <div className="min-w-0">
         <p className="text-lg font-bold text-slate-900 leading-none tabular-nums">{value}</p>
         <p className="text-[12px] text-slate-500 mt-1 truncate">{label}</p>
@@ -423,11 +416,11 @@ function StatCard({ icon, tone, value, label }: { icon: React.ReactNode; tone: s
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center py-20 px-6">
-      <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3">
-        <CalendarX2 size={24} />
+    <div className="flex flex-col items-center justify-center text-center py-14 px-6">
+      <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3">
+        <CalendarX2 size={22} />
       </div>
-      <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+      <h3 className="text-sm font-bold text-slate-800">{title}</h3>
       <p className="text-[13px] text-slate-400 mt-1 max-w-[260px]">{subtitle}</p>
     </div>
   );

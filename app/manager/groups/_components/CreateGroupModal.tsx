@@ -71,7 +71,7 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-100 shrink-0">
+          <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 shrink-0">
             <Layers size={24} strokeWidth={2.5} />
           </div>
           <div>
@@ -98,7 +98,7 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
               onChange={(e) => setTitle(e.target.value)}
               disabled={isSubmitting}
               placeholder="Masalan: Algebra 9-B"
-              className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all disabled:opacity-60 placeholder:text-slate-400"
+              className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all disabled:opacity-60 placeholder:text-slate-400"
             />
           </div>
 
@@ -113,7 +113,7 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
               onChange={(e) => setDescription(e.target.value)}
               disabled={isSubmitting}
               placeholder="Ertalabki guruh..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all resize-none disabled:opacity-60 placeholder:text-slate-400"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all resize-none disabled:opacity-60 placeholder:text-slate-400"
             />
           </div>
 
@@ -128,7 +128,7 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
                 value={selectedTeacherId}
                 onChange={(e) => setSelectedTeacherId(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-500/10 transition-all disabled:opacity-60 appearance-none cursor-pointer"
+                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all disabled:opacity-60 appearance-none cursor-pointer"
               >
                 <option value="">O'qituvchini tanlang...</option>
                 {teachers.map((t) => (
@@ -154,14 +154,14 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors disabled:opacity-60"
+              className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-colors disabled:opacity-60"
             >
               Bekor qilish
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !title.trim() || !selectedTeacherId}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors disabled:opacity-60 shadow-sm shadow-amber-500/20"
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-full transition-colors disabled:opacity-60 shadow-sm shadow-brand-600/25"
             >
               {isSubmitting ? (
                 <>

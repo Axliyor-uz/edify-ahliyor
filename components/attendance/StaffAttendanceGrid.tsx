@@ -219,7 +219,7 @@ export default function StaffAttendanceGrid({ centerId, managerId, staff, loadin
 
         <button onClick={() => flush(Array.from(dirty))} disabled={saveState === "saving" || dirty.size === 0}
           className={`flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-[13px] transition-all active:scale-[0.98] disabled:cursor-not-allowed shadow-sm ${
-            saveState === "error" ? "bg-rose-600 text-white" : dirty.size > 0 ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30" : "bg-slate-900 text-white disabled:opacity-40"
+            saveState === "error" ? "bg-rose-600 text-white" : dirty.size > 0 ? "bg-brand-600 hover:bg-brand-700 text-white shadow-brand-600/30" : "bg-slate-900 text-white disabled:opacity-40"
           }`}>
           {saveState === "saving" ? <Loader2 size={16} className="animate-spin" /> : saveState === "saved" && dirty.size === 0 ? <Check size={16} /> : <Save size={16} />}
           {saveLabel}
@@ -245,7 +245,7 @@ export default function StaffAttendanceGrid({ centerId, managerId, staff, loadin
                   const isToday = d === today;
                   const isSunday = dt.getDay() === 0;
                   return (
-                    <th key={d} className={`sticky top-0 z-30 px-1 py-2 w-[42px] min-w-[42px] border-l border-white/10 ${isToday ? "bg-amber-500" : isSunday ? "bg-slate-600" : "bg-slate-800"}`}>
+                    <th key={d} className={`sticky top-0 z-30 px-1 py-2 w-[42px] min-w-[42px] border-l border-white/10 ${isToday ? "bg-brand-600" : isSunday ? "bg-slate-600" : "bg-slate-800"}`}>
                       <div className="flex flex-col items-center leading-tight">
                         <span className="text-[9px] font-semibold uppercase text-white/60">{WEEKDAY_SHORT[dt.getDay()]}</span>
                         <span className="text-[12px] font-bold tabular-nums text-white">{dt.getDate()}</span>
@@ -263,7 +263,7 @@ export default function StaffAttendanceGrid({ centerId, managerId, staff, loadin
                   <tr key={s.uid} className="group">
                     <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200 px-3 py-2 min-w-[200px] w-[200px] transition-colors shadow-[6px_0_12px_-6px_rgba(0,0,0,0.08)]">
                       <div className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 text-amber-700 font-bold text-[11px] flex items-center justify-center">{getInitials(s.name)}</span>
+                        <span className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 text-brand-800 font-bold text-[11px] flex items-center justify-center">{getInitials(s.name)}</span>
                         <p className="text-[13px] font-medium text-slate-900 truncate">{s.name}</p>
                       </div>
                     </td>
@@ -273,7 +273,7 @@ export default function StaffAttendanceGrid({ centerId, managerId, staff, loadin
                       const isToday = d === today;
                       const isSunday = new Date(d + "T00:00:00").getDay() === 0;
                       return (
-                        <td key={d} className={`border-b border-l border-slate-100 text-center px-0.5 py-1 ${isToday ? "bg-amber-50/40" : isSunday ? "bg-slate-50/60" : ""}`}>
+                        <td key={d} className={`border-b border-l border-slate-100 text-center px-0.5 py-1 ${isToday ? "bg-brand-50/40" : isSunday ? "bg-slate-50/60" : ""}`}>
                           {isFuture ? (
                             <div className="w-8 h-8 mx-auto rounded-lg flex items-center justify-center text-slate-200"><span className="w-1 h-1 rounded-full bg-current" /></div>
                           ) : rec ? (
@@ -323,19 +323,19 @@ export default function StaffAttendanceGrid({ centerId, managerId, staff, loadin
             <div className="flex items-center gap-1.5 px-1 pb-1.5">
               <Clock size={13} className="text-slate-400 shrink-0" />
               <input type="time" value={draft.checkIn || ""} onChange={(e) => setDraft((d) => d ? { ...d, checkIn: e.target.value || undefined } : d)}
-                className="flex-1 min-w-0 text-[12px] px-1.5 py-1 bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-amber-400" />
+                className="flex-1 min-w-0 text-[12px] px-1.5 py-1 bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-brand-600" />
               <span className="text-slate-300 text-[12px]">–</span>
               <input type="time" value={draft.checkOut || ""} onChange={(e) => setDraft((d) => d ? { ...d, checkOut: e.target.value || undefined } : d)}
-                className="flex-1 min-w-0 text-[12px] px-1.5 py-1 bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-amber-400" />
+                className="flex-1 min-w-0 text-[12px] px-1.5 py-1 bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-brand-600" />
             </div>
             <div className="flex items-center gap-1.5 px-1 pb-1">
               <MessageSquare size={13} className="text-slate-400 shrink-0" />
               <input value={draft.note || ""} onChange={(e) => setDraft((d) => d ? { ...d, note: e.target.value || undefined } : d)} placeholder="Izoh..."
-                className="flex-1 min-w-0 text-[12px] px-2 py-1 bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-amber-400"
+                className="flex-1 min-w-0 text-[12px] px-2 py-1 bg-slate-50 border border-slate-200 rounded-md outline-none focus:border-brand-600"
                 onKeyDown={(e) => { if (e.key === "Enter") applyDraft(); }} />
             </div>
             <div className="flex items-center gap-1.5 px-1 pt-1">
-              <button onClick={applyDraft} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[12.5px] font-bold transition-colors"><Check size={14} /> Saqlash</button>
+              <button onClick={applyDraft} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[12.5px] font-bold transition-colors"><Check size={14} /> Saqlash</button>
               {sessions[menu.uid]?.[menu.date] && (
                 <button onClick={() => { setRecord(menu.uid, menu.date, null); setMenu(null); }} className="px-2.5 py-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"><Trash2 size={14} /></button>
               )}

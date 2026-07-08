@@ -66,17 +66,17 @@ export default function RoomsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <DoorOpen className="text-amber-500" size={24} /> Xonalar
+            <DoorOpen className="text-brand-600" size={24} /> Xonalar
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">Markazingizdagi xonalarni boshqaring</p>
         </div>
         <div className="flex items-center gap-2">
           <Link href="/manager/timetable"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-[13px] transition-colors">
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-brand-line hover:bg-brand-50 text-slate-700 rounded-full font-bold text-[13px] transition-colors">
             <CalendarDays size={16} /> Jadval
           </Link>
           <button onClick={openCreate}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-[13px] shadow-sm shadow-amber-500/25 transition-colors">
+            className="inline-flex items-center gap-2 pl-4 pr-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-full font-bold text-[13px] shadow-sm shadow-brand-600/25 transition-colors">
             <Plus size={17} strokeWidth={2.5} /> Yangi xona
           </button>
         </div>
@@ -85,11 +85,11 @@ export default function RoomsPage() {
       {isLoading ? (
         <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-slate-400" size={30} /></div>
       ) : rooms.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-16 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 mb-4"><DoorOpen size={28} /></div>
+        <div className="bg-white border border-brand-line rounded-3xl p-14 flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3"><DoorOpen size={28} /></div>
           <h3 className="text-[15px] font-semibold text-slate-800">Xonalar yo&apos;q</h3>
           <p className="text-sm text-slate-500 mt-1 max-w-[280px]">Hali xona qo&apos;shilmagan. Guruhlarni xonalarga biriktirish uchun avval xona yarating.</p>
-          <button onClick={openCreate} className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-[13px] transition-colors">
+          <button onClick={openCreate} className="mt-5 inline-flex items-center gap-2 pl-4 pr-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-full font-bold text-[13px] transition-colors">
             <Plus size={16} /> Birinchi xonani qo&apos;shish
           </button>
         </div>
@@ -100,7 +100,7 @@ export default function RoomsPage() {
             const used = usageByRoom.get(room.id) || 0;
             const hours = utilization.get(room.id) || 0;
             return (
-              <div key={room.id} className={`group relative bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden ${!room.isActive ? "opacity-60" : ""}`}>
+              <div key={room.id} className={`group relative bg-white rounded-3xl border border-brand-line hover:shadow-md transition-all overflow-hidden ${!room.isActive ? "opacity-60" : ""}`}>
                 <div className={`h-1.5 ${th.bar}`} />
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-2">
@@ -133,8 +133,8 @@ export default function RoomsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
-                    <button onClick={() => openEdit(room)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-[13px] font-semibold transition-colors"><Pencil size={14} /> Tahrirlash</button>
-                    <button onClick={() => setDeleteTarget(room)} className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"><Trash2 size={15} /></button>
+                    <button onClick={() => openEdit(room)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-slate-50 hover:bg-brand-50 hover:text-brand-800 text-slate-700 text-[13px] font-semibold transition-colors"><Pencil size={14} /> Tahrirlash</button>
+                    <button onClick={() => setDeleteTarget(room)} className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={15} /></button>
                   </div>
                 </div>
               </div>
@@ -166,15 +166,15 @@ export default function RoomsPage() {
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {usingGroups.map((c) => <span key={c.id} className="text-[12px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">{c.title}</span>)}
                 </div>
-                <button onClick={() => setDeleteTarget(null)} className="w-full mt-5 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-xl transition-colors">Tushunarli</button>
+                <button onClick={() => setDeleteTarget(null)} className="w-full mt-5 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-full transition-colors">Tushunarli</button>
               </>
             ) : (
               <>
                 <h3 className="text-[16px] font-bold text-slate-900 mt-4">Xonani o&apos;chirish</h3>
                 <p className="text-[13px] text-slate-500 mt-1.5">«{deleteTarget.name}» butunlay o&apos;chiriladi. Bu amalni qaytarib bo&apos;lmaydi.</p>
                 <div className="flex gap-3 mt-5">
-                  <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors disabled:opacity-60">Bekor</button>
-                  <button onClick={confirmDelete} disabled={deleting} className="flex-1 flex items-center justify-center gap-2 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors disabled:opacity-60">
+                  <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-colors disabled:opacity-60">Bekor</button>
+                  <button onClick={confirmDelete} disabled={deleting} className="flex-1 flex items-center justify-center gap-2 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-full transition-colors disabled:opacity-60">
                     {deleting ? <Loader2 size={17} className="animate-spin" /> : <Trash2 size={16} />} O&apos;chirish
                   </button>
                 </div>

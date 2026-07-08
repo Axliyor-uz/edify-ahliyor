@@ -2,7 +2,18 @@
 
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Loader2, Plus, Undo2, Wallet } from "lucide-react";
+import {
+  Home,
+  Loader2,
+  Megaphone,
+  Package,
+  Plus,
+  Undo2,
+  Users,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import ManagerSheet from "../../_components/ManagerSheet";
 import type { Expense } from "@/types/finance";
 import { cancelExpenseApi, createExpenseApi } from "@/services/financeService";
@@ -11,7 +22,7 @@ import { getTodayKey } from "@/lib/dateUtils";
 import { shortDateLabel } from "./financeFormat";
 import MonthNav from "./MonthNav";
 import ReasonDialog from "./ReasonDialog";
-import SearchInput from "./SearchInput";
+import SearchInput from "../../_components/SearchInput";
 
 interface Props {
   expenses: Expense[];
@@ -30,6 +41,17 @@ const CATEGORY_LABELS: Record<string, string> = {
   boshqa: "Boshqa",
 };
 const categoryLabel = (c: string) => CATEGORY_LABELS[c] || c;
+
+/** MD3 leading avatar per category: own icon + tonal color, so rows scan at a glance. */
+const CATEGORY_META: Record<string, { Icon: LucideIcon; avatar: string }> = {
+  salary: { Icon: Users, avatar: "bg-teal-50 text-teal-600" },
+  ijara: { Icon: Home, avatar: "bg-sky-50 text-sky-600" },
+  kommunal: { Icon: Zap, avatar: "bg-amber-50 text-amber-600" },
+  marketing: { Icon: Megaphone, avatar: "bg-violet-50 text-violet-600" },
+  jihozlar: { Icon: Package, avatar: "bg-orange-50 text-orange-600" },
+  boshqa: { Icon: Wallet, avatar: "bg-slate-100 text-slate-500" },
+};
+const categoryMeta = (c: string) => CATEGORY_META[c] || CATEGORY_META.boshqa;
 
 /** Month's expenses: per-category totals, add, cancel. Salary rows come from payroll and are protected. */
 export default function ExpensesTab({ expenses, categories, monthLabel, onShiftMonth, onChanged }: Props) {
@@ -59,7 +81,7 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
         <MonthNav label={monthLabel} onShift={onShiftMonth} />
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-5 py-3 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-sm rounded-xl transition-all shadow-sm shadow-brand-600/25"
+          className="flex items-center gap-1.5 pl-4 pr-5 py-3 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-sm rounded-full transition-all shadow-sm shadow-brand-600/25"
         >
           <Plus size={16} /> Xarajat qo&apos;shish
         </button>
@@ -71,50 +93,76 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
 
       {byCategory.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          <span className="px-3 py-1.5 bg-brand-ink text-white rounded-lg text-[12px] font-bold">
+          <span className="px-3.5 py-1.5 bg-brand-ink text-white rounded-full text-[12px] font-bold tabular-nums">
             Jami: {formatUZS(total)}
           </span>
           {byCategory.map(([cat, sum]) => (
-            <span key={cat} className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[12px] font-bold">
+            <span
+              key={cat}
+              className="px-3.5 py-1.5 bg-white border border-brand-line text-slate-600 rounded-full text-[12px] font-bold tabular-nums"
+            >
               {categoryLabel(cat)}: {formatUZS(sum)}
             </span>
           ))}
         </div>
       )}
 
-      <div className="bg-white border border-brand-line rounded-2xl divide-y divide-slate-100">
+      <div className="bg-white border border-brand-line rounded-3xl divide-y divide-slate-100 overflow-hidden">
         {filtered.length === 0 ? (
-          <p className="py-12 text-center text-sm text-slate-400">
-            {search ? "Hech narsa topilmadi" : "Bu oy uchun xarajatlar yo'q"}
-          </p>
+          <div className="py-14 px-6 text-center">
+            <div className="w-12 h-12 mx-auto rounded-full bg-brand-50 text-brand-700 flex items-center justify-center">
+              <Wallet size={22} />
+            </div>
+            <p className="text-sm font-bold text-slate-800 mt-3">
+              {search ? "Hech narsa topilmadi" : "Bu oyda xarajatlar yo'q"}
+            </p>
+            <p className="text-[13px] text-slate-400 mt-1">
+              {search
+                ? "Qidiruvni o'zgartirib ko'ring"
+                : "Ijara, kommunal va boshqa sarflarni shu yerga yozib boring"}
+            </p>
+          </div>
         ) : (
           filtered.map((e) => {
             const cancelled = e.status === "cancelled";
+            const meta = categoryMeta(e.category);
             return (
-              <div key={e.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-brand-25 transition-colors">
-                <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-                  <Wallet size={15} />
+              <div key={e.id} className="flex items-center gap-3 px-4 py-3 hover:bg-brand-25 transition-colors">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                    cancelled ? "bg-slate-100 text-slate-400" : meta.avatar
+                  }`}
+                >
+                  <meta.Icon size={18} strokeWidth={2.1} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-bold truncate ${cancelled ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                  <p
+                    className={`text-[14.5px] font-semibold truncate ${
+                      cancelled ? "text-slate-400 line-through" : "text-slate-900"
+                    }`}
+                  >
                     {categoryLabel(e.category)}
                     {e.note && <span className="font-medium text-slate-500"> · {e.note}</span>}
                   </p>
-                  <p className="text-[12px] text-slate-400 mt-0.5">{shortDateLabel(e.date)}</p>
+                  <p className="text-[12.5px] text-slate-500 mt-0.5">{shortDateLabel(e.date)}</p>
                 </div>
                 {cancelled && (
-                  <span className="px-2 py-0.5 bg-slate-100 text-slate-400 rounded-full text-[11px] font-bold shrink-0">
+                  <span className="px-2.5 py-1 bg-slate-100 text-slate-400 rounded-full text-[11px] font-bold shrink-0">
                     Bekor qilingan
                   </span>
                 )}
-                <p className={`text-sm font-bold tabular-nums shrink-0 ${cancelled ? "text-slate-300 line-through" : "text-slate-800"}`}>
-                  {formatUZS(e.amount)}
+                <p
+                  className={`text-[14.5px] font-bold tabular-nums shrink-0 ${
+                    cancelled ? "text-slate-300 line-through" : "text-slate-900"
+                  }`}
+                >
+                  −{formatUZS(e.amount)}
                 </p>
                 {!cancelled && !e.payoutId && (
                   <button
                     onClick={() => setCancelTarget(e)}
                     title="Xarajatni bekor qilish"
-                    className="w-8 h-8 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-500 flex items-center justify-center transition-colors shrink-0"
+                    className="w-9 h-9 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 flex items-center justify-center transition-colors shrink-0"
                   >
                     <Undo2 size={15} />
                   </button>

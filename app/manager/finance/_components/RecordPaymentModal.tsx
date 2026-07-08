@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { CheckCircle2, ChevronLeft, Loader2, Search } from "lucide-react";
+import { BadgePercent, CheckCircle2, ChevronLeft, Loader2, Search, Snowflake } from "lucide-react";
 import ManagerSheet from "../../_components/ManagerSheet";
 import { buildCenterRoster, type RosterStudent } from "@/services/checkInService";
 import type { ClassData } from "@/hooks/useCenterClasses";
@@ -256,9 +256,21 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
               <div className="min-w-0">
                 <h3 className="text-[16px] font-bold text-slate-900 truncate">{selected.displayName}</h3>
                 {profile && (
-                  <p className={`text-[12.5px] font-semibold ${profile.balance < 0 ? "text-rose-600" : "text-brand-700"}`}>
-                    Balans: {formatUZS(profile.balance)}
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                    <p className={`text-[12.5px] font-semibold ${profile.balance < 0 ? "text-rose-600" : "text-brand-700"}`}>
+                      Balans: {formatUZS(profile.balance)}
+                    </p>
+                    {(profile.discountPercent || 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-600 rounded-full text-[11px] font-bold">
+                        <BadgePercent size={11} /> Chegirma {profile.discountPercent}%
+                      </span>
+                    )}
+                    {profile.financeStatus === "frozen" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 text-sky-600 rounded-full text-[11px] font-bold">
+                        <Snowflake size={11} /> Muzlatilgan
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
