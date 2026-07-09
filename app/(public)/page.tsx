@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { motion } from 'framer-motion';
+
 import { 
   Rocket, BookOpen, Calculator, Globe, Brain, Palette, Zap, 
   Users, Shield, BarChart3, ChevronRight, MapPin, Mail, Phone, 
