@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword, updateProfile, deleteUser } from "fireb
 import { doc, writeBatch } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { checkUsernameUnique } from "@/services/userService";
+import { getSsoReturnTo, completeSsoRedirect } from "@/lib/sso";
 import { Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import { Step1Auth, Step2Profile } from "./FormSteps";
@@ -117,6 +118,9 @@ export default function TeacherSignupFlow({ onBack, t }: any) {
       await batch.commit();
 
       toast.success(t.validation.welcome.replace("{role}", "Ustoz"));
+      // SSO: a partner app sent this user here — bounce back signed in
+      const ssoReturnTo = getSsoReturnTo();
+      if (ssoReturnTo && (await completeSsoRedirect(ssoReturnTo))) return;
       router.push("/teacher/dashboard");
     } catch (error: any) {
       // 🛡️ Rollback auth if database write fails

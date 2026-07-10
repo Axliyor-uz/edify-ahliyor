@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useContext, useRef } from "react";
+import { useState, useContext, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { getSsoReturnTo, completeSsoRedirect } from "@/lib/sso";
 import { Loader2, Mail, ChevronRight, Eye, EyeOff, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -440,12 +441,30 @@ export default function LoginPage() {
     setCapsLockActive(e.getModifierState("CapsLock"));
   };
 
+  // SSO hand-off (see lib/sso.ts): a partner app sent the user here with
+  // ?returnTo=. If a session is already restored, bounce straight back with
+  // a custom token — the user never sees this page. The listener detaches
+  // after the first emission so a manual login below isn't double-handled.
+  const [ssoReturnTo, setSsoReturnTo] = useState<string | null>(null);
+  useEffect(() => {
+    const returnTo = getSsoReturnTo();
+    if (!returnTo) return;
+    setSsoReturnTo(returnTo);
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      if (user) completeSsoRedirect(returnTo);
+    });
+    return () => unsub();
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      // SSO: send the user back to the partner app instead of a dashboard
+      if (ssoReturnTo && (await completeSsoRedirect(ssoReturnTo))) return;
       const tokenResult = await user.getIdTokenResult(true);
       if (tokenResult.claims.super_admin) {
         toast.dismiss();
@@ -682,7 +701,7 @@ export default function LoginPage() {
 
           <div className="mt-10 pt-6 border-t border-[#E2E8F0] text-center text-[14px] text-[#64748B]">
             {t.noAccount}{' '}
-            <Link href="/auth/signup" className="text-[#1565C0] font-bold hover:underline">
+            <Link href={ssoReturnTo ? `/auth/signup?returnTo=${encodeURIComponent(ssoReturnTo)}` : "/auth/signup"} className="text-[#1565C0] font-bold hover:underline">
               {t.createOne}
             </Link>
           </div>
