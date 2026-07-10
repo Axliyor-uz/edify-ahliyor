@@ -575,5 +575,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // 🟢 NEW — System Config (Syllabus, etc.)
+    // Anyone can read, only super admins can write.
+    match /system_config/{document=**} {
+      allow read: if isAuth();
+      allow write: if isSuperAdmin();
+    }
+
   }
 }

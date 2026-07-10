@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Rocket, BookOpen, Calculator, Globe, Brain, Palette, Zap, 
-  Users, Shield, BarChart3, ChevronRight, MapPin, Mail, Phone, 
-  Github, Linkedin, Send, FlaskConical, Play, Presentation, 
-  GraduationCap, Smartphone, Wand2, BrainCircuit, Lightbulb, 
+import PricingPromoBanner from './pricing/components/PricingPromoBanner';
+
+import {
+  Rocket, BookOpen, Calculator, Globe, Brain, Palette, Zap,
+  Users, Shield, BarChart3, ChevronRight, MapPin, Mail, Phone,
+  Github, Linkedin, Send, FlaskConical, Play, Presentation,
+  GraduationCap, Smartphone, Wand2, BrainCircuit, Lightbulb,
   LineChart, FileDown, CheckCircle2, UserCheck, Layout,
-  FileText, CheckCircle,Sparkles,
-  BarChart2,Bot,UserPlus,Trophy,Crown,ArrowUpRight,Flame,Star,ShieldAlert,Target,XCircle,PhoneCall
+  FileText, CheckCircle, Sparkles,
+  BarChart2, Bot, UserPlus, Trophy, Crown, ArrowUpRight, Flame, Star, ShieldAlert, Target, XCircle, PhoneCall
 } from 'lucide-react';
 import Link from 'next/link';
 import { LanguageContext } from './layout';
@@ -196,7 +198,7 @@ const TRANSLATIONS = {
       ],
       cta: "Get Started Now"
     },
-    
+
     footer: {
       desc: "An innovative platform specially developed for the Uzbekistan education system by Wasp-2 AI.",
       platform: "Quick Links",
@@ -245,7 +247,7 @@ const TRANSLATIONS = {
       desc: "Изучайте открытые учебные материалы и стандартизированные учебники (США и местные). Дайте своим ученикам знания мирового уровня.",
       button: "Перейти в библиотеку"
     },
-    
+
     stats: {
       badge: "Статистика",
       titlePrefix: "Edify в",
@@ -362,8 +364,8 @@ const aiIcons = [
 // --- 3. MAIN COMPONENT ---
 
 export default function LandingPage() {
-  const { lang } = useContext(LanguageContext) as { lang: 'uz'|'en'|'ru' }; 
-  const t = TRANSLATIONS[lang] || TRANSLATIONS['uz']; 
+  const { lang } = useContext(LanguageContext) as { lang: 'uz' | 'en' | 'ru' };
+  const t = TRANSLATIONS[lang] || TRANSLATIONS['uz'];
 
   // 🟢 Dinamik narxlar uchun State
   const [isSixMonth, setIsSixMonth] = useState(false);
@@ -373,7 +375,7 @@ export default function LandingPage() {
 
   // Xuddi SubscriptionPage dagi kabi dizayn mavzulari
   const getTheme = (planId: string) => {
-    switch(planId) {
+    switch (planId) {
       case 'pro': return {
         gradient: 'bg-gradient-to-br from-purple-600 to-indigo-600',
         btn: 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/30',
@@ -384,7 +386,7 @@ export default function LandingPage() {
         btn: 'bg-gradient-to-r from-orange-500 to-amber-400 hover:from-orange-600 hover:to-amber-500 text-white shadow-lg shadow-orange-500/30',
         highlightBorder: 'border border-slate-200'
       };
-      default: return { 
+      default: return {
         gradient: 'bg-gradient-to-br from-blue-500 to-cyan-500',
         btn: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
         highlightBorder: 'border border-slate-200 shadow-sm'
@@ -394,23 +396,23 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900">
-      
+
       <main className="flex-1 pt-24 lg:pt-16 relative z-10">
-        
+        <PricingPromoBanner />
         {/* 🟢 UPGRADED: PREMIUM BENTO COMMAND CENTER HERO SECTION */}
         <section className="relative w-full pt-12 lg:pt-24 pb-20 lg:pb-32 overflow-hidden z-20">
-          
+
           {/* Animated Background Mesh Glows (Premium SaaS Aesthetic) */}
           <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-gradient-to-br from-blue-400/10 to-indigo-500/10 rounded-full blur-[100px] mix-blend-multiply animate-[pulse_8s_ease-in-out_infinite]" />
           <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-gradient-to-tr from-cyan-300/10 to-blue-400/10 rounded-full blur-[100px] mix-blend-multiply animate-[pulse_10s_ease-in-out_infinite_reverse]" />
 
           <div className="max-w-7xl mx-auto px-4 lg:px-8 relative z-10">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
-              
+
               {/* ⬅️ CHAP TOMON: Asosiy Matn va Tugmalar (UNCHANGED) */}
-              <motion.div 
-                initial={{ opacity: 0, x: -30 }} 
-                animate={{ opacity: 1, x: 0 }} 
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
                 className="text-center lg:text-left pt-10 lg:pt-0"
               >
@@ -421,29 +423,29 @@ export default function LandingPage() {
                   </span>
                   {t.hero.badge}
                 </div>
-                
+
                 <h1 className="text-4xl md:text-6xl lg:text-[4rem] font-black leading-[1.1] mb-6 tracking-tight text-slate-900">
-                  {t.hero.titlePrefix} <br className="hidden lg:block"/>
+                  {t.hero.titlePrefix} <br className="hidden lg:block" />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
                     {t.hero.titleHighlight}
                   </span>
-                  <br className="hidden lg:block"/> {t.hero.titleSuffix}
+                  <br className="hidden lg:block" /> {t.hero.titleSuffix}
                 </h1>
-                
+
                 <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-medium">
                   {t.hero.desc}
                 </p>
-                
+
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mb-8">
                   <Link href="/auth/signup" className="w-full sm:w-auto">
-                      <button className="w-full sm:w-auto bg-blue-600 text-white px-8 py-4 rounded-xl text-[17px] font-bold shadow-lg shadow-blue-600/25 hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/30 transition-all flex items-center justify-center gap-2">
-                        {t.hero.btnStart} <ChevronRight size={20} />
-                      </button>
+                    <button className="w-full sm:w-auto bg-blue-600 text-white px-8 py-4 rounded-xl text-[17px] font-bold shadow-lg shadow-blue-600/25 hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/30 transition-all flex items-center justify-center gap-2">
+                      {t.hero.btnStart} <ChevronRight size={20} />
+                    </button>
                   </Link>
                   <Link href="/auth/login" className="w-full sm:w-auto">
-                      <button className="w-full sm:w-auto bg-white text-slate-700 border border-slate-200 px-8 py-4 rounded-xl text-[17px] font-bold hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
-                        {t.hero.btnLogin}
-                      </button>
+                    <button className="w-full sm:w-auto bg-white text-slate-700 border border-slate-200 px-8 py-4 rounded-xl text-[17px] font-bold hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
+                      {t.hero.btnLogin}
+                    </button>
                   </Link>
                 </div>
 
@@ -451,7 +453,7 @@ export default function LandingPage() {
                   <div className="flex -space-x-2">
                     {[1, 2, 3, 4].map((i) => (
                       <div key={i} className="w-8 h-8 rounded-full border-2 border-[#FAFAFA] bg-slate-200 flex items-center justify-center overflow-hidden">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i+10}`} alt="User" className="w-full h-full object-cover" />
+                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + 10}`} alt="User" className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -461,11 +463,11 @@ export default function LandingPage() {
 
               {/* ➡️ O'NG TOMON: UPGRADED - Live Bento Command Center Visuals */}
               <div className="relative w-full h-[500px] lg:h-[600px] hidden md:flex items-center justify-center perspective-[2000px]">
-                
+
                 <div className="relative w-full h-full grid grid-cols-6 grid-rows-6 gap-3 transform rotateY-[-10deg] rotateX-[5deg] scale-95 transition-transform duration-1000 ease-out hover:rotateY-0 hover:rotateX-0 hover:scale-100">
-                  
+
                   {/* BENTO 1: AI Test Generation (Live Simulation - Spans Top Left) */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}
                     className="col-span-4 row-span-2 bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white shadow-[0_15px_35px_rgba(0,0,0,0.05)] flex flex-col justify-center relative overflow-hidden group"
                   >
@@ -490,37 +492,37 @@ export default function LandingPage() {
                   </motion.div>
 
                   {/* BENTO 2: Instant Grading (Success Indicator - Top Right) */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.4 }}
                     className="col-span-2 row-span-2 bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-[0_15px_35px_rgba(59,130,246,0.2)] flex flex-col items-center justify-center text-center relative overflow-hidden group"
                   >
                     {/* Pulsing glow */}
                     <div className="absolute inset-0 bg-emerald-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    
+
                     <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3 shadow-inner border border-emerald-500/20 group-hover:scale-110 transition-transform">
                       <CheckCircle2 size={28} />
                     </div>
                     <div className="font-black text-2xl text-white mb-0.5 tracking-tight">Checked</div>
                     <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1">
-                      <Zap size={10}/> in 0.3 seconds
+                      <Zap size={10} /> in 0.3 seconds
                     </div>
                   </motion.div>
 
                   {/* BENTO 3: Analytics Graph (Live Class Progress - Left Spanning) */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.6 }}
                     className="col-span-3 row-span-4 bg-white/80 backdrop-blur-xl rounded-3xl p-6 border border-white shadow-[0_15px_35px_rgba(0,0,0,0.05)] flex flex-col group"
                   >
                     <div className="flex items-center justify-between mb-6">
                       <div className="font-black text-lg text-slate-800">Sinf Tahlili</div>
                       <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border border-emerald-100">
-                         <BarChart3 size={12}/> +18.2%
+                        <BarChart3 size={12} /> +18.2%
                       </div>
                     </div>
                     {/* Fake Chart bars */}
                     <div className="flex items-end justify-between gap-1.5 h-full mt-auto">
                       {[60, 40, 70, 90, 65, 85, 100, 75, 95].map((h, i) => (
-                        <motion.div 
+                        <motion.div
                           key={i}
                           initial={{ height: 0 }}
                           whileInView={{ height: `${h}%` }}
@@ -533,12 +535,12 @@ export default function LandingPage() {
                   </motion.div>
 
                   {/* BENTO 4: Subject Icons (Breadth of Platform - Right Middle) */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.8 }}
                     className="col-span-3 row-span-2 bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-3xl p-5 border border-blue-100 shadow-inner flex items-center justify-center gap-2 overflow-hidden"
                   >
                     {[Calculator, Globe, Brain, Palette].map((Icon, i) => (
-                      <motion.div 
+                      <motion.div
                         key={i}
                         animate={{ y: [0, -6, 0] }}
                         transition={{ duration: 3, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }}
@@ -550,7 +552,7 @@ export default function LandingPage() {
                   </motion.div>
 
                   {/* BENTO 5: Student Leaderboard Activity (Bottom Right) */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1 }}
                     className="col-span-3 row-span-2 bg-white/80 backdrop-blur-xl rounded-3xl p-5 border border-white shadow-[0_15px_35px_rgba(0,0,0,0.05)] flex flex-col justify-between"
                   >
@@ -571,11 +573,11 @@ export default function LandingPage() {
           </div>
         </section>
 
-        
+
 
         {/* 🟢 UPGRADED: EDU-ZON STYLE STATISTICS SECTION */}
         <section className="relative z-20 max-w-7xl mx-auto px-4 lg:px-8 py-16 bg-[#F8FAFC]">
-          
+
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 text-blue-600 text-[11px] font-bold mb-4 shadow-sm">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
@@ -590,7 +592,7 @@ export default function LandingPage() {
             {t.stats.items.map((stat, index) => {
               const Config = statConfig[index];
               return (
-                <motion.div 
+                <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -602,17 +604,17 @@ export default function LandingPage() {
                   <div className={`w-12 h-12 rounded-xl ${Config.color} text-white flex items-center justify-center shadow-lg ${Config.shadow} mb-5 group-hover:scale-110 transition-transform duration-300`}>
                     <Config.icon size={22} />
                   </div>
-                  
+
                   {/* Raqam */}
                   <div className="text-3xl md:text-4xl font-black text-slate-900 mb-1 tracking-tight">
                     {stat.number}
                   </div>
-                  
+
                   {/* Sarlavha (Kiritilgan testlar) */}
                   <div className="text-[14px] font-bold text-slate-700 mb-1">
                     {stat.label}
                   </div>
-                  
+
                   {/* Izoh matni (Bazaga qo'shilgan savollar) */}
                   <p className="text-[12px] text-slate-400 font-medium">
                     {stat.desc}
@@ -657,18 +659,18 @@ export default function LandingPage() {
 
         {/* 🟢 NEW: GAMIFICATION FOR STUDENTS SECTION */}
         <section className="bg-white py-24 lg:py-32 relative z-20 border-t border-slate-100 overflow-hidden">
-          
+
           {/* Fun, Energetic Background Elements */}
           <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-amber-100/40 via-orange-50/20 to-transparent rounded-full pointer-events-none -translate-y-1/3 translate-x-1/3" />
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-violet-100/40 via-fuchsia-50/20 to-transparent rounded-full pointer-events-none translate-y-1/3 -translate-x-1/3" />
-          
+
           <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, black 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
 
           <div className="max-w-7xl mx-auto px-4 lg:px-8 relative z-10">
-            
+
             {/* Header */}
             <div className="text-center mb-16 lg:mb-20">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -677,7 +679,7 @@ export default function LandingPage() {
                 <Trophy size={14} className="text-orange-500" />
                 {t.gamification?.badge || "GEYMIFIKATSIYA"}
               </motion.div>
-              <motion.h2 
+              <motion.h2
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -686,7 +688,7 @@ export default function LandingPage() {
               >
                 {t.gamification?.title || "O'qish endi zerikarli emas"}
               </motion.h2>
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -699,9 +701,9 @@ export default function LandingPage() {
 
             {/* Gamification Bento Grid */}
             <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-              
+
               {/* 1. Leaderboard Simulator (Spans 2 cols, 2 rows on large screens) */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: -30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
@@ -709,7 +711,7 @@ export default function LandingPage() {
                 className="md:col-span-2 lg:col-span-2 lg:row-span-2 bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2rem] p-8 border border-slate-800 shadow-2xl relative overflow-hidden group"
               >
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-blue-500/20 transition-colors" />
-                
+
                 <div className="flex justify-between items-start mb-8 relative z-10">
                   <div>
                     <h3 className="text-2xl font-black text-white mb-2">{t.gamification?.cards.leaderboard.title}</h3>
@@ -729,9 +731,9 @@ export default function LandingPage() {
                     <div className="flex-1 font-bold text-slate-200 text-sm">Malika T.</div>
                     <div className="font-mono text-cyan-400 text-sm font-bold">14,250 XP</div>
                   </div>
-                  
+
                   {/* THE USER (Animated Overtake) */}
-                  <motion.div 
+                  <motion.div
                     initial={{ y: 55, scale: 0.95, opacity: 0.8 }}
                     whileInView={{ y: 0, scale: 1, opacity: 1 }}
                     viewport={{ once: true }}
@@ -742,7 +744,7 @@ export default function LandingPage() {
                     <div className="w-8 h-8 rounded-full bg-white text-blue-600 flex items-center justify-center font-black text-xs shadow-inner">Siz</div>
                     <div className="flex-1 font-black text-white text-sm">Sizning Profilingiz</div>
                     <div className="flex items-center gap-2">
-                      <motion.span 
+                      <motion.span
                         initial={{ opacity: 0, y: 10 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
@@ -756,7 +758,7 @@ export default function LandingPage() {
                   </motion.div>
 
                   {/* Competitor 3 */}
-                  <motion.div 
+                  <motion.div
                     initial={{ y: -55 }}
                     whileInView={{ y: 0 }}
                     viewport={{ once: true }}
@@ -772,7 +774,7 @@ export default function LandingPage() {
               </motion.div>
 
               {/* 2. Daily Streak (1 col, 1 row) */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -798,7 +800,7 @@ export default function LandingPage() {
               </motion.div>
 
               {/* 3. Badges (1 col, 1 row) */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -807,7 +809,7 @@ export default function LandingPage() {
               >
                 {/* Shine effect */}
                 <div className="absolute top-0 -inset-full h-full w-1/2 z-0 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 group-hover:animate-[shimmer_1.5s_infinite]" />
-                
+
                 <div className="flex gap-3 mb-6 relative z-10">
                   <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 border-2 border-yellow-200 shadow-sm z-30">
                     <Star size={20} className="fill-yellow-500" />
@@ -826,7 +828,7 @@ export default function LandingPage() {
               </motion.div>
 
               {/* 4. Level Up & XP Progress (Spans 2 cols on lg) */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: 30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
@@ -843,9 +845,9 @@ export default function LandingPage() {
                     <div className="font-mono text-slate-800 font-black">2,450 / 3,000</div>
                   </div>
                 </div>
-                
+
                 <div className="relative w-full h-4 bg-white rounded-full border border-slate-200/60 overflow-hidden shadow-inner">
-                  <motion.div 
+                  <motion.div
                     initial={{ width: "0%" }}
                     whileInView={{ width: "82%" }}
                     viewport={{ once: true }}
@@ -853,7 +855,7 @@ export default function LandingPage() {
                     className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full relative overflow-hidden"
                   >
                     {/* Progress Bar Shimmer */}
-                    <motion.div 
+                    <motion.div
                       animate={{ x: ["-100%", "200%"] }}
                       transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                       className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12"
@@ -872,16 +874,16 @@ export default function LandingPage() {
 
         {/* 🟢 UPGRADED: LIVE AI ASSISTANT SECTION (Simulation & Split Layout) */}
         <section className="bg-[#0A0F1C] relative py-24 lg:py-32 overflow-hidden z-20">
-          
+
           {/* Animated Background Glows */}
           <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite]" />
           <div className="absolute bottom-[-10%] right-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none animate-[pulse_8s_ease-in-out_infinite_reverse]" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-indigo-500/5 rounded-[100%] blur-[100px] pointer-events-none" />
 
           <div className="max-w-7xl mx-auto px-4 lg:px-8 relative z-10">
-            
+
             {/* Header Area */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -911,14 +913,14 @@ export default function LandingPage() {
             </motion.div>
 
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center max-w-6xl mx-auto">
-              
+
               {/* ⬅️ LEFT SIDE: Interactive Feature Stack */}
               <div className="space-y-6">
                 {t.aiSection.items.map((item, index) => {
                   const IconConfig = aiIcons[index];
                   return (
-                    <motion.div 
-                      key={index} 
+                    <motion.div
+                      key={index}
                       initial={{ opacity: 0, x: -30 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
@@ -927,11 +929,11 @@ export default function LandingPage() {
                     >
                       {/* Left glowing accent line on hover */}
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-blue-600 scale-y-0 group-hover:scale-y-100 transition-transform duration-300 origin-top" />
-                      
+
                       <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-600 text-cyan-400 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 group-hover:bg-cyan-500/10 group-hover:border-cyan-500/30 transition-all duration-300">
                         <IconConfig.icon size={22} />
                       </div>
-                      
+
                       <div>
                         <h3 className="text-lg font-bold mb-2 text-white group-hover:text-cyan-50 transition-colors">{item.title}</h3>
                         <p className="text-slate-400 text-[14px] leading-relaxed">
@@ -944,7 +946,7 @@ export default function LandingPage() {
               </div>
 
               {/* ➡️ RIGHT SIDE: Live AI Simulation Terminal */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.9, rotateY: 10 }}
                 whileInView={{ opacity: 1, scale: 1, rotateY: 0 }}
                 viewport={{ once: true }}
@@ -965,9 +967,9 @@ export default function LandingPage() {
 
                 {/* Terminal Body with Animation Loop */}
                 <div className="p-6 flex-1 flex flex-col gap-6 overflow-hidden relative">
-                  
+
                   {/* 1. Fake Prompt Entry */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.5 }}
@@ -977,7 +979,7 @@ export default function LandingPage() {
                   </motion.div>
 
                   {/* 2. AI Processing Indicator */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: [0, 1, 0] }}
                     transition={{ duration: 2.5, delay: 1.5, times: [0, 0.2, 1] }}
@@ -990,7 +992,7 @@ export default function LandingPage() {
                   </motion.div>
 
                   {/* 3. Generated Result Card (Pops in after processing) */}
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 30, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.5, delay: 3.5 }}
@@ -1001,7 +1003,7 @@ export default function LandingPage() {
                       <span className="bg-indigo-50 text-indigo-600 text-[10px] font-black px-2 py-1 rounded-md uppercase">1-Savol</span>
                       <span className="bg-rose-50 text-rose-600 text-[10px] font-black px-2 py-1 rounded-md">Qiyin</span>
                     </div>
-                    
+
                     {/* Fake Math Question */}
                     <div className="text-slate-800 text-[13px] font-bold mb-3 leading-snug">
                       Agar <span className="font-serif italic">sin(x) + cos(x) = 1.2</span> bo'lsa, <span className="font-serif italic">sin(2x)</span> ning qiymatini toping.
@@ -1040,7 +1042,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Decorative scanning laser line */}
-                <motion.div 
+                <motion.div
                   animate={{ top: ["0%", "100%", "0%"] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                   className="absolute left-0 right-0 h-[1px] bg-cyan-400/30 shadow-[0_0_10px_rgba(34,211,238,0.5)] z-0 pointer-events-none"
@@ -1054,7 +1056,7 @@ export default function LandingPage() {
         {/* 🟢 UPGRADED: PREMIUM GLOBAL LIBRARY BANNER */}
         <section className="bg-[#F8FAFC] pt-16 pb-12 relative z-20 px-4 lg:px-8">
           <div className="max-w-7xl mx-auto">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -1064,13 +1066,13 @@ export default function LandingPage() {
               {/* Vibrant Ambient Glows */}
               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-violet-600/40 via-indigo-500/20 to-transparent rounded-full blur-[80px] pointer-events-none translate-x-1/4 -translate-y-1/4" />
               <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-blue-500/30 via-cyan-400/10 to-transparent rounded-full blur-[80px] pointer-events-none -translate-x-1/4 translate-y-1/4" />
-              
+
               {/* Subtle Grid Texture */}
               <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
 
               {/* ⬅️ Left Side: Content */}
               <div className="relative z-10 lg:w-1/2 text-center lg:text-left mb-16 lg:mb-0">
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
@@ -1083,17 +1085,17 @@ export default function LandingPage() {
                   </span>
                   {t.globalLibrary.badge}
                 </motion.div>
-                
+
                 <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-black text-white mb-6 tracking-tight leading-[1.1]">
                   {t.globalLibrary.title}
                 </h2>
-                
+
                 <p className="text-slate-300 text-[16px] md:text-[17px] font-medium leading-relaxed max-w-xl mx-auto lg:mx-0 mb-10">
                   {t.globalLibrary.desc}
                 </p>
-                
-                <Link 
-                  href="/teacher/online-books" 
+
+                <Link
+                  href="/teacher/online-books"
                   className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-50 font-black py-4 px-8 rounded-2xl shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:-translate-y-1 transition-all active:scale-95 group"
                 >
                   {t.globalLibrary.button}
@@ -1103,12 +1105,12 @@ export default function LandingPage() {
 
               {/* ➡️ Right Side: Floating Isometric Tech Stack */}
               <div className="relative z-10 w-full lg:w-1/2 h-[350px] lg:h-[400px] flex items-center justify-center perspective-[1200px]">
-                
+
                 {/* Decorative Glowing Core */}
                 <div className="absolute w-40 h-40 bg-indigo-500/30 rounded-full blur-2xl animate-[pulse_4s_ease-in-out_infinite]" />
 
                 {/* 1. Back Card (Math/Geometry) */}
-                <motion.div 
+                <motion.div
                   animate={{ y: [-10, 10, -10], rotateZ: [-2, -2, -2] }}
                   transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
                   className="absolute top-10 lg:top-4 right-10 lg:right-20 w-48 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-xl z-10 transform scale-90"
@@ -1122,7 +1124,7 @@ export default function LandingPage() {
                 </motion.div>
 
                 {/* 2. Middle Card (Uzbekistan Standard) */}
-                <motion.div 
+                <motion.div
                   animate={{ y: [10, -10, 10], rotateZ: [2, 2, 2] }}
                   transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
                   className="absolute bottom-16 lg:bottom-12 left-4 lg:left-12 w-64 bg-slate-800/80 backdrop-blur-xl border border-slate-600/50 rounded-2xl p-5 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] z-20"
@@ -1141,7 +1143,7 @@ export default function LandingPage() {
                 </motion.div>
 
                 {/* 3. Front Main Card (USA Standard) */}
-                <motion.div 
+                <motion.div
                   animate={{ y: [-15, 15, -15], rotateZ: [-4, -4, -4] }}
                   transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
                   className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl border border-white/20 rounded-[2rem] p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] z-30"
@@ -1156,7 +1158,7 @@ export default function LandingPage() {
                   {/* Card Body */}
                   <p className="text-[11px] font-black text-indigo-300 uppercase tracking-widest leading-none mb-1.5">Global Curriculum</p>
                   <p className="text-lg font-black text-white leading-tight mb-4">USA B.E.S.T. Standards</p>
-                  
+
                   {/* Fake Progress/Details */}
                   <div className="space-y-2">
                     <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
@@ -1176,10 +1178,10 @@ export default function LandingPage() {
 
         {/* 🟢 UPGRADED: PREMIUM "HOW IT WORKS" & FINAL CTA */}
         <section className="bg-[#F8FAFC] py-24 lg:py-32 relative z-20 border-t border-slate-200/60 overflow-hidden">
-          
+
           {/* Subtle Grid Background */}
-          <div className="absolute inset-0 z-0 opacity-[0.04] pointer-events-none" 
-               style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '32px 32px' }}>
+          <div className="absolute inset-0 z-0 opacity-[0.04] pointer-events-none"
+            style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '32px 32px' }}>
           </div>
 
           {/* Ambient Glows */}
@@ -1187,10 +1189,10 @@ export default function LandingPage() {
           <div className="absolute bottom-1/4 left-1/4 w-[600px] h-[600px] bg-emerald-400/10 rounded-full blur-[120px] pointer-events-none" />
 
           <div className="max-w-7xl mx-auto px-4 lg:px-8 relative z-10">
-            
+
             {/* Header */}
             <div className="text-center mb-16 lg:mb-24">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -1202,7 +1204,7 @@ export default function LandingPage() {
                 </span>
                 {t.howItWorks?.badge || "ODDIY QADAMLAR"}
               </motion.div>
-              <motion.h2 
+              <motion.h2
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -1211,7 +1213,7 @@ export default function LandingPage() {
               >
                 {t.howItWorks?.title || "Boshlash juda oson"}
               </motion.h2>
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -1224,11 +1226,11 @@ export default function LandingPage() {
 
             {/* 3 Steps Bento Grid */}
             <div className="relative max-w-6xl mx-auto mb-24 lg:mb-32">
-              
+
               {/* Animated Connecting Line (Desktop Only) */}
               <div className="hidden lg:block absolute top-[45%] left-[10%] right-[10%] h-[2px] z-0">
                 <div className="w-full h-full bg-slate-200/60 rounded-full overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     initial={{ x: "-100%" }}
                     whileInView={{ x: "100%" }}
                     viewport={{ once: true }}
@@ -1239,9 +1241,9 @@ export default function LandingPage() {
               </div>
 
               <div className="grid lg:grid-cols-3 gap-6 lg:gap-10 relative z-10">
-                
+
                 {/* Step 1: Sign Up */}
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -1256,11 +1258,11 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-3">{t.howItWorks?.steps[0].title || "Ro'yxatdan o'ting"}</h3>
                   <p className="text-slate-500 text-[15px] font-medium leading-relaxed mb-6">{t.howItWorks?.steps[0].desc || "O'qituvchi yoki o'quvchi sifatida bir necha soniyada bepul akkaunt yarating."}</p>
-                  
+
                   {/* Micro-Visual */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center shrink-0">
-                       <UserPlus size={16} className="text-slate-400" />
+                      <UserPlus size={16} className="text-slate-400" />
                     </div>
                     <div className="space-y-1.5 w-full">
                       <div className="h-2 w-1/2 bg-slate-200 rounded-full" />
@@ -1270,7 +1272,7 @@ export default function LandingPage() {
                 </motion.div>
 
                 {/* Step 2: Create Test */}
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -1286,19 +1288,19 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-3">{t.howItWorks?.steps[1].title || "Test yarating"}</h3>
                   <p className="text-slate-500 text-[15px] font-medium leading-relaxed mb-6">{t.howItWorks?.steps[1].desc || "AI yordamchi yordamida istalgan mavzuda test va materiallar tuzing."}</p>
-                  
+
                   {/* Micro-Visual */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <div className="flex gap-2 mb-2">
-                       <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                       <div className="h-2 w-full bg-purple-100 rounded-full" />
+                      <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                      <div className="h-2 w-full bg-purple-100 rounded-full" />
                     </div>
                     <div className="h-2 w-2/3 bg-slate-200 rounded-full" />
                   </div>
                 </motion.div>
 
                 {/* Step 3: Get Results */}
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -1313,7 +1315,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-3">{t.howItWorks?.steps[2].title || "Natijalarni oling"}</h3>
                   <p className="text-slate-500 text-[15px] font-medium leading-relaxed mb-6">{t.howItWorks?.steps[2].desc || "O'quvchilarga ulashing, tizim esa ularni o'zi avtomatik baholaydi."}</p>
-                  
+
                   {/* Micro-Visual */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-end justify-between h-14">
                     {[40, 60, 45, 80, 100].map((h, i) => (
@@ -1326,7 +1328,7 @@ export default function LandingPage() {
             </div>
 
             {/* Massive Final CTA (Dark Mode Bridge) */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 40 }}
               whileInView={{ opacity: 1, scale: 1, y: 0 }}
               viewport={{ once: true }}
@@ -1336,14 +1338,14 @@ export default function LandingPage() {
               {/* Animated Inner Glows */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-blue-600/30 rounded-full blur-[80px] pointer-events-none" />
               <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[60px] pointer-events-none" />
-              
+
               <h2 className="relative z-10 text-3xl md:text-5xl lg:text-6xl font-black text-white mb-6 tracking-tight">
                 Hali ham o'ylanyapsizmi?
               </h2>
               <p className="relative z-10 text-slate-400 text-lg md:text-xl font-medium mb-10 max-w-2xl mx-auto">
                 Hoziroq ro'yxatdan o'ting va ta'lim jarayonini avtomatlashtirish qanchalik oson ekanligini o'z ko'zingiz bilan ko'ring.
               </p>
-              
+
               <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/auth/signup">
                   <button className="bg-white text-slate-900 px-8 py-4 rounded-2xl text-[17px] font-black shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] hover:-translate-y-1 transition-all flex items-center gap-2 group">
@@ -1360,132 +1362,133 @@ export default function LandingPage() {
           </div>
         </section>
 
-      
-        
+
+
 
       </main>
 
       {/* 🟢 UPGRADED: ULTRA-PREMIUM DARK FOOTER WITH MAP */}
-        <footer className="bg-[#0A0F1C] border-t border-slate-800/80 pt-20 pb-10 relative z-20 overflow-hidden">
-          
-          {/* Subtle Grid & Ambient Glows */}
-          <div className="absolute inset-0 z-0 opacity-20 pointer-events-none" 
-               style={{ backgroundImage: 'linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
-          </div>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <footer className="bg-[#0A0F1C] border-t border-slate-800/80 pt-20 pb-10 relative z-20 overflow-hidden">
 
-          <div className="max-w-7xl mx-auto px-4 lg:px-8 relative z-10">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 mb-16">
-              
-              {/* 1. Brand & Socials (Takes up 5 columns on desktop) */}
-              <div className="md:col-span-5">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.3)] border border-white/10">
-                    <BookOpen className="w-6 h-6 text-white" />
-                  </div>
-                  <span className="font-black text-3xl text-white tracking-tight">Edify.</span>
+        {/* Subtle Grid & Ambient Glows */}
+        <div className="absolute inset-0 z-0 opacity-20 pointer-events-none"
+          style={{ backgroundImage: 'linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
+        </div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 mb-16">
+
+            {/* 1. Brand & Socials (Takes up 5 columns on desktop) */}
+            <div className="md:col-span-5">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.3)] border border-white/10">
+                  <BookOpen className="w-6 h-6 text-white" />
                 </div>
-                <p className="text-slate-400 text-[16px] leading-relaxed mb-8 max-w-sm font-medium">
-                  {t.footer.desc}
-                </p>
-                
-                {/* Social Buttons */}
-                <div className="flex gap-4">
-                  {[
-                    { icon: Github, link: "https://github.com/Wasp-2-AI", color: "hover:bg-slate-700 hover:border-slate-500 hover:text-white" },
-                    { icon: Linkedin, link: "https://www.linkedin.com/company/wasp-2-ai", color: "hover:bg-[#0A66C2] hover:border-[#0A66C2] hover:text-white hover:shadow-[0_0_15px_rgba(10,102,194,0.4)]" },
-                    { icon: Send, link: "https://t.me/umidjon0339", color: "hover:bg-[#229ED9] hover:border-[#229ED9] hover:text-white hover:shadow-[0_0_15px_rgba(34,158,217,0.4)]" }
-                  ].map((social, i) => (
-                    <motion.a 
-                      key={i}
-                      href={social.link} 
-                      target="_blank"
-                      className={`w-11 h-11 rounded-xl bg-slate-800/50 backdrop-blur-sm flex items-center justify-center text-slate-400 transition-all duration-300 border border-slate-700/50 ${social.color}`}
-                      whileHover={{ y: -4 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <social.icon className={`w-5 h-5 ${social.icon === Send ? '-ml-0.5 mt-0.5' : ''}`} />
-                    </motion.a>
-                  ))}
-                </div>
+                <span className="font-black text-3xl text-white tracking-tight">Edify.</span>
               </div>
-
-              {/* 2. Platform Links (Takes up 3 columns) */}
-              <div className="md:col-span-3">
-                <h3 className="text-[13px] font-black mb-6 text-slate-100 uppercase tracking-widest">{t.footer.platform}</h3>
-                <ul className="space-y-4">
-                  {t.footer.links?.map((link: any, index: number) => (
-                    <li key={index}>
-                      <a href={link.href} className="text-slate-400 hover:text-cyan-400 transition-colors font-medium text-[15px] flex items-center gap-3 group w-fit">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-cyan-400 transition-colors shadow-[0_0_0_rgba(34,211,238,0)] group-hover:shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
-                        {link.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* 3. Contact & Map (Takes up 4 columns) */}
-              <div className="md:col-span-4">
-                <h3 className="text-[13px] font-black mb-6 text-slate-100 uppercase tracking-widest">{t.footer.contact}</h3>
-                
-                <div className="space-y-4 mb-6">
-                  {/* Manzil (Address) */}
-                  <div className="flex items-start gap-4 text-slate-400 font-medium text-[15px] w-fit">
-                    <div className="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0">
-                      <MapPin className="w-4 h-4 text-rose-400" />
-                    </div>
-                    <span className="mt-2 leading-snug">{t.footer.address}</span>
-                  </div>
-
-                  {/* Email */}
-                  <a href="mailto:u.jumaqulov@newuu.uz" className="flex items-center gap-4 text-slate-400 font-medium text-[15px] hover:text-white transition-colors group w-fit">
-                    <div className="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-center group-hover:border-blue-500/50 group-hover:bg-blue-500/10 transition-colors shrink-0">
-                      <Mail className="w-4 h-4 text-blue-400" />
-                    </div>
-                    <span>u.jumaqulov@newuu.uz</span>
-                  </a>
-                  
-                  {/* Telefon */}
-                  <a href="tel:+998338602006" className="flex items-center gap-4 text-slate-400 font-medium text-[15px] hover:text-white transition-colors group w-fit">
-                    <div className="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-center group-hover:border-emerald-500/50 group-hover:bg-emerald-500/10 transition-colors shrink-0">
-                      <Phone className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <span>+998 33 860 20 06</span>
-                  </a>
-                </div>
-                
-                {/* 🚀 PREMIUM DARK MODE MAP */}
-                <div className="rounded-xl overflow-hidden h-36 w-full border border-slate-700/50 shadow-2xl relative group bg-slate-900">
-                  <iframe 
-                    src="https://maps.google.com/maps?q=41.296837,69.272712&t=&z=15&ie=UTF8&iwloc=&output=embed" 
-                    width="100%" 
-                    height="100%" 
-                    style={{ border: 0 }} 
-                    allowFullScreen 
-                    loading="lazy"
-                    className="w-full h-full opacity-60 grayscale-[0.8] invert-[0.9] hue-rotate-180 group-hover:opacity-100 group-hover:invert-0 group-hover:grayscale-0 group-hover:hue-rotate-0 transition-all duration-700"
-                  ></iframe>
-                  {/* Blue ambient overlay to blend map into the footer (disappears on hover) */}
-                  <div className="absolute inset-0 bg-blue-900/10 pointer-events-none group-hover:opacity-0 transition-opacity duration-700" />
-                </div>
-
-              </div>
-            </div>
-            
-            {/* Bottom Copyright Bar */}
-            <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-sm font-medium relative z-10">
-              <p className="flex items-center gap-1">
-                © {new Date().getFullYear()} Wasp-2 AI Solutions. {t.footer.rights}
+              <p className="text-slate-400 text-[16px] leading-relaxed mb-8 max-w-sm font-medium">
+                {t.footer.desc}
               </p>
-              <div className="flex gap-6">
-                <a href="#" className="hover:text-blue-400 transition-colors">Maxfiylik siyosati</a>
-                <a href="#" className="hover:text-blue-400 transition-colors">Foydalanish shartlari</a>
+
+              {/* Social Buttons */}
+              <div className="flex gap-4">
+
+                {[
+                  { icon: Github, link: "https://github.com/Wasp-2-AI", color: "hover:bg-slate-700 hover:border-slate-500 hover:text-white" },
+                  { icon: Linkedin, link: "https://www.linkedin.com/company/wasp-2-ai", color: "hover:bg-[#0A66C2] hover:border-[#0A66C2] hover:text-white hover:shadow-[0_0_15px_rgba(10,102,194,0.4)]" },
+                  { icon: Send, link: "https://t.me/umidjon0339", color: "hover:bg-[#229ED9] hover:border-[#229ED9] hover:text-white hover:shadow-[0_0_15px_rgba(34,158,217,0.4)]" }
+                ].map((social, i) => (
+                  <motion.a
+                    key={i}
+                    href={social.link}
+                    target="_blank"
+                    className={`w-11 h-11 rounded-xl bg-slate-800/50 backdrop-blur-sm flex items-center justify-center text-slate-400 transition-all duration-300 border border-slate-700/50 ${social.color}`}
+                    whileHover={{ y: -4 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <social.icon className={`w-5 h-5 ${social.icon === Send ? '-ml-0.5 mt-0.5' : ''}`} />
+                  </motion.a>
+                ))}
               </div>
             </div>
+
+            {/* 2. Platform Links (Takes up 3 columns) */}
+            <div className="md:col-span-3">
+              <h3 className="text-[13px] font-black mb-6 text-slate-100 uppercase tracking-widest">{t.footer.platform}</h3>
+              <ul className="space-y-4">
+                {t.footer.links?.map((link: any, index: number) => (
+                  <li key={index}>
+                    <a href={link.href} className="text-slate-400 hover:text-cyan-400 transition-colors font-medium text-[15px] flex items-center gap-3 group w-fit">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-cyan-400 transition-colors shadow-[0_0_0_rgba(34,211,238,0)] group-hover:shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 3. Contact & Map (Takes up 4 columns) */}
+            <div className="md:col-span-4">
+              <h3 className="text-[13px] font-black mb-6 text-slate-100 uppercase tracking-widest">{t.footer.contact}</h3>
+
+              <div className="space-y-4 mb-6">
+                {/* Manzil (Address) */}
+                <div className="flex items-start gap-4 text-slate-400 font-medium text-[15px] w-fit">
+                  <div className="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0">
+                    <MapPin className="w-4 h-4 text-rose-400" />
+                  </div>
+                  <span className="mt-2 leading-snug">{t.footer.address}</span>
+                </div>
+
+                {/* Email */}
+                <a href="mailto:u.jumaqulov@newuu.uz" className="flex items-center gap-4 text-slate-400 font-medium text-[15px] hover:text-white transition-colors group w-fit">
+                  <div className="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-center group-hover:border-blue-500/50 group-hover:bg-blue-500/10 transition-colors shrink-0">
+                    <Mail className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <span>u.jumaqulov@newuu.uz</span>
+                </a>
+
+                {/* Telefon */}
+                <a href="tel:+998338602006" className="flex items-center gap-4 text-slate-400 font-medium text-[15px] hover:text-white transition-colors group w-fit">
+                  <div className="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-center group-hover:border-emerald-500/50 group-hover:bg-emerald-500/10 transition-colors shrink-0">
+                    <Phone className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <span>+998 33 860 20 06</span>
+                </a>
+              </div>
+
+              {/* 🚀 PREMIUM DARK MODE MAP */}
+              <div className="rounded-xl overflow-hidden h-36 w-full border border-slate-700/50 shadow-2xl relative group bg-slate-900">
+                <iframe
+                  src="https://maps.google.com/maps?q=41.296837,69.272712&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  className="w-full h-full opacity-60 grayscale-[0.8] invert-[0.9] hue-rotate-180 group-hover:opacity-100 group-hover:invert-0 group-hover:grayscale-0 group-hover:hue-rotate-0 transition-all duration-700"
+                ></iframe>
+                {/* Blue ambient overlay to blend map into the footer (disappears on hover) */}
+                <div className="absolute inset-0 bg-blue-900/10 pointer-events-none group-hover:opacity-0 transition-opacity duration-700" />
+              </div>
+
+            </div>
           </div>
-        </footer>
+
+          {/* Bottom Copyright Bar */}
+          <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-sm font-medium relative z-10">
+            <p className="flex items-center gap-1">
+              © {new Date().getFullYear()} Wasp-2 AI Solutions. {t.footer.rights}
+            </p>
+            <div className="flex gap-6">
+              <a href="#" className="hover:text-blue-400 transition-colors">Maxfiylik siyosati</a>
+              <a href="#" className="hover:text-blue-400 transition-colors">Foydalanish shartlari</a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

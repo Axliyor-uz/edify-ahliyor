@@ -22,9 +22,9 @@ export default function RootLayout({
 }) {
   return (
     // 🟢 3. Shrift o'zgaruvchisini <html> ga beramiz
-    <html lang="uz" className={`${jakarta.variable}`}>
+    <html lang="uz" className={`${jakarta.variable}`} suppressHydrationWarning>
       {/* 🟢 4. antialiased va font-sans klasslarini qo'shdik */}
-      <body className="font-sans antialiased bg-white text-slate-900">
+      <body className="font-sans antialiased bg-white text-slate-900" suppressHydrationWarning>
         
         <AuthProvider>
           {children}
