@@ -13,6 +13,7 @@ interface LangContextType {
   lang: LangType;
   setLang: (lang: LangType) => void;
 }
+// knjnjn
 
 export const LanguageContext = createContext<LangContextType | undefined>(undefined);
 
