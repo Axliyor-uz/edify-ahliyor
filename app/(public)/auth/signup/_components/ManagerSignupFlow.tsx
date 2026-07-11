@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword, updateProfile, deleteUser } from "fireb
 import { doc, writeBatch, collection } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { checkUsernameUnique } from "@/services/userService";
+import { getSsoReturnTo, completeSsoRedirect } from "@/lib/sso";
 import { Loader2, ArrowRight, ArrowLeft, User, Phone, Building, Hash, FileText, ShieldCheck, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { Step1Auth } from "./FormSteps";
@@ -227,6 +228,9 @@ export default function ManagerSignupFlow({ onBack, t }: any) {
       await batch.commit();
 
       toast.success(t.validation.welcome.replace("{role}", "Menejer"));
+      // SSO: a partner app sent this user here — bounce back signed in
+      const ssoReturnTo = getSsoReturnTo();
+      if (ssoReturnTo && (await completeSsoRedirect(ssoReturnTo))) return;
       router.push("/manager/dashboard");
     } catch (error: any) {
       // 🛡️ Rollback auth if database write fails
