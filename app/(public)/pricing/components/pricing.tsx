@@ -7,6 +7,7 @@
 import PricingBuilder from './PricingBuilder';
 
 
+
 export default function PricingPage() {
     return <PricingBuilder />;
 }
