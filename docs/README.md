@@ -1,0 +1,46 @@
+# Edify Docs — Index & Routing Table
+
+This directory is the **source of truth** for how Edify works. The workflow contract (from [CLAUDE.md](../CLAUDE.md)):
+
+1. **Before coding**: find your area in the routing table below and read that doc (plus [DATA_MODEL.md](DATA_MODEL.md) for any Firestore change).
+2. **Code** the change, respecting the doc's invariants & traps.
+3. **After coding**: update the doc **in the same change** if you altered any behavior it describes (flows, fields, routes, rules, traps). Bump its "Last verified" date when you re-verify it.
+4. If you discover the doc is wrong, fix the doc — a wrong doc is worse than no doc.
+
+## Routing table — "touching X → read Y first"
+
+| If you're touching… | Read first |
+|---|---|
+| Login, signup, roles, layout guards, SSO (`lib/sso.ts`), `firestore.rules` helpers, token verification | [AUTH.md](AUTH.md) |
+| Any Firestore read/write, collection shapes, indexes, timestamps | [DATA_MODEL.md](DATA_MODEL.md) + the domain doc |
+| Student app `app/(student)/*` — dashboard, classes, test/exam runners, XP/streak/leaderboards, games, library, notifications, social, explore | [STUDENT.md](STUDENT.md) |
+| Teacher app `app/teacher/*` — test creation, question banks, classes/assignments/exams/grading/materials, analytics, print, subscription | [TEACHER.md](TEACHER.md) |
+| AI generation routes, credit/limit systems, `lib/ai/*`, `/api/analyze`, TTS | [AI.md](AI.md) |
+| Manager app `app/manager/*` core — center lifecycle/approval, groups, teachers, student enrollment, walk-in check-in | [MANAGER.md](MANAGER.md) |
+| Attendance (student + staff), `center_attendance`, `AttendanceGrid`, `checkInService` | [ATTENDANCE.md](ATTENDANCE.md) |
+| Rooms, timetable, schedule conflicts, `roomService` | [ROOMS.md](ROOMS.md) |
+| Finance — charges/payments/payroll/expenses, `/api/manager/finance/*`, `financeOps`, `billingEngine` | [FINANCE.md](FINANCE.md) + [FINANCE_DATABASE.md](FINANCE_DATABASE.md) |
+| Admin panel `app/admin/*`, `/api/admin/*`, super-admin claim, god-mode writes | [ADMIN.md](ADMIN.md) |
+| IELTS (groups, reading tests) — student or teacher side | [IELTS.md](IELTS.md) |
+
+Historical (design rationale only, drifted — do not trust for current state): [ADMIN_CENTERS_PLAN.md](ADMIN_CENTERS_PLAN.md).
+
+## Doc template (use for any new domain doc)
+
+```markdown
+# NAME — one-line scope
+
+> **Agent workflow:** read this BEFORE touching <area>; update it in the same change
+> whenever you alter behavior described here. Index: [README.md](README.md).
+
+**Last verified:** YYYY-MM-DD (commit `<short-hash>`).
+
+## Purpose & scope
+## Key files            (table: file → responsibility)
+## Flows                (how it actually works, with collection names and exact fields)
+## Invariants & traps   (the things that cause bugs when violated — ⚠️ mark them)
+## Known issues / dead code (verified DATE — don't "fix" blindly)
+## How to verify changes (no test suite — concrete dev-server walkthrough)
+```
+
+Rules of style: document **verified behavior** (file:line-checkable), not intentions; mark dead/unwired code explicitly; prefer "⚠️ trap" callouts over prose; keep each doc under ~200 lines — split if it grows past that.

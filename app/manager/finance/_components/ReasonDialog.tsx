@@ -15,7 +15,7 @@ interface Props {
 
 /**
  * ConfirmDialog variant with a MANDATORY reason field — money records are never
- * deleted, only cancelled/waived with an audit reason (FINANCE_PLAN.md rule #1).
+ * deleted, only cancelled/waived with an audit reason (FINANCE.md rule #1).
  */
 export default function ReasonDialog({ title, message, confirmLabel, placeholder, onConfirm, onClose }: Props) {
   const [reason, setReason] = useState("");

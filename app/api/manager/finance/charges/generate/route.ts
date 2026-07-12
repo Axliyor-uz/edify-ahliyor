@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * POST — idempotent charge generation (docs/FINANCE_PLAN.md §4.1).
+ * POST — idempotent charge generation (docs/FINANCE.md §4.1).
  * Body: { periodKey?: "YYYY-MM", dryRun?: boolean }. dryRun returns the preview
  * the banner shows; the real run creates only the still-missing charges.
  */

@@ -1,7 +1,7 @@
 // ─── Pure billing logic — NO Firebase imports ─────────────────────────────────
 // Everything here is a deterministic function of its inputs so it can be
 // exercised in isolation. Server transactions (lib/server/financeOps.ts) and
-// client previews both call these. Rules: docs/FINANCE_PLAN.md §3–4.
+// client previews both call these. Rules: docs/FINANCE.md §3–4.
 
 import { formatDateKey, parseDateKey } from "@/lib/dateUtils";
 import type { ScheduleEntry } from "@/types/attendance";

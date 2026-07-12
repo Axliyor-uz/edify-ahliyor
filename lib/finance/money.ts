@@ -1,4 +1,4 @@
-// ─── Money helpers — integer so'm only (FINANCE_PLAN.md iron rule #3) ─────────
+// ─── Money helpers — integer so'm only (FINANCE.md iron rule #3) ─────────
 
 /** Proration/discount rounding: nearest 1,000 so'm. */
 export function roundTo1000(n: number): number {

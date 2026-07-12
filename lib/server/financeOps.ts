@@ -2,7 +2,7 @@
 // Every mutation is a Firestore transaction that keeps the cached
 // `center_student_finance.balance` consistent with the charge/payment ledger:
 //   balance = Σ payments − Σ refunds − Σ amount of non-cancelled charges
-// (docs/FINANCE_PLAN.md §2). Called by the /api/manager/finance/* routes and,
+// (docs/FINANCE.md §2). Called by the /api/manager/finance/* routes and,
 // later, by payment-gateway webhooks. Client code never writes these docs.
 
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -155,7 +155,7 @@ export async function upsertSettings(centerId: string, patch: Record<string, unk
 }
 
 // ─── Center roster resolution ─────────────────────────────────────────────────
-// `classes` docs have no centerId (FINANCE_PLAN.md iron rule #9): resolve via
+// `classes` docs have no centerId (FINANCE.md iron rule #9): resolve via
 // center_teachers → classes(teacherId in …), same as the client useCenterClasses.
 
 export interface CenterClass {
@@ -287,7 +287,7 @@ export async function generateCharges(params: {
         }
       } else {
         // Rolling: missing enrollment date falls back to the current month's 1st —
-        // the manager should set real dates before first generation (FINANCE_PLAN.md §3.3).
+        // the manager should set real dates before first generation (FINANCE.md §3.3).
         periods = rollingCyclesUpTo(enrollment || `${currentMonth}-01`, todayKey);
       }
 

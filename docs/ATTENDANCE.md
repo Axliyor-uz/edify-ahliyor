@@ -1,8 +1,8 @@
-# Attendance System — Agent Reference
+# ATTENDANCE — Student & Staff Attendance
 
-> **Read this before touching anything attendance-related.** It captures the data model,
-> the non-obvious rules, and the two traps that have already caused bugs. Following it will
-> save you a debugging cycle. Trust this doc + the code over any older notes.
+> **Agent workflow:** read this BEFORE touching anything attendance-related; update it in the same change whenever you alter behavior described here. It captures the data model, the non-obvious rules, and the traps that have already caused bugs. Trust this doc + the code over any older notes. Index: [README.md](README.md).
+
+**Last verified:** 2026-07-12 (commit `7c31a96`) — checked against code; accurate.
 
 The attendance system covers **student attendance** (per class, per lesson) and **staff/teacher
 attendance** (per teacher, per day) for learning centers. It was rebuilt in phases to be
@@ -49,7 +49,7 @@ and staff attendance.
 | `app/manager/staff-attendance/page.tsx` | Staff attendance page (resolves centerId, feeds teachers into `StaffAttendanceGrid`). |
 | `app/manager/dashboard/page.tsx` | Real analytics dashboard (today rate, monthly rate, chronic absentees, per-group bars, today's lessons). |
 | `app/manager/students/page.tsx` | **Consumer** of today's `records` — reads `.status` (tolerant of legacy string). |
-| `firestore.rules` | Security rules (full ruleset; attendance blocks near the bottom, section 16). |
+| `firestore.rules` | Security rules (flat file, no numbered sections; attendance blocks are near the bottom, after `center_teachers`). |
 | `firestore.indexes.json` | Composite indexes for attendance range queries. |
 | `firebase.json` | Wires `firestore.rules` + `firestore.indexes.json`. |
 | `scripts/deleteLegacyAttendance.mjs` | One-off clean-slate deletion of `center_attendance` (dry-run by default). |
@@ -126,7 +126,7 @@ deliberately undecided.
 
 ## 3. Security model (rules)
 
-Attendance blocks live in `firestore.rules` §16. Helpers: `isCenterManager(centerId)` (reads
+Attendance blocks live near the bottom of `firestore.rules` (after `center_teachers`). Helpers: `isCenterManager(centerId)` (reads
 `centers/{id}.ownerUid`), `isTeacherOfCenter(centerId)`, `isTeacherInMyCenter(teacherUid)`.
 
 | Collection | read | write |
@@ -151,6 +151,7 @@ Admin env vars (`FIREBASE_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY`) are in `.env.loc
 npx firebase-tools login                                             # once
 npx firebase-tools deploy --only firestore:rules,firestore:indexes  # deploy rules + indexes
 ```
+- ⚠️ **Always use `--only`.** `firebase.json` contains a `functions` deploy block but there is **no `functions/` directory in the repo** — a bare `firebase deploy` fails at the functions predeploy step.
 - Deploying **rules** replaces the whole file (which contains the full ruleset — nothing lost).
 - Deploying **indexes** is additive (never deletes existing/auto indexes). Indexes take minutes to
   build — watch Console → Firestore → Indexes until **Enabled** before testing range queries.

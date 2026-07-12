@@ -1,8 +1,8 @@
-# Room Management — Agent Reference
+# ROOMS — Room Management & Timetable
 
-> **Read before touching room/timetable code.** Rooms model the physical spaces where groups meet,
-> with a weekly timetable and conflict detection. Pairs with [ATTENDANCE.md](ATTENDANCE.md) (shares
-> `ScheduleEntry` + the query-safe rules pattern). Trust this doc + code over older notes.
+> **Agent workflow:** read this BEFORE touching room/timetable code; update it in the same change whenever you alter behavior described here. Rooms model the physical spaces where groups meet, with a weekly timetable and conflict detection. Pairs with [ATTENDANCE.md](ATTENDANCE.md) (shares `ScheduleEntry` + the query-safe rules pattern). Index: [README.md](README.md).
+
+**Last verified:** 2026-07-12 (commit `7c31a96`) — checked against code; accurate.
 
 **Center-only feature.** All room UI lives under `app/manager/**`. Standalone teachers (no
 `center_teachers` link) never see rooms; room fields on a class are optional, so non-center classes are

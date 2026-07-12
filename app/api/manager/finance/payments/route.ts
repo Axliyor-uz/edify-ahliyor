@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * POST — record a payment or refund (docs/FINANCE_PLAN.md §4.2). Allocation is
+ * POST — record a payment or refund (docs/FINANCE.md §4.2). Allocation is
  * oldest-due-first; the remainder becomes avans. Body: RecordPaymentRequest.
  */
 export const POST = financePostHandler('/api/manager/finance/payments', ({ uid, centerId }, body) =>

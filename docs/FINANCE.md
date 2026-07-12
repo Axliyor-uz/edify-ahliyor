@@ -1,12 +1,11 @@
-# Finance Module — Implementation Plan (Phase 1: Tuition Core)
+# FINANCE — Charges, Payments, Payroll & Expenses
 
-> Status: **Phase 1 (tuition) + Phase 3 (payroll & expenses) code complete (2026-07-07)** —
-> build passes; the §8.6 manual walkthrough is still pending. Decisions were made with the
-> product owner (2026-07-07). Once verified in production, convert this into a living
-> reference doc like `ATTENDANCE.md`.
+> **Agent workflow:** read this BEFORE touching anything under `app/manager/finance/`, `app/api/manager/finance/*`, `lib/finance/*`, `lib/server/financeOps.ts`, or the finance collections. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 >
 > **Quick reference:** [FINANCE_DATABASE.md](FINANCE_DATABASE.md) maps every collection and,
 > per UI action, exactly which documents change — read that first for "where does my data go".
+
+**Last verified:** 2026-07-12 (commit `7c31a96`). Tuition core (Phase 1) and payroll & expenses (Phase 3) are **built — this is a current-state reference**; §10 lists what remains future. (Formerly `FINANCE_PLAN.md`.)
 
 ## 0. Locked product decisions
 
@@ -176,7 +175,7 @@ Server algorithm:
    (oldest `paidAt` first) to the new charges inside the same transaction — updating the payments'
    `allocations`/`unallocatedAmount` and the charges' `paidAmount`/`status`. Balance is unchanged
    by allocation (it already counted the payment).
-7. Return `{ created, skipped, totalAmount, perClass[] }` for the toast/banner.
+7. Return `{ created, skipped, frozenSkipped, totalAmount, perClass[], dryRun }` for the toast/banner.
 
 ### 4.2 Recording a payment
 `POST /payments { studentId, amount, method, type, paidAt?, note? }` — one transaction:
@@ -195,7 +194,7 @@ Server algorithm:
   set status + audit fields, adjust balance. One transaction.
 - **Waive charge**: forgive unpaid remainder (§2).
 - **Cancel charge**: only while `paidAmount == 0`; else the manager must cancel/reallocate payments first.
-- **Adjust charge** (`amount`/`discountAmount`): only while `paidAmount == 0`; stamps `adjustedBy/At`.
+- **Adjust charge** (`amount` only — no `discountAmount` param exists): only while `paidAmount == 0`; stamps `adjustedBy/At`.
 
 ## 5. API routes — all `POST`, all start with `requireActiveCenterManager(request)`
 
@@ -205,10 +204,11 @@ Server algorithm:
 | `/api/manager/finance/charges/generate` | `{ periodKey?, dryRun? }` | §4.1; `periodKey` only meaningful for calendar mode |
 | `/api/manager/finance/charges/waive` | `{ chargeId, reason }` | verifies `charge.centerId` matches caller |
 | `/api/manager/finance/charges/cancel` | `{ chargeId, reason }` | `paidAmount == 0` guard |
-| `/api/manager/finance/charges/adjust` | `{ chargeId, amount, discountAmount?, note? }` | `paidAmount == 0` guard |
+| `/api/manager/finance/charges/adjust` | `{ chargeId, amount, note? }` | `paidAmount == 0` guard |
 | `/api/manager/finance/payments` | `{ studentId, amount, type, method, paidAt?, note? }` | §4.2 |
 | `/api/manager/finance/payments/cancel` | `{ paymentId, reason }` | §4.3 |
 | `/api/manager/finance/student` | `{ studentId, patch }` | discount, overrides, freeze/unfreeze, enrollmentDates fixes |
+| `/api/manager/finance/group-fees` | bulk `classes.monthlyFee` update | `updateGroupFees` in `financeOps.ts`; ownership check via server-side `resolveCenterClasses` (deliberately not client rules); used by Sozlamalar "Guruh narxlari" (`GroupPricesSection.tsx`) |
 
 Guard: the PRE-EXISTING `lib/server/verifyCenterManager.ts` (`requireActiveCenterManager`,
 throws `ManagerApiError` with user-facing Uzbek messages) — verifies the bearer ID token,
@@ -280,19 +280,19 @@ Deploy: `firebase deploy --only firestore:rules,firestore:indexes`.
 | `lib/managerApi.ts` (pre-existing) | Token-attaching fetch (`managerApiFetch`) used by `financeService` |
 | `lib/server/verifyCenterManager.ts` (pre-existing) | `requireActiveCenterManager` guard (§5) |
 | `lib/server/financeRoute.ts` | `financePostHandler` route factory (guard + body parse + error mapping) |
-| `app/api/manager/finance/*` | The 14 routes (§5 + §9) — thin handlers around `lib/server/financeOps.ts` |
+| `app/api/manager/finance/*` | The **15** routes (§5 + §9) — thin handlers around `lib/server/financeOps.ts` |
 | `lib/server/financeOps.ts` | Server-side transactions: generation, payment+allocation, cancellations. **The future Payme/Click webhook calls these same functions.** |
 | `services/financeService.ts` | Client reads (charges by period, debtors, payments feed, student history, settings) + typed wrappers around the API routes |
-| `app/manager/finance/page.tsx` | Replace placeholder: stat header + tabs (To'lovlar · Qarzdorlar · Hisob-kitob · Sozlamalar) |
-| `app/manager/finance/_components/` | `FinanceStats`, `GenerateChargesBanner`, `ChargesTab`, `PaymentsTab`, `RecordPaymentModal`, `DebtorsTab`, `SettingsTab`, `StudentFinanceSection` |
+| `app/manager/finance/page.tsx` | Stat header + **6 tabs**: To'lovlar · Qarzdorlar · Hisob-kitob · Oyliklar · Xarajatlar · Sozlamalar |
+| `app/manager/finance/_components/` | `FinanceStats`, `GenerateChargesBanner`, `ChargesTab`, `PaymentsTab`, `RecordPaymentModal`, `DebtorsTab`, `SettingsTab`, `StudentFinanceSection`, `PayrollTab`, `ExpensesTab`, `GroupPricesSection`, `StartGuide`, `MonthNav`, `StudentInfoDialog`, `ReasonDialog`, `financeFormat.ts` |
 | `app/manager/students/_components/ManagerStudentInfoPanel.tsx` | Embed `StudentFinanceSection` (balance, history, discount, freeze) |
 | `app/manager/groups/[classId]/_components/ManagerSettingsTab.tsx` | Add `monthlyFee` field |
 | `app/manager/groups/[classId]/_components/ManagerAddStudentModal.tsx` | Best-effort enrollment-date stamp via `/finance/student` after add |
 | `firestore.rules`, `firestore.indexes.json` | §6 |
 
-## 8. Build order (each step ends runnable)
+## 8. Build order (historical — the module is built; §8.6 remains useful as a manual verification script)
 
-1. **Foundations** — `types/finance.ts`, `lib/finance/*` (pure engine), `lib/apiFetch.ts`,
+1. **Foundations** — `types/finance.ts`, `lib/finance/*` (pure engine), `lib/managerApi.ts`,
    `lib/server/verifyCenterManager.ts`.
 2. **Rules + indexes** — add §6 blocks, deploy.
 3. **Server ops + routes** — `financeOps.ts`: settings upsert → generation (with dryRun) →
@@ -338,8 +338,15 @@ Deploy: `firebase deploy --only firestore:rules,firestore:indexes`.
 
 ## 10. Later phases (context for reviewers)
 
-- **Phase 2 polish**: printable receipt, balance-recalculate repair, discount UI polish, richer
-  student-side proration options, editable expense categories UI.
-- **Phase 4**: Payme/Click gateway (webhook → `financeOps.recordPayment` with
-  `source: 'payme_gateway'`), SMS reminders (Eskiz.uz), student/parent-visible balance,
-  teacher-visible salary, un-pay/cancel flow for paid payouts.
+- **Phase 2 polish (NOT built)**: printable receipt, balance-recalculate repair (no route re-derives
+  `balance` from the ledger yet), discount UI polish, richer student-side proration options,
+  editable expense-categories UI.
+- **Phase 4 (NOT built)**: Payme/Click gateway (webhook → `financeOps.recordPayment` with
+  `source: 'payme_gateway'` — the `PaymentSource` type already includes the gateway values but
+  nothing produces them), SMS reminders (Eskiz.uz), student/parent-visible balance,
+  teacher-visible salary, un-pay/cancel flow for paid payouts (paid payouts are currently immutable).
+
+## 11. Legacy note
+
+`firestore.rules` still contains a `center_finances/{financeId}` block that predates this module.
+**No code reads or writes that collection** — do not build on it; it's a cleanup candidate.

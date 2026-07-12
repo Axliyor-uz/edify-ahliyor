@@ -28,7 +28,7 @@ interface DebtorRow {
   charges: Charge[];
 }
 
-/** Debtor list grouped by student — attendance % beside the debt (FINANCE_PLAN.md §"edge cases"). */
+/** Debtor list grouped by student — attendance % beside the debt (FINANCE.md §"edge cases"). */
 export default function DebtorsTab({
   openCharges,
   attendanceRates,

@@ -1,4 +1,12 @@
-# Admin Panel — Center Management: Implementation Plan
+# Admin Panel — Center Management: Implementation Plan (HISTORICAL)
+
+> ⚠️ **HISTORICAL DOCUMENT — superseded by [ADMIN.md](ADMIN.md) (2026-07-12).** Kept for design
+> rationale and decision history only. Known drift vs current code (do NOT trust these parts):
+> the `centerAdminService` API surface (actual exports are `fetchAllCenters` / `fetchCenterDetailData`,
+> no `fetchCenterStats`/`fetchCenterTeachers`, no `getCountFromServer`); the create-center body
+> (requires `centerSlug`); the delete cascade (selects classes by `classes.centerId`, contradicting
+> §Data-model's "never queried" claim); nav/dashboard wiring (partial); `CopyIdButton` extraction
+> (never done). **Read [ADMIN.md](ADMIN.md) first for current state.**
 
 > **Status (2026-07-06): Phases 0–6 implemented.** Remaining unchecked-by-nature items: manual test script execution and manager-panel regression pass (require live Firebase login). See notes at the end of this file.
 

@@ -1,5 +1,5 @@
 // ─── Finance module types — single source of truth ───────────────────────────
-// Data model + iron rules: docs/FINANCE_PLAN.md. Import from here; don't
+// Data model + iron rules: docs/FINANCE.md. Import from here; don't
 // re-declare finance shapes elsewhere. All money values are INTEGER so'm.
 // Timestamp fields are `any` because docs cross the client/Admin SDK boundary.
 
@@ -55,7 +55,7 @@ export interface Charge {
   discountAmount: number;
   /** Set when the first period was prorated: the enrollment date proration started from. */
   proratedFrom?: string;
-  /** What the student owes. Waiving rewrites amount := paidAmount (see FINANCE_PLAN.md §2). */
+  /** What the student owes. Waiving rewrites amount := paidAmount (see FINANCE.md §2). */
   amount: number;
   /** Cached Σ of confirmed payment allocations. */
   paidAmount: number;

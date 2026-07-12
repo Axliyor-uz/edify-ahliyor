@@ -1,6 +1,6 @@
 // ─── Finance client service ───────────────────────────────────────────────────
 // READS go straight to Firestore — every query MUST filter `centerId ==`
-// (tenancy + the list rules are only provable with it — FINANCE_PLAN.md §6).
+// (tenancy + the list rules are only provable with it — FINANCE.md §6).
 // MUTATIONS go through /api/manager/finance/* (the client never writes money docs).
 
 import {

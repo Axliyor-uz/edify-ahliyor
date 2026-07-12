@@ -19,7 +19,7 @@ interface Props {
 /**
  * Detects missing charges (dryRun preview) and offers one-click generation.
  * Generation is idempotent server-side, so a double click can't double-charge
- * (FINANCE_PLAN.md §4.1) — but we still disable the button while running.
+ * (FINANCE.md §4.1) — but we still disable the button while running.
  */
 export default function GenerateChargesBanner({ anchor, monthKey, monthLabel, refreshToken, onGenerated }: Props) {
   const [preview, setPreview] = useState<GenerateChargesResult | null>(null);

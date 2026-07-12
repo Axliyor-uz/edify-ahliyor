@@ -1,8 +1,8 @@
-# Finance Database — Collections & What Changes When
+# FINANCE_DATABASE — Collections & What Changes When
 
-> Simple map of every Firestore collection the **Moliya** module touches, and — for every
-> button in the UI — exactly which documents are written. Design decisions and deeper rules
-> live in [FINANCE_PLAN.md](FINANCE_PLAN.md); this file is the "where does my data go" reference.
+> **Agent workflow:** read this (and [FINANCE.md](FINANCE.md)) BEFORE touching finance code; update it in the same change whenever a UI action's writes change. Simple map of every Firestore collection the **Moliya** module touches, and — for every button in the UI — exactly which documents are written. Design decisions and deeper rules live in [FINANCE.md](FINANCE.md). Index: [README.md](README.md).
+
+**Last verified:** 2026-07-12 (commit `7c31a96`) — checked against code; accurate.
 
 ---
 
