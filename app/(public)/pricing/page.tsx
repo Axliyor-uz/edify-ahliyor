@@ -28,7 +28,7 @@ interface Module {
   cat: keyof typeof CATS;
   icon: any;
   price?: number;
-  perStudent?: number;   // ai: monthly add per student
+  perStudent?: number;   // ai: monthly add per studen  t
   ai?: boolean;
   requests?: number;     // included AI requests / month (free tier)
   packSize?: number;     // extra request pack size
@@ -124,7 +124,7 @@ const MODULES: Module[] = [
     more: { uz: "O'quvchilar sonining o'sishi, foyda/zarar dinamikasi va o'zlashtirish grafiklari. Qaysi guruh o'smoqda, qaysi biri yo'qotmoqda — hammasi ko'rinadi.", ru: "Динамика роста учеников, прибыли/убытка и успеваемости в графиках. Видно, какая группа растёт, а какая теряет.", en: "Charts for student growth, profit/loss and performance — you see which groups are growing and which are slipping." } },
 
   // GROWTH
-  { id: 'parent',    cat: 'growth', icon: UserCheck, price: 59000, popular: true,
+  { id: 'parent',    cat: 'growth', icon: UserCheck, price: 59000, perStudent: 1890, popular: true,
     name: { uz: "Ota-ona Nazorati", ru: "Родительский контроль", en: "Parental Control" },
     desc: { uz: "Farzand natijalari, baholari va davomati", ru: "Оценки, результаты и посещаемость ребёнка", en: "Child's grades, results & attendance" },
     more: { uz: "Ota-onalar alohida kirish orqali farzandining test natijalari, baholari va darsga kelgan-kelmaganini real vaqtda ko'radi.", ru: "Родители через отдельный вход видят в реальном времени результаты тестов, оценки и посещаемость ребёнка.", en: "Through their own login, parents see their child's test results, grades and class attendance in real time." } },
@@ -145,7 +145,7 @@ const MODULES: Module[] = [
     name: { uz: "Brendli Mobil Ilova", ru: "Брендовое приложение", en: "Branded Mobile App" },
     desc: { uz: "O'z nomingiz bilan ilova", ru: "Приложение с вашим брендом", en: "App under your own brand" },
     more: { uz: "Android va iOS uchun o'z brendingizdagi ilova — logotip, nom va rang sxemasi siznikidan. Hozircha ishlab chiqilmoqda (tez orada).", ru: "Приложение под вашим брендом для Android и iOS — логотип, название и цвета ваши. Сейчас в разработке (скоро).", en: "An Android and iOS app under your own brand — logo, name and colors yours. Currently in development (coming soon)." } },
-  { id: 'sms',       cat: 'growth', icon: Send, price: 0, perStudent: 10000,
+  { id: 'sms',       cat: 'growth', icon: Send, price: 0, perStudent: 5980,
     name: { uz: "SMS", ru: "SMS", en: "SMS" },
     desc: { uz: "Ota-onalarga avtomatik SMS", ru: "Автоматические SMS родителям", en: "Automatic SMS to parents" },
     more: { uz: "SMS har bir o'quvchining ota-onasiga 2 ta xabar yuboradi: farzand o'quv markaziga kelganda va uyga qaytganida.", ru: "SMS отправляет родителям каждого ученика 2 сообщения: когда ребёнок пришёл в учебный центр и когда вернулся домой.", en: "SMS sends each student's parents 2 messages: when the child arrives at the center and when they head home." } },
