@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { X, Zap, Crown, CreditCard } from "lucide-react";
+import { X, Zap, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+
+import { Button, IconButton, ProgressBar, cn } from "@/components/ui";
 
 interface AiMonthlyLimitCardProps {
   aiData: {
@@ -15,7 +17,7 @@ interface AiMonthlyLimitCardProps {
     isDanger: boolean;
     resetDate: string;
     loading: boolean;
-  }; 
+  };
 }
 
 export default function AiMonthlyLimitCard({ aiData }: AiMonthlyLimitCardProps) {
@@ -25,24 +27,24 @@ export default function AiMonthlyLimitCard({ aiData }: AiMonthlyLimitCardProps) 
   if (!aiData || aiData.loading) return null;
 
   const isEmpty = !aiData.isUnlimited && aiData.remaining <= 0;
+  const alert = isEmpty || aiData.isDanger;
 
   return (
     <div className="relative">
-      
+
       {/* 1. THE TOP-BAR BUTTON */}
-      <button 
+      <button
         onClick={() => setIsModalOpen(!isModalOpen)}
-        className={`flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-4 md:py-2 border rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer 
-          ${isEmpty || aiData.isDanger
-            ? 'bg-rose-50 border-rose-200 hover:bg-rose-100' 
-            : 'bg-white border-slate-200 hover:bg-slate-50'
-          }`}
+        className={cn(
+          "m3-interactive flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-4 md:py-2 rounded-m3-md shadow-elev-1 transition-all active:scale-95 cursor-pointer",
+          alert ? "bg-error-container text-on-error-container" : "bg-surface-container-lowest border border-outline-variant",
+        )}
       >
-        <Zap size={14} className={isEmpty || aiData.isDanger ? "text-rose-500" : "text-amber-500"} />
-        
-        <span className={`text-[11px] md:text-[13px] font-bold whitespace-nowrap ${isEmpty || aiData.isDanger ? "text-rose-700" : "text-slate-700"}`}>
+        <Zap size={14} className={alert ? "text-error" : "text-warning"} />
+
+        <span className={cn("text-[11px] md:text-[13px] font-bold whitespace-nowrap", alert ? "text-on-error-container" : "text-on-surface")}>
           <span className="hidden sm:inline">Oylik AI Limit </span>
-          <span className={isEmpty || aiData.isDanger ? "text-rose-600" : "text-slate-500"}>
+          <span className={cn("tabular-nums", alert ? "opacity-80" : "text-on-surface-variant")}>
             ({aiData.isUnlimited ? '∞' : `${aiData.used}/${aiData.limit}`})
           </span>
         </span>
@@ -53,44 +55,39 @@ export default function AiMonthlyLimitCard({ aiData }: AiMonthlyLimitCardProps) 
         {isModalOpen && (
           <>
             <div className="fixed inset-0 z-[100]" onClick={() => setIsModalOpen(false)} />
-            
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: -10 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.95, y: -10 }} 
-              className="absolute right-0 top-full mt-3 bg-white rounded-[2rem] p-6 w-[340px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-slate-100 z-[101] flex flex-col origin-top-right"
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              className="absolute right-0 top-full mt-3 bg-surface-container rounded-m3-xl p-6 w-[340px] shadow-elev-3 border border-outline-variant z-[101] flex flex-col origin-top-right"
             >
-              <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors">
-                <X size={20} />
-              </button>
+              <IconButton aria-label="Yopish" size="sm" className="absolute top-4 right-4" onClick={() => setIsModalOpen(false)}>
+                <X />
+              </IconButton>
 
               <div className="flex items-center gap-3 mb-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shadow-inner ${isEmpty ? "bg-rose-50 border-rose-100" : "bg-indigo-50 border-indigo-100"}`}>
-                  <Zap size={20} className={isEmpty ? "text-rose-500" : "text-indigo-500"} />
+                <div className={cn("w-12 h-12 rounded-m3-md flex items-center justify-center", isEmpty ? "bg-error-container text-on-error-container" : "bg-primary-container text-on-primary-container")}>
+                  <Zap size={20} />
                 </div>
                 <div>
-                  <h3 className="text-[16px] font-black text-slate-900 leading-tight">Oylik AI Balans</h3>
-                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">Yangilanish: {aiData.resetDate}</p>
+                  <h3 className="text-[16px] font-extrabold text-on-surface leading-tight">Oylik AI Balans</h3>
+                  <p className="text-[11px] font-bold text-on-surface-variant mt-0.5">Yangilanish: {aiData.resetDate}</p>
                 </div>
               </div>
 
-              <div className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-5 relative overflow-hidden">
+              <div className="w-full bg-surface-container-high rounded-m3-lg p-4 mb-5 relative overflow-hidden">
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Qolgan limit</span>
-                  <span className={`text-2xl font-black leading-none ${isEmpty ? "text-rose-600" : "text-indigo-600"}`}>
+                  <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Qolgan limit</span>
+                  <span className={cn("text-2xl font-extrabold leading-none tabular-nums", isEmpty ? "text-error" : "text-primary")}>
                     {aiData.isUnlimited ? '∞' : aiData.remaining}
                   </span>
                 </div>
-                
+
                 {!aiData.isUnlimited && (
                   <>
-                    <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden mt-3 mb-1.5">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-1000 ${isEmpty || aiData.isDanger ? 'bg-rose-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`} 
-                        style={{ width: `${aiData.usagePercentage}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                    <ProgressBar value={aiData.usagePercentage} tone={alert ? 'error' : 'primary'} className="mt-3 mb-1.5 h-2" />
+                    <div className="flex justify-between text-[10px] font-bold text-on-surface-variant tabular-nums">
                       <span>Ishlatildi: {aiData.used}</span>
                       <span>Jami: {aiData.limit}</span>
                     </div>
@@ -98,18 +95,16 @@ export default function AiMonthlyLimitCard({ aiData }: AiMonthlyLimitCardProps) 
                 )}
               </div>
 
-              <div className="w-full flex flex-col gap-2">
-                <button 
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    router.push('/teacher/subscription');
-                  }}
-                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg shadow-slate-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-[13px]"
-                >
-                  <Crown size={16} className="text-amber-400" />
-                  <span>{isEmpty ? "Limitni oshirish" : "Tarifni oshirish (Kredit olish)"}</span>
-                </button>
-              </div>
+              <Button
+                icon={<Crown />}
+                className="w-full"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  router.push('/teacher/subscription');
+                }}
+              >
+                {isEmpty ? "Limitni oshirish" : "Tarifni oshirish (Kredit olish)"}
+              </Button>
 
             </motion.div>
           </>

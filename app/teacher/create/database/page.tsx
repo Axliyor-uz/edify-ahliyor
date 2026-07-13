@@ -15,7 +15,9 @@ import toast from "react-hot-toast";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { Save, FileText, Layout, Grid, SearchX, Loader2, ChevronDown, X, ShoppingBag, Sparkles, Database, Menu, Trash2, Check, ArrowLeft } from "lucide-react";
+import { Save, FileText, Layout, Grid, SearchX, ChevronDown, X, ShoppingBag, Sparkles, Database, Menu, Trash2, Check, ArrowLeft } from "lucide-react";
+
+import { Button, IconButton } from "@/components/ui";
 
 // --- TRANSLATION DICTIONARY ---
 const CREATE_TRANSLATIONS = {
@@ -197,20 +199,20 @@ export default function CreateTestPage() {
   };
 
   return (
-    <div className="h-[100dvh] bg-[#FAFAFA] flex flex-col overflow-hidden font-sans selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="h-[100dvh] bg-surface flex flex-col overflow-hidden font-sans selection:bg-primary-container selection:text-on-primary-container">
       
       {/* TITLE MODAL */}
       <AnimatePresence>
         {isTitleModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl border border-slate-100 z-10">
-              <h3 className="text-xl font-black text-slate-900 mb-2">{t.modal.title}</h3>
-              <p className="text-[14px] text-slate-500 mb-6 font-medium">{t.modal.desc}</p>
-              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder={t.placeholder} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all mb-8" autoFocus/>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-6 md:p-8 w-full max-w-md shadow-elev-3 border border-outline-variant z-10">
+              <h3 className="text-xl font-black text-on-surface mb-2">{t.modal.title}</h3>
+              <p className="text-[14px] text-on-surface-variant mb-6 font-medium">{t.modal.desc}</p>
+              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder={t.placeholder} className="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] transition-all mb-8" autoFocus/>
               <div className="flex gap-3 justify-end">
-                <button onClick={() => setIsTitleModalOpen(false)} className="px-5 py-2.5 font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">{t.modal.cancel}</button>
-                <button onClick={handleTitleSubmit} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2">{t.modal.next} <ArrowLeft className="rotate-180" size={16}/></button>
+                <Button variant="outlined" onClick={() => setIsTitleModalOpen(false)}>{t.modal.cancel}</Button>
+                <Button variant="filled" onClick={handleTitleSubmit}>{t.modal.next} <ArrowLeft className="rotate-180" size={16}/></Button>
               </div>
             </motion.div>
           </div>
@@ -230,26 +232,26 @@ export default function CreateTestPage() {
         />
 
         {/* MAIN CANVAS */}
-        <main className="flex-1 overflow-hidden flex flex-col relative w-full bg-[#FAFAFA]">
-          
+        <main className="flex-1 overflow-hidden flex flex-col relative w-full bg-surface">
+
           {/* HEADER (Topic + Filters) */}
-          <header className="bg-white/80 backdrop-blur-md px-4 md:px-6 py-3 border-b border-slate-200/80 z-30 sticky top-0 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-3 md:gap-4 shrink-0">
-            
+          <header className="bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md px-4 md:px-6 py-3 border-b border-outline-variant z-30 sticky top-0 shadow-elev-1 flex flex-col xl:flex-row xl:items-center justify-between gap-3 md:gap-4 shrink-0">
+
             <div className="flex items-center gap-3 min-w-0">
-              <button onClick={() => setIsSyllabusOpen(!isSyllabusOpen)} className="lg:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg shrink-0 transition-colors"><Menu size={20} /></button>
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">
+              <IconButton aria-label="Mundarija" onClick={() => setIsSyllabusOpen(!isSyllabusOpen)} className="lg:hidden -ml-2 shrink-0"><Menu /></IconButton>
+              <div className="w-9 h-9 rounded-m3-md bg-primary-container flex items-center justify-center text-on-primary-container shrink-0 shadow-elev-1">
                 {selectedSubtopic ? <Layout size={18} /> : <Grid size={18} />}
               </div>
               <div className="truncate pr-2">
-                <h3 className="font-bold text-slate-800 text-[15px] leading-tight truncate">{selectedSubtopic ? selectedSubtopic.name : t.topic.select}</h3>
-                {isCachedData && <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5"><Database size={10} /> {t.topic.instant}</span>}
+                <h3 className="font-bold text-on-surface text-[15px] leading-tight truncate">{selectedSubtopic ? selectedSubtopic.name : t.topic.select}</h3>
+                {isCachedData && <span className="flex items-center gap-1 text-[10px] font-bold text-success uppercase tracking-widest mt-0.5"><Database size={10} /> {t.topic.instant}</span>}
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 shadow-inner shrink-0 w-full sm:w-auto">
+              <div className="flex bg-surface-container p-1 rounded-m3-md border border-outline-variant shadow-inner shrink-0 w-full sm:w-auto">
                 {["Easy", "Medium", "Hard"].map((lvl) => (
-  <button key={lvl} onClick={() => onDifficultyClick(lvl)} className={`flex-1 sm:flex-none px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${difficultyFilter === lvl ? "bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}>
+  <button key={lvl} onClick={() => onDifficultyClick(lvl)} className={`m3-interactive flex-1 sm:flex-none px-4 py-1.5 text-[12px] font-bold rounded-m3-sm transition-all ${difficultyFilter === lvl ? "bg-surface-container-lowest text-primary shadow-elev-1 ring-1 ring-outline-variant" : "text-on-surface-variant hover:text-on-surface hover:bg-state-hover"}`}>
     {t.diff[lvl.toLowerCase() as keyof typeof t.diff]}
   </button>
 ))}
@@ -257,21 +259,21 @@ export default function CreateTestPage() {
 
               {/* 🟢 UPGRADED AUTO-SELECT WIDGET */}
               {selectedSubtopic && (
-                <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100/80 p-1.5 rounded-xl shadow-sm w-full sm:w-auto relative overflow-hidden">
-                   <div className="absolute top-0 right-0 w-16 h-16 bg-white/40 blur-xl rounded-full mix-blend-overlay"></div>
-                   
+                <div className="flex items-center gap-2 bg-primary-container border border-outline-variant p-1.5 rounded-m3-md shadow-elev-1 w-full sm:w-auto relative overflow-hidden">
+                   <div className="absolute top-0 right-0 w-16 h-16 bg-[color-mix(in_oklab,var(--m3-surface-container-lowest)_40%,transparent)] blur-xl rounded-full mix-blend-overlay"></div>
+
                    <div className="flex items-center gap-1.5 pl-2 pr-1 relative z-10" title={t.topic.auto}>
-                     <Sparkles size={16} className="text-indigo-500 animate-pulse" />
-                     <span className="text-[12px] font-black bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent uppercase tracking-wider hidden lg:inline mr-1">
+                     <Sparkles size={16} className="text-on-primary-container animate-pulse" />
+                     <span className="text-[12px] font-black text-on-primary-container uppercase tracking-wider hidden lg:inline mr-1">
                        {t.topic.auto}
                      </span>
                    </div>
-                   
-                   <input type="number" min="1" max="50" value={randomCount} onChange={(e) => setRandomCount(parseInt(e.target.value) > 50 ? "50" : e.target.value)} className="w-14 h-8 px-1 bg-white text-[14px] font-bold border border-indigo-200/60 rounded-lg text-center focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-inner relative z-10" />
-                   
-                   <button onClick={handleAutoSelect} className="h-8 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-[13px] font-bold rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-md shadow-indigo-500/20 relative z-10">
+
+                   <input type="number" min="1" max="50" value={randomCount} onChange={(e) => setRandomCount(parseInt(e.target.value) > 50 ? "50" : e.target.value)} className="w-14 h-8 px-1 bg-surface-container-lowest text-[14px] font-bold text-on-surface border border-outline-variant rounded-m3-sm text-center focus:border-primary focus:ring-2 focus:ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] outline-none shadow-inner relative z-10" />
+
+                   <Button variant="tonal" size="sm" onClick={handleAutoSelect} className="relative z-10">
                      {t.topic.generate}
-                   </button>
+                   </Button>
                 </div>
               )}
             </div>
@@ -282,14 +284,14 @@ export default function CreateTestPage() {
             <div className="max-w-4xl mx-auto space-y-4">
               
               {!selectedSubtopic ? (
-                <div className="h-[40vh] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-white mt-6 p-6 text-center shadow-sm animate-in zoom-in-95 duration-500">
-                  <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center border border-indigo-100 mb-4"><Layout size={24} className="text-indigo-400" /></div>
-                  <p className="font-bold text-[16px] text-slate-600">{t.list.selectSub}</p>
+                <div className="h-[40vh] flex flex-col items-center justify-center text-on-surface-variant border-2 border-dashed border-outline-variant rounded-m3-xl bg-surface-container-low mt-6 p-6 text-center shadow-elev-1 animate-in zoom-in-95 duration-500">
+                  <div className="w-14 h-14 bg-primary-container rounded-m3-lg flex items-center justify-center mb-4"><Layout size={24} className="text-on-primary-container" /></div>
+                  <p className="font-bold text-[16px] text-on-surface-variant">{t.list.selectSub}</p>
                 </div>
               ) : availableQuestions.length === 0 && !loadingQuestions ? (
-                <div className="h-[40vh] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-white mt-6 p-6 text-center shadow-sm animate-in zoom-in-95 duration-500">
-                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 mb-4"><SearchX size={24} className="text-slate-400" /></div>
-                  <p className="font-bold text-[15px] text-slate-600">{t.list.notFound} <span className="text-indigo-500">{t.diff[difficultyFilter.toLowerCase() as keyof typeof t.diff]}</span></p>
+                <div className="h-[40vh] flex flex-col items-center justify-center text-on-surface-variant border-2 border-dashed border-outline-variant rounded-m3-xl bg-surface-container-low mt-6 p-6 text-center shadow-elev-1 animate-in zoom-in-95 duration-500">
+                  <div className="w-14 h-14 bg-surface-container rounded-m3-lg flex items-center justify-center mb-4"><SearchX size={24} className="text-on-surface-variant" /></div>
+                  <p className="font-bold text-[15px] text-on-surface-variant">{t.list.notFound} <span className="text-primary">{t.diff[difficultyFilter.toLowerCase() as keyof typeof t.diff]}</span></p>
                 </div>
               ) : (
                 <>
@@ -298,9 +300,9 @@ export default function CreateTestPage() {
                   ))}
                   {hasMore && (
                     <div className="pt-6 pb-12 text-center flex justify-center">
-                      <button onClick={handleLoadMore} disabled={loadingQuestions} className="px-8 py-3 text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 shadow-sm transition-all flex items-center gap-2">
-                        {loadingQuestions ? <><Loader2 size={16} className="animate-spin" /> {t.list.loading}</> : <>{t.list.loadMore} <ChevronDown size={16} /></>}
-                      </button>
+                      <Button variant="outlined" onClick={handleLoadMore} loading={loadingQuestions}>
+                        {loadingQuestions ? t.list.loading : <>{t.list.loadMore} <ChevronDown size={16} /></>}
+                      </Button>
                     </div>
                   )}
                 </>
@@ -311,69 +313,71 @@ export default function CreateTestPage() {
 
         {/* CART DRAWER */}
         <aside className={`
-            fixed lg:static inset-x-0 bottom-0 lg:inset-y-0 lg:right-0 z-50 
-            w-full lg:w-[360px] bg-[#FAFAFA] text-slate-900 
+            fixed lg:static inset-x-0 bottom-0 lg:inset-y-0 lg:right-0 z-50
+            w-full lg:w-[360px] bg-surface text-on-surface
             transform transition-transform duration-300 ease-out
             ${isCartOpen ? "translate-y-0" : "translate-y-full lg:translate-y-0"}
-            lg:translate-x-0 flex flex-col border-t lg:border-l border-slate-200/80 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:shadow-none 
-            h-[90vh] lg:h-full rounded-t-3xl lg:rounded-none shrink-0
+            lg:translate-x-0 flex flex-col border-t lg:border-l border-outline-variant shadow-elev-3 lg:shadow-none
+            h-[90vh] lg:h-full rounded-t-m3-xl lg:rounded-none shrink-0
         `}>
           <div className="lg:hidden flex justify-center pt-3 pb-1 w-full" onClick={() => setIsCartOpen(false)}>
-            <div className="w-12 h-1.5 bg-slate-200 rounded-full cursor-pointer"></div>
+            <div className="w-12 h-1.5 bg-outline-variant rounded-full cursor-pointer"></div>
           </div>
 
-          <div className="px-5 py-4 border-b border-slate-200/80 flex justify-between items-center shrink-0 bg-white">
+          <div className="px-5 py-4 border-b border-outline-variant flex justify-between items-center shrink-0 bg-surface-container-low">
             <div className="flex items-center gap-2">
-              <h3 className="font-black text-[15px] flex items-center gap-2 text-slate-900"><ShoppingBag size={18} className="text-indigo-500" /> {t.cart.title}</h3>
-              <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-full tracking-widest">{addedQuestions.length}/100</span>
+              <h3 className="font-black text-[15px] flex items-center gap-2 text-on-surface"><ShoppingBag size={18} className="text-primary" /> {t.cart.title}</h3>
+              <span className="px-2 py-0.5 bg-primary-container text-on-primary-container text-[10px] font-black rounded-full tracking-widest">{addedQuestions.length}/100</span>
             </div>
             <div className="flex items-center gap-2">
               {addedQuestions.length > 0 && (
-                <button onClick={() => { if (confirm(t.toasts.confirmRemove)) { setAddedQuestions([]); toast.success(t.toasts.removed); } }} className="text-[11px] font-bold text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-100 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
-                  <Trash2 size={14} /> {t.cart.clearAll}
-                </button>
+                <Button variant="danger-text" size="sm" icon={<Trash2 />} onClick={() => { if (confirm(t.toasts.confirmRemove)) { setAddedQuestions([]); toast.success(t.toasts.removed); } }}>
+                  {t.cart.clearAll}
+                </Button>
               )}
-              <button onClick={() => setIsCartOpen(false)} className="lg:hidden p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg border border-slate-200"><X size={16} /></button>
+              <IconButton aria-label="Yopish" size="sm" onClick={() => setIsCartOpen(false)} className="lg:hidden"><X /></IconButton>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
             {addedQuestions.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center bg-white shadow-sm">
-                <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4"><FileText size={24} className="text-slate-300" /></div>
-                <p className="text-[15px] font-bold text-slate-600">{t.cart.emptyTitle}</p>
-                <p className="text-[12px] text-slate-400 mt-1.5 font-medium leading-relaxed">{t.cart.emptyDesc}</p>
+              <div className="h-full flex flex-col items-center justify-center text-on-surface-variant border-2 border-dashed border-outline-variant rounded-m3-lg p-8 text-center bg-surface-container-low shadow-elev-1">
+                <div className="w-14 h-14 bg-surface-container rounded-m3-lg flex items-center justify-center mb-4"><FileText size={24} className="text-on-surface-variant" /></div>
+                <p className="text-[15px] font-bold text-on-surface-variant">{t.cart.emptyTitle}</p>
+                <p className="text-[12px] text-on-surface-variant mt-1.5 font-medium leading-relaxed">{t.cart.emptyDesc}</p>
               </div>
             ) : (
               addedQuestions.map((q, idx) => (
-                <div key={q.id} className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors">
+                <div key={q.id} className="bg-surface-container-low p-1.5 rounded-m3-lg border border-outline-variant shadow-elev-1 hover:border-primary transition-colors">
                   <CartItem index={idx + 1} question={q} onRemove={() => toggleQuestion(q)} />
                 </div>
               ))
             )}
           </div>
 
-          <div className="p-4 bg-white border-t border-slate-200/80 pb-8 lg:pb-4 shrink-0 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
-            <button
+          <div className="p-4 bg-surface-container-low border-t border-outline-variant pb-8 lg:pb-4 shrink-0 z-10 shadow-elev-1">
+            <Button
+              variant="filled"
+              size="lg"
+              className="w-full"
+              icon={<Check strokeWidth={3} />}
               onClick={handleInitiatePublish}
               disabled={addedQuestions.length === 0 || isSaving}
-              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 rounded-xl font-bold text-white shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-[14px]"
             >
-              <Check size={18} strokeWidth={3} />
               {t.cart.finalize}
-            </button>
+            </Button>
           </div>
         </aside>
 
-        {isCartOpen && <div className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />}
+        {isCartOpen && <div className="fixed inset-0 bg-scrim z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />}
 
         {/* FLOATING MOBILE BUTTON */}
         {!isCartOpen && (
           <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
-            <button onClick={() => setIsCartOpen(true)} className="flex items-center gap-3 bg-slate-900 text-white pl-5 pr-6 py-3.5 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] active:scale-95 transition-transform border border-slate-700">
+            <button onClick={() => setIsCartOpen(true)} className="m3-interactive flex items-center gap-3 bg-inverse-surface text-inverse-on-surface pl-5 pr-6 py-3.5 rounded-full shadow-elev-3 active:scale-95 transition-transform">
               <div className="relative">
                 <ShoppingBag size={20} />
-                {addedQuestions.length > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-indigo-500 border border-slate-900 rounded-full text-[9px] flex items-center justify-center font-bold animate-in zoom-in">{addedQuestions.length}</span>}
+                {addedQuestions.length > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-on-primary border border-inverse-surface rounded-full text-[9px] flex items-center justify-center font-bold animate-in zoom-in">{addedQuestions.length}</span>}
               </div>
               <span className="font-bold text-[14px]">{t.cart.reviewBtn}</span>
             </button>

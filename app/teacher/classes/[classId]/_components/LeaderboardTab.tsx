@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
-import { Trophy, Medal, Award, Loader2, Star, ChevronRight, Sparkles, User as UserIcon } from 'lucide-react';
+import { Trophy, Medal, Award, Star, ChevronRight, Sparkles, User as UserIcon } from 'lucide-react';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { EmptyState, Spinner } from '@/components/ui';
 
 // ============================================================================
 // 🟢 1. GLOBAL CACHE (Survives Tab Switches, Preserves Scroll Position)
@@ -161,17 +162,13 @@ export default function LeaderboardTab({ classId }: { classId: string }) {
   // 🟢 3. RENDER (Tactile Gamified UI)
   // ============================================================================
   if (loadingInitial && leaderboard.length === 0) {
-    return <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-indigo-500" size={28}/></div>;
+    return <div className="py-12 flex justify-center"><Spinner size={28} /></div>;
   }
 
   if (leaderboard.length === 0) {
     return (
-      <div className="text-center py-12 md:py-16 bg-white rounded-3xl md:rounded-[2rem] border-2 border-dashed border-zinc-200 flex flex-col items-center shadow-sm">
-        <div className="w-16 h-16 md:w-20 md:h-20 bg-amber-50 rounded-2xl md:rounded-[2rem] flex items-center justify-center mb-3 md:mb-4 shadow-sm text-amber-500 border-2 border-amber-100 rotate-12 hover:rotate-0 transition-transform">
-          <Trophy size={32} className="md:w-10 md:h-10" strokeWidth={2.5} />
-        </div>
-        <h3 className="text-zinc-900 font-black text-[16px] md:text-[18px] mb-1.5 md:mb-2">{t.emptyTitle}</h3>
-        <p className="text-[13px] md:text-[14px] font-bold text-zinc-500 max-w-xs md:max-w-sm leading-relaxed px-4">{t.emptyDesc}</p>
+      <div className="py-3 md:py-7 bg-surface-container-low rounded-m3-xl border-2 border-dashed border-outline-variant shadow-elev-1">
+        <EmptyState icon={<Trophy />} title={t.emptyTitle} description={t.emptyDesc} />
       </div>
     );
   }
@@ -184,22 +181,22 @@ export default function LeaderboardTab({ classId }: { classId: string }) {
         const avatarUrl = student.photoURL || student.photoUrl || student.avatar || null;
         
         // --- 🟢 DYNAMIC STYLING FOR PODIUM vs REGULAR ---
-        let cardStyle = "bg-white border-zinc-200 hover:border-indigo-300";
-        let rankColor = "bg-zinc-800 text-white";
-        let avatarBorder = "border-zinc-200 bg-zinc-100 text-zinc-400";
+        let cardStyle = "bg-surface-container-low border-outline-variant hover:border-primary";
+        let rankColor = "bg-inverse-surface text-inverse-on-surface";
+        let avatarBorder = "border-outline-variant bg-surface-container-high text-on-surface-variant";
 
         if (rank === 1) {
-          cardStyle = "bg-amber-50/40 border-amber-300 shadow-sm ring-2 sm:ring-4 ring-amber-500/10 z-10";
-          rankColor = "bg-amber-500 text-white border-amber-400";
-          avatarBorder = "border-amber-400 bg-amber-100 text-amber-500";
+          cardStyle = "bg-tertiary-container border-tertiary shadow-elev-1 ring-2 sm:ring-4 ring-[color-mix(in_oklab,var(--m3-tertiary)_10%,transparent)] z-10";
+          rankColor = "bg-tertiary text-on-tertiary";
+          avatarBorder = "border-tertiary bg-tertiary-container text-on-tertiary-container";
         } else if (rank === 2) {
-          cardStyle = "bg-slate-50/50 border-slate-300";
-          rankColor = "bg-slate-400 text-white border-slate-300";
-          avatarBorder = "border-slate-300 bg-slate-100 text-slate-400";
+          cardStyle = "bg-secondary-container border-secondary";
+          rankColor = "bg-secondary text-on-secondary";
+          avatarBorder = "border-secondary bg-secondary-container text-on-secondary-container";
         } else if (rank === 3) {
-          cardStyle = "bg-orange-50/30 border-orange-300";
-          rankColor = "bg-orange-500 text-white border-orange-400";
-          avatarBorder = "border-orange-300 bg-orange-100 text-orange-500";
+          cardStyle = "bg-surface-container-highest border-outline";
+          rankColor = "bg-inverse-surface text-inverse-on-surface";
+          avatarBorder = "border-outline bg-surface-container-high text-on-surface-variant";
         }
 
         return (
@@ -207,7 +204,7 @@ export default function LeaderboardTab({ classId }: { classId: string }) {
             key={student.id} 
             ref={isLastElement ? lastElementRef : null}
             onClick={() => router.push(`/teacher/students/${student.uid}`)}
-            className={`flex items-center justify-between p-2.5 sm:p-3 md:p-4 rounded-2xl md:rounded-[1.5rem] border-2 border-b-[3px] md:border-b-4 transition-all duration-200 cursor-pointer group active:translate-y-[2px] active:border-b-2 hover:-translate-y-0.5 ${cardStyle}`}
+            className={`flex items-center justify-between p-2.5 sm:p-3 md:p-4 rounded-m3-lg border-2 border-b-[3px] md:border-b-4 transition-all duration-200 cursor-pointer group active:translate-y-[2px] active:border-b-2 hover:-translate-y-0.5 ${cardStyle}`}
           >
             
             {/* Left side: Avatar + Rank & Name */}
@@ -215,24 +212,24 @@ export default function LeaderboardTab({ classId }: { classId: string }) {
               
               {/* 🟢 Profile Picture with Nested Rank Badge */}
               <div className="relative shrink-0">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full border-2 overflow-hidden flex items-center justify-center font-black text-[16px] md:text-xl shadow-sm ${avatarBorder}`}>
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full border-2 overflow-hidden flex items-center justify-center font-black text-[16px] md:text-xl shadow-elev-1 ${avatarBorder}`}>
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     student.displayName?.[0]?.toUpperCase() || <UserIcon size={18} strokeWidth={3} className="md:w-5 md:h-5"/>
                   )}
                 </div>
-                <div className={`absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center font-black text-[9px] sm:text-[11px] md:text-[12px] border-[1.5px] md:border-2 border-white shadow-sm z-10 ${rankColor}`}>
+                <div className={`absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center font-black text-[9px] sm:text-[11px] md:text-[12px] border-[1.5px] md:border-2 border-surface-container-lowest shadow-elev-1 z-10 ${rankColor}`}>
                   {rank === 1 ? <Trophy size={10} className="md:w-3 md:h-3" strokeWidth={3}/> : rank === 2 ? <Medal size={10} className="md:w-3 md:h-3" strokeWidth={3}/> : rank === 3 ? <Award size={10} className="md:w-3 md:h-3" strokeWidth={3}/> : rank}
                 </div>
               </div>
 
               {/* Name Details */}
               <div className="min-w-0 pr-2 ml-0.5 md:ml-1">
-                <p className="font-black text-[14px] sm:text-[15px] md:text-[17px] text-zinc-900 truncate tracking-tight group-hover:text-indigo-600 transition-colors leading-snug">
+                <p className="font-black text-[14px] sm:text-[15px] md:text-[17px] text-on-surface truncate tracking-tight group-hover:text-primary transition-colors leading-snug">
                   {student.displayName || "Anonymous Student"}
                 </p>
-                <p className="text-[10px] md:text-[12px] font-bold text-zinc-400 truncate mt-0.5">
+                <p className="text-[10px] md:text-[12px] font-bold text-on-surface-variant truncate mt-0.5">
                   {rank === 1 ? '🥇 1st Place' : rank === 2 ? '🥈 2nd Place' : rank === 3 ? '🥉 3rd Place' : `@${student.username || 'student'}`}
                 </p>
               </div>
@@ -240,14 +237,14 @@ export default function LeaderboardTab({ classId }: { classId: string }) {
 
             {/* Right side: Tactile XP Pill */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4 shrink-0">
-              <div className={`border-2 rounded-xl px-2.5 md:px-3 py-1 md:py-1.5 flex items-center gap-1 md:gap-1.5 shadow-sm ${rank === 1 ? 'bg-white border-amber-200' : 'bg-zinc-50 border-zinc-200'}`}>
-                <span className={`font-black text-[14px] sm:text-[15px] md:text-[18px] leading-none ${rank === 1 ? 'text-amber-600' : 'text-indigo-600'}`}>
+              <div className={`border-2 rounded-m3-md px-2.5 md:px-3 py-1 md:py-1.5 flex items-center gap-1 md:gap-1.5 shadow-elev-1 ${rank === 1 ? 'bg-surface-container-lowest border-tertiary' : 'bg-surface-container border-outline-variant'}`}>
+                <span className={`font-black text-[14px] sm:text-[15px] md:text-[18px] leading-none ${rank === 1 ? 'text-tertiary' : 'text-primary'}`}>
                   {(student.xp || 0).toLocaleString()}
                 </span>
-                <span className="text-[8px] md:text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-0.5">{t.points}</span>
+                <span className="text-[8px] md:text-[9px] font-black text-on-surface-variant uppercase tracking-widest mt-0.5">{t.points}</span>
               </div>
-              
-              <div className="w-7 h-7 md:w-8 md:h-8 rounded-xl bg-white border-2 border-zinc-200 flex items-center justify-center text-zinc-400 group-hover:bg-indigo-500 group-hover:border-indigo-500 group-hover:text-white transition-all hidden sm:flex shrink-0">
+
+              <div className="w-7 h-7 md:w-8 md:h-8 rounded-m3-md bg-surface-container-lowest border-2 border-outline-variant flex items-center justify-center text-on-surface-variant group-hover:bg-primary group-hover:border-primary group-hover:text-on-primary transition-all hidden sm:flex shrink-0">
                 <ChevronRight size={16} className="md:w-[18px] md:h-[18px]" strokeWidth={3} />
               </div>
             </div>
@@ -258,10 +255,7 @@ export default function LeaderboardTab({ classId }: { classId: string }) {
 
       {loadingMore && (
         <div className="py-4 md:py-6 flex justify-center">
-          <Loader2 
-            size={20} 
-            className="animate-spin text-indigo-500 md:w-6 md:h-6" 
-          />
+          <Spinner size={24} />
         </div>
       )}
     </div>

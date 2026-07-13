@@ -3,11 +3,11 @@
 import { useState, useContext, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithCustomToken, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { getSsoReturnTo, completeSsoRedirect } from "@/lib/sso";
-import { Loader2, Mail, ChevronRight, Eye, EyeOff, BookOpen } from "lucide-react";
+import { Loader2, Mail, User, ChevronRight, Eye, EyeOff, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { LanguageContext } from "@/app/(public)/layout";
@@ -18,7 +18,7 @@ const LOGIN_TRANSLATIONS = {
   uz: {
     welcomeHeader: "Xush kelibsiz",
     subHeader: "TestEdify hisobingizga kiring.",
-    emailLabel: "Email manzili",
+    emailLabel: "Email yoki username",
     passwordLabel: "Parol",
     signInBtn: "Kirish",
     forgotPassLink: "Parolni unutdingizmi?",
@@ -26,21 +26,22 @@ const LOGIN_TRANSLATIONS = {
     noAccount: "Hisobingiz yo'qmi?",
     createOne: "Bepul hisob yarating",
     welcomeBack: "Xush kelibsiz, {name}!",
-    invalidCred: "Email yoki parol noto'g'ri.",
+    invalidCred: "Email/username yoki parol noto'g'ri.",
     noUser: "Bu email bilan hisob topilmadi.",
     loginFail: "Kirishda xatolik. Qaytadan urinib ko'ring.",
     accNotFound: "Hisob topilmadi. Iltimos, avval ro'yxatdan o'ting.",
-    enterEmail: "Parolni tiklash uchun avval email manzilingizni kiriting.",
+    enterEmail: "Parolni tiklash uchun email yoki username kiriting.",
     resetSent: "Tiklash havolasi yuborildi! Emailingizni tekshiring.",
     invalidEmail: "Noto'g'ri email manzili.",
     resetFail: "Havola yuborishda xatolik yuz berdi.",
+    tooManyAttempts: "Urinishlar soni juda ko'p. Birozdan so'ng qayta urinib ko'ring.",
     heroTitle: "Ta'limni yangi bosqichga olib chiqing",
     heroSub: "TestEdify — zamonaviy ta'lim platformasi. O'qituvchi va o'quvchilar uchun yagona raqamli muhit.",
   },
   en: {
     welcomeHeader: "Welcome Back",
     subHeader: "Access your TestEdify account.",
-    emailLabel: "Email Address",
+    emailLabel: "Email or Username",
     passwordLabel: "Password",
     signInBtn: "Sign In",
     forgotPassLink: "Forgot Password?",
@@ -48,21 +49,22 @@ const LOGIN_TRANSLATIONS = {
     noAccount: "Don't have an account?",
     createOne: "Create one for free",
     welcomeBack: "Welcome back, {name}!",
-    invalidCred: "Invalid email or password.",
+    invalidCred: "Invalid email/username or password.",
     noUser: "No account found with this email.",
     loginFail: "Login failed. Please try again.",
     accNotFound: "Account not found. Please Sign Up first to create your profile.",
-    enterEmail: "Please enter your email address to reset your password.",
+    enterEmail: "Please enter your email or username to reset your password.",
     resetSent: "Password reset link sent! Check your email.",
     invalidEmail: "Invalid email address.",
     resetFail: "Failed to send reset link.",
+    tooManyAttempts: "Too many attempts. Please try again later.",
     heroTitle: "Elevate your learning experience",
     heroSub: "Edify — a modern education platform. A seamless digital environment for teachers and students.",
   },
   ru: {
     welcomeHeader: "С возвращением",
     subHeader: "Войдите в свой аккаунт Edify.",
-    emailLabel: "Электронная почта",
+    emailLabel: "Email или имя пользователя",
     passwordLabel: "Пароль",
     signInBtn: "Войти",
     forgotPassLink: "Забыли пароль?",
@@ -70,14 +72,15 @@ const LOGIN_TRANSLATIONS = {
     noAccount: "Нет аккаунта?",
     createOne: "Создать бесплатно",
     welcomeBack: "С возвращением, {name}!",
-    invalidCred: "Неверный email или пароль.",
+    invalidCred: "Неверный email/логин или пароль.",
     noUser: "Аккаунт с таким email не найден.",
     loginFail: "Ошибка входа. Попробуйте снова.",
     accNotFound: "Аккаунт не найден. Пожалуйста, сначала зарегистрируйтесь.",
-    enterEmail: "Пожалуйста, введите email для сброса пароля.",
+    enterEmail: "Введите email или имя пользователя для сброса пароля.",
     resetSent: "Ссылка для сброса отправлена! Проверьте почту.",
     invalidEmail: "Неверный формат email.",
     resetFail: "Не удалось отправить ссылку.",
+    tooManyAttempts: "Слишком много попыток. Попробуйте позже.",
     heroTitle: "Поднимите обучение на новый уровень",
     heroSub: "Edify — современная образовательная платформа. Единая цифровая среда для учителей и учеников.",
   }
@@ -426,14 +429,15 @@ export default function LoginPage() {
   const setLang = context?.setLang || (() => {});
   const t = LOGIN_TRANSLATIONS[lang] || LOGIN_TRANSLATIONS['uz'];
 
-  const emailRef = useRef<HTMLInputElement>(null);
+  const identifierRef = useRef<HTMLInputElement>(null);
 
-  const [email, setEmail] = useState("");
+  // One smart field: contains '@' → email login, otherwise username login
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
+  const [identifierFocused, setIdentifierFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [capsLockActive, setCapsLockActive] = useState(false);
 
@@ -461,8 +465,26 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const id = identifier.trim();
+      let user;
+      if (id.includes("@")) {
+        user = (await signInWithEmailAndPassword(auth, id, password)).user;
+      } else {
+        // Username login: /api/auth/login resolves the username and verifies
+        // the password server-side, returning a custom token (docs/AUTH.md).
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: id, password }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.token) {
+          const err = new Error("Username login failed") as Error & { code?: string };
+          err.code = res.status === 429 ? "auth/too-many-requests" : "auth/invalid-credential";
+          throw err;
+        }
+        user = (await signInWithCustomToken(auth, data.token)).user;
+      }
       // SSO: send the user back to the partner app instead of a dashboard
       if (ssoReturnTo && (await completeSsoRedirect(ssoReturnTo))) return;
       const tokenResult = await user.getIdTokenResult(true);
@@ -488,6 +510,7 @@ export default function LoginPage() {
       console.error(error);
       setLoading(false);
       if (error.code === "auth/invalid-credential") toast.error(t.invalidCred);
+      else if (error.code === "auth/too-many-requests") toast.error(t.tooManyAttempts);
       else if (error.code === "auth/user-not-found") toast.error(t.noUser);
       else if (error.message === "Profile not found") toast.error(t.accNotFound);
       else toast.error(t.loginFail);
@@ -495,8 +518,9 @@ export default function LoginPage() {
   };
 
   const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      emailRef.current?.focus();
+    const id = identifier.trim();
+    if (!id) {
+      identifierRef.current?.focus();
       toast.error(t.enterEmail, {
         icon: '💡',
         style: { border: '1px solid #F59E0B', padding: '14px', color: '#B45309', fontWeight: 600, fontSize: '14px' }
@@ -505,18 +529,35 @@ export default function LoginPage() {
     }
     setResetLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      if (id.includes("@")) {
+        await sendPasswordResetEmail(auth, id);
+      } else {
+        // Resolved server-side; the response never says whether the username
+        // exists (docs/AUTH.md), so success here means "sent if it exists".
+        const res = await fetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: id }),
+        });
+        if (!res.ok) {
+          const err = new Error("Reset failed") as Error & { code?: string };
+          if (res.status === 429) err.code = "auth/too-many-requests";
+          throw err;
+        }
+      }
       toast.success(t.resetSent);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') toast.error(t.noUser);
       else if (error.code === 'auth/invalid-email') toast.error(t.invalidEmail);
+      else if (error.code === 'auth/too-many-requests') toast.error(t.tooManyAttempts);
       else toast.error(t.resetFail);
     } finally {
       setResetLoading(false);
     }
   };
 
-  const emailActive = emailFocused || email.length > 0;
+  const identifierActive = identifierFocused || identifier.length > 0;
+  const isUsernameInput = identifier.length > 0 && !identifier.includes("@");
   const passwordActive = passwordFocused || password.length > 0;
 
   return (
@@ -607,32 +648,37 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-5">
             
-            {/* Email */}
+            {/* Email or username */}
             <div className="relative">
               <input
-                ref={emailRef}
-                id="login-email"
-                type="email"
+                ref={identifierRef}
+                id="login-identifier"
+                type="text"
+                autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                onFocus={() => setIdentifierFocused(true)}
+                onBlur={() => setIdentifierFocused(false)}
                 className={`peer w-full px-4 pt-5 pb-2 rounded-xl border-2 bg-transparent text-[#0F172A] text-[15px] font-medium outline-none transition-all duration-200 ${
-                  emailFocused ? 'border-[#1565C0] caret-[#1565C0]' : 'border-[#CBD5E1] hover:border-[#94A3B8]'
+                  identifierFocused ? 'border-[#1565C0] caret-[#1565C0]' : 'border-[#CBD5E1] hover:border-[#94A3B8]'
                 }`}
               />
               <label
-                htmlFor="login-email"
+                htmlFor="login-identifier"
                 className={`absolute left-3 px-1 bg-white pointer-events-none transition-all duration-200 ${
-                  emailActive
+                  identifierActive
                     ? 'top-0 -translate-y-1/2 text-[12px] font-bold text-[#1565C0]'
                     : 'top-1/2 -translate-y-1/2 text-[15px] font-normal text-[#64748B]'
                 }`}
               >
                 {t.emailLabel}
               </label>
-              <Mail className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${emailFocused ? 'text-[#1565C0]' : 'text-[#94A3B8]'}`} size={18} />
+              {isUsernameInput ? (
+                <User className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${identifierFocused ? 'text-[#1565C0]' : 'text-[#94A3B8]'}`} size={18} />
+              ) : (
+                <Mail className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${identifierFocused ? 'text-[#1565C0]' : 'text-[#94A3B8]'}`} size={18} />
+              )}
             </div>
 
             {/* Password */}

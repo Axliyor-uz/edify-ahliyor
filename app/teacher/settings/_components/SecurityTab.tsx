@@ -1,40 +1,42 @@
 'use client';
 
-import { Lock, Trash2, Eye, EyeOff, AlertTriangle, Layout, BookOpen, Loader2 } from 'lucide-react';
+import { Lock, Trash2, Eye, EyeOff, AlertTriangle, Layout, BookOpen } from 'lucide-react';
 
-export default function SecurityTab({ 
-  classList, setClassToDelete, isGoogleUser, passwords, setPasswords, showPass, setShowPass, 
-  handleChangePassword, saving, showDeleteConfirm, setShowDeleteConfirm, deletePassword, 
-  setDeletePassword, handleDeleteAccount, isDeleting, t 
+import { Button, IconButton } from '@/components/ui';
+
+export default function SecurityTab({
+  classList, setClassToDelete, isGoogleUser, passwords, setPasswords, showPass, setShowPass,
+  handleChangePassword, saving, showDeleteConfirm, setShowDeleteConfirm, deletePassword,
+  setDeletePassword, handleDeleteAccount, isDeleting, t
 }: any) {
-  
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
+
       {/* 1. CLASS MANAGEMENT */}
-      <div className="bg-white border border-slate-200/80 rounded-[2rem] overflow-hidden shadow-sm">
-        <div className="p-6 md:p-8 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600"><Layout size={20}/></div>
+      <div className="bg-surface-container-low rounded-m3-lg overflow-hidden shadow-elev-1">
+        <div className="p-6 md:p-8 border-b border-outline-variant flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary-container rounded-m3-md flex items-center justify-center text-on-primary-container"><Layout size={20}/></div>
           <div>
-            <h2 className="text-[16px] font-black text-slate-800">{t.security.manageClasses}</h2>
-            <p className="text-[12px] font-medium text-slate-500">{t.security.manageSub}</p>
+            <h2 className="text-[16px] font-black text-on-surface">{t.security.manageClasses}</h2>
+            <p className="text-[12px] font-medium text-on-surface-variant">{t.security.manageSub}</p>
           </div>
         </div>
         <div className="p-6 md:p-8">
             {classList.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-[13px] font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">{t.security.noClasses}</div>
+                <div className="text-center py-8 text-on-surface-variant text-[13px] font-bold bg-surface-container rounded-m3-lg border border-dashed border-outline-variant">{t.security.noClasses}</div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {classList.map((cls: any) => (
-                        <div key={cls.id} className="flex items-center justify-between p-4 border border-slate-200/80 rounded-2xl hover:border-blue-200 hover:shadow-sm transition-all bg-slate-50/50">
+                        <div key={cls.id} className="flex items-center justify-between p-4 border border-outline-variant rounded-m3-md hover:border-outline hover:shadow-elev-1 transition-all bg-surface-container-lowest">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white border border-slate-200 text-blue-600 rounded-xl flex items-center justify-center font-bold shadow-sm"><BookOpen size={16}/></div>
+                                <div className="w-10 h-10 bg-primary-container text-on-primary-container rounded-m3-md flex items-center justify-center font-bold"><BookOpen size={16}/></div>
                                 <div>
-                                    <h3 className="font-bold text-slate-800 text-[14px] line-clamp-1">{cls.title}</h3>
-                                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{cls.studentIds?.length || 0} {t.security.students}</p>
+                                    <h3 className="font-bold text-on-surface text-[14px] line-clamp-1">{cls.title}</h3>
+                                    <p className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mt-0.5">{cls.studentIds?.length || 0} {t.security.students}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setClassToDelete({ id: cls.id, title: cls.title })} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18}/></button>
+                            <IconButton aria-label="Sinfni o'chirish" onClick={() => setClassToDelete({ id: cls.id, title: cls.title })} className="hover:text-error hover:bg-error-container"><Trash2 size={18}/></IconButton>
                         </div>
                     ))}
                 </div>
@@ -44,43 +46,47 @@ export default function SecurityTab({
 
       {/* 2. PASSWORD SECURITY */}
       {!isGoogleUser && (
-        <div className="bg-white border border-slate-200/80 rounded-[2rem] overflow-hidden shadow-sm">
-          <div className="p-6 md:p-8 border-b border-slate-100 flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500"><Lock size={20}/></div>
+        <div className="bg-surface-container-low rounded-m3-lg overflow-hidden shadow-elev-1">
+          <div className="p-6 md:p-8 border-b border-outline-variant flex items-center gap-3">
+            <div className="w-10 h-10 bg-secondary-container rounded-m3-md flex items-center justify-center text-on-secondary-container"><Lock size={20}/></div>
             <div>
-              <h2 className="text-[16px] font-black text-slate-800">{t.security.passwordTitle}</h2>
-              <p className="text-[12px] font-medium text-slate-500">{t.security.passwordSub}</p>
+              <h2 className="text-[16px] font-black text-on-surface">{t.security.passwordTitle}</h2>
+              <p className="text-[12px] font-medium text-on-surface-variant">{t.security.passwordSub}</p>
             </div>
           </div>
 
           <div className="p-6 md:p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{t.security.currentPass}</label>
+                <label className="block text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2">{t.security.currentPass}</label>
                 <div className="relative">
-                  <input type={showPass.current ? "text" : "password"} value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-[14px] font-bold text-slate-800 focus:bg-white focus:border-orange-400 outline-none transition-all bg-slate-50" placeholder={t.security.currentPlace} />
-                  <button onClick={() => setShowPass({...showPass, current: !showPass.current})} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{showPass.current ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
+                  <input type={showPass.current ? "text" : "password"} value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} className="w-full px-4 py-3 border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary outline-none transition-all bg-surface-container-lowest" placeholder={t.security.currentPlace} />
+                  <IconButton size="sm" aria-label={showPass.current ? "Parolni yashirish" : "Parolni ko'rsatish"} onClick={() => setShowPass({...showPass, current: !showPass.current})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.current ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{t.security.newPass}</label>
+                <label className="block text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2">{t.security.newPass}</label>
                 <div className="relative">
-                  <input type={showPass.new ? "text" : "password"} value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-[14px] font-bold text-slate-800 focus:bg-white focus:border-orange-400 outline-none transition-all bg-slate-50" placeholder={t.security.newPlace} />
-                  <button onClick={() => setShowPass({...showPass, new: !showPass.new})} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{showPass.new ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
+                  <input type={showPass.new ? "text" : "password"} value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="w-full px-4 py-3 border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary outline-none transition-all bg-surface-container-lowest" placeholder={t.security.newPlace} />
+                  <IconButton size="sm" aria-label={showPass.new ? "Parolni yashirish" : "Parolni ko'rsatish"} onClick={() => setShowPass({...showPass, new: !showPass.new})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.new ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{t.security.confirmPass}</label>
+                <label className="block text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2">{t.security.confirmPass}</label>
                 <div className="relative">
-                  <input type={showPass.confirm ? "text" : "password"} value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className={`w-full px-4 py-3 border rounded-xl text-[14px] font-bold text-slate-800 outline-none transition-all ${passwords.confirm && passwords.new !== passwords.confirm ? 'border-red-300 bg-red-50 focus:border-red-500' : 'border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-400'}`} placeholder={t.security.confirmPlace} />
-                  <button onClick={() => setShowPass({...showPass, confirm: !showPass.confirm})} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{showPass.confirm ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
+                  <input type={showPass.confirm ? "text" : "password"} value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className={`w-full px-4 py-3 border rounded-m3-md text-[14px] font-bold text-on-surface outline-none transition-all ${passwords.confirm && passwords.new !== passwords.confirm ? 'border-error bg-error-container focus:border-error focus:ring-1 focus:ring-inset focus:ring-error' : 'border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary'}`} placeholder={t.security.confirmPlace} />
+                  <IconButton size="sm" aria-label={showPass.confirm ? "Parolni yashirish" : "Parolni ko'rsatish"} onClick={() => setShowPass({...showPass, confirm: !showPass.confirm})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.confirm ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
                 </div>
               </div>
               <div className="md:col-span-2 pt-2 flex justify-end">
-                <button onClick={handleChangePassword} disabled={saving || !passwords.current || !passwords.new || (passwords.new !== passwords.confirm)} className="px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 text-[13px]">
-                  {saving ? <Loader2 size={16} className="animate-spin inline mr-2"/> : null}
+                <Button
+                  variant="filled"
+                  onClick={handleChangePassword}
+                  loading={saving}
+                  disabled={!passwords.current || !passwords.new || (passwords.new !== passwords.confirm)}
+                >
                   {saving ? t.security.updating : t.security.updateBtn}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -88,12 +94,12 @@ export default function SecurityTab({
       )}
 
       {/* 3. DANGER ZONE */}
-      <div className="bg-red-50/30 border border-red-100 rounded-[2rem] overflow-hidden shadow-sm">
-        <div className="p-6 md:p-8 border-b border-red-100 flex items-center gap-3">
-          <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-red-600"><AlertTriangle size={20}/></div>
+      <div className="bg-[color-mix(in_oklab,var(--m3-error)_4%,var(--m3-surface-container-low))] border border-error-container rounded-m3-lg overflow-hidden shadow-elev-1">
+        <div className="p-6 md:p-8 border-b border-error-container flex items-center gap-3">
+          <div className="w-10 h-10 bg-error-container rounded-m3-md flex items-center justify-center text-on-error-container"><AlertTriangle size={20}/></div>
           <div>
-            <h2 className="text-[16px] font-black text-red-700">{t.security.dangerTitle}</h2>
-            <p className="text-[12px] font-medium text-red-500">{t.security.dangerSub}</p>
+            <h2 className="text-[16px] font-black text-error">{t.security.dangerTitle}</h2>
+            <p className="text-[12px] font-medium text-on-surface-variant">{t.security.dangerSub}</p>
           </div>
         </div>
 
@@ -101,33 +107,32 @@ export default function SecurityTab({
           {!showDeleteConfirm ? (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="font-bold text-slate-800 text-[14px]">{t.security.deleteAccount}</h3>
-                <p className="text-[13px] font-medium text-slate-500 mt-1">{t.security.deleteWarning}</p>
+                <h3 className="font-bold text-on-surface text-[14px]">{t.security.deleteAccount}</h3>
+                <p className="text-[13px] font-medium text-on-surface-variant mt-1">{t.security.deleteWarning}</p>
               </div>
-              <button onClick={() => setShowDeleteConfirm(true)} className="px-6 py-3 bg-white border border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-50 hover:border-red-300 transition-all shadow-sm text-[13px] whitespace-nowrap">
+              <Button variant="danger-text" onClick={() => setShowDeleteConfirm(true)} className="bg-surface-container-lowest ring-1 ring-inset ring-error-container shadow-elev-1 px-6 whitespace-nowrap">
                 {t.security.deleteAccount}
-              </button>
+              </Button>
             </div>
           ) : (
-            <div className="bg-white p-6 md:p-8 rounded-2xl border border-red-200 shadow-sm animate-in zoom-in-95">
-              <h3 className="text-[16px] font-black text-slate-800 mb-2">{t.security.confirmDelete}</h3>
+            <div className="bg-surface-container-lowest p-6 md:p-8 rounded-m3-lg border border-error-container shadow-elev-1 animate-in zoom-in-95">
+              <h3 className="text-[16px] font-black text-on-surface mb-2">{t.security.confirmDelete}</h3>
               {isGoogleUser ? (
-                <p className="text-[13px] font-medium text-slate-500 mb-6">{t.security.googleConfirm}</p>
+                <p className="text-[13px] font-medium text-on-surface-variant mb-6">{t.security.googleConfirm}</p>
               ) : (
                 <>
-                  <p className="text-[13px] font-medium text-slate-500 mb-4">{t.security.passConfirm}</p>
-                  <input type="password" placeholder={t.security.currentPlace} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-[14px] font-bold text-slate-800 outline-none focus:border-red-500 mb-6 bg-slate-50 focus:bg-white" />
+                  <p className="text-[13px] font-medium text-on-surface-variant mb-4">{t.security.passConfirm}</p>
+                  <input type="password" placeholder={t.security.currentPlace} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} className="w-full px-4 py-3 border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface outline-none focus:border-error focus:ring-1 focus:ring-inset focus:ring-error transition-all mb-6 bg-surface-container-lowest" />
                 </>
               )}
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <button onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); }} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-[13px]">
+                <Button variant="tonal" className="flex-1" onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); }}>
                   {t.security.cancel}
-                </button>
-                <button onClick={handleDeleteAccount} disabled={(!isGoogleUser && !deletePassword) || isDeleting} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition flex items-center justify-center gap-2 disabled:opacity-50 text-[13px] shadow-md shadow-red-600/20">
-                  {isDeleting ? <Loader2 className="animate-spin" size={16}/> : <Trash2 size={16}/>} 
+                </Button>
+                <Button variant="danger" className="flex-1" onClick={handleDeleteAccount} loading={isDeleting} disabled={!isGoogleUser && !deletePassword} icon={<Trash2 size={16}/>}>
                   {t.security.yesDelete}
-                </button>
+                </Button>
               </div>
             </div>
           )}

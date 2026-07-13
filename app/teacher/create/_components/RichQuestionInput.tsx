@@ -7,6 +7,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import 'react-quill-new/dist/quill.snow.css';
 import MathInput from './MathInput';
+import { Button, IconButton } from '@/components/ui';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false }) as any;
 
@@ -115,33 +116,33 @@ export default function RichQuestionInput({ label, value = "", onChange, placeho
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">{label}</label>
-      
-      <div className={`bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all duration-300 rich-wrapper ${compact ? 'is-compact' : 'is-standard'}`}>
-        
+      <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">{label}</label>
+
+      <div className={`bg-surface-container-lowest rounded-m3-lg overflow-hidden border border-outline-variant shadow-elev-1 focus-within:border-primary transition-all duration-300 rich-wrapper ${compact ? 'is-compact' : 'is-standard'}`}>
+
         <style>{`
-          .rich-wrapper .ql-toolbar { border: none !important; border-bottom: 1px solid #f1f5f9 !important; background: #f8fafc; padding: 10px 14px !important; }
-          .rich-wrapper .ql-container { border: none !important; font-size: 0.95rem; font-family: inherit; color: #1e293b; font-weight: 500;}
-          
+          .rich-wrapper .ql-toolbar { border: none !important; border-bottom: 1px solid var(--m3-outline-variant) !important; background: var(--m3-surface-container); padding: 10px 14px !important; }
+          .rich-wrapper .ql-container { border: none !important; font-size: 0.95rem; font-family: inherit; color: var(--m3-on-surface); font-weight: 500;}
+
           .rich-wrapper.is-standard .ql-editor { min-height: 120px; padding: 20px; line-height: 1.6; }
-          
-          .rich-wrapper.is-compact .ql-editor { 
-            min-height: 52px; 
-            max-height: 70px; 
-            padding: 12px 16px; 
-            line-height: 1.4; 
-            overflow-y: auto; 
-          }
-          
-          .rich-wrapper .ql-editor.ql-blank::before { color: #cbd5e1; font-style: normal; font-weight: 500; }
-          .rich-wrapper .ql-formula { 
-            background: #eef2ff; color: #4f46e5; padding: 4px 8px; border-radius: 8px; margin: 0 4px; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.1);
+
+          .rich-wrapper.is-compact .ql-editor {
+            min-height: 52px;
+            max-height: 70px;
+            padding: 12px 16px;
+            line-height: 1.4;
+            overflow-y: auto;
           }
 
-          /* 🟢 FIX: Forces the MathLive virtual keyboard to sit ABOVE the modal overlay */
+          .rich-wrapper .ql-editor.ql-blank::before { color: var(--m3-outline); font-style: normal; font-weight: 500; }
+          .rich-wrapper .ql-formula {
+            background: var(--m3-primary-container); color: var(--m3-on-primary-container); padding: 4px 8px; border-radius: var(--m3-shape-sm); margin: 0 4px; cursor: pointer;
+          }
+
+          /* Forces the MathLive virtual keyboard to sit ABOVE the modal overlay */
           :root {
             --keyboard-zindex: 9999 !important;
-            --keyboard-background: #1e293b !important; /* Optional: gives it a solid premium dark slate color */
+            --keyboard-background: var(--m3-inverse-surface) !important;
           }
         `}</style>
 
@@ -157,39 +158,36 @@ export default function RichQuestionInput({ label, value = "", onChange, placeho
       {isMathModalOpen && (
         // 🟢 FIX 1: Changed `items-center` to `items-start pt-20`. This pins the modal to the TOP of the screen, away from the keyboard.
         // 🟢 FIX 2: Set z-[999] so the MathLive keyboard (which usually has a z-index of 1000+) stays on top.
-        <div className="fixed inset-0 z-[999] flex items-start justify-center pt-16 md:pt-24 p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          
-          {/* 🟢 FIX 3: Removed `mb-[25vh]` because we are top-aligning now. */}
-          <div className="bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
+        <div className="fixed inset-0 z-[999] flex items-start justify-center pt-16 md:pt-24 p-4 bg-scrim backdrop-blur-sm animate-in fade-in duration-200">
+
+          <div className="bg-surface-container-low rounded-m3-xl shadow-elev-3 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+
+            <div className="p-5 border-b border-outline-variant flex justify-between items-center">
+              <h3 className="font-bold text-lg text-on-surface flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary-container text-on-primary-container rounded-m3-sm flex items-center justify-center">
                   <Sigma size={18} strokeWidth={2.5} />
                 </div>
                 Equation Builder
               </h3>
-              <button onClick={() => setIsMathModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
-                <X size={20} />
-              </button>
+              <IconButton aria-label="Yopish" size="sm" onClick={() => setIsMathModalOpen(false)}>
+                <X />
+              </IconButton>
             </div>
-            
-            <div className="p-8 bg-slate-50/50">
-              <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase tracking-widest mb-4">
+
+            <div className="p-8 bg-surface-container">
+              <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest mb-4">
                 <Keyboard size={14} /> Virtual Keyboard Active
               </div>
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden ring-4 ring-indigo-500/10">
+              <div className="rounded-m3-lg overflow-hidden ring-2 ring-primary shadow-elev-1">
                 <MathInput value={tempMath} onChange={(latex) => setTempMath(latex)} placeholder="Type or use the keyboard below..." />
               </div>
             </div>
-            
-            <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-white">
-              <button onClick={() => setIsMathModalOpen(false)} className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors">Cancel</button>
-              <button onClick={insertMath} className="flex items-center gap-2 px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl shadow-lg shadow-indigo-600/20 transition-all">
-                <Check size={18} /> Insert Equation
-              </button>
+
+            <div className="p-5 border-t border-outline-variant flex justify-end gap-3">
+              <Button variant="text" onClick={() => setIsMathModalOpen(false)}>Cancel</Button>
+              <Button icon={<Check />} onClick={insertMath} className="px-8">Insert Equation</Button>
             </div>
-            
+
           </div>
         </div>
       )}

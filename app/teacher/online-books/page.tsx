@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { BookOpen, Search, X, ChevronRight, Download, Eye, Check, Share2, SlidersHorizontal, Copy, Filter, GraduationCap, Library, BookMarked, AlignLeft, CalendarDays, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { Button, Spinner, EmptyState } from '@/components/ui';
 // Import your local JSON file directly
 import libraryBooks from '@/data/library_books.json';
 
@@ -335,15 +336,15 @@ export default function OnlineLibraryPage() {
                   checked={isChecked}
                   disabled={isDisabled}
                   onChange={() => handleFilterChange(category, opt.value)}
-                  className="peer appearance-none w-[16px] h-[16px] border-[1.5px] border-gray-300 rounded-[3px] checked:bg-teal-600 checked:border-teal-600 focus:outline-none transition-all cursor-pointer disabled:cursor-not-allowed"
+                  className="peer appearance-none w-[16px] h-[16px] border-[1.5px] border-outline rounded-[3px] checked:bg-primary checked:border-primary focus:outline-none transition-all cursor-pointer disabled:cursor-not-allowed"
                 />
-                <Check size={12} strokeWidth={4} className="absolute text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" />
+                <Check size={12} strokeWidth={4} className="absolute text-on-primary pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" />
               </div>
               <div className="flex items-center justify-between w-full">
-                <span className={`text-[13px] leading-tight transition-colors ${isChecked ? 'text-gray-900 font-bold' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                <span className={`text-[13px] leading-tight transition-colors ${isChecked ? 'text-on-surface font-bold' : 'text-on-surface-variant group-hover:text-on-surface'}`}>
                   {displayLabel}
                 </span>
-                <span className="text-[10px] font-semibold text-gray-400 bg-gray-100/80 px-1.5 py-0.5 rounded-md border border-gray-200/50">
+                <span className="text-[10px] font-semibold text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded-m3-xs border border-outline-variant">
                   {opt.count}
                 </span>
               </div>
@@ -358,13 +359,13 @@ export default function OnlineLibraryPage() {
         {isCollapsible ? (
           <button 
             onClick={() => toggleSection(category)}
-            className="flex w-full items-center justify-between text-[13px] font-bold text-gray-900 mb-2 hover:text-teal-600 transition-colors"
+            className="flex w-full items-center justify-between text-[13px] font-bold text-on-surface mb-2 hover:text-primary transition-colors"
           >
             {label}
-            <ChevronRight size={14} className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+            <ChevronRight size={14} className={`text-on-surface-variant transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
           </button>
         ) : (
-          <h3 className="text-[13px] font-bold text-gray-900 mb-2.5">{label}</h3>
+          <h3 className="text-[13px] font-bold text-on-surface mb-2.5">{label}</h3>
         )}
         
         {isCollapsible ? (
@@ -406,9 +407,9 @@ export default function OnlineLibraryPage() {
               key={opt.value}
               disabled={isDisabled}
               onClick={() => handleFilterChange(category, opt.value)}
-              className={`py-1.5 text-xs font-bold rounded border transition-all 
-                ${isChecked ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400 hover:bg-gray-50'}
-                ${isDisabled ? 'opacity-40 cursor-not-allowed hover:border-gray-200 hover:bg-white' : ''}
+              className={`py-1.5 text-xs font-bold rounded-m3-sm border transition-all
+                ${isChecked ? 'bg-primary border-primary text-on-primary' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:border-outline hover:bg-state-hover'}
+                ${isDisabled ? 'opacity-40 cursor-not-allowed hover:border-outline-variant hover:bg-surface-container-lowest' : ''}
               `}
               title={`${opt.count} ${t.booksFound}`}
             >
@@ -424,13 +425,13 @@ export default function OnlineLibraryPage() {
         {isCollapsible ? (
           <button 
             onClick={() => toggleSection(category)}
-            className="flex w-full items-center justify-between text-[13px] font-bold text-gray-900 mb-2 hover:text-teal-600 transition-colors"
+            className="flex w-full items-center justify-between text-[13px] font-bold text-on-surface mb-2 hover:text-primary transition-colors"
           >
             {label}
-            <ChevronRight size={14} className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+            <ChevronRight size={14} className={`text-on-surface-variant transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
           </button>
         ) : (
-          <h3 className="text-[13px] font-bold text-gray-900 mb-2.5">{label}</h3>
+          <h3 className="text-[13px] font-bold text-on-surface mb-2.5">{label}</h3>
         )}
 
         {isCollapsible ? (
@@ -456,19 +457,19 @@ export default function OnlineLibraryPage() {
 
   const renderSidebarContent = () => (
     <>
-      <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
-        <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-          <SlidersHorizontal size={16} className="text-gray-500" /> {t.filters.title}
+      <div className="flex justify-between items-center mb-6 pb-4 border-b border-outline-variant">
+        <h2 className="text-sm font-bold text-on-surface flex items-center gap-2">
+          <SlidersHorizontal size={16} className="text-on-surface-variant" /> {t.filters.title}
         </h2>
         {hasActiveFilters && (
-          <button onClick={handleClearFilters} className="text-xs font-bold text-teal-600 hover:text-teal-800 transition-colors">
+          <button onClick={handleClearFilters} className="text-xs font-bold text-primary hover:underline transition-colors">
             {t.filters.clear}
           </button>
         )}
       </div>
       
       {/* 1. GENERAL SECTION */}
-      <h3 className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+      <h3 className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1.5">
         <Layers size={12} /> {t.filters.generalSection}
       </h3>
       
@@ -476,11 +477,11 @@ export default function OnlineLibraryPage() {
       {renderMultiSelectCheckbox(t.filters.publisher, "publisher", dynamicPublishers, undefined, false)}
       {renderMultiSelectCheckbox(t.filters.editionType, "editionType", dynamicEditions, filterDictionaries.editionTypes, false)}
 
-      <hr className="my-6 border-gray-200/60" />
+      <hr className="my-6 border-outline-variant" />
 
       {/* 2. CATALOG / ACADEMIC HIERARCHY */}
       <div className="mb-2">
-        <h3 className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+        <h3 className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1.5">
           <AlignLeft size={12} /> {t.filters.academicHierarchy}
         </h3>
 
@@ -489,23 +490,23 @@ export default function OnlineLibraryPage() {
         
         {/* Level 2 (Appears if Level 1 is selected) */}
         {filters.scienceField.length > 0 && (
-          <div className="relative ml-[7px] pl-4 border-l-2 border-teal-500/30">
+          <div className="relative ml-[7px] pl-4 border-l-2 border-[color-mix(in_oklab,var(--m3-primary)_30%,transparent)]">
             {renderMultiSelectCheckbox(t.filters.field, "field", dynamicFields, filterDictionaries.fields, true)}
           </div>
         )}
 
         {/* Level 3 (Appears if Level 2 is selected) */}
         {filters.field.length > 0 && (
-          <div className="relative ml-[27px] pl-4 border-l-2 border-teal-500/30">
+          <div className="relative ml-[27px] pl-4 border-l-2 border-[color-mix(in_oklab,var(--m3-primary)_30%,transparent)]">
             {renderMultiSelectCheckbox(t.filters.subject, "subject", dynamicSubjects, filterDictionaries.subjects, true)}
           </div>
         )}
       </div>
 
-      <hr className="my-6 border-gray-200/60" />
+      <hr className="my-6 border-outline-variant" />
 
       {/* 3. NUMERIC SECTION (Grades & Years) */}
-      <h3 className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+      <h3 className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1.5">
         <CalendarDays size={12} /> {t.filters.numericSection}
       </h3>
 
@@ -543,35 +544,37 @@ export default function OnlineLibraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-sans flex flex-col">
+    <div className="min-h-screen bg-surface font-sans flex flex-col">
 
       {/* HEADER */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+      <header className="bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant sticky top-0 z-40 shadow-elev-1">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
 
           <div className="flex items-center justify-between w-full md:w-auto">
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight hidden lg:block mr-6">{t.title}</h1>
-            <button
+            <h1 className="text-xl font-bold text-on-surface tracking-tight hidden lg:block mr-6">{t.title}</h1>
+            <Button
+              variant="tonal"
+              size="sm"
+              icon={<Filter />}
               onClick={() => setIsMobileFiltersOpen(true)}
-              className="lg:hidden p-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
+              className="lg:hidden"
             >
-              <Filter size={16} />
-              <span className="text-xs font-bold">{t.filters.mobileFilterBtn}</span>
-            </button>
+              {t.filters.mobileFilterBtn}
+            </Button>
           </div>
 
           <div className="flex-1 w-full flex items-center gap-4">
             <div className="w-full max-w-md relative ml-auto">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
               <input
                 type="text"
                 placeholder={t.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gray-100 border-none text-gray-900 py-2 pl-9 pr-4 rounded-md text-sm focus:bg-white focus:ring-2 focus:ring-teal-500/30 transition-all outline-none"
+                className="w-full bg-surface-container border-none text-on-surface py-2 pl-9 pr-4 rounded-m3-sm text-sm focus:bg-surface-container-lowest focus:ring-2 focus:ring-[color-mix(in_oklab,var(--m3-primary)_30%,transparent)] transition-all outline-none"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 p-1">
+                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1">
                   <X size={14} />
                 </button>
               )}
@@ -585,7 +588,7 @@ export default function OnlineLibraryPage() {
       <div className="max-w-[1400px] mx-auto w-full px-4 md:px-6 pt-6 pb-12 flex flex-col lg:flex-row gap-8">
 
         {/* DESKTOP SIDEBAR */}
-        <aside className="hidden lg:block w-[260px] shrink-0 h-[calc(100vh-100px)] sticky top-[80px] overflow-y-auto custom-scrollbar bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+        <aside className="hidden lg:block w-[260px] shrink-0 h-[calc(100vh-100px)] sticky top-[80px] overflow-y-auto custom-scrollbar bg-surface-container-low p-5 rounded-m3-sm border border-outline-variant shadow-elev-1">
           {renderSidebarContent()}
         </aside>
 
@@ -593,11 +596,11 @@ export default function OnlineLibraryPage() {
         <AnimatePresence>
           {isMobileFiltersOpen && (
             <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMobileFiltersOpen(false)} className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[120] lg:hidden" />
-              <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 left-0 h-full w-[300px] bg-white shadow-2xl z-[130] flex flex-col lg:hidden">
-                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                  <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">{t.filters.title}</h2>
-                  <button onClick={() => setIsMobileFiltersOpen(false)} className="p-2 bg-gray-200 rounded-full text-gray-500">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMobileFiltersOpen(false)} className="fixed inset-0 bg-scrim backdrop-blur-sm z-[120] lg:hidden" />
+              <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 left-0 h-full w-[300px] bg-surface-container-low shadow-elev-3 z-[130] flex flex-col lg:hidden">
+                <div className="px-5 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container">
+                  <h2 className="text-sm font-bold text-on-surface uppercase tracking-widest">{t.filters.title}</h2>
+                  <button onClick={() => setIsMobileFiltersOpen(false)} className="p-2 bg-surface-container-highest rounded-full text-on-surface-variant">
                     <X size={16} />
                   </button>
                 </div>
@@ -613,10 +616,10 @@ export default function OnlineLibraryPage() {
         <main className="flex-1 min-w-0">
 
           <div className="flex justify-center mb-10 overflow-x-auto pb-2">
-            <div className="inline-flex bg-white rounded-md overflow-hidden border border-gray-300 shadow-sm" role="group">
+            <div className="inline-flex bg-surface-container-lowest rounded-m3-sm overflow-hidden border border-outline shadow-elev-1" role="group">
               <button
                 onClick={() => setSchoolTypeFilter('all')}
-                className={`px-5 py-2.5 text-[14px] font-bold border-r border-gray-300 transition-colors ${schoolTypeFilter === 'all' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`px-5 py-2.5 text-[14px] font-bold border-r border-outline transition-colors ${schoolTypeFilter === 'all' ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant hover:bg-state-hover'}`}
               >
                 {t.tabs.allLevels}
               </button>
@@ -624,7 +627,7 @@ export default function OnlineLibraryPage() {
                 <button
                   key={typeKey}
                   onClick={() => setSchoolTypeFilter(typeKey)}
-                  className={`px-5 py-2.5 text-[14px] font-bold capitalize transition-colors ${index !== uniqueSchoolTypes.length - 1 ? 'border-r border-gray-300' : ''} ${schoolTypeFilter === typeKey ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50'}`}
+                  className={`px-5 py-2.5 text-[14px] font-bold capitalize transition-colors ${index !== uniqueSchoolTypes.length - 1 ? 'border-r border-outline' : ''} ${schoolTypeFilter === typeKey ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant hover:bg-state-hover'}`}
                 >
                   {getLoc(filterDictionaries.schoolTypes[typeKey])}
                 </button>
@@ -632,11 +635,11 @@ export default function OnlineLibraryPage() {
             </div>
           </div>
 
-          <div className="mb-6 flex justify-between items-center border-b border-gray-200 pb-2">
-            <span className="text-sm text-gray-500 font-medium">
+          <div className="mb-6 flex justify-between items-center border-b border-outline-variant pb-2">
+            <span className="text-sm text-on-surface-variant font-medium">
               {processedBooks.length} {t.booksFound}
             </span>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-sm border-none bg-transparent text-gray-900 font-bold focus:ring-0 cursor-pointer outline-none">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-sm border-none bg-transparent text-on-surface font-bold focus:ring-0 cursor-pointer outline-none">
               <option value="none">{t.filters.defaultSort}</option>
               <option value="popular">{t.sortOptions.popular}</option>
               <option value="viewed">{t.sortOptions.viewed}</option>
@@ -645,10 +648,12 @@ export default function OnlineLibraryPage() {
           </div>
 
           {processedBooks.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
-               <BookOpen size={40} className="mx-auto text-gray-300 mb-3" />
-               <h3 className="text-sm font-semibold text-gray-700">{t.empty}</h3>
-               <button onClick={handleClearFilters} className="mt-3 text-sm font-medium text-teal-600 hover:underline">{t.filters.clear}</button>
+            <div className="py-12 bg-surface-container-low rounded-m3-md border border-outline-variant shadow-elev-1">
+               <EmptyState
+                 icon={<BookOpen />}
+                 title={t.empty}
+                 action={<Button variant="text" size="sm" onClick={handleClearFilters}>{t.filters.clear}</Button>}
+               />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16 justify-items-center mt-6">
@@ -659,15 +664,15 @@ export default function OnlineLibraryPage() {
                  return (
                   <div key={book.id} className="flex flex-col items-center group cursor-pointer w-full" onClick={() => handleBookClick(book)}>
                     <div className="h-[240px] md:h-[280px] mb-5 relative transition-transform duration-300 group-hover:-translate-y-2">
-                      <img src={imagePath} alt={bookTitle} className="h-full w-auto object-contain shadow-[0_10px_20px_rgba(0,0,0,0.15)]" />
+                      <img src={imagePath} alt={bookTitle} className="h-full w-auto object-contain shadow-elev-2" />
                     </div>
                     <div className="text-center flex flex-col items-center max-w-[220px]">
-                      <h3 className="text-[14px] font-bold text-gray-900 leading-snug mb-1">{bookTitle}</h3>
+                      <h3 className="text-[14px] font-bold text-on-surface leading-snug mb-1">{bookTitle}</h3>
                       {book.edition && (
-                        <p className="text-[13px] font-bold text-teal-700 mb-0.5">{formatEdition(book.edition, currentLang)}</p>
+                        <p className="text-[13px] font-bold text-primary mb-0.5">{formatEdition(book.edition, currentLang)}</p>
                       )}
-                      <p className="text-[13px] text-gray-600 font-medium mb-2">{getLoc(book.editionType)}</p>
-                      <button className="inline-flex items-center justify-center text-[13px] font-bold text-teal-600 group-hover:text-teal-800 transition-colors">
+                      <p className="text-[13px] text-on-surface-variant font-medium mb-2">{getLoc(book.editionType)}</p>
+                      <button className="inline-flex items-center justify-center text-[13px] font-bold text-primary group-hover:underline transition-colors">
                         {t.actions.view} <ChevronRight size={14} className="ml-0.5" />
                       </button>
                     </div>
@@ -679,7 +684,7 @@ export default function OnlineLibraryPage() {
 
           {visibleCount < processedBooks.length && (
             <div ref={observerTarget} className="py-16 flex justify-center">
-              <span className="animate-spin w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full"></span>
+              <Spinner size={32} />
             </div>
           )}
         </main>
@@ -689,16 +694,16 @@ export default function OnlineLibraryPage() {
       <AnimatePresence>
         {isDrawerOpen && selectedBook && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsDrawerOpen(false)} className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[150]" />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-[160] flex flex-col">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsDrawerOpen(false)} className="fixed inset-0 bg-scrim backdrop-blur-sm z-[150]" />
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 right-0 h-full w-full max-w-[420px] bg-surface-container-low shadow-elev-3 z-[160] flex flex-col">
 
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 sticky top-0 z-20">
-                <h2 className="text-xs font-bold tracking-widest uppercase text-gray-900">{t.drawer.details}</h2>
+              <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container sticky top-0 z-20">
+                <h2 className="text-xs font-bold tracking-widest uppercase text-on-surface">{t.drawer.details}</h2>
                 <div className="flex items-center gap-3">
-                  <button onClick={handleShare} className="p-2 bg-white border border-gray-200 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors" title={t.actions.share}>
-                    {copiedLink ? <Check size={16} className="text-green-600" /> : <Share2 size={16} />}
+                  <button onClick={handleShare} className="p-2 bg-surface-container-lowest border border-outline-variant rounded-full text-on-surface-variant hover:text-on-surface hover:bg-state-hover transition-colors" title={t.actions.share}>
+                    {copiedLink ? <Check size={16} className="text-success" /> : <Share2 size={16} />}
                   </button>
-                  <button onClick={() => setIsDrawerOpen(false)} className="p-2 bg-white border border-gray-200 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                  <button onClick={() => setIsDrawerOpen(false)} className="p-2 bg-surface-container-lowest border border-outline-variant rounded-full text-on-surface-variant hover:text-error hover:bg-error-container transition-colors">
                     <X size={16} />
                   </button>
                 </div>
@@ -706,64 +711,67 @@ export default function OnlineLibraryPage() {
 
               <div className="overflow-y-auto custom-scrollbar flex-1 p-6 md:p-8">
                 <div className="flex flex-col items-center mb-6">
-                  <div className="h-60 shadow-xl border border-gray-200 mb-6 relative rounded-md overflow-hidden flex-shrink-0 bg-white">
+                  <div className="h-60 shadow-elev-3 border border-outline-variant mb-6 relative rounded-m3-sm overflow-hidden flex-shrink-0 bg-surface-container-lowest">
                     <img src={selectedBook.localCoverPath.replace('./', '/')} alt="Cover" className="h-full w-auto object-contain block" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900 leading-snug text-center mb-2">{getLoc(selectedBook.title)}</h2>
-                  <p className="text-sm font-medium text-gray-500 text-center">{selectedBook.authors.join(', ')}</p>
+                  <h2 className="text-xl font-bold text-on-surface leading-snug text-center mb-2">{getLoc(selectedBook.title)}</h2>
+                  <p className="text-sm font-medium text-on-surface-variant text-center">{selectedBook.authors.join(', ')}</p>
                 </div>
 
-                <button
+                <Button
+                  variant="filled"
+                  size="lg"
+                  icon={<BookOpen />}
                   onClick={() => handleDownloadClick(selectedBook.id, selectedBook.telegramLink)}
-                  className="w-full bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white text-sm font-bold py-4 rounded-md flex items-center justify-center gap-2 transition-all mb-8 shadow-md"
+                  className="w-full mb-8"
                 >
-                  <BookOpen size={18} /> {t.actions.readMore}
-                </button>
+                  {t.actions.readMore}
+                </Button>
 
                 <div className="mb-8">
-                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-3 border-b border-gray-100 pb-2">{t.drawer.description}</h3>
-                  <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">{getLoc(selectedBook.description) || "No description provided."}</div>
+                  <h3 className="text-xs font-bold text-on-surface uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">{t.drawer.description}</h3>
+                  <div className="text-on-surface-variant text-sm leading-relaxed whitespace-pre-wrap">{getLoc(selectedBook.description) || "No description provided."}</div>
                 </div>
 
                 <div>
-                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-3 border-b border-gray-100 pb-2">Info</h3>
+                  <h3 className="text-xs font-bold text-on-surface uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">Info</h3>
                   <ul className="space-y-4 text-sm">
                     <li className="flex justify-between items-center">
-                      <span className="text-gray-500 font-medium">{t.drawer.isbn}</span>
+                      <span className="text-on-surface-variant font-medium">{t.drawer.isbn}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-900 font-bold">{selectedBook.isbn || 'N/A'}</span>
+                        <span className="text-on-surface font-bold">{selectedBook.isbn || 'N/A'}</span>
                         {selectedBook.isbn && (
-                          <button onClick={() => handleCopyIsbn(selectedBook.isbn)} className="text-teal-600 hover:text-teal-800 bg-teal-50 p-1.5 rounded" title={t.actions.copyIsbn}>
-                            {copiedIsbn ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                          <button onClick={() => handleCopyIsbn(selectedBook.isbn)} className="m3-interactive text-on-primary-container bg-primary-container p-1.5 rounded-m3-xs" title={t.actions.copyIsbn}>
+                            {copiedIsbn ? <Check size={14} className="text-success" /> : <Copy size={14} />}
                           </button>
                         )}
                       </div>
                     </li>
                     {selectedBook.edition && (
                       <li className="flex justify-between items-center">
-                        <span className="text-gray-500 font-medium">{t.drawer.edition}</span>
-                        <span className="text-gray-900 font-bold">{formatEdition(selectedBook.edition, currentLang)}</span>
+                        <span className="text-on-surface-variant font-medium">{t.drawer.edition}</span>
+                        <span className="text-on-surface font-bold">{formatEdition(selectedBook.edition, currentLang)}</span>
                       </li>
                     )}
                     <li className="flex justify-between items-center">
-                      <span className="text-gray-500 font-medium">{t.drawer.publisher}</span>
-                      <span className="text-gray-900 font-bold">{selectedBook.publisher}</span>
+                      <span className="text-on-surface-variant font-medium">{t.drawer.publisher}</span>
+                      <span className="text-on-surface font-bold">{selectedBook.publisher}</span>
                     </li>
                     <li className="flex justify-between items-center">
-                      <span className="text-gray-500 font-medium">{t.drawer.year}</span>
-                      <span className="text-gray-900 font-bold">{selectedBook.publishedYear}</span>
+                      <span className="text-on-surface-variant font-medium">{t.drawer.year}</span>
+                      <span className="text-on-surface font-bold">{selectedBook.publishedYear}</span>
                     </li>
                     <li className="flex justify-between items-center">
-                      <span className="text-gray-500 font-medium">{t.drawer.grade}</span>
-                      <span className="text-gray-900 font-bold">{formatGrades(selectedBook.grades)}</span>
+                      <span className="text-on-surface-variant font-medium">{t.drawer.grade}</span>
+                      <span className="text-on-surface font-bold">{formatGrades(selectedBook.grades)}</span>
                     </li>
                     <li className="flex justify-between items-center">
-                      <span className="text-gray-500 font-medium">{t.drawer.views}</span>
-                      <span className="text-gray-900 font-bold flex items-center gap-1"><Eye size={14} className="text-gray-400" />{selectedBook.viewscount}</span>
+                      <span className="text-on-surface-variant font-medium">{t.drawer.views}</span>
+                      <span className="text-on-surface font-bold flex items-center gap-1"><Eye size={14} className="text-on-surface-variant" />{selectedBook.viewscount}</span>
                     </li>
                     <li className="flex justify-between items-center">
-                      <span className="text-gray-500 font-medium">{t.drawer.downloads}</span>
-                      <span className="text-gray-900 font-bold flex items-center gap-1"><Download size={14} className="text-gray-400" />{selectedBook.downloadscount}</span>
+                      <span className="text-on-surface-variant font-medium">{t.drawer.downloads}</span>
+                      <span className="text-on-surface font-bold flex items-center gap-1"><Download size={14} className="text-on-surface-variant" />{selectedBook.downloadscount}</span>
                     </li>
                   </ul>
                 </div>

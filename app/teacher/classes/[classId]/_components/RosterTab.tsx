@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, arrayRemove, collection, query, getDocs, orderBy } from 'firebase/firestore';
-import { Trash2, UserX, ChevronRight, Loader2, Users } from 'lucide-react';
+import { Trash2, UserX, ChevronRight, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Spinner, EmptyState } from '@/components/ui';
 import StudentDetailsModal from './StudentDetailsModal';
 import ConfirmDialog from './ConfirmDialog';
 import { useTeacherLanguage } from '@/app/teacher/layout';
@@ -237,14 +238,13 @@ export default function RosterTab({ classId, studentIds }: Props) {
 
   // --- 3. RENDER (Elegant Teacher UI Preserved) ---
   if (loadingInitial && students.length === 0) {
-    return <div className="py-16 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" size={28}/></div>;
+    return <div className="py-16 flex items-center justify-center"><Spinner size={28}/></div>;
   }
 
   if (students.length === 0) {
     return (
-      <div className="py-14 md:py-16 flex flex-col items-center justify-center text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-        <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center border border-slate-200 mb-4"><Users size={26} className="text-slate-300"/></div>
-        <p className="text-sm font-semibold text-slate-700">{t.empty}</p>
+      <div className="bg-surface-container rounded-m3-lg border border-dashed border-outline-variant">
+        <EmptyState icon={<Users />} title={t.empty} className="py-14 md:py-16" />
       </div>
     );
   }
@@ -265,7 +265,7 @@ export default function RosterTab({ classId, studentIds }: Props) {
         subject={
           removeTarget && (
             <>
-              <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-[12px] bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600">
+              <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-[12px] bg-surface-container-highest text-on-surface-variant">
                 {(removeTarget.photoURL || removeTarget.photoUrl || removeTarget.avatar) ? (
                   <img src={removeTarget.photoURL || removeTarget.photoUrl || removeTarget.avatar} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -273,8 +273,8 @@ export default function RosterTab({ classId, studentIds }: Props) {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-[14px] text-slate-900 truncate">{removeTarget.displayName}</p>
-                <p className="text-[12px] font-medium text-slate-400 truncate">@{removeTarget.username || 'student'}</p>
+                <p className="font-semibold text-[14px] text-on-surface truncate">{removeTarget.displayName}</p>
+                <p className="text-[12px] font-medium text-on-surface-variant truncate">@{removeTarget.username || 'student'}</p>
               </div>
             </>
           )
@@ -294,19 +294,19 @@ export default function RosterTab({ classId, studentIds }: Props) {
               tabIndex={!student.isDeleted ? 0 : undefined}
               onClick={() => handleShowDetails(student)}
               onKeyDown={(e) => { if (!student.isDeleted && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleShowDetails(student); } }}
-              className={`group flex items-center gap-3 p-3 md:p-4 rounded-2xl border bg-white transition-all ${
+              className={`group flex items-center gap-3 p-3 md:p-4 rounded-m3-lg border bg-surface-container-low transition-all ${
                 student.isDeleted
-                  ? 'border-slate-100 opacity-70'
-                  : 'border-slate-200 cursor-pointer hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400'
+                  ? 'border-outline-variant opacity-70'
+                  : 'border-outline-variant cursor-pointer hover:border-outline hover:shadow-elev-2 hover:-translate-y-0.5 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-primary'
               }`}
             >
               {/* Number */}
-              <span className="text-[12px] font-semibold text-slate-400 tabular-nums w-5 text-center shrink-0">{index + 1}</span>
+              <span className="text-[12px] font-semibold text-on-surface-variant tabular-nums w-5 text-center shrink-0">{index + 1}</span>
 
               {/* Avatar */}
-              <div className="w-10 h-10 md:w-11 md:h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-[13px] bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600">
+              <div className="w-10 h-10 md:w-11 md:h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-[13px] bg-surface-container-highest text-on-surface-variant">
                 {student.isDeleted ? (
-                  <UserX size={18} className="text-slate-400" />
+                  <UserX size={18} className="text-on-surface-variant" />
                 ) : photo ? (
                   <img src={photo} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -317,14 +317,14 @@ export default function RosterTab({ classId, studentIds }: Props) {
               {/* Name + username */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 min-w-0">
-                  <p className={`font-semibold text-[14px] md:text-[15px] truncate ${student.isDeleted ? 'text-slate-500' : 'text-slate-900'}`}>
+                  <p className={`font-semibold text-[14px] md:text-[15px] truncate ${student.isDeleted ? 'text-on-surface-variant' : 'text-on-surface'}`}>
                     {student.displayName}
                   </p>
                   {student.isDeleted && (
-                    <span className="px-1.5 py-0.5 bg-slate-100 text-slate-400 text-[10px] font-semibold rounded-md shrink-0">{t.deleted}</span>
+                    <span className="px-1.5 py-0.5 bg-surface-container-highest text-on-surface-variant text-[10px] font-semibold rounded-m3-xs shrink-0">{t.deleted}</span>
                   )}
                 </div>
-                <p className="text-[12px] font-medium text-slate-400 truncate mt-0.5">@{student.username || 'student'}</p>
+                <p className="text-[12px] font-medium text-on-surface-variant truncate mt-0.5">@{student.username || 'student'}</p>
               </div>
 
               {/* Actions */}
@@ -332,12 +332,12 @@ export default function RosterTab({ classId, studentIds }: Props) {
                 <button
                   onClick={(e) => handleRemoveClick(e, student)}
                   title={t.removeBtn}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors active:scale-95"
+                  className="w-9 h-9 flex items-center justify-center rounded-m3-sm text-on-surface-variant hover:bg-error-container hover:text-error transition-colors active:scale-95"
                 >
                   <Trash2 size={16} strokeWidth={2.25} />
                 </button>
                 {!student.isDeleted && (
-                  <ChevronRight size={18} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight size={18} className="text-outline group-hover:text-on-surface-variant group-hover:translate-x-0.5 transition-all" />
                 )}
               </div>
             </div>
@@ -346,7 +346,7 @@ export default function RosterTab({ classId, studentIds }: Props) {
 
         {loadingMore && (
           <div className="py-4 flex justify-center">
-            <Loader2 size={22} className="animate-spin text-slate-400" />
+            <Spinner size={22} />
           </div>
         )}
       </div>

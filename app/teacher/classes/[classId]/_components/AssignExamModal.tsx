@@ -8,11 +8,12 @@ import {
   doc, serverTimestamp, orderBy, limit, startAfter 
 } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
-import { 
-  X, Search, Loader2, Calendar, Shield, EyeOff, 
-  FileBadge, ChevronRight, CheckCircle2, ArrowLeft, RefreshCw 
+import {
+  X, Search, Calendar, Shield, EyeOff,
+  FileBadge, ChevronRight, CheckCircle2, ArrowLeft, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button, IconButton, Spinner } from '@/components/ui';
 
 export default function AssignExamModal({ classId, isOpen, onClose, editData }: any) {
   const { user } = useAuth();
@@ -161,68 +162,68 @@ export default function AssignExamModal({ classId, isOpen, onClose, editData }: 
 
   return createPortal(
     <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center p-0 sm:p-6">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-      
-      <div className="relative bg-white rounded-t-[2rem] sm:rounded-[2rem] w-full max-w-2xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300">
-        
+      <div className="absolute inset-0 bg-scrim backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+
+      <div className="relative bg-surface-container-low rounded-t-m3-xl sm:rounded-m3-xl w-full max-w-2xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] shadow-elev-3 animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300">
+
         {/* HEADER */}
-        <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+        <div className="px-5 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low shrink-0">
           <div className="flex items-center gap-3">
              {step === 2 && !editData ? (
-               <button onClick={() => setStep(1)} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-500 active:scale-95 transition-colors"><ArrowLeft size={18} /></button>
+               <IconButton aria-label="Orqaga" onClick={() => setStep(1)}><ArrowLeft size={18} /></IconButton>
              ) : (
-                <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shadow-sm"><FileBadge size={20} strokeWidth={2.5} /></div>
+                <div className="w-10 h-10 rounded-m3-md bg-primary-container text-on-primary-container flex items-center justify-center shadow-elev-1"><FileBadge size={20} strokeWidth={2.5} /></div>
              )}
-            <h2 className="text-[16px] font-black text-slate-900 uppercase tracking-tight">
+            <h2 className="text-[16px] font-black text-on-surface uppercase tracking-tight">
               {editData ? "Imtihonni Tahrirlash" : (step === 1 ? "Imtihonni tanlang" : "Sozlamalar")}
             </h2>
           </div>
-          <button onClick={onClose} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={18}/></button>
+          <IconButton aria-label="Yopish" onClick={onClose}><X size={18}/></IconButton>
         </div>
 
         {/* BODY */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAFAFA] space-y-6 custom-scrollbar pb-20 sm:pb-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-surface space-y-6 custom-scrollbar pb-20 sm:pb-8">
             {step === 1 && !editData ? (
             <div className="space-y-4">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                <input 
-                  type="text" 
-                  placeholder="Qidiruv..." 
-                  value={searchQuery} 
-                  onChange={(e) => setSearchQuery(e.target.value)} 
-                  className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200/80 rounded-2xl text-[14px] font-bold outline-none focus:border-rose-400 shadow-sm transition-colors" 
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" size={18}/>
+                <input
+                  type="text"
+                  placeholder="Qidiruv..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-lg text-[14px] font-bold text-on-surface outline-none focus:border-primary shadow-elev-1 transition-colors"
                 />
               </div>
-              
+
               <div className="space-y-2.5">
                 {loading && exams.length === 0 ? (
-                  <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-rose-500" /></div>
+                  <div className="py-10 flex justify-center"><Spinner /></div>
                 ) : (
                   <>
                     {filteredExams.map(exam => (
-                      <div key={exam.id} onClick={() => setSelectedExam(exam)} className={`p-4 rounded-2xl border transition-all cursor-pointer flex justify-between items-center active:scale-[0.98] ${selectedExam?.id === exam.id ? 'border-rose-500 bg-rose-50 shadow-sm ring-2 ring-rose-500/20' : 'border-slate-200/80 bg-white hover:border-rose-300'}`}>
+                      <div key={exam.id} onClick={() => setSelectedExam(exam)} className={`p-4 rounded-m3-lg border transition-all cursor-pointer flex justify-between items-center active:scale-[0.98] ${selectedExam?.id === exam.id ? 'border-primary bg-primary-container shadow-elev-1 ring-2 ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)]' : 'border-outline-variant bg-surface-container-lowest hover:border-primary'}`}>
                         <div className="min-w-0 pr-4">
-                          <p className="font-black text-[14px] text-slate-800 truncate">{exam.title}</p>
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">{exam.assessmentType} • {exam.questionCount} Savol</p>
+                          <p className="font-black text-[14px] text-on-surface truncate">{exam.title}</p>
+                          <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mt-1">{exam.assessmentType} • {exam.questionCount} Savol</p>
                         </div>
-                        {selectedExam?.id === exam.id && <CheckCircle2 size={20} className="text-rose-500 shrink-0" />}
+                        {selectedExam?.id === exam.id && <CheckCircle2 size={20} className="text-primary shrink-0" />}
                       </div>
                     ))}
 
                     {hasMore && !searchQuery && (
-                      <button 
-                        onClick={loadMoreExams} 
+                      <button
+                        onClick={loadMoreExams}
                         disabled={loadingMore}
-                        className="w-full py-4 mt-2 bg-white border-2 border-dashed border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-500 font-bold rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 text-[13px]"
+                        className="w-full py-4 mt-2 bg-surface-container-lowest border-2 border-dashed border-outline-variant hover:border-outline hover:bg-surface-container text-on-surface-variant font-bold rounded-m3-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-[13px]"
                       >
-                        {loadingMore ? <Loader2 className="animate-spin" size={16}/> : <RefreshCw size={16}/>}
+                        {loadingMore ? <Spinner size={16}/> : <RefreshCw size={16}/>}
                         Yana yuklash
                       </button>
                     )}
-                    
+
                     {searchQuery && filteredExams.length === 0 && (
-                       <p className="text-center text-[12px] font-bold text-slate-400 py-6">Yuklanganlar orasidan topilmadi. Qidiruvni tozalab "Yana yuklash" tugmasini bosing.</p>
+                       <p className="text-center text-[12px] font-bold text-on-surface-variant py-6">Yuklanganlar orasidan topilmadi. Qidiruvni tozalab "Yana yuklash" tugmasini bosing.</p>
                     )}
                   </>
                 )}
@@ -230,13 +231,13 @@ export default function AssignExamModal({ classId, isOpen, onClose, editData }: 
             </div>
           ) : (
             <div className="space-y-5 animate-in slide-in-from-right-5 duration-300">
-              <div className="bg-white p-5 rounded-[1.5rem] border border-slate-200/80 shadow-sm space-y-4">
-                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Calendar size={14}/> Vaqt va Davomiylik</h3>
-                
+              <div className="bg-surface-container-lowest p-5 rounded-m3-lg border border-outline-variant shadow-elev-1 space-y-4">
+                <h3 className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5"><Calendar size={14}/> Vaqt va Davomiylik</h3>
+
                 {/* 🟢 START TIME WITH QUICK SELECT */}
                 <div>
-                  <label className="block text-[12px] font-bold text-slate-700 mb-2 ml-1">Boshlanish vaqti</label>
-                  <input type="datetime-local" value={examDate} onChange={e => setExamDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-bold text-slate-800 outline-none focus:border-rose-400 transition-colors" />
+                  <label className="block text-[12px] font-bold text-on-surface mb-2 ml-1">Boshlanish vaqti</label>
+                  <input type="datetime-local" value={examDate} onChange={e => setExamDate(e.target.value)} className="w-full bg-surface-container border border-outline-variant p-3 rounded-m3-md font-bold text-on-surface outline-none focus:border-primary transition-colors" />
                   <div className="flex flex-wrap gap-2 mt-2.5">
                     {[
                       { label: '+10 daq', val: 10 },
@@ -244,11 +245,11 @@ export default function AssignExamModal({ classId, isOpen, onClose, editData }: 
                       { label: '+2 soat', val: 120 },
                       { label: '+24 soat', val: 1440 }
                     ].map(opt => (
-                      <button 
-                        key={opt.label} 
-                        type="button" 
-                        onClick={() => setQuickStartTime(opt.val)} 
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-black rounded-lg transition-all active:scale-95 border border-slate-200/60"
+                      <button
+                        key={opt.label}
+                        type="button"
+                        onClick={() => setQuickStartTime(opt.val)}
+                        className="px-3 py-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant text-[11px] font-black rounded-m3-sm transition-all active:scale-95 border border-outline-variant"
                       >
                         {opt.label}
                       </button>
@@ -257,19 +258,19 @@ export default function AssignExamModal({ classId, isOpen, onClose, editData }: 
                 </div>
 
                 {/* 🟢 DURATION WITH QUICK SELECT */}
-                <div className="pt-3 border-t border-slate-100">
-                  <label className="block text-[12px] font-bold text-slate-700 mb-2 ml-1">Davomiyligi (minut)</label>
-                  <input type="number" min="5" max="300" value={duration} onChange={e => setDuration(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-bold text-slate-800 outline-none focus:border-rose-400 transition-colors" />
+                <div className="pt-3 border-t border-outline-variant">
+                  <label className="block text-[12px] font-bold text-on-surface mb-2 ml-1">Davomiyligi (minut)</label>
+                  <input type="number" min="5" max="300" value={duration} onChange={e => setDuration(Number(e.target.value))} className="w-full bg-surface-container border border-outline-variant p-3 rounded-m3-md font-bold text-on-surface outline-none focus:border-primary transition-colors" />
                   <div className="flex flex-wrap gap-2 mt-2.5">
                     {[30, 45, 60, 90, 120].map(val => (
-                      <button 
-                        key={val} 
-                        type="button" 
-                        onClick={() => setDuration(val)} 
-                        className={`px-3 py-1.5 text-[11px] font-black rounded-lg transition-all active:scale-95 border ${
-                          duration === val 
-                            ? 'bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-500/20' 
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200/60'
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setDuration(val)}
+                        className={`px-3 py-1.5 text-[11px] font-black rounded-m3-sm transition-all active:scale-95 border ${
+                          duration === val
+                            ? 'bg-primary text-on-primary border-primary shadow-elev-1'
+                            : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant border-outline-variant'
                         }`}
                       >
                         {val === 60 ? '1 soat' : val === 120 ? '2 soat' : `${val} daq`}
@@ -279,15 +280,15 @@ export default function AssignExamModal({ classId, isOpen, onClose, editData }: 
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-[1.5rem] border border-slate-200/80 shadow-sm space-y-4">
-                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Shield size={14}/> Xavfsizlik</h3>
+              <div className="bg-surface-container-lowest p-5 rounded-m3-lg border border-outline-variant shadow-elev-1 space-y-4">
+                <h3 className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5"><Shield size={14}/> Xavfsizlik</h3>
                 <label className="flex items-center justify-between cursor-pointer group">
                   <div className="pr-4">
-                    <span className="text-[13px] md:text-[14px] font-black text-slate-700 flex items-center gap-1.5"><EyeOff size={16} className="text-indigo-500"/> Natijalarni Yashirish</span>
-                    <p className="text-[11px] font-bold text-slate-400 mt-1">O'quvchilar to'g'ri javoblarni ko'rmaydi.</p>
+                    <span className="text-[13px] md:text-[14px] font-black text-on-surface flex items-center gap-1.5"><EyeOff size={16} className="text-primary"/> Natijalarni Yashirish</span>
+                    <p className="text-[11px] font-bold text-on-surface-variant mt-1">O'quvchilar to'g'ri javoblarni ko'rmaydi.</p>
                   </div>
-                  <div className={`w-12 h-6 rounded-full p-1 transition-colors shrink-0 relative ${hideResults ? 'bg-rose-500' : 'bg-slate-200'}`}>
-                    <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${hideResults ? 'translate-x-6' : 'translate-x-0'}`}/>
+                  <div className={`w-12 h-6 rounded-full p-1 transition-colors shrink-0 relative ${hideResults ? 'bg-primary' : 'bg-surface-container-highest'}`}>
+                    <div className={`w-4 h-4 bg-surface-container-lowest rounded-full shadow-elev-1 transition-transform ${hideResults ? 'translate-x-6' : 'translate-x-0'}`}/>
                   </div>
                   <input type="checkbox" checked={hideResults} onChange={() => setHideResults(!hideResults)} className="hidden"/>
                 </label>
@@ -297,14 +298,21 @@ export default function AssignExamModal({ classId, isOpen, onClose, editData }: 
         </div>
 
         {/* FOOTER */}
-        <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex gap-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5 z-20 shadow-[0_-10px_30px_rgb(0,0,0,0.03)]">
+        <div className="p-4 sm:p-5 border-t border-outline-variant bg-surface-container-low flex gap-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5 z-20 shadow-[0_-10px_30px_rgb(0,0,0,0.03)]">
           {step === 1 && !editData ? (
-            <button disabled={!selectedExam} onClick={() => setStep(2)} className="w-full py-3.5 sm:py-4 bg-slate-900 hover:bg-black text-white font-black rounded-xl active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md">Keyingi qadam <ChevronRight size={18} /></button>
+            <button disabled={!selectedExam} onClick={() => setStep(2)} className="m3-interactive w-full py-3.5 sm:py-4 bg-inverse-surface text-inverse-on-surface font-black rounded-m3-md active:scale-95 disabled:bg-disabled-bg disabled:text-disabled-fg transition-all flex items-center justify-center gap-2 shadow-elev-2">Keyingi qadam <ChevronRight size={18} /></button>
           ) : (
-            <button disabled={loading} onClick={handleSave} className="w-full py-3.5 sm:py-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl active:scale-95 flex items-center justify-center gap-2 shadow-md shadow-rose-600/20 transition-all">
-              {loading && step === 2 ? <Loader2 className="animate-spin" /> : <FileBadge size={18} />}
+            <Button
+              variant="filled"
+              size="lg"
+              disabled={loading}
+              loading={loading && step === 2}
+              onClick={handleSave}
+              icon={<FileBadge size={18} />}
+              className="w-full"
+            >
               {editData ? "O'zgarishlarni Saqlash" : "Imtihonni rejalashtirish"}
-            </button>
+            </Button>
           )}
         </div>
       </div>

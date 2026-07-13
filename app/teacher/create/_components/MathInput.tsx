@@ -37,7 +37,7 @@ export default function MathInput({ value, onChange, placeholder = "" }: MathInp
   const MathFieldTag = 'math-field' as any;
 
   return (
-    <div className="w-full bg-slate-50 border border-slate-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
+    <div className="w-full bg-surface-container-high rounded-m3-md overflow-hidden focus-within:ring-2 focus-within:ring-primary transition-all">
       {/* 🟢 Use the casted variable instead of the raw string tag */}
       <MathFieldTag
         ref={mfRef}

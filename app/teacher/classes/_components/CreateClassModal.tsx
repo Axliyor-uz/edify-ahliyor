@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { X, Hash, CheckCircle, Loader2, BookOpen, Sparkles } from 'lucide-react';
+import { X, Hash, CheckCircle, BookOpen, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/AuthContext';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { Button, IconButton } from '@/components/ui';
 
 // --- TRANSLATION DICTIONARY ---
 const CREATE_CLASS_TRANSLATIONS = {
@@ -72,25 +73,22 @@ export default function CreateClassModal({ isOpen, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       {/* Soft Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-      
+      <div className="absolute inset-0 bg-scrim backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+
       {/* Premium Modal Container */}
-      <div className="relative bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in-95 fade-in duration-300 flex flex-col max-h-[90vh]">
-        
+      <div className="relative bg-surface-container-low rounded-m3-xl w-full max-w-md overflow-hidden shadow-elev-3 animate-in zoom-in-95 fade-in duration-300 flex flex-col max-h-[90vh]">
+
         {/* HEADER */}
-        <div className="px-6 md:px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+        <div className="px-6 md:px-8 py-5 border-b border-outline-variant flex justify-between items-center bg-surface-container-low shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+            <div className="w-10 h-10 rounded-m3-md bg-primary-container flex items-center justify-center text-on-primary-container shrink-0">
                <BookOpen size={20} strokeWidth={2.5} />
             </div>
-            <h2 className="text-[18px] font-black text-slate-900 tracking-tight">{t.title}</h2>
+            <h2 className="text-[18px] font-black text-on-surface tracking-tight">{t.title}</h2>
           </div>
-          <button 
-            onClick={onClose} 
-            className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors shrink-0"
-          >
-            <X size={16} strokeWidth={2.5} />
-          </button>
+          <IconButton size="sm" aria-label="Yopish" onClick={onClose} className="shrink-0">
+            <X strokeWidth={2.5} />
+          </IconButton>
         </div>
 
         {/* BODY */}
@@ -98,61 +96,62 @@ export default function CreateClassModal({ isOpen, onClose }: Props) {
           
           {/* Title Input */}
           <div>
-            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{t.nameLabel}</label>
-            <input 
-              type="text" 
+            <label className="block text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2">{t.nameLabel}</label>
+            <input
+              type="text"
               placeholder={t.namePlace}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/80 rounded-xl text-[14px] font-bold text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
+              className="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface placeholder:text-on-surface-variant focus:bg-surface-container-lowest focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] outline-none transition-all"
               autoFocus
             />
           </div>
 
           {/* Description Input */}
           <div>
-             <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{t.descLabel}</label>
-             <textarea 
+             <label className="block text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2">{t.descLabel}</label>
+             <textarea
                rows={2}
                placeholder={t.descPlace}
                value={description}
                onChange={(e) => setDescription(e.target.value)}
-               className="w-full px-4 py-3 bg-slate-50 border border-slate-200/80 rounded-xl text-[14px] font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 outline-none resize-none transition-all"
+               className="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[14px] font-medium text-on-surface placeholder:text-on-surface-variant focus:bg-surface-container-lowest focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] outline-none resize-none transition-all"
              />
           </div>
 
           {/* 🟢 UPGRADED: Glowing Join Code Box */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-50 to-violet-50 p-5 rounded-2xl border border-indigo-100/60 flex items-center justify-between group mt-2">
+          <div className="relative overflow-hidden bg-primary-container p-5 rounded-m3-lg flex items-center justify-between group mt-2">
             {/* Subtle background flare */}
-            <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/40 rounded-full blur-2xl pointer-events-none"></div>
-            
+            <div className="absolute -right-6 -top-6 w-32 h-32 bg-[color-mix(in_oklab,var(--m3-surface-container-lowest)_40%,transparent)] rounded-full blur-2xl pointer-events-none"></div>
+
             <div className="relative z-10">
-              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                <Sparkles size={12} className="text-indigo-500" /> {t.codeLabel}
+              <p className="text-[10px] font-black text-on-primary-container uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                <Sparkles size={12} className="text-primary" /> {t.codeLabel}
               </p>
-              <p className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 tracking-[0.2em] font-mono leading-none py-1 drop-shadow-sm">
+              <p className="text-2xl font-black text-on-primary-container tracking-[0.2em] font-mono leading-none py-1">
                 {joinCode}
               </p>
             </div>
-            
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-400 shadow-[0_2px_10px_rgb(99,102,241,0.1)] border border-indigo-50 relative z-10">
+
+            <div className="w-12 h-12 bg-surface-container-lowest rounded-m3-md flex items-center justify-center text-primary shadow-elev-1 relative z-10">
               <Hash size={24} strokeWidth={2.5} />
             </div>
           </div>
-          
-          <p className="text-[12px] font-medium text-center text-slate-500">{t.helpText}</p>
+
+          <p className="text-[12px] font-medium text-center text-on-surface-variant">{t.helpText}</p>
         </div>
 
         {/* FOOTER */}
-        <div className="px-6 md:px-8 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end shrink-0">
-          <button 
+        <div className="px-6 md:px-8 py-4 border-t border-outline-variant bg-surface-container flex justify-end shrink-0">
+          <Button
             onClick={handleCreate}
-            disabled={isSaving || !title.trim()}
-            className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 text-[14px]"
+            disabled={!title.trim()}
+            loading={isSaving}
+            icon={<CheckCircle strokeWidth={2.5} />}
+            className="w-full sm:w-auto"
           >
-            {isSaving ? <Loader2 className="animate-spin" size={18}/> : <CheckCircle size={18} strokeWidth={2.5}/>}
             {t.btn}
-          </button>
+          </Button>
         </div>
         
       </div>

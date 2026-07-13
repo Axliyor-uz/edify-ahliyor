@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Plus, CheckCircle, Settings2, Loader2, LayoutGrid, Eye, ChevronsLeftRight, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Plus, CheckCircle, Settings2, LayoutGrid, Eye, ChevronsLeftRight, ArrowUp, ArrowDown, X } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { saveIeltsReadingTest } from '@/services/ieltsService';
+import { Button, IconButton, StatusChip, EmptyState } from '@/components/ui';
 
 // ============================================================================
 // COMPONENT IMPORTS
@@ -344,34 +345,34 @@ export default function HighDensityBuilder() {
   };
 
   return (
-    <div className="h-screen bg-[#FDFDFD] text-slate-800 font-sans selection:bg-indigo-100 overflow-hidden flex flex-col text-[13px]">
+    <div className="h-screen bg-surface text-on-surface font-sans selection:bg-primary-container overflow-hidden flex flex-col text-[13px]">
       <AnimatePresence mode="wait">
-        
+
         {step === 1 && (
-          <motion.div key="setup" initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full px-3 bg-slate-50/40">
-            <div className="w-full max-w-sm bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm relative">
-              <Link href="/teacher/ielts/reading" className="absolute -top-10 left-0 text-slate-400 hover:text-slate-900 flex items-center gap-1.5 transition-colors font-medium">
+          <motion.div key="setup" initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full px-3 bg-surface">
+            <div className="w-full max-w-sm bg-surface-container-low border border-outline-variant p-8 rounded-m3-xl shadow-elev-1 relative">
+              <Link href="/teacher/ielts/reading" className="absolute -top-10 left-0 text-on-surface-variant hover:text-on-surface flex items-center gap-1.5 transition-colors font-medium">
                 <ArrowLeft size={15}/> Ortga
               </Link>
               <div className="flex flex-col items-center text-center gap-3 mb-8">
-                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]"><Settings2 size={24} strokeWidth={2.5} /></div>
-                <div><h2 className="text-[18px] font-black tracking-tight text-slate-900">{t.setup}</h2><p className="text-[12px] text-slate-500 font-medium mt-0.5">{t.desc}</p></div>
+                <div className="w-14 h-14 bg-primary-container rounded-m3-lg flex items-center justify-center text-on-primary-container"><Settings2 size={24} strokeWidth={2.5} /></div>
+                <div><h2 className="text-[18px] font-black tracking-tight text-on-surface">{t.setup}</h2><p className="text-[12px] text-on-surface-variant font-medium mt-0.5">{t.desc}</p></div>
               </div>
               <div className="space-y-5">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Test Title</label>
-                  <input type="text" value={meta.title} onChange={e => setMeta({...meta, title: e.target.value})} placeholder={t.title} className="w-full bg-slate-50 border border-slate-200 px-4 py-3.5 rounded-xl text-[14px] font-semibold focus:outline-none focus:border-indigo-400 focus:bg-white transition-colors text-slate-800 placeholder:text-slate-300 shadow-sm" autoFocus />
+                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 ml-1">Test Title</label>
+                  <input type="text" value={meta.title} onChange={e => setMeta({...meta, title: e.target.value})} placeholder={t.title} className="w-full bg-surface-container border border-outline-variant px-4 py-3.5 rounded-m3-md text-[14px] font-semibold focus:outline-none focus:border-primary focus:bg-surface-container-lowest transition-colors text-on-surface placeholder:text-on-surface-variant shadow-elev-1" autoFocus />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Time Limit</label>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between focus-within:border-indigo-400 focus-within:bg-white transition-colors shadow-sm">
-                    <span className="text-[13px] text-slate-500 font-bold">{t.time}</span>
-                    <input type="number" value={meta.time} onChange={e => setMeta({...meta, time: +e.target.value})} className="w-16 bg-transparent text-right text-[15px] font-black outline-none text-indigo-600" />
+                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 ml-1">Time Limit</label>
+                  <div className="bg-surface-container border border-outline-variant rounded-m3-md px-4 py-3 flex items-center justify-between focus-within:border-primary focus-within:bg-surface-container-lowest transition-colors shadow-elev-1">
+                    <span className="text-[13px] text-on-surface-variant font-bold">{t.time}</span>
+                    <input type="number" value={meta.time} onChange={e => setMeta({...meta, time: +e.target.value})} className="w-16 bg-transparent text-right text-[15px] font-black outline-none text-primary" />
                   </div>
                 </div>
-                <button onClick={handleInitialize} disabled={!meta.title} className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-[14px] flex items-center justify-center gap-2 transition-colors disabled:opacity-40 mt-4 shadow-sm shadow-indigo-600/20 active:scale-[0.98]">
+                <Button variant="filled" size="lg" onClick={handleInitialize} disabled={!meta.title} className="w-full mt-4">
                   {t.next} <ArrowRight size={18} />
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>
@@ -381,31 +382,31 @@ export default function HighDensityBuilder() {
           <motion.div key="editor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full">
             
             {/* 🌟 REDUCED HEADER HEIGHT & PADDING */}
-            <header className="flex-none h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-between z-40 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+            <header className="flex-none h-12 bg-surface-container-low border-b border-outline-variant px-4 flex items-center justify-between z-40 shadow-elev-1">
               <div className="flex items-center gap-4">
-                <button onClick={() => setStep(1)} className="text-slate-400 hover:text-slate-900 transition-colors p-1 rounded hover:bg-slate-100"><ArrowLeft size={16} /></button>
-                <h1 className="font-black text-[13px] text-slate-900 max-w-[200px] md:max-w-[300px] truncate">{meta.title}</h1>
-                
-                <div className={`text-[10px] font-black uppercase px-2 py-0.5 rounded flex items-center gap-1.5 select-none transition-colors border ${totalQuestionsCount === 40 ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                <IconButton aria-label="Ortga" size="sm" onClick={() => setStep(1)}><ArrowLeft size={16} /></IconButton>
+                <h1 className="font-black text-[13px] text-on-surface max-w-[200px] md:max-w-[300px] truncate">{meta.title}</h1>
+
+                <StatusChip tone={totalQuestionsCount === 40 ? 'success' : 'warning'} className="text-[10px] font-black uppercase select-none">
                   <span>{meta.time}M</span><span>•</span><span>{totalQuestionsCount} / 40 Qs</span>
-                </div>
+                </StatusChip>
               </div>
               
               <div className="flex items-center gap-5">
                 
                 {/* 🌟 PASSAGE TABS WITH DELETE FUNCTIONALITY */}
-                <div className="flex bg-slate-50 p-1 rounded-lg border border-slate-200/60 shadow-sm gap-1">
+                <div className="flex bg-surface-container p-1 rounded-m3-sm border border-outline-variant shadow-elev-1 gap-1">
                   {passages.map((p, idx) => (
-                    <div key={p.id} className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all group/tab relative ${activeTab === idx ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
+                    <div key={p.id} className={`flex items-center gap-1 px-2.5 py-1 rounded-m3-sm transition-all group/tab relative ${activeTab === idx ? 'bg-surface-container-lowest text-primary shadow-elev-1 border border-outline-variant' : 'text-on-surface-variant hover:bg-state-hover hover:text-on-surface'}`}>
                       <button onClick={() => setActiveTab(idx)} className="text-[11px] font-black uppercase tracking-wider">
                         Passage {p.passage_number}
                       </button>
-                      
+
                       {passages.length > 1 && (
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); deletePassage(idx); }} 
-                          className={`w-4 h-4 rounded-full flex items-center justify-center transition-colors 
-                            ${activeTab === idx ? 'text-indigo-300 hover:bg-rose-100 hover:text-rose-600' : 'opacity-0 group-hover/tab:opacity-100 text-slate-400 hover:bg-rose-100 hover:text-rose-600'}`}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deletePassage(idx); }}
+                          className={`w-4 h-4 rounded-full flex items-center justify-center transition-colors
+                            ${activeTab === idx ? 'text-on-surface-variant hover:bg-error-container hover:text-on-error-container' : 'opacity-0 group-hover/tab:opacity-100 text-on-surface-variant hover:bg-error-container hover:text-on-error-container'}`}
                           title="Delete Passage"
                         >
                           <X size={10} strokeWidth={3} />
@@ -414,53 +415,51 @@ export default function HighDensityBuilder() {
                     </div>
                   ))}
                   {passages.length < 3 && (
-                    <button onClick={() => setPassages([...passages, { id: `p_${Date.now()}`, passage_number: passages.length + 1, title: '', instruction: '', blocks: [{ type: 'text', label: 'A', content: '' }], questions: [] }])} className="w-6 h-full flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors ml-1"><Plus size={14}/></button>
+                    <button onClick={() => setPassages([...passages, { id: `p_${Date.now()}`, passage_number: passages.length + 1, title: '', instruction: '', blocks: [{ type: 'text', label: 'A', content: '' }], questions: [] }])} className="w-6 h-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors ml-1"><Plus size={14}/></button>
                   )}
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setIsPreviewMode(true)} className="h-7 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[11px] font-bold rounded flex items-center gap-1.5 transition-colors active:scale-95 shadow-sm">
-                    <Eye size={14} /> <span className="hidden md:inline">{t.preview}</span>
-                  </button>
-                  <button onClick={handleSaveTest} disabled={isSaving} className="h-7 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded flex items-center gap-1.5 transition-colors disabled:opacity-40 shadow-sm shadow-indigo-600/20 active:scale-95">
-                    {isSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />} 
+                  <Button variant="outlined" size="sm" icon={<Eye size={14} />} onClick={() => setIsPreviewMode(true)}>
+                    <span className="hidden md:inline">{t.preview}</span>
+                  </Button>
+                  <Button variant="filled" size="sm" icon={<CheckCircle size={13} />} loading={isSaving} onClick={handleSaveTest}>
                     <span className="hidden md:inline">{isSaving ? t.saving : t.save}</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             </header>
 
             <main className="flex-1 flex overflow-hidden">
               
-              <div style={{ width: `${leftWidth}%` }} className="h-full overflow-y-auto border-r border-slate-200 bg-white custom-scrollbar relative">
+              <div style={{ width: `${leftWidth}%` }} className="h-full overflow-y-auto border-r border-outline-variant bg-surface-container-lowest custom-scrollbar relative">
                 <PassagePane passage={passages[activeTab]} update={updateActivePassage} />
               </div>
 
-              <div 
+              <div
                 onMouseDown={handleMouseDown}
-                className="w-2 bg-slate-50 border-x border-slate-200 hover:bg-slate-100 cursor-col-resize transition-colors flex-shrink-0 flex items-center justify-center z-10"
+                className="w-2 bg-surface-container border-x border-outline-variant hover:bg-surface-container-high cursor-col-resize transition-colors flex-shrink-0 flex items-center justify-center z-10"
               >
-                <div className="w-0.5 h-6 bg-slate-300 rounded-full"></div>
+                <div className="w-0.5 h-6 bg-outline rounded-full"></div>
               </div>
 
-              <div style={{ width: `${100 - leftWidth}%` }} className="h-full overflow-hidden bg-[#FAFAFA] relative flex flex-col">
-                
+              <div style={{ width: `${100 - leftWidth}%` }} className="h-full overflow-hidden bg-surface relative flex flex-col">
+
                 <div id="questions-container" className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 pb-40 space-y-6">
-                  
+
                   {passages[activeTab].questions.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 pb-20">
-                       <LayoutGrid size={40} className="mb-3" strokeWidth={1.5} />
-                       <p className="font-bold text-[13px] tracking-tight">No questions added yet.</p>
+                    <div className="h-full flex flex-col items-center justify-center pb-20">
+                       <EmptyState icon={<LayoutGrid strokeWidth={1.5} />} title="No questions added yet." />
                     </div>
                   ) : (
                     passages[activeTab].questions.map((qb: any, qbIdx: number) => {
                       const props = { qb, qbIdx, updateBlock, deleteBlock };
                       return (
                         <div key={qbIdx} className="relative group/wrapper">
-                          
+
                           <div className="absolute -left-10 top-2 opacity-0 group-hover/wrapper:opacity-100 flex flex-col gap-1 transition-opacity z-10">
-                            <button onClick={() => moveBlockUp(qbIdx)} disabled={qbIdx === 0} className="p-1.5 bg-white border border-slate-200 rounded shadow-sm text-slate-400 hover:text-indigo-600 disabled:opacity-30"><ArrowUp size={14}/></button>
-                            <button onClick={() => moveBlockDown(qbIdx)} disabled={qbIdx === passages[activeTab].questions.length - 1} className="p-1.5 bg-white border border-slate-200 rounded shadow-sm text-slate-400 hover:text-indigo-600 disabled:opacity-30"><ArrowDown size={14}/></button>
+                            <button onClick={() => moveBlockUp(qbIdx)} disabled={qbIdx === 0} className="p-1.5 bg-surface-container-lowest border border-outline-variant rounded-m3-sm shadow-elev-1 text-on-surface-variant hover:text-primary disabled:opacity-30"><ArrowUp size={14}/></button>
+                            <button onClick={() => moveBlockDown(qbIdx)} disabled={qbIdx === passages[activeTab].questions.length - 1} className="p-1.5 bg-surface-container-lowest border border-outline-variant rounded-m3-sm shadow-elev-1 text-on-surface-variant hover:text-primary disabled:opacity-30"><ArrowDown size={14}/></button>
                           </div>
 
                           {qb.type === 'true_false_not_given' && <TFNGBlock {...props} />}
@@ -486,9 +485,9 @@ export default function HighDensityBuilder() {
                 {/* 🌟 FIXED ADD BLOCK MENU */}
                 <div className="absolute bottom-6 left-0 right-0 flex justify-center z-20 pointer-events-none">
                   <div className="pointer-events-auto relative">
-                    <button 
+                    <button
                       onClick={() => setShowAddMenu(!showAddMenu)}
-                      className="h-11 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-full font-bold text-[12px] flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.15)] transition-all active:scale-95"
+                      className="m3-interactive h-11 px-5 bg-inverse-surface text-inverse-on-surface rounded-full font-bold text-[12px] flex items-center gap-2 shadow-elev-3 transition-all active:scale-95"
                     >
                       <Plus size={14} className={`transition-transform duration-300 ${showAddMenu ? 'rotate-45' : 'rotate-0'}`} /> {t.addBlock}
                     </button>
@@ -502,9 +501,9 @@ export default function HighDensityBuilder() {
                           exit={{ opacity: 0, y: 15, x: "-50%", scale: 0.95 }} 
                           transition={{ duration: 0.15, ease: "easeOut" }}
                           style={{ transformOrigin: "bottom center" }}
-                          className="absolute bottom-[130%] left-1/2 w-max max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/80 p-3 shadow-[0_20px_50px_rgb(0,0,0,0.15)] z-50"
+                          className="absolute bottom-[130%] left-1/2 w-max max-w-[calc(100vw-2rem)] bg-surface-container-low rounded-m3-lg border border-outline-variant p-3 shadow-elev-3 z-50"
                         >
-                          <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 px-2">Select Question Type</div>
+                          <div className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-2 px-2">Select Question Type</div>
                           <div className="grid grid-cols-2 gap-1.5 w-[380px]">
                             {[
                               { type: 'matching_headings', label: 'Matching Headings' },
@@ -521,7 +520,7 @@ export default function HighDensityBuilder() {
                               { type: 'flowchart_completion', label: 'Flowchart Completion' },
                               { type: 'diagram_completion', label: 'Diagram Labeling' }
                             ].map((item) => (
-                              <button key={item.type} onClick={() => addBlock(item.type)} className="text-left px-3 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-100 hover:border-indigo-200 rounded-lg transition-colors truncate">
+                              <button key={item.type} onClick={() => addBlock(item.type)} className="text-left px-3 py-2 text-[11px] font-bold text-on-surface bg-surface-container hover:bg-primary-container hover:text-on-primary-container border border-outline-variant hover:border-primary rounded-m3-sm transition-colors truncate">
                                 {item.label}
                               </button>
                             ))}

@@ -5,15 +5,14 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy, limit, startAfter } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import { useTeacherLanguage } from '@/app/teacher/layout'; 
-import { 
-  Sparkles, ChevronDown, Loader2, BookOpen, FileText, BrainCircuit, 
+import {
+  Sparkles, ChevronDown, BookOpen, FileText, BrainCircuit,
   AlertCircle, Users, XCircle, RefreshCcw, Send, MessageSquare, Clock, ArrowLeft,
   // 🎙️ VOICE ICONS ADDED HERE
   Mic, Volume2, Square
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { remoteConfig } from '@/lib/firebase';
-import { fetchAndActivate, getNumber } from 'firebase/remote-config';
+import { Button, IconButton, Spinner } from '@/components/ui';
 
 const AI_ANALYTICS_TRANSLATIONS = {
   uz: {
@@ -195,14 +194,6 @@ export default function AIAnalyticsPage() {
     setIsGenerating(true); setChatHistory([]); setApiError('NONE'); setCurrentSessionId(null);
 
     try {
-      let dynamicDailyLimit = 15; 
-      if (remoteConfig) {
-         try {
-           await fetchAndActivate(remoteConfig);
-           dynamicDailyLimit = getNumber(remoteConfig, 'ai_daily_limit');
-         } catch(e) { console.error("Remote Config Error:", e); }
-      }
-
       let payloadForAI: any = {};
       let title = "Analysis";
 
@@ -233,9 +224,15 @@ export default function AIAnalyticsPage() {
 
       setCurrentPayload(payloadForAI);
 
+      // The server derives the uid and the daily cap itself (docs/AI.md) — it only
+      // trusts the ID token, never a uid or limit sent from here.
       const response = await fetch('/api/analyze', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: "initial", promptData: payloadForAI, lang, analysisMode, userId: user?.uid, dailyLimit: dynamicDailyLimit })
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await user!.getIdToken()}`,
+        },
+        body: JSON.stringify({ action: "initial", promptData: payloadForAI, lang, analysisMode })
       });
 
       if (response.status === 429) { setApiError('LIMIT'); setIsGenerating(false); return; }
@@ -262,18 +259,14 @@ export default function AIAnalyticsPage() {
     setChatHistory(tempHistory); setChatInput(''); setIsChatting(true); setApiError('NONE');
 
     try {
-      let dynamicDailyLimit = 15; 
-      if (remoteConfig) {
-         try {
-           await fetchAndActivate(remoteConfig);
-           dynamicDailyLimit = getNumber(remoteConfig, 'ai_daily_limit');
-         } catch(e) { console.error("Remote Config Error:", e); }
-      }
-
       const formattedHistory = chatHistory.map(msg => ({ role: msg.role, parts: [{ text: msg.text }] }));
       const response = await fetch('/api/analyze', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: "chat", promptData: currentPayload || {}, lang, analysisMode, message: textToSend, history: formattedHistory, userId: user?.uid, dailyLimit: dynamicDailyLimit })
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await user!.getIdToken()}`,
+        },
+        body: JSON.stringify({ action: "chat", promptData: currentPayload || {}, lang, analysisMode, message: textToSend, history: formattedHistory })
       });
 
       if (response.status === 429) { setApiError('LIMIT'); setIsChatting(false); return; }
@@ -364,22 +357,22 @@ export default function AIAnalyticsPage() {
   };
   // =========================================================================
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={40}/></div>;
+  if (loading) return <div className="h-screen flex items-center justify-center"><Spinner size={40}/></div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans text-slate-800 pb-20 relative">
+    <div className="min-h-screen bg-surface p-6 md:p-8 font-sans text-on-surface pb-20 relative">
       
       {/* HEADER & HISTORY TOGGLE */}
       <div className="max-w-4xl mx-auto mb-10 flex flex-col md:flex-row items-center justify-between relative">
         {!showHistoryView && (
-           <button onClick={openHistoryView} className="absolute top-0 right-0 p-3 bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 rounded-2xl shadow-sm transition-all flex items-center gap-2 font-bold text-sm">
+           <button onClick={openHistoryView} className="m3-interactive absolute top-0 right-0 p-3 bg-surface-container-low border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary rounded-m3-lg shadow-elev-1 transition-all flex items-center gap-2 font-bold text-sm">
              <Clock size={18} /> <span className="hidden md:inline">{t.modeHistory}</span>
            </button>
         )}
         <div className="text-center w-full mt-8 md:mt-0">
-          <div className="inline-flex items-center justify-center p-4 bg-indigo-100 text-indigo-600 rounded-full mb-4"><BrainCircuit size={40} /></div>
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-3">{t.title}</h1>
-          <p className="text-slate-500 font-medium text-lg">{t.subtitle}</p>
+          <div className="inline-flex items-center justify-center p-4 bg-primary-container text-on-primary-container rounded-full mb-4"><BrainCircuit size={40} /></div>
+          <h1 className="text-3xl md:text-4xl font-black text-on-surface mb-3">{t.title}</h1>
+          <p className="text-on-surface-variant font-medium text-lg">{t.subtitle}</p>
         </div>
       </div>
 
@@ -387,28 +380,28 @@ export default function AIAnalyticsPage() {
         
         {/* === HISTORY VIEW === */}
         {showHistoryView ? (
-          <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl border border-slate-100 animate-in fade-in zoom-in duration-300">
-             <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
-                <h3 className="font-black text-xl text-slate-800 flex items-center gap-2"><Clock className="text-indigo-500"/> {t.modeHistory}</h3>
-                <button onClick={() => {setShowHistoryView(false); setChatHistory([]);}} className="text-slate-400 hover:text-slate-700 flex items-center gap-1 font-bold text-sm bg-slate-100 px-4 py-2 rounded-xl"><ArrowLeft size={16}/> {t.backToChat}</button>
+          <div className="bg-surface-container-low p-6 md:p-8 rounded-m3-xl shadow-elev-3 border border-outline-variant animate-in fade-in zoom-in duration-300">
+             <div className="flex items-center justify-between mb-6 border-b border-outline-variant pb-4">
+                <h3 className="font-black text-xl text-on-surface flex items-center gap-2"><Clock className="text-primary"/> {t.modeHistory}</h3>
+                <Button variant="tonal" size="sm" icon={<ArrowLeft />} onClick={() => {setShowHistoryView(false); setChatHistory([]);}}>{t.backToChat}</Button>
              </div>
-             
-             {loadingHistory && historySessions.length === 0 ? <div className="py-8 flex justify-center"><Loader2 className="animate-spin text-slate-400"/></div> : 
-              historySessions.length === 0 ? <p className="text-center text-slate-500 py-8 font-medium">{t.historyEmpty}</p> : (
+
+             {loadingHistory && historySessions.length === 0 ? <div className="py-8 flex justify-center"><Spinner/></div> :
+              historySessions.length === 0 ? <p className="text-center text-on-surface-variant py-8 font-medium">{t.historyEmpty}</p> : (
                <div className="space-y-4">
                  {historySessions.map(session => (
-                   <div key={session.id} onClick={() => { setChatHistory(session.messages); setCurrentSessionId(session.id); setShowHistoryView(false); }} className="group p-5 bg-slate-50 rounded-2xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 border border-transparent transition-all flex justify-between items-center shadow-sm">
+                   <div key={session.id} onClick={() => { setChatHistory(session.messages); setCurrentSessionId(session.id); setShowHistoryView(false); }} className="group p-5 bg-surface-container rounded-m3-lg cursor-pointer hover:bg-surface-container-high hover:border-outline-variant border border-transparent transition-all flex justify-between items-center shadow-elev-1">
                      <div>
-                        <p className="font-bold text-slate-800 group-hover:text-indigo-700 text-lg mb-1">{session.title}</p>
-                        <p className="text-sm text-slate-500 font-medium">{new Date(session.createdAt).toLocaleString()}</p>
+                        <p className="font-bold text-on-surface group-hover:text-primary text-lg mb-1">{session.title}</p>
+                        <p className="text-sm text-on-surface-variant font-medium">{new Date(session.createdAt).toLocaleString()}</p>
                      </div>
-                     <ChevronDown className="text-slate-300 -rotate-90 group-hover:text-indigo-400"/>
+                     <ChevronDown className="text-outline -rotate-90 group-hover:text-primary"/>
                    </div>
                  ))}
                  {hasMoreHistory && (
-                    <button onClick={() => fetchHistoryPage(true)} disabled={loadingHistory} className="w-full py-3 mt-4 text-indigo-600 font-bold bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors flex justify-center items-center gap-2">
-                       {loadingHistory ? <Loader2 className="animate-spin" size={18}/> : t.loadMore}
-                    </button>
+                    <Button variant="tonal" className="w-full mt-4" loading={loadingHistory} onClick={() => fetchHistoryPage(true)}>
+                       {t.loadMore}
+                    </Button>
                  )}
                </div>
              )}
@@ -417,42 +410,42 @@ export default function AIAnalyticsPage() {
         /* === MAIN CREATION VIEW === */
         <>
           <div className="flex justify-center mb-6">
-            <div className="bg-slate-200/50 p-1.5 rounded-2xl flex items-center gap-1 shadow-inner">
-               <button onClick={() => { setAnalysisMode('assignment'); setChatHistory([]); setApiError('NONE'); }} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${analysisMode === 'assignment' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{t.modeAssign}</button>
-               <button onClick={() => { setAnalysisMode('student'); setChatHistory([]); setApiError('NONE'); }} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${analysisMode === 'student' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{t.modeStudent}</button>
+            <div className="bg-surface-container-high p-1.5 rounded-m3-lg flex items-center gap-1 shadow-inner">
+               <button onClick={() => { setAnalysisMode('assignment'); setChatHistory([]); setApiError('NONE'); }} className={`px-6 py-2.5 rounded-m3-md text-sm font-bold transition-all ${analysisMode === 'assignment' ? 'bg-surface-container-lowest text-primary shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>{t.modeAssign}</button>
+               <button onClick={() => { setAnalysisMode('student'); setChatHistory([]); setApiError('NONE'); }} className={`px-6 py-2.5 rounded-m3-md text-sm font-bold transition-all ${analysisMode === 'student' ? 'bg-surface-container-lowest text-primary shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>{t.modeStudent}</button>
             </div>
           </div>
 
-          <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-xl flex flex-col md:flex-row gap-6">
+          <div className="bg-surface-container-low p-6 md:p-8 rounded-m3-xl border border-outline-variant shadow-elev-3 flex flex-col md:flex-row gap-6">
             <div className="flex-1">
-              <label className="block text-sm font-bold text-slate-400 uppercase mb-2 flex items-center gap-2"><BookOpen size={16}/> {t.selectClass}</label>
+              <label className="block text-sm font-bold text-on-surface-variant uppercase mb-2 flex items-center gap-2"><BookOpen size={16}/> {t.selectClass}</label>
               <div className="relative">
-                <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="w-full pl-4 pr-10 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none appearance-none">
+                <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="w-full pl-4 pr-10 py-4 bg-surface-container border-2 border-outline-variant rounded-m3-md font-bold text-on-surface outline-none appearance-none">
                   {classes.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20}/>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" size={20}/>
               </div>
             </div>
 
             <div className="flex-1">
               {analysisMode === 'assignment' ? (
                 <>
-                  <label className="block text-sm font-bold text-slate-400 uppercase mb-2 flex items-center gap-2"><FileText size={16}/> {t.selectAssign}</label>
+                  <label className="block text-sm font-bold text-on-surface-variant uppercase mb-2 flex items-center gap-2"><FileText size={16}/> {t.selectAssign}</label>
                   <div className="relative">
-                    <select value={selectedAssignId} onChange={(e) => setSelectedAssignId(e.target.value)} disabled={assignments.length === 0} className="w-full pl-4 pr-10 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none appearance-none disabled:opacity-50">
+                    <select value={selectedAssignId} onChange={(e) => setSelectedAssignId(e.target.value)} disabled={assignments.length === 0} className="w-full pl-4 pr-10 py-4 bg-surface-container border-2 border-outline-variant rounded-m3-md font-bold text-on-surface outline-none appearance-none disabled:bg-disabled-bg disabled:text-disabled-fg">
                       {assignments.length === 0 ? <option value="">{t.emptyAssign}</option> : assignments.map(a => <option key={a.id} value={a.id}>{a.testTitle || a.title}</option>)}
                     </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20}/>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" size={20}/>
                   </div>
                 </>
               ) : (
                 <>
-                  <label className="block text-sm font-bold text-slate-400 uppercase mb-2 flex items-center gap-2"><Users size={16}/> {t.selectStudent}</label>
+                  <label className="block text-sm font-bold text-on-surface-variant uppercase mb-2 flex items-center gap-2"><Users size={16}/> {t.selectStudent}</label>
                   <div className="relative">
-                    <select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} disabled={students.length === 0} className="w-full pl-4 pr-10 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none appearance-none disabled:opacity-50">
+                    <select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} disabled={students.length === 0} className="w-full pl-4 pr-10 py-4 bg-surface-container border-2 border-outline-variant rounded-m3-md font-bold text-on-surface outline-none appearance-none disabled:bg-disabled-bg disabled:text-disabled-fg">
                       {students.length === 0 ? <option value="">{t.emptyStudent}</option> : students.map(s => <option key={s.id} value={s.id}>{s.displayName}</option>)}
                     </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20}/>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" size={20}/>
                   </div>
                 </>
               )}
@@ -461,9 +454,9 @@ export default function AIAnalyticsPage() {
 
           {chatHistory.length === 0 && (
             <div className="flex justify-center">
-              <button onClick={handleGenerateInsights} disabled={isGenerating || (analysisMode === 'assignment' && !selectedAssignId) || (analysisMode === 'student' && !selectedStudentId)} className="group relative px-8 py-4 bg-slate-900 text-white font-black text-lg rounded-2xl shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-3">
-                {isGenerating ? <><Loader2 className="animate-spin" size={24} /> Generating...</> : <><Sparkles className="text-amber-400" size={24} /> {t.generateBtn}</>}
-              </button>
+              <Button variant="filled" size="lg" icon={<Sparkles />} loading={isGenerating} onClick={handleGenerateInsights} disabled={isGenerating || (analysisMode === 'assignment' && !selectedAssignId) || (analysisMode === 'student' && !selectedStudentId)} className="font-black shadow-elev-2">
+                {isGenerating ? 'Generating...' : t.generateBtn}
+              </Button>
             </div>
           )}
         </>
@@ -471,17 +464,17 @@ export default function AIAnalyticsPage() {
 
         {/* ERROR ALERTS */}
         {apiError === 'LIMIT' && (
-          <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-200 text-center animate-in fade-in slide-in-from-bottom-4">
-            <AlertCircle size={32} className="text-amber-500 mx-auto mb-2"/>
-            <h2 className="text-xl font-black text-amber-900">{t.limitTitle}</h2>
-            <p className="text-amber-800 font-medium">{t.limitDesc}</p>
+          <div className="bg-warning-container p-6 rounded-m3-xl border border-warning text-center animate-in fade-in slide-in-from-bottom-4">
+            <AlertCircle size={32} className="text-warning mx-auto mb-2"/>
+            <h2 className="text-xl font-black text-on-warning-container">{t.limitTitle}</h2>
+            <p className="text-on-warning-container font-medium">{t.limitDesc}</p>
           </div>
         )}
 
         {/* THE CHAT UI */}
         {chatHistory.length > 0 && apiError !== 'LIMIT' && (
-          <div className="bg-white rounded-[2rem] border-2 border-indigo-100 shadow-2xl mt-8 relative flex flex-col animate-in fade-in slide-in-from-bottom-8">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+          <div className="bg-surface-container-low rounded-m3-xl border border-outline-variant shadow-elev-3 mt-8 relative flex flex-col animate-in fade-in slide-in-from-bottom-8">
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-secondary to-tertiary"></div>
             
             <div className="p-6 md:p-8 flex-1 space-y-6 max-h-[600px] overflow-y-auto">
             {chatHistory.map((msg, idx) => {
@@ -489,42 +482,42 @@ export default function AIAnalyticsPage() {
                 const isAI = msg.role === 'model';
                 return (
                   <div key={idx} className={`flex ${isAI ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[90%] md:max-w-[80%] p-6 rounded-[2rem] relative group ${isAI ? 'bg-white border-2 border-slate-100 text-slate-800 rounded-tl-sm shadow-sm' : 'bg-indigo-600 text-white rounded-tr-sm shadow-md'}`}>
-                      
-                      {isAI && idx === 1 && <h2 className="text-xl font-black mb-5 flex items-center gap-2"><Sparkles className="text-indigo-600" size={24}/> {t.resultTitle}</h2>}
-                      
-                      <div className={`prose max-w-none text-[15px] leading-relaxed font-medium ${isAI ? 'prose-slate' : 'text-white'}`}>
+                    <div className={`max-w-[90%] md:max-w-[80%] p-6 rounded-m3-xl relative group ${isAI ? 'bg-surface-container-high text-on-surface rounded-tl-m3-xs shadow-elev-1' : 'bg-primary text-on-primary rounded-tr-m3-xs shadow-elev-2'}`}>
+
+                      {isAI && idx === 1 && <h2 className="text-xl font-black mb-5 flex items-center gap-2"><Sparkles className="text-primary" size={24}/> {t.resultTitle}</h2>}
+
+                      <div className={`prose max-w-none text-[15px] leading-relaxed font-medium ${isAI ? 'text-on-surface' : 'text-on-primary'}`}>
                         {msg.text.split('\n').map((p, pIdx) => p.trim() !== '' && <p key={pIdx} className="mb-2">{p}</p>)}
                       </div>
 
                       {/* ========================================================= */}
                       {/* === 🎙️ PREMIUM VOICE ACTION BAR (Inside the bubble) === */}
                       {isAI && (
-                        <div className="mt-5 pt-4 border-t border-slate-100 flex items-center">
-                          <button 
+                        <div className="mt-5 pt-4 border-t border-outline-variant flex items-center">
+                          <button
                             onClick={() => handlePlayAudio(msg.text, idx)}
                             className={`
                               group flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-black transition-all duration-300 active:scale-95
-                              ${isPlaying === idx 
-                                ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] border border-indigo-500' 
-                                : 'bg-indigo-50/50 text-indigo-600 shadow-sm border border-indigo-100 hover:bg-white hover:shadow-md hover:border-indigo-300'}
+                              ${isPlaying === idx
+                                ? 'bg-primary text-on-primary shadow-elev-2 border border-primary'
+                                : 'bg-primary-container text-on-primary-container shadow-elev-1 border border-outline-variant hover:bg-surface-container-lowest hover:shadow-elev-2 hover:border-primary'}
                             `}
                           >
                             {isPlaying === idx ? (
                               <>
-                                <Square size={14} className="fill-white" />
+                                <Square size={14} className="fill-current" />
                                 <span>{t.stopVoice}</span>
                                 {/* Fake Animated Equalizer Waveform */}
                                 <div className="flex items-end gap-[3px] ml-1 h-3.5 opacity-90">
-                                  <div className="w-1 bg-white animate-[bounce_1s_infinite] h-full rounded-full"></div>
-                                  <div className="w-1 bg-white animate-[bounce_1s_infinite_0.2s] h-2/3 rounded-full"></div>
-                                  <div className="w-1 bg-white animate-[bounce_1s_infinite_0.4s] h-full rounded-full"></div>
+                                  <div className="w-1 bg-on-primary animate-[bounce_1s_infinite] h-full rounded-full"></div>
+                                  <div className="w-1 bg-on-primary animate-[bounce_1s_infinite_0.2s] h-2/3 rounded-full"></div>
+                                  <div className="w-1 bg-on-primary animate-[bounce_1s_infinite_0.4s] h-full rounded-full"></div>
                                 </div>
                               </>
                             ) : (
                               <>
-                                <div className="bg-indigo-100/80 p-1.5 rounded-full group-hover:bg-indigo-100 transition-colors">
-                                  <Volume2 size={16} className="text-indigo-600 group-hover:scale-110 transition-transform" />
+                                <div className="bg-[color-mix(in_oklab,var(--m3-primary)_15%,transparent)] p-1.5 rounded-full group-hover:bg-primary-container transition-colors">
+                                  <Volume2 size={16} className="text-primary group-hover:scale-110 transition-transform" />
                                 </div>
                                 <span>{t.playVoice}</span>
                               </>
@@ -539,7 +532,7 @@ export default function AIAnalyticsPage() {
                 );
               })}
               {isChatting && (
-                 <div className="flex justify-start"><div className="bg-slate-50 border border-slate-100 p-5 rounded-3xl rounded-tl-sm text-slate-400 flex items-center gap-2"><Loader2 className="animate-spin" size={18} /> AI is thinking...</div></div>
+                 <div className="flex justify-start"><div className="bg-surface-container border border-outline-variant p-5 rounded-m3-xl rounded-tl-m3-xs text-on-surface-variant flex items-center gap-2"><Spinner size={18} /> AI is thinking...</div></div>
               )}
               <div ref={chatEndRef} />
             </div>
@@ -547,30 +540,30 @@ export default function AIAnalyticsPage() {
             {/* QUICK CHIPS */}
             {!showHistoryView && (
               <div className="px-6 md:px-8 pt-4 pb-2 flex flex-wrap gap-2">
-                <span className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1 w-full mb-1"><Sparkles size={12}/> Suggestions</span>
+                <span className="text-xs font-bold text-on-surface-variant uppercase flex items-center gap-1 w-full mb-1"><Sparkles size={12}/> Suggestions</span>
                 {analysisMode === 'assignment' ? (
-                  <><button onClick={() => handleSendMessage(t.chipA1)} className="px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-bold rounded-full hover:bg-indigo-100">{t.chipA1}</button>
-                  <button onClick={() => handleSendMessage(t.chipA2)} className="px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-bold rounded-full hover:bg-indigo-100">{t.chipA2}</button></>
+                  <><button onClick={() => handleSendMessage(t.chipA1)} className="m3-interactive px-4 py-2 bg-primary-container text-on-primary-container text-sm font-bold rounded-full">{t.chipA1}</button>
+                  <button onClick={() => handleSendMessage(t.chipA2)} className="m3-interactive px-4 py-2 bg-primary-container text-on-primary-container text-sm font-bold rounded-full">{t.chipA2}</button></>
                 ) : (
-                  <><button onClick={() => handleSendMessage(t.chipS1)} className="px-4 py-2 bg-purple-50 text-purple-700 text-sm font-bold rounded-full hover:bg-purple-100">{t.chipS1}</button>
-                  <button onClick={() => handleSendMessage(t.chipS2)} className="px-4 py-2 bg-purple-50 text-purple-700 text-sm font-bold rounded-full hover:bg-purple-100">{t.chipS2}</button></>
+                  <><button onClick={() => handleSendMessage(t.chipS1)} className="m3-interactive px-4 py-2 bg-tertiary-container text-on-tertiary-container text-sm font-bold rounded-full">{t.chipS1}</button>
+                  <button onClick={() => handleSendMessage(t.chipS2)} className="m3-interactive px-4 py-2 bg-tertiary-container text-on-tertiary-container text-sm font-bold rounded-full">{t.chipS2}</button></>
                 )}
               </div>
             )}
 
-            <div className="p-6 md:p-8 pt-4 border-t border-slate-100 bg-white">
+            <div className="p-6 md:p-8 pt-4 border-t border-outline-variant bg-surface-container-low">
                <div className="relative flex items-center">
-                  <MessageSquare className="absolute left-4 text-slate-400" size={20} />
-                  
+                  <MessageSquare className="absolute left-4 text-on-surface-variant" size={20} />
+
                   {/* 🎙️ NOTE: If disabling voice, change pr-24 back to pr-14 in className below */}
-                  <input 
-                    type="text" 
-                    value={chatInput} 
-                    onChange={(e) => setChatInput(e.target.value)} 
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
-                    placeholder={isRecording ? "Eshitmoqdaman..." : t.chatPlaceholder} 
-                    disabled={isChatting || isTranscribing} 
-                    className={`w-full pl-12 pr-24 py-4 border-2 rounded-2xl font-medium outline-none transition-all ${isRecording ? 'bg-red-50 border-red-300 text-red-900 placeholder-red-400' : 'bg-slate-50 border-slate-100 focus:border-indigo-300'}`} 
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder={isRecording ? "Eshitmoqdaman..." : t.chatPlaceholder}
+                    disabled={isChatting || isTranscribing}
+                    className={`w-full pl-12 pr-24 py-4 border-2 rounded-m3-lg font-medium outline-none transition-all ${isRecording ? 'bg-error-container border-error text-on-error-container placeholder:text-on-error-container' : 'bg-surface-container border-outline-variant focus:border-primary'}`}
                   />
 
                   {/* ========================================================= */}
@@ -591,13 +584,15 @@ export default function AIAnalyticsPage() {
                   </div> */}
                   {/* ========================================================= */}
 
-                  <button 
-                    onClick={() => handleSendMessage()} 
-                    disabled={!chatInput.trim() || isChatting || isRecording || isTranscribing} 
-                    className="absolute right-2 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all"
+                  <IconButton
+                    variant="filled"
+                    aria-label="Yuborish"
+                    onClick={() => handleSendMessage()}
+                    disabled={!chatInput.trim() || isChatting || isRecording || isTranscribing}
+                    className="absolute right-2"
                   >
                     <Send size={20} />
-                  </button>
+                  </IconButton>
                </div>
             </div>
 

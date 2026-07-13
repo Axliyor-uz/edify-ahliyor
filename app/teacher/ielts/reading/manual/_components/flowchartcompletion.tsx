@@ -2,6 +2,7 @@
 
 import { Plus, Trash2, X, List, Type, Edit3, ChevronUp, ChevronDown, SquareSquare, ArrowDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui';
 
 // ==========================================================================
 // INDIVIDUAL ANSWER ROW (Fixes Comma Typing)
@@ -22,39 +23,39 @@ const AnswerRow = ({ row, rIdx, updateRow, deleteRow, isWordBank, options, total
   };
 
   return (
-    <div className="flex items-center gap-2 group/row transition-colors focus-within:border-sky-200 focus-within:bg-sky-50/20 p-1 rounded-md border border-transparent">
-      <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-white bg-slate-800 rounded shadow-sm shrink-0">
+    <div className="flex items-center gap-2 group/row transition-colors focus-within:border-primary focus-within:bg-[color-mix(in_oklab,var(--m3-primary)_5%,transparent)] p-1 rounded-m3-sm border border-transparent">
+      <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-on-surface-variant bg-surface-container-high rounded-m3-xs shadow-elev-1 shrink-0">
         {row.question_number}
       </span>
-      
+
       {isWordBank ? (
-        <select 
-          value={row.correct_answer || ''} 
-          onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)} 
-          className="flex-1 h-7 text-[11px] font-black bg-white border border-slate-200 rounded px-2 outline-none text-sky-700 focus:border-sky-400 cursor-pointer"
+        <select
+          value={row.correct_answer || ''}
+          onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)}
+          className="flex-1 h-7 text-[11px] font-black bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 outline-none text-success focus:border-primary cursor-pointer"
         >
           <option value="">Select letter...</option>
           {options.map((o: any) => <option key={o.id} value={o.id}>{o.id} - {o.text}</option>)}
         </select>
       ) : (
-        <input 
-          type="text" placeholder="e.g. water, rainfall" 
-          value={ansText} 
-          onChange={e => setAnsText(e.target.value)} 
+        <input
+          type="text" placeholder="e.g. water, rainfall"
+          value={ansText}
+          onChange={e => setAnsText(e.target.value)}
           onBlur={handleAnsBlur}
           onKeyDown={(e) => { if (e.key === 'Enter') handleAnsBlur(); }}
-          className="flex-1 h-7 text-[12px] bg-white border border-slate-200 rounded px-2 outline-none focus:border-sky-400 placeholder:text-slate-300 font-medium" 
+          className="flex-1 h-7 text-[12px] bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:text-on-surface-variant font-medium"
         />
       )}
-      
-      <input 
-        type="text" placeholder="Ref" value={row.passage_reference || ''} 
-        onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
-        className={`w-14 h-7 text-[10px] text-center font-bold rounded outline-none uppercase shrink-0 transition-colors
-          ${row.passage_reference ? 'bg-sky-50 border border-sky-200 text-sky-700 focus:border-sky-400' : 'bg-transparent border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 focus:border-sky-400 focus:bg-white'}`} 
+
+      <input
+        type="text" placeholder="Ref" value={row.passage_reference || ''}
+        onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())}
+        className={`w-14 h-7 text-[10px] text-center font-bold rounded-m3-sm outline-none uppercase shrink-0 transition-colors
+          ${row.passage_reference ? 'bg-primary-container border border-transparent text-on-primary-container focus:border-primary' : 'bg-transparent border border-dashed border-outline text-on-surface-variant hover:border-on-surface-variant focus:border-primary focus:bg-surface-container-lowest'}`}
       />
-      
-      <button onClick={() => deleteRow(rIdx)} disabled={totalRows === 1} className="w-6 h-7 flex items-center justify-center text-slate-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0 transition-colors"><X size={14}/></button>
+
+      <button onClick={() => deleteRow(rIdx)} disabled={totalRows === 1} className="w-6 h-7 flex items-center justify-center text-on-surface-variant hover:text-error opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0 transition-colors"><X size={14}/></button>
     </div>
   );
 };
@@ -186,123 +187,123 @@ export default function FlowchartCompletionBlock({ qb, qbIdx, updateBlock, delet
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm group/block mb-4 transition-all">
+    <div className="bg-surface-container-low border border-outline-variant rounded-m3-sm shadow-elev-1 group/block mb-4 transition-all">
       {/* 1. HEADER */}
-      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between rounded-t-lg">
+      <div className="bg-surface-container border-b border-outline-variant px-3 py-2 flex items-center justify-between rounded-t-m3-sm">
         <div className="flex items-center gap-3">
-          <span className="bg-sky-100 text-sky-700 px-2 py-0.5 rounded-[3px] text-[9px] font-black uppercase tracking-wider">
+          <span className="bg-primary-container text-on-primary-container px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-wider">
             FLOWCHART COMPLETION
           </span>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold select-none">
-            Qs: <span className="w-8 h-5 flex items-center justify-center bg-white border border-slate-200 rounded font-bold text-slate-800 shadow-sm">{qb.start_question || 0}</span>
-            - <span className="w-8 h-5 flex items-center justify-center bg-slate-100 border border-slate-200 rounded font-bold text-slate-500">{qb.end_question || 0}</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant font-semibold select-none">
+            Qs: <span className="w-8 h-5 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs font-bold text-on-surface shadow-elev-1">{qb.start_question || 0}</span>
+            - <span className="w-8 h-5 flex items-center justify-center bg-surface-container-high border border-outline-variant rounded-m3-xs font-bold text-on-surface-variant">{qb.end_question || 0}</span>
           </div>
         </div>
-        <button onClick={() => deleteBlock(qbIdx)} className="text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover/block:opacity-100"><Trash2 size={14}/></button>
+        <button onClick={() => deleteBlock(qbIdx)} className="text-on-surface-variant hover:text-error transition-colors opacity-0 group-hover/block:opacity-100"><Trash2 size={14}/></button>
       </div>
 
       <div className="p-3">
         {/* INSTRUCTIONS & TOGGLE */}
         <div className="flex items-start justify-between gap-4 mb-3">
-          <input 
-            type="text" placeholder="Instructions..." 
-            value={qb.instructions} onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
-            className="flex-1 bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none p-0 mt-1" 
+          <input
+            type="text" placeholder="Instructions..."
+            value={qb.instructions} onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
+            className="flex-1 bg-transparent border-none text-[11px] font-bold text-on-surface outline-none p-0 mt-1"
           />
-          <button onClick={toggleMode} className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0 border ${isWordBank ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
+          <button onClick={toggleMode} className={`m3-interactive flex items-center gap-1.5 px-2 py-1 rounded-m3-sm text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0 border ${isWordBank ? 'bg-primary-container text-on-primary-container border-transparent' : 'bg-surface-container text-on-surface-variant border-outline-variant'}`}>
             {isWordBank ? <><List size={12}/> Word Bank: ON</> : <><Type size={12}/> Word Bank: OFF</>}
           </button>
         </div>
 
         {/* 2. OPTIONAL WORD BANK EDITOR */}
         {isWordBank && (
-          <div className="mb-4 bg-sky-50/30 p-2 rounded border border-sky-100">
-            <button onClick={() => setShowOptions(!showOptions)} className="flex items-center gap-1 text-[9px] font-bold text-sky-400 hover:text-sky-600 uppercase tracking-wider mb-2">
+          <div className="mb-4 bg-surface-container p-2 rounded-m3-sm border border-outline-variant">
+            <button onClick={() => setShowOptions(!showOptions)} className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant hover:text-primary uppercase tracking-wider mb-2">
               <Edit3 size={10} /> {showOptions ? 'Hide Word Bank' : 'Edit Word Bank'} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             </button>
             {showOptions && (
-              <div className="space-y-1.5 pt-2 border-t border-sky-100/50">
+              <div className="space-y-1.5 pt-2 border-t border-outline-variant">
                 {qb.options.map((opt: any, oIdx: number) => (
                   <div key={oIdx} className="flex items-center gap-2">
-                    <input type="text" value={opt.id} onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].id = e.target.value.toUpperCase(); updateBlock(qbIdx, 'options', newOpts); }} className="w-8 h-6 text-[10px] font-black tracking-wider text-sky-600 bg-white border border-sky-200 rounded text-center outline-none focus:border-sky-400" maxLength={2} />
-                    <input type="text" value={opt.text} placeholder="Word or phrase..." onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }} className="flex-1 bg-white border border-sky-200 rounded py-1 px-2 text-[11px] font-medium text-slate-700 outline-none focus:border-sky-400" />
-                    <button onClick={() => { const newOpts = [...qb.options]; newOpts.splice(oIdx, 1); updateBlock(qbIdx, 'options', newOpts); }} className="text-sky-300 hover:text-red-500"><X size={14}/></button>
+                    <input type="text" value={opt.id} onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].id = e.target.value.toUpperCase(); updateBlock(qbIdx, 'options', newOpts); }} className="w-8 h-6 text-[10px] font-black tracking-wider text-primary bg-surface-container-lowest border border-outline-variant rounded-m3-sm text-center outline-none focus:border-primary" maxLength={2} />
+                    <input type="text" value={opt.text} placeholder="Word or phrase..." onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }} className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-sm py-1 px-2 text-[11px] font-medium text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary" />
+                    <button onClick={() => { const newOpts = [...qb.options]; newOpts.splice(oIdx, 1); updateBlock(qbIdx, 'options', newOpts); }} className="text-on-surface-variant hover:text-error"><X size={14}/></button>
                   </div>
                 ))}
-                <button onClick={() => { const newOpts = [...qb.options]; newOpts.push({ id: String.fromCharCode(65 + newOpts.length), text: '' }); updateBlock(qbIdx, 'options', newOpts); }} className="text-[10px] font-bold text-sky-600 hover:underline flex items-center gap-1 mt-2">
-                  <Plus size={10} /> Add Word Option
-                </button>
+                <Button variant="text" size="sm" icon={<Plus />} onClick={() => { const newOpts = [...qb.options]; newOpts.push({ id: String.fromCharCode(65 + newOpts.length), text: '' }); updateBlock(qbIdx, 'options', newOpts); }} className="mt-2">
+                  Add Word Option
+                </Button>
               </div>
             )}
           </div>
         )}
 
         {/* 3. FLOWCHART EDITOR (Visual UI) */}
-        <div className="bg-sky-50/30 p-4 rounded-lg border border-sky-100 mb-4 flex flex-col items-center">
-          <input 
-            type="text" placeholder="Flowchart Title (Optional)..." 
-            value={qb.flowchart_title} onChange={e => updateBlock(qbIdx, 'flowchart_title', e.target.value)} 
-            className="w-full bg-transparent border-none text-[13px] font-black text-slate-800 outline-none mb-6 p-0 text-center placeholder:text-slate-400" 
+        <div className="bg-surface-container p-4 rounded-m3-sm border border-outline-variant mb-4 flex flex-col items-center">
+          <input
+            type="text" placeholder="Flowchart Title (Optional)..."
+            value={qb.flowchart_title} onChange={e => updateBlock(qbIdx, 'flowchart_title', e.target.value)}
+            className="w-full bg-transparent border-none text-[13px] font-black text-on-surface outline-none mb-6 p-0 text-center placeholder:text-on-surface-variant"
           />
-          
+
           <div className="w-full max-w-md space-y-0 flex flex-col items-center">
             {qb.steps.map((stepStr: string, sIdx: number) => (
               <div key={sIdx} className="w-full flex flex-col items-center group/step">
-                
+
                 {/* Visual Arrow (except for first item) */}
                 {sIdx > 0 && (
-                  <div className="h-6 flex items-center justify-center text-sky-300 my-1">
+                  <div className="h-6 flex items-center justify-center text-primary my-1">
                     <ArrowDown size={18} strokeWidth={2.5} />
                   </div>
                 )}
 
                 {/* The Step Box */}
-                <div className="w-full relative bg-white border-2 border-sky-100 rounded-lg p-2 shadow-sm transition-colors focus-within:border-sky-400 focus-within:shadow-md">
-                  <textarea 
+                <div className="w-full relative bg-surface-container-lowest border-2 border-outline-variant rounded-m3-sm p-2 shadow-elev-1 transition-colors focus-within:border-primary focus-within:shadow-elev-2">
+                  <textarea
                     id={`flowchart-step-${qbIdx}-${sIdx}`}
-                    placeholder="Describe this step... (Paste list here!)" 
-                    value={stepStr} 
+                    placeholder="Describe this step... (Paste list here!)"
+                    value={stepStr}
                     onChange={e => {
                       updateStep(sIdx, e.target.value);
                       e.target.style.height = 'auto';
                       e.target.style.height = e.target.scrollHeight + 'px';
-                    }} 
+                    }}
                     onPaste={e => handlePasteSteps(e, sIdx)}
-                    className="w-full bg-transparent border-none text-[12px] font-medium text-slate-700 outline-none resize-none overflow-hidden min-h-[44px] pb-6 leading-relaxed placeholder:font-normal placeholder:text-slate-300 text-center"
+                    className="w-full bg-transparent border-none text-[12px] font-medium text-on-surface outline-none resize-none overflow-hidden min-h-[44px] pb-6 leading-relaxed placeholder:font-normal placeholder:text-on-surface-variant text-center"
                     rows={1}
                   />
-                  
+
                   {/* Magic Blank Button */}
-                  <button 
+                  <button
                     onClick={() => insertBlank(sIdx)}
-                    className="absolute bottom-1 right-1 flex items-center gap-1 px-1.5 py-1 bg-sky-50 text-sky-600 hover:bg-sky-100 rounded text-[9px] font-black transition-colors border border-sky-100"
+                    className="m3-interactive absolute bottom-1 right-1 flex items-center gap-1 px-1.5 py-1 bg-primary-container text-on-primary-container rounded-m3-xs text-[9px] font-black transition-colors border border-transparent"
                   >
                     <SquareSquare size={10} /> BLANK
                   </button>
-                  
+
                   {/* Delete Step Button */}
-                  <button 
-                    onClick={() => deleteStep(sIdx)} disabled={qb.steps.length === 1} 
-                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/step:opacity-100 transition-opacity disabled:opacity-0 shadow-sm"
+                  <button
+                    onClick={() => deleteStep(sIdx)} disabled={qb.steps.length === 1}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-error text-on-error rounded-full flex items-center justify-center opacity-0 group-hover/step:opacity-100 transition-opacity disabled:opacity-0 shadow-elev-1"
                   >
                     <X size={12}/>
                   </button>
                 </div>
               </div>
             ))}
-            
+
             {/* Add Step Button */}
-            <div className="mt-4 pt-2 w-full flex justify-center border-t border-sky-100/50">
-              <button onClick={addStep} className="px-3 py-1.5 bg-sky-100 text-sky-700 text-[10px] font-bold rounded-full hover:bg-sky-200 transition-colors flex items-center gap-1">
-                <Plus size={12}/> Add Flowchart Step
-              </button>
+            <div className="mt-4 pt-2 w-full flex justify-center border-t border-outline-variant">
+              <Button variant="tonal" size="sm" icon={<Plus />} onClick={addStep} className="rounded-full">
+                Add Flowchart Step
+              </Button>
             </div>
           </div>
         </div>
-        
+
         {/* 4. ANSWERS LIST */}
         <div className="space-y-1">
-          <div className="flex gap-2 px-2 pb-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+          <div className="flex gap-2 px-2 pb-1 text-[9px] font-bold text-on-surface-variant uppercase tracking-wider">
             <span className="w-8 text-center">Q#</span>
             <span className="flex-1">{isWordBank ? 'Correct Letter' : 'Accepted Answers (Comma separated)'}</span>
             <span className="w-14 text-center">Ref</span>
@@ -310,17 +311,17 @@ export default function FlowchartCompletionBlock({ qb, qbIdx, updateBlock, delet
           </div>
 
           {qb.questions.map((row: any, rIdx: number) => (
-            <AnswerRow 
-              key={rIdx} row={row} rIdx={rIdx} 
-              updateRow={updateRow} deleteRow={deleteQuestionRow} 
-              isWordBank={isWordBank} options={qb.options} totalRows={qb.questions.length} 
+            <AnswerRow
+              key={rIdx} row={row} rIdx={rIdx}
+              updateRow={updateRow} deleteRow={deleteQuestionRow}
+              isWordBank={isWordBank} options={qb.options} totalRows={qb.questions.length}
             />
           ))}
         </div>
-        
-        <button onClick={addQuestionRow} className="text-[11px] font-bold text-sky-600 hover:underline flex items-center gap-1 mt-3 transition-colors">
-          <Plus size={12} /> Add Answer Box
-        </button>
+
+        <Button variant="text" size="sm" icon={<Plus />} onClick={addQuestionRow} className="mt-3">
+          Add Answer Box
+        </Button>
       </div>
     </div>
   );

@@ -3,6 +3,8 @@
 import { Plus, X, GripVertical, AlignLeft, Type } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 
+import { Button } from '@/components/ui';
+
 export default function PassagePane({ passage, update }: any) {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,19 +114,19 @@ export default function PassagePane({ passage, update }: any) {
   };
 
   return (
-    <div ref={containerRef} className="px-2 py-4 sm:px-6 sm:py-8 max-w-[800px] mx-auto selection:bg-indigo-100 font-sans">
+    <div ref={containerRef} className="px-2 py-4 sm:px-6 sm:py-8 max-w-[800px] mx-auto selection:bg-primary-container font-sans">
       
       {/* ===================================================================== */}
       {/* TINY TOP METADATA BAR                                                 */}
       {/* ===================================================================== */}
       <div className="flex justify-end items-center gap-3 mb-6 opacity-60 hover:opacity-100 transition-opacity">
-        <span className={`text-[10px] font-bold uppercase tracking-widest ${totalWords < 700 ? 'text-amber-500' : totalWords > 950 ? 'text-rose-500' : 'text-emerald-500'}`}>
+        <span className={`text-[10px] font-bold uppercase tracking-widest ${totalWords < 700 ? 'text-warning' : totalWords > 950 ? 'text-error' : 'text-success'}`}>
           {totalWords} words
         </span>
-        <select 
-          value={passage.difficulty || 'medium'} 
-          onChange={e => update('difficulty', e.target.value)} 
-          className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 p-0 outline-none cursor-pointer appearance-none text-right"
+        <select
+          value={passage.difficulty || 'medium'}
+          onChange={e => update('difficulty', e.target.value)}
+          className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-on-surface-variant p-0 outline-none cursor-pointer appearance-none text-right"
         >
           <option value="easy">EASY</option>
           <option value="medium">MEDIUM</option>
@@ -140,21 +142,21 @@ export default function PassagePane({ passage, update }: any) {
           placeholder="Instructions (e.g. You should spend about 20 minutes...)" 
           value={passage.instruction} 
           onChange={e => { update('instruction', e.target.value); autoResize(e.target); }} 
-          className="w-full text-center text-[13px] font-medium text-slate-500 bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden italic leading-relaxed placeholder:text-slate-300" 
+          className="w-full text-center text-[13px] font-medium text-on-surface-variant bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden italic leading-relaxed placeholder:text-outline"
           rows={1}
         />
-        <textarea 
-          placeholder="Passage Title..." 
-          value={passage.title} 
-          onChange={e => { update('title', e.target.value); autoResize(e.target); }} 
-          className="w-full text-center text-[26px] sm:text-[32px] font-black tracking-tight bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden placeholder:text-slate-200 text-slate-900 leading-tight" 
+        <textarea
+          placeholder="Passage Title..."
+          value={passage.title}
+          onChange={e => { update('title', e.target.value); autoResize(e.target); }}
+          className="w-full text-center text-[26px] sm:text-[32px] font-black tracking-tight bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden placeholder:text-outline-variant text-on-surface leading-tight"
           rows={1}
         />
-        <textarea 
-          placeholder="Subtitle (Optional)..." 
-          value={passage.subtitle || ''} 
-          onChange={e => { update('subtitle', e.target.value); autoResize(e.target); }} 
-          className="w-full text-center text-[14.5px] font-serif italic bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden placeholder:text-slate-300 text-slate-600 leading-relaxed" 
+        <textarea
+          placeholder="Subtitle (Optional)..."
+          value={passage.subtitle || ''}
+          onChange={e => { update('subtitle', e.target.value); autoResize(e.target); }}
+          className="w-full text-center text-[14.5px] font-serif italic bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden placeholder:text-outline text-on-surface-variant leading-relaxed"
           rows={1}
         />
       </div>
@@ -177,15 +179,15 @@ export default function PassagePane({ passage, update }: any) {
                     <input 
                       type="text" value={block.label} 
                       onChange={e => { const b = [...passage.blocks]; b[idx].label = e.target.value.toUpperCase(); update('blocks', b); }}
-                      className="w-6 text-center bg-transparent border-none focus:ring-0 p-0 outline-none font-bold text-[14px] text-slate-900 uppercase"
+                      className="w-6 text-center bg-transparent border-none focus:ring-0 p-0 outline-none font-bold text-[14px] text-on-surface uppercase"
                       maxLength={2}
                     />
-                    <button onClick={() => toggleLabel(idx)} className="absolute -left-4 top-1 opacity-0 group-hover/label:opacity-100 text-slate-300 hover:text-rose-500" title="Remove Label">
+                    <button onClick={() => toggleLabel(idx)} className="absolute -left-4 top-1 opacity-0 group-hover/label:opacity-100 text-outline hover:text-error" title="Remove Label">
                       <X size={12} />
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => toggleLabel(idx)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-indigo-500 transition-opacity mt-0.5" title="Add Label (A, B, C...)">
+                  <button onClick={() => toggleLabel(idx)} className="opacity-0 group-hover:opacity-100 text-outline hover:text-primary transition-opacity mt-0.5" title="Add Label (A, B, C...)">
                     <Type size={14} />
                   </button>
                 )}
@@ -206,15 +208,15 @@ export default function PassagePane({ passage, update }: any) {
                     update('blocks', b); 
                     autoResize(e.target); 
                   }} 
-                  className="w-full bg-transparent border-none focus:ring-0 p-0 text-[15.5px] leading-[1.9] text-slate-800 outline-none resize-none overflow-hidden min-h-[30px] font-serif placeholder:font-sans placeholder:text-[13px] placeholder:text-slate-300" 
+                  className="w-full bg-transparent border-none focus:ring-0 p-0 text-[15.5px] leading-[1.9] text-on-surface outline-none resize-none overflow-hidden min-h-[30px] font-serif placeholder:font-sans placeholder:text-[13px] placeholder:text-outline"
                   rows={1}
                 />
               </div>
 
               {/* FLOATING ACTION BUTTONS */}
               <div className={`flex flex-col gap-1 absolute -right-8 top-1 transition-opacity duration-200 ${isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                <button className="text-slate-400 hover:text-indigo-500 cursor-grab active:cursor-grabbing p-1"><GripVertical size={14}/></button>
-                <button onClick={() => { const b = [...passage.blocks]; b.splice(idx,1); update('blocks', b); }} className="text-slate-400 hover:text-rose-500 p-1"><X size={14}/></button>
+                <button className="text-on-surface-variant hover:text-primary cursor-grab active:cursor-grabbing p-1"><GripVertical size={14}/></button>
+                <button onClick={() => { const b = [...passage.blocks]; b.splice(idx,1); update('blocks', b); }} className="text-on-surface-variant hover:text-error p-1"><X size={14}/></button>
               </div>
 
             </div>
@@ -224,9 +226,9 @@ export default function PassagePane({ passage, update }: any) {
 
       {/* ADD PARAGRAPH BUTTON */}
       <div className="pt-6 pb-20 flex justify-start ml-8 sm:ml-10">
-        <button onClick={addParagraph} className="px-3 py-1.5 rounded-md text-[12px] font-bold text-slate-400 hover:text-slate-700 bg-transparent hover:bg-slate-50 border border-transparent hover:border-slate-200 flex items-center gap-1.5 transition-colors">
-          <AlignLeft size={14} /> Add Paragraph
-        </button>
+        <Button variant="text" size="sm" icon={<AlignLeft />} onClick={addParagraph}>
+          Add Paragraph
+        </Button>
       </div>
       
     </div>

@@ -5,8 +5,9 @@ import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { Check, X, Clock, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useTeacherLanguage } from '@/app/teacher/layout'; 
+import { useTeacherLanguage } from '@/app/teacher/layout';
 import { useRouter } from 'next/navigation';
+import { EmptyState } from '@/components/ui';
 
 // --- 1. TRANSLATION DICTIONARY ---
 const REQUESTS_TRANSLATIONS = {
@@ -92,12 +93,8 @@ export default function RequestsTab({ classId }: Props) {
 
   if (requests.length === 0) {
     return (
-      <div className="text-center py-12 md:py-16 bg-white rounded-3xl md:rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center shadow-sm mx-2 md:mx-0">
-        <div className="w-14 h-14 md:w-16 md:h-16 bg-orange-50 rounded-2xl md:rounded-[1.2rem] flex items-center justify-center mb-3 md:mb-4 text-orange-400 border border-orange-100 shadow-inner">
-          <UserPlus size={24} className="md:w-8 md:h-8" strokeWidth={2.5} />
-        </div>
-        <h3 className="text-[15px] md:text-[16px] font-black text-slate-800 mb-1.5">{t.emptyTitle}</h3>
-        <p className="text-[13px] font-medium text-slate-500 max-w-xs px-4">{t.emptyDesc}</p>
+      <div className="py-3 md:py-7 bg-surface-container-low rounded-m3-xl border-2 border-dashed border-outline-variant shadow-elev-1 mx-2 md:mx-0">
+        <EmptyState icon={<UserPlus />} title={t.emptyTitle} description={t.emptyDesc} />
       </div>
     );
   }
@@ -107,21 +104,21 @@ export default function RequestsTab({ classId }: Props) {
       {requests.map((req) => (
         <div 
           key={req.id} 
-          className="bg-white p-3 md:p-5 rounded-2xl md:rounded-[1.2rem] border border-slate-200/80 flex items-center justify-between gap-3 md:gap-4 shadow-sm hover:shadow-md hover:border-orange-200 active:scale-[0.98] md:active:scale-100 md:hover:-translate-y-0.5 transition-all duration-200 group"
+          className="bg-surface-container-low p-3 md:p-5 rounded-m3-lg border border-outline-variant flex items-center justify-between gap-3 md:gap-4 shadow-elev-1 hover:shadow-elev-2 active:scale-[0.98] md:active:scale-100 md:hover:-translate-y-0.5 transition-all duration-200 group"
         >
           {/* 🟢 CLICKING LEFT SIDE GOES TO FULL PROFILE */}
           <div 
             onClick={() => router.push(`/teacher/students/${req.studentId}`)}
             className="flex items-center gap-3 md:gap-4 min-w-0 flex-1 cursor-pointer"
           >
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-50 text-orange-500 border border-orange-100 rounded-[10px] md:rounded-[1rem] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-warning-container text-on-warning-container rounded-m3-md flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
               <Clock size={18} className="md:w-[22px] md:h-[22px]" strokeWidth={2.5} />
             </div>
             <div className="min-w-0 pr-2 flex-1">
-              <p className="font-black text-[14px] md:text-[15px] text-slate-900 group-hover:text-orange-600 transition-colors truncate leading-snug">
+              <p className="font-black text-[14px] md:text-[15px] text-on-surface group-hover:text-primary transition-colors truncate leading-snug">
                 {req.studentName}
               </p>
-              <p className="text-[11px] md:text-[12px] font-bold text-slate-500 mt-0.5 truncate">
+              <p className="text-[11px] md:text-[12px] font-bold text-on-surface-variant mt-0.5 truncate">
                 @{req.studentUsername || t.unknown}
               </p>
             </div>
@@ -131,14 +128,14 @@ export default function RequestsTab({ classId }: Props) {
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
             <button 
               onClick={() => handleReject(req.id)}
-              className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-[10px] md:rounded-[14px] transition-colors border border-red-100/50 active:scale-95"
+              className="m3-interactive w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-error-container text-on-error-container rounded-m3-md transition-colors active:scale-95"
               title="Reject"
             >
               <X size={16} className="md:w-5 md:h-5" strokeWidth={3} />
             </button>
             <button 
               onClick={() => handleAccept(req)}
-              className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-emerald-500 text-white hover:bg-emerald-600 rounded-[10px] md:rounded-[14px] transition-all shadow-sm md:shadow-md shadow-emerald-500/20 active:scale-95"
+              className="m3-interactive w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-success text-surface-container-lowest rounded-m3-md transition-all shadow-elev-1 md:shadow-elev-2 active:scale-95"
               title="Accept"
             >
               <Check size={16} className="md:w-5 md:h-5" strokeWidth={3} />

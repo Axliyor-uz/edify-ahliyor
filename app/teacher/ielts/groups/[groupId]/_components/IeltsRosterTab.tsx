@@ -6,6 +6,13 @@ import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
 import { UserMinus, Loader2, Award, UserCheck, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Spinner, EmptyState } from '@/components/ui';
+
+function bandPill(band: number) {
+  if (band >= 8)   return 'bg-success-container text-on-success-container';
+  if (band >= 6.5) return 'bg-warning-container text-on-warning-container';
+  return                  'bg-error-container text-on-error-container';
+}
 
 interface Props {
   groupId: string;
@@ -65,21 +72,17 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
 
   if (isLoading) return (
     <div className="py-16 flex justify-center">
-      <Loader2 className="animate-spin text-rose-500" size={24} />
+      <Spinner size={28} />
     </div>
   );
 
   if (students.length === 0) return (
-    <div className="flex flex-col items-center justify-center text-center py-20 gap-4 bg-zinc-50 border-2 border-slate-200/80 border-dashed rounded-2xl">
-      <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 text-slate-400 flex items-center justify-center">
-        <UserCheck size={24} strokeWidth={2.5} />
-      </div>
-      <div>
-        <h3 className="text-[15px] font-black text-slate-800 tracking-tight mb-1">O'quvchilar yo'q</h3>
-        <p className="text-[13px] font-medium text-slate-500 max-w-xs leading-relaxed">
-          Guruhga o'quvchilarni qo'shish uchun yuqoridagi <strong>+</strong> tugmasini bosing.
-        </p>
-      </div>
+    <div className="py-8 bg-surface-container-low border-2 border-outline-variant border-dashed rounded-m3-xl">
+      <EmptyState
+        icon={<UserCheck strokeWidth={2.5} />}
+        title="O'quvchilar yo'q"
+        description={<>Guruhga o'quvchilarni qo'shish uchun yuqoridagi <strong>+</strong> tugmasini bosing.</>}
+      />
     </div>
   );
 
@@ -88,17 +91,17 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
 
       {/* Search + count */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-1 bg-white border-2 border-slate-200/80 hover:border-slate-300 transition-colors rounded-xl px-4 py-3 max-w-md">
-          <Search size={16} className="text-slate-400 shrink-0" strokeWidth={2.5} />
+        <div className="flex items-center gap-2 flex-1 bg-surface-container-lowest border border-outline-variant hover:border-outline transition-colors rounded-m3-md px-4 py-3 max-w-md">
+          <Search size={16} className="text-on-surface-variant shrink-0" strokeWidth={2.5} />
           <input
             type="text"
             placeholder="O'quvchini qidirish..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="text-[14px] font-black text-slate-900 placeholder:text-slate-400 placeholder:font-medium outline-none w-full bg-transparent"
+            className="text-[14px] font-black text-on-surface placeholder:text-on-surface-variant placeholder:font-medium outline-none w-full bg-transparent"
           />
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 bg-slate-50 text-slate-700 border-slate-200/80 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-m3-sm border bg-surface-container-high text-on-surface border-outline-variant self-start sm:self-auto">
           <UserCheck size={14} strokeWidth={3} />
           <span className="text-[13px] font-black">{students.length} o'quvchi</span>
         </div>
@@ -116,10 +119,10 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 key={std.uid}
-                className={`relative overflow-hidden bg-white border-2 border-slate-200/80 rounded-2xl p-4 flex items-center gap-3 transition-all hover:border-slate-300 hover:shadow-sm ${isRemoving ? 'opacity-40 pointer-events-none' : ''}`}
+                className={`relative overflow-hidden bg-surface-container-low border border-outline-variant rounded-m3-lg p-4 flex items-center gap-3 transition-all shadow-elev-1 hover:shadow-elev-2 ${isRemoving ? 'opacity-40 pointer-events-none' : ''}`}
               >
                 {/* SVG pattern overlay */}
-                <svg className="absolute inset-0 w-full h-full text-slate-100/50 z-0 pointer-events-none" fill="currentColor">
+                <svg className="absolute inset-0 w-full h-full text-outline-variant opacity-40 z-0 pointer-events-none" fill="currentColor">
                   <pattern id={`dots-${std.uid}`} x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
                     <circle cx="2" cy="2" r="1.5" />
                   </pattern>
@@ -127,7 +130,7 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
                 </svg>
 
                 {/* Avatar */}
-                <div className="relative z-10 w-12 h-12 rounded-xl bg-slate-800 text-white font-black text-[15px] flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                <div className="relative z-10 w-12 h-12 rounded-m3-md bg-primary-container text-on-primary-container font-black text-[15px] flex items-center justify-center shrink-0 overflow-hidden shadow-elev-1">
                   {std.photoUrl
                     ? <img src={std.photoUrl} alt="" className="w-full h-full object-cover" />
                     : std.displayName[0]?.toUpperCase()
@@ -136,12 +139,12 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
 
                 {/* Name */}
                 <div className="relative z-10 flex-1 min-w-0">
-                  <p className="text-[15px] font-black text-slate-900 truncate mb-0.5">{std.displayName}</p>
+                  <p className="text-[15px] font-black text-on-surface truncate mb-0.5">{std.displayName}</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-[12px] font-bold text-slate-400 truncate">@{std.username}</p>
-                    <div className="flex items-center gap-1 bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded-md">
-                      <Award size={10} className="text-amber-600" strokeWidth={2.5} />
-                      <span className="text-[10px] font-black text-amber-700">{std.currentBand.toFixed(1)}</span>
+                    <p className="text-[12px] font-bold text-on-surface-variant truncate">@{std.username}</p>
+                    <div className={`flex items-center gap-1 border border-transparent px-1.5 py-0.5 rounded-m3-xs ${bandPill(std.currentBand)}`}>
+                      <Award size={10} strokeWidth={2.5} />
+                      <span className="text-[10px] font-black">{std.currentBand.toFixed(1)}</span>
                     </div>
                   </div>
                 </div>
@@ -150,7 +153,7 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
                 <button
                   onClick={() => handleRemove(std)}
                   title="Guruhdan chiqarish"
-                  className="relative z-10 w-9 h-9 rounded-xl bg-slate-50 border-2 border-slate-200/80 hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-500 flex items-center justify-center transition-colors shrink-0 active:scale-95"
+                  className="m3-interactive relative z-10 w-9 h-9 rounded-m3-md bg-surface-container border border-outline-variant hover:bg-error-container hover:border-transparent text-on-surface-variant hover:text-on-error-container flex items-center justify-center transition-colors shrink-0 active:scale-95"
                 >
                   {isRemoving
                     ? <Loader2 className="animate-spin" size={14} />

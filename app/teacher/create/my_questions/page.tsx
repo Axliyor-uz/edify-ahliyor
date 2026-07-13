@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Database,BookMarked,BookOpen,ChevronRight, Layers, Calendar, Folder, Target, CheckCircle2, Trash2, Eye, Plus, Search, Sparkles, Filter, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, Database,BookMarked,BookOpen,ChevronRight, Layers, Calendar, Folder, Target, CheckCircle2, Trash2, Eye, Plus, Search, Sparkles, Filter, X, AlertCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, getDocs, startAfter, DocumentData, QueryDocumentSnapshot, deleteDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/lib/AuthContext";
@@ -12,12 +12,14 @@ import 'katex/dist/katex.min.css';
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 
-import { useTeacherLanguage } from "@/app/teacher/layout"; 
+import { useTeacherLanguage } from "@/app/teacher/layout";
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
+
+import { Button, IconButton, Spinner, Skeleton } from "@/components/ui";
 
 // --- LATEX FORMATTER ---
 const FormattedText = ({ text }: { text: any }) => {
-  if (!text) return <span className="text-slate-400 italic">Ma'lumot yo'q</span>;
+  if (!text) return <span className="text-on-surface-variant italic">Ma'lumot yo'q</span>;
   let content = typeof text === 'string' ? text : JSON.stringify(text);
   const hasMathCommands = /\\frac|\\pi|\\sin|\\cos|\\tan|\\ge|\\le|\\cup|\\cap|\\in|\\begin|\\sqrt|\\empty/.test(content);
   if (!content.includes('$') && hasMathCommands) content = `$${content}$`;
@@ -32,14 +34,14 @@ const FormattedText = ({ text }: { text: any }) => {
           try {
             const html = katex.renderToString(math, { displayMode: true, throwOnError: false, strict: false });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} className="block my-2 text-center overflow-x-auto custom-scrollbar" />;
-          } catch (e) { return <span key={index} className="text-rose-500 font-mono text-[11px] bg-rose-50 px-1 rounded">{part}</span>; }
+          } catch (e) { return <span key={index} className="text-error font-mono text-[11px] bg-error-container px-1 rounded-m3-xs">{part}</span>; }
         }
         if (part.startsWith('$') && part.endsWith('$')) {
           const math = part.slice(1, -1).trim();
           try {
             const html = katex.renderToString(math, { displayMode: false, throwOnError: false, strict: false });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} className="px-0.5 inline-block" />;
-          } catch (e) { return <span key={index} className="text-rose-500 font-mono text-[11px] bg-rose-50 px-1 rounded">{part}</span>; }
+          } catch (e) { return <span key={index} className="text-error font-mono text-[11px] bg-error-container px-1 rounded-m3-xs">{part}</span>; }
         }
         return <span key={index}>{part.split('\n').map((line, i, arr) => (<span key={i}>{line}{i < arr.length - 1 && <br />}</span>))}</span>;
       })}
@@ -250,43 +252,43 @@ export default function MyQuestionsPage() {
 
   // --- UI RENDER ---
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] font-sans pb-32">
-      
+    <div className="min-h-[100dvh] bg-surface font-sans pb-32">
+
       {/* 🟢 TOP HEADER */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-sm">
+      <div className="bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant sticky top-0 z-30 shadow-elev-1">
         <div className="max-w-4xl mx-auto px-3 md:px-4 py-3 md:py-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 md:gap-3">
-              <button onClick={() => router.push('/teacher/create')} className="p-1.5 md:p-2 -ml-1 md:-ml-2 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors">
-                <ArrowLeft size={18} className="md:w-5 md:h-5" />
-              </button>
+              <IconButton aria-label="Orqaga" size="sm" className="-ml-1 md:-ml-2" onClick={() => router.push('/teacher/create')}>
+                <ArrowLeft />
+              </IconButton>
               <div>
-                <h1 className="text-[14px] md:text-[16px] font-black text-slate-900 tracking-tight flex items-center gap-1.5 md:gap-2">
-                  <Database size={16} className="text-indigo-500" /> Savollar Bazasi
+                <h1 className="text-[14px] md:text-[16px] font-black text-on-surface tracking-tight flex items-center gap-1.5 md:gap-2">
+                  <Database size={16} className="text-primary" /> Savollar Bazasi
                 </h1>
               </div>
             </div>
-            <div className="text-[10px] md:text-[12px] font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+            <div className="text-[10px] md:text-[12px] font-bold text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-m3-xs border border-outline-variant">
               {questions.length} ta savol
             </div>
           </div>
 
           {/* 🟢 SMART PILL FILTERS */}
           <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-3 px-3 md:mx-0 md:px-0">
-            <button onClick={() => setActiveFilter("all")} className={`px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "all" ? "bg-indigo-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+            <button onClick={() => setActiveFilter("all")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "all" ? "bg-primary text-on-primary shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>
               <Layers size={12}/> Barchasi
             </button>
-            <div className="w-px h-4 bg-slate-200 shrink-0 mx-1"></div>
-            <button onClick={() => setActiveFilter("ai")} className={`px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "ai" ? "bg-blue-600 text-white shadow-sm" : "bg-blue-50/50 border border-blue-100 text-blue-700 hover:bg-blue-100"}`}>
+            <div className="w-px h-4 bg-outline-variant shrink-0 mx-1"></div>
+            <button onClick={() => setActiveFilter("ai")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "ai" ? "bg-secondary text-on-secondary shadow-elev-1" : "bg-secondary-container border border-transparent text-on-secondary-container"}`}>
               <Sparkles size={12}/> Smart AI
             </button>
-            <button onClick={() => setActiveFilter("image")} className={`px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "image" ? "bg-emerald-600 text-white shadow-sm" : "bg-emerald-50/50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100"}`}>
+            <button onClick={() => setActiveFilter("image")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "image" ? "bg-tertiary text-on-tertiary shadow-elev-1" : "bg-tertiary-container border border-transparent text-on-tertiary-container"}`}>
               <Eye size={12}/> Rasm orqali
             </button>
-            <div className="w-px h-4 bg-slate-200 shrink-0 mx-1"></div>
-            <button onClick={() => setActiveFilter("easy")} className={`px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "easy" ? "bg-slate-800 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>Oson</button>
-            <button onClick={() => setActiveFilter("medium")} className={`px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "medium" ? "bg-slate-800 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>O'rta</button>
-            <button onClick={() => setActiveFilter("hard")} className={`px-3 py-1.5 rounded-lg text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "hard" ? "bg-slate-800 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>Qiyin</button>
+            <div className="w-px h-4 bg-outline-variant shrink-0 mx-1"></div>
+            <button onClick={() => setActiveFilter("easy")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "easy" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>Oson</button>
+            <button onClick={() => setActiveFilter("medium")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "medium" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>O'rta</button>
+            <button onClick={() => setActiveFilter("hard")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "hard" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>Qiyin</button>
           </div>
         </div>
       </div>
@@ -297,18 +299,18 @@ export default function MyQuestionsPage() {
         {loading ? (
           <div className="space-y-3 md:space-y-4">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-white p-4 rounded-[1.25rem] border border-slate-100 h-28 animate-pulse flex flex-col justify-between">
-                <div className="flex gap-2"><div className="w-12 h-4 bg-slate-100 rounded-md"></div><div className="w-20 h-4 bg-slate-100 rounded-md"></div></div>
-                <div className="space-y-2"><div className="w-full h-2.5 bg-slate-100 rounded-full"></div><div className="w-2/3 h-2.5 bg-slate-100 rounded-full"></div></div>
+              <div key={i} className="bg-surface-container-low p-4 rounded-m3-lg border border-outline-variant h-28 flex flex-col justify-between">
+                <div className="flex gap-2"><Skeleton className="w-12 h-4" /><Skeleton className="w-20 h-4" /></div>
+                <div className="space-y-2"><Skeleton className="w-full h-2.5 rounded-full" /><Skeleton className="w-2/3 h-2.5 rounded-full" /></div>
               </div>
             ))}
           </div>
         ) : questions.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-8 md:p-12 text-center shadow-sm mt-8">
-            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4"><Filter size={24} className="text-slate-400" /></div>
-            <h2 className="text-[15px] md:text-[16px] font-black text-slate-900 mb-1.5">Savollar topilmadi</h2>
-            <p className="text-[11px] md:text-[13px] text-slate-500 mb-6 max-w-sm mx-auto">Ushbu filtr bo'yicha bazangizda savollar yo'q.</p>
-            <button onClick={() => setActiveFilter("all")} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-[11px] md:text-[12px] font-bold rounded-xl transition-colors">Barcha savollarni ko'rish</button>
+          <div className="bg-surface-container-low rounded-m3-xl border border-outline-variant p-8 md:p-12 text-center shadow-elev-1 mt-8">
+            <div className="w-14 h-14 bg-surface-container border border-outline-variant rounded-m3-lg flex items-center justify-center mx-auto mb-4"><Filter size={24} className="text-on-surface-variant" /></div>
+            <h2 className="text-[15px] md:text-[16px] font-black text-on-surface mb-1.5">Savollar topilmadi</h2>
+            <p className="text-[11px] md:text-[13px] text-on-surface-variant mb-6 max-w-sm mx-auto">Ushbu filtr bo'yicha bazangizda savollar yo'q.</p>
+            <Button variant="tonal" size="sm" onClick={() => setActiveFilter("all")}>Barcha savollarni ko'rish</Button>
           </div>
         ) : (
           <div className="space-y-3 md:space-y-4">
@@ -320,51 +322,51 @@ export default function MyQuestionsPage() {
               const method = q.creationMethod || "custom";
 
               // Method styling
-              let methodStyle = "bg-slate-100 text-slate-600";
+              let methodStyle = "bg-surface-container-high text-on-surface-variant border-transparent";
               let methodLabel = "Maxsus";
               let MethodIcon = Layers;
-              if (method === "by_image") { methodStyle = "bg-emerald-50 text-emerald-600 border-emerald-100"; methodLabel = "Rasm"; MethodIcon = Eye; }
-              else if (method.includes("ai")) { methodStyle = "bg-blue-50 text-blue-600 border-blue-100"; methodLabel = "AI"; MethodIcon = Sparkles; }
+              if (method === "by_image") { methodStyle = "bg-tertiary-container text-on-tertiary-container border-transparent"; methodLabel = "Rasm"; MethodIcon = Eye; }
+              else if (method.includes("ai")) { methodStyle = "bg-secondary-container text-on-secondary-container border-transparent"; methodLabel = "AI"; MethodIcon = Sparkles; }
 
               const cardContent = (
-                <div className={`bg-white p-3.5 md:p-5 rounded-[1.25rem] md:rounded-2xl border-[2px] transition-all duration-200 group relative ${isSelected ? 'border-indigo-500 shadow-md ring-4 ring-indigo-500/10' : 'border-slate-200/60 shadow-sm hover:shadow-md hover:border-slate-300'}`}>
-                  
+                <div className={`bg-surface-container-low p-3.5 md:p-5 rounded-m3-lg border-[2px] transition-all duration-200 group relative ${isSelected ? 'border-primary shadow-elev-2 ring-4 ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)]' : 'border-outline-variant shadow-elev-1 hover:shadow-elev-2 hover:border-outline'}`}>
+
                   {/* Select Checkbox (Absolute Top Right) */}
                   <div className="absolute top-3.5 right-3.5 md:top-5 md:right-5 z-10">
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); toggleSelection(q.id); }}
-                      className={`w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center border-2 transition-all ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white scale-110 shadow-sm shadow-indigo-500/30' : 'bg-slate-50 border-slate-300 text-transparent hover:border-indigo-400'}`}
+                      className={`w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center border-2 transition-all ${isSelected ? 'bg-primary border-primary text-on-primary scale-110 shadow-elev-1' : 'bg-surface-container border-outline text-transparent hover:border-primary'}`}
                     >
                       <CheckCircle2 size={14} className="md:w-4 md:h-4" strokeWidth={3} />
                     </button>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-3 pr-10">
-                    <span className={`text-[9px] md:text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 border ${methodStyle}`}>
+                    <span className={`text-[9px] md:text-[10px] font-black px-2 py-1 rounded-m3-xs uppercase flex items-center gap-1 border ${methodStyle}`}>
                       <MethodIcon size={10} strokeWidth={2.5}/> {methodLabel}
                     </span>
-                    <span className="bg-slate-50 text-slate-600 text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-md border border-slate-200/60 uppercase flex items-center gap-1">
+                    <span className="bg-surface-container text-on-surface-variant text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-m3-xs border border-outline-variant uppercase flex items-center gap-1">
                       <Folder size={10} /> <span className="truncate max-w-[100px]">{subject}</span>
                     </span>
-                    <span className={`text-[9px] md:text-[10px] font-black px-2 py-1 rounded-md uppercase border ${diff === 'hard' ? 'bg-rose-50 text-rose-600 border-rose-100' : diff === 'easy' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                    <span className={`text-[9px] md:text-[10px] font-black px-2 py-1 rounded-m3-xs uppercase border border-transparent ${diff === 'hard' ? 'bg-error-container text-on-error-container' : diff === 'easy' ? 'bg-success-container text-on-success-container' : 'bg-warning-container text-on-warning-container'}`}>
                       {diff}
                     </span>
                   </div>
 
-                  <div className="font-semibold text-[12px] md:text-[14px] text-slate-900 leading-snug line-clamp-2 pr-2">
+                  <div className="font-semibold text-[12px] md:text-[14px] text-on-surface leading-snug line-clamp-2 pr-2">
                     <FormattedText text={questionText} />
                   </div>
 
-                  <div className="mt-3 md:mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[9px] md:text-[10px] font-medium text-slate-400 flex items-center gap-1">
+                  <div className="mt-3 md:mt-4 pt-3 border-t border-outline-variant flex items-center justify-between">
+                    <span className="text-[9px] md:text-[10px] font-medium text-on-surface-variant flex items-center gap-1">
                       <Calendar size={10} /> {q.createdAt?.toDate ? q.createdAt.toDate().toLocaleDateString('uz-UZ') : "Yaqinda"}
                     </span>
-                    
+
                     <div className="flex items-center gap-1.5">
-                      <button onClick={(e) => { e.stopPropagation(); setInfoModalData(q); }} className="px-2.5 py-1 bg-slate-50 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 border border-slate-200 rounded-lg text-[10px] md:text-[11px] font-bold transition-colors flex items-center gap-1">
+                      <button onClick={(e) => { e.stopPropagation(); setInfoModalData(q); }} className="m3-interactive px-2.5 py-1 bg-surface-container hover:text-primary text-on-surface-variant border border-outline-variant rounded-m3-sm text-[10px] md:text-[11px] font-bold transition-colors flex items-center gap-1">
                         <Eye size={12}/> To'liq ko'rish
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); setDeleteModalId(q.id); }} className="p-1 md:p-1.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-500 border border-slate-200 rounded-lg transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteModalId(q.id); }} className="p-1 md:p-1.5 bg-surface-container hover:bg-error-container text-on-surface-variant hover:text-error border border-outline-variant rounded-m3-sm transition-colors">
                         <Trash2 size={12} className="md:w-3.5 md:h-3.5" />
                       </button>
                     </div>
@@ -379,8 +381,8 @@ export default function MyQuestionsPage() {
               }
             })}
 
-            <div className="pt-4 pb-12 flex justify-center text-slate-400">
-              {loadingMore && <Loader2 size={20} className="animate-spin text-indigo-500" />}
+            <div className="pt-4 pb-12 flex justify-center text-on-surface-variant">
+              {loadingMore && <Spinner size={20} />}
               {!hasMore && questions.length > 0 && <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Barcha savollar yuklandi</p>}
             </div>
           </div>
@@ -394,20 +396,22 @@ export default function MyQuestionsPage() {
             initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
             className="fixed bottom-5 left-0 right-0 px-4 z-40 flex justify-center"
           >
-            <div className="bg-slate-900 text-white px-4 md:px-5 py-3 md:py-3.5 rounded-2xl shadow-2xl shadow-slate-900/40 flex items-center gap-4 md:gap-6 border border-slate-700 w-full max-w-[400px]">
+            <div className="bg-inverse-surface text-inverse-on-surface px-4 md:px-5 py-3 md:py-3.5 rounded-m3-lg shadow-elev-3 flex items-center gap-4 md:gap-6 border border-transparent w-full max-w-[400px]">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-500 rounded-full flex items-center justify-center text-[12px] md:text-[14px] font-black shadow-inner">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-inverse-primary text-inverse-surface rounded-full flex items-center justify-center text-[12px] md:text-[14px] font-black shadow-inner">
                   {selectedQuestions.size}
                 </div>
-                <span className="text-[10px] md:text-[12px] font-medium text-slate-300 leading-tight">savol<br/>tanlandi</span>
+                <span className="text-[10px] md:text-[12px] font-medium text-inverse-on-surface leading-tight">savol<br/>tanlandi</span>
               </div>
-              
-              <button 
+
+              <Button
+                variant="filled"
+                className="flex-1"
+                icon={<CheckCircle2 />}
                 onClick={handleCreateTestInitiate}
-                className="flex-1 bg-white text-slate-900 px-4 py-2.5 md:py-3 rounded-xl font-black text-[12px] md:text-[13px] active:scale-95 transition-transform flex items-center justify-center gap-1.5 shadow-sm"
               >
-                <CheckCircle2 size={16}/> Topshiriq yaratish
-              </button>
+                Topshiriq yaratish
+              </Button>
             </div>
           </motion.div>
         )}
@@ -423,49 +427,49 @@ export default function MyQuestionsPage() {
           <AnimatePresence>
             {infoModalData && (
               <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setInfoModalData(null)} />
-                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-white rounded-[1.5rem] md:rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl z-10 overflow-hidden">
-                  
-                  <div className="p-4 md:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setInfoModalData(null)} />
+                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-elev-3 z-10 overflow-hidden">
+
+                  <div className="p-4 md:p-5 border-b border-outline-variant flex justify-between items-center bg-surface-container shrink-0">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center"><Eye size={16} /></div>
+                      <div className="w-8 h-8 rounded-m3-sm bg-primary-container text-on-primary-container flex items-center justify-center"><Eye size={16} /></div>
                       <div>
-                        <h3 className="text-[14px] md:text-[16px] font-black text-slate-900 leading-tight">To'liq Ma'lumot</h3>
-                        <p className="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{infoModalData.id}</p>
+                        <h3 className="text-[14px] md:text-[16px] font-black text-on-surface leading-tight">To'liq Ma'lumot</h3>
+                        <p className="text-[9px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mt-0.5">{infoModalData.id}</p>
                       </div>
                     </div>
-                    <button onClick={() => setInfoModalData(null)} className="p-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors"><X size={18} /></button>
+                    <IconButton aria-label="Yopish" size="sm" onClick={() => setInfoModalData(null)}><X /></IconButton>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
                     
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1.5 md:gap-2 mb-5 md:mb-6">
-                      <span className="bg-slate-100 text-slate-600 text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 uppercase"><Folder size={12} className="inline mr-1"/> {infoModalData.subject || "Umumiy Fan"}</span>
-                      {infoModalData.topic && <span className="bg-slate-100 text-slate-600 text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 uppercase"><Target size={12} className="inline mr-1"/> {infoModalData.topic}</span>}
-                      {infoModalData.chapter && <span className="bg-slate-100 text-slate-600 text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 uppercase"><BookMarked size={12} className="inline mr-1"/> {infoModalData.chapter}</span>}
-                      <span className="bg-slate-900 text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-lg uppercase">{infoModalData.difficulty || "medium"}</span>
+                      <span className="bg-surface-container-high text-on-surface-variant text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs border border-outline-variant uppercase"><Folder size={12} className="inline mr-1"/> {infoModalData.subject || "Umumiy Fan"}</span>
+                      {infoModalData.topic && <span className="bg-surface-container-high text-on-surface-variant text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs border border-outline-variant uppercase"><Target size={12} className="inline mr-1"/> {infoModalData.topic}</span>}
+                      {infoModalData.chapter && <span className="bg-surface-container-high text-on-surface-variant text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs border border-outline-variant uppercase"><BookMarked size={12} className="inline mr-1"/> {infoModalData.chapter}</span>}
+                      <span className="bg-inverse-surface text-inverse-on-surface text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs uppercase">{infoModalData.difficulty || "medium"}</span>
                     </div>
 
                     {/* Question */}
                     <div className="mb-6 md:mb-8">
-                      <h4 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-100 pb-2">Savol Matni</h4>
-                      <p className="font-semibold text-[14px] md:text-[16px] text-slate-900 leading-relaxed"><FormattedText text={getText(infoModalData.question)} /></p>
+                      <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2 border-b border-outline-variant pb-2">Savol Matni</h4>
+                      <p className="font-semibold text-[14px] md:text-[16px] text-on-surface leading-relaxed"><FormattedText text={getText(infoModalData.question)} /></p>
                     </div>
 
                     {/* Options */}
                     <div className="mb-6 md:mb-8">
-                      <h4 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Variantlar</h4>
+                      <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">Variantlar</h4>
                       <div className="flex flex-col gap-2">
                         {['A', 'B', 'C', 'D'].map(key => {
                           const val = infoModalData.options?.[key];
                           if (!val) return null;
                           const isCorrect = infoModalData.answer === key;
                           return (
-                            <div key={key} className={`flex items-start p-3 rounded-xl border transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200'}`}>
-                              <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black mr-3 shrink-0 mt-0.5 ${isCorrect ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20' : 'bg-slate-100 text-slate-500'}`}>{key}</div>
-                              <div className={`text-[13px] md:text-[14px] font-medium pt-0.5 break-words ${isCorrect ? 'text-emerald-950' : 'text-slate-700'}`}><FormattedText text={getText(val)} /></div>
-                              {isCorrect && <div className="ml-auto bg-emerald-100 text-emerald-700 text-[9px] font-black px-2 py-1 rounded border border-emerald-200 uppercase tracking-widest mt-0.5">To'g'ri Javob</div>}
+                            <div key={key} className={`flex items-start p-3 rounded-m3-md border transition-all ${isCorrect ? 'bg-success-container border-success' : 'bg-surface-container-lowest border-outline-variant'}`}>
+                              <div className={`w-6 h-6 rounded-m3-xs flex items-center justify-center text-[11px] font-black mr-3 shrink-0 mt-0.5 ${isCorrect ? 'bg-success text-surface-container-lowest shadow-elev-1' : 'bg-surface-container-high text-on-surface-variant'}`}>{key}</div>
+                              <div className={`text-[13px] md:text-[14px] font-medium pt-0.5 break-words ${isCorrect ? 'text-on-success-container' : 'text-on-surface'}`}><FormattedText text={getText(val)} /></div>
+                              {isCorrect && <div className="ml-auto bg-success text-surface-container-lowest text-[9px] font-black px-2 py-1 rounded-m3-xs border border-transparent uppercase tracking-widest mt-0.5">To'g'ri Javob</div>}
                             </div>
                           );
                         })}
@@ -475,9 +479,9 @@ export default function MyQuestionsPage() {
                     {/* Explanation */}
                     {getText(infoModalData.explanation).trim().length > 0 && (
                       <div>
-                        <h4 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-100 pb-2">Yechim / Izoh</h4>
-                        <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
-                          <p className="text-[12px] md:text-[14px] text-slate-700 leading-relaxed font-medium"><FormattedText text={getText(infoModalData.explanation)} /></p>
+                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2 border-b border-outline-variant pb-2">Yechim / Izoh</h4>
+                        <div className="bg-tertiary-container border border-transparent p-4 rounded-m3-md">
+                          <p className="text-[12px] md:text-[14px] text-on-tertiary-container leading-relaxed font-medium"><FormattedText text={getText(infoModalData.explanation)} /></p>
                         </div>
                       </div>
                     )}
@@ -491,14 +495,14 @@ export default function MyQuestionsPage() {
           <AnimatePresence>
             {deleteModalId && (
               <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setDeleteModalId(null)} />
-                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-white rounded-[1.5rem] p-6 max-w-[320px] w-full text-center shadow-2xl z-10 border border-slate-100">
-                  <div className="w-14 h-14 bg-rose-50 border border-rose-100 rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={24} className="text-rose-500" /></div>
-                  <h3 className="text-[16px] font-black text-slate-900 mb-2">O'chirishni tasdiqlaysizmi?</h3>
-                  <p className="text-[12px] text-slate-500 mb-6 font-medium leading-relaxed">Bu savol bazadan butunlay o'chiriladi. Bu jarayonni orqaga qaytarib bo'lmaydi.</p>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setDeleteModalId(null)} />
+                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-6 max-w-[320px] w-full text-center shadow-elev-3 z-10 border border-outline-variant">
+                  <div className="w-14 h-14 bg-error-container border border-transparent rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={24} className="text-on-error-container" /></div>
+                  <h3 className="text-[16px] font-black text-on-surface mb-2">O'chirishni tasdiqlaysizmi?</h3>
+                  <p className="text-[12px] text-on-surface-variant mb-6 font-medium leading-relaxed">Bu savol bazadan butunlay o'chiriladi. Bu jarayonni orqaga qaytarib bo'lmaydi.</p>
                   <div className="flex gap-2">
-                    <button onClick={() => setDeleteModalId(null)} className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[12px] font-bold rounded-xl transition-colors">Bekor qilish</button>
-                    <button onClick={handleDelete} className="flex-1 px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white text-[12px] font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"><Trash2 size={14}/> O'chirish</button>
+                    <Button variant="tonal" className="flex-1" onClick={() => setDeleteModalId(null)}>Bekor qilish</Button>
+                    <Button variant="danger" className="flex-1" icon={<Trash2 />} onClick={handleDelete}>O'chirish</Button>
                   </div>
                 </motion.div>
               </div>
@@ -509,17 +513,17 @@ export default function MyQuestionsPage() {
           <AnimatePresence>
             {isTitleModalOpen && (
               <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
-                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-white rounded-[1.5rem] md:rounded-3xl p-5 md:p-8 w-full max-w-[320px] md:max-w-sm shadow-2xl border border-slate-100 z-10">
-                  <div className="w-14 h-14 md:w-16 md:h-16 bg-indigo-50 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-5 border border-indigo-100"><BookOpen size={24} strokeWidth={2.5} className="text-indigo-600 md:w-7 md:h-7" /></div>
-                  <h3 className="text-lg md:text-xl font-black text-slate-900 mb-1 md:mb-1.5">Test nomini kiriting</h3>
-                  <p className="text-[11px] md:text-[13px] font-medium text-slate-500 mb-5 md:mb-6 leading-relaxed">Tanlangan {selectedQuestions.size} ta savoldan iborat test uchun nom bering.</p>
-                  <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] md:text-[14px] font-black text-slate-900 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all mb-6 md:mb-8 placeholder:font-medium placeholder:text-slate-400" autoFocus placeholder="Masalan: Aralash savollar to'plami"/>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
+                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-sm shadow-elev-3 border border-outline-variant z-10">
+                  <div className="w-14 h-14 md:w-16 md:h-16 bg-primary-container rounded-m3-md md:rounded-m3-lg flex items-center justify-center mb-4 md:mb-5 border border-transparent"><BookOpen size={24} strokeWidth={2.5} className="text-on-primary-container md:w-7 md:h-7" /></div>
+                  <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-1.5">Test nomini kiriting</h3>
+                  <p className="text-[11px] md:text-[13px] font-medium text-on-surface-variant mb-5 md:mb-6 leading-relaxed">Tanlangan {selectedQuestions.size} ta savoldan iborat test uchun nom bering.</p>
+                  <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-black text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] transition-all mb-6 md:mb-8 placeholder:font-medium placeholder:text-on-surface-variant" autoFocus placeholder="Masalan: Aralash savollar to'plami"/>
                   <div className="flex flex-col-reverse sm:flex-row gap-2 md:gap-3">
-                    <button onClick={() => setIsTitleModalOpen(false)} className="w-full px-4 py-2.5 md:py-3.5 font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-[12px] md:text-[14px]">Bekor qilish</button>
-                    <button onClick={handleTitleSubmit} className="w-full px-4 py-2.5 md:py-3.5 bg-slate-900 hover:bg-black text-white font-black rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 text-[12px] md:text-[14px]">
-                      Davom etish <ChevronRight size={16} className="md:w-[18px] md:h-[18px]" strokeWidth={2.5}/>
-                    </button>
+                    <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>Bekor qilish</Button>
+                    <Button variant="filled" className="w-full" onClick={handleTitleSubmit}>
+                      Davom etish <ChevronRight strokeWidth={2.5}/>
+                    </Button>
                   </div>
                 </motion.div>
               </div>

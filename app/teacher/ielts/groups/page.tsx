@@ -10,11 +10,12 @@ import Link from 'next/link';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { IeltsGroup } from '@/types/ielts';
 import CreateIeltsGroupModal from './_components/CreateIeltsGroupModal';
+import { Button, Skeleton, EmptyState } from '@/components/ui';
 
 function bandPill(band: number) {
-  if (band >= 8)   return 'bg-emerald-50 border-emerald-200 text-emerald-700';
-  if (band >= 6.5) return 'bg-amber-50   border-amber-200   text-amber-700';
-  return                  'bg-rose-50    border-rose-200    text-rose-700';
+  if (band >= 8)   return 'bg-success-container text-on-success-container';
+  if (band >= 6.5) return 'bg-warning-container text-on-warning-container';
+  return                  'bg-error-container text-on-error-container';
 }
 
 const T: any = {
@@ -82,11 +83,11 @@ export default function IeltsGroupsPage() {
   }, [user]);
 
   return (
-    <div className="min-h-[100dvh] bg-[#F5F5F7] font-sans pb-28">
+    <div className="min-h-[100dvh] bg-surface font-sans pb-28">
       <CreateIeltsGroupModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
       {/* ── Premium top bar ── */}
-      <div className="bg-white border-b border-slate-200/80 sticky top-0 z-30">
+      <div className="bg-surface-container-low border-b border-outline-variant sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Header Row */}
@@ -95,49 +96,50 @@ export default function IeltsGroupsPage() {
               {/* Back Button */}
               <Link
                 href="/teacher/ielts"
-                className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm transition-all shrink-0"
+                className="m3-interactive w-10 h-10 md:w-11 md:h-11 rounded-m3-md bg-surface-container border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-lowest hover:shadow-elev-1 transition-all shrink-0"
               >
                 <ChevronLeft size={18} strokeWidth={2.5} />
               </Link>
-              
-              <div className="w-px h-6 bg-slate-200 hidden sm:block shrink-0" />
-              
+
+              <div className="w-px h-6 bg-outline-variant hidden sm:block shrink-0" />
+
               {/* Icon & Title */}
-              <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-rose-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-rose-600/20">
+              <div className="w-10 h-10 md:w-11 md:h-11 rounded-m3-md bg-primary flex items-center justify-center text-on-primary shrink-0 shadow-elev-2">
                 <Target size={20} strokeWidth={2.5} />
               </div>
               <div className="flex flex-col justify-center min-w-0">
-                <h1 className="text-[17px] md:text-[20px] font-black text-slate-900 tracking-tight leading-tight truncate">
+                <h1 className="text-[17px] md:text-[20px] font-black text-on-surface tracking-tight leading-tight truncate">
                   {t.heading}
                 </h1>
-                <p className="text-[12px] font-medium text-slate-400 hidden sm:block truncate">{t.sub}</p>
+                <p className="text-[12px] font-medium text-on-surface-variant hidden sm:block truncate">{t.sub}</p>
               </div>
             </div>
 
             {/* Create Button */}
-            <button
+            <Button
+              variant="filled"
+              icon={<Plus strokeWidth={3} />}
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 md:px-5 py-2.5 md:py-3 rounded-xl font-black text-[13px] transition-all active:scale-95 shadow-sm shadow-rose-600/20 shrink-0"
+              className="shrink-0 px-4 md:px-5"
             >
-              <Plus size={16} strokeWidth={3} />
               <span className="hidden sm:inline">{t.newBtn}</span>
-            </button>
+            </Button>
           </div>
 
           {/* Stats bar */}
           {!isLoading && groups.length > 0 && (
             <div className="flex items-center gap-4 pb-4 md:pl-[124px]">
-              <div className="flex items-center gap-1.5 bg-rose-50/50 px-2.5 py-1 rounded-lg border border-rose-100/50">
-                <Sparkles size={13} className="text-rose-500" strokeWidth={2.5} />
-                <span className="text-[12px] font-black text-rose-700">{groups.length}</span>
-                <span className="text-[12px] font-bold text-rose-600/80">{t.total}</span>
+              <div className="flex items-center gap-1.5 bg-primary-container px-2.5 py-1 rounded-m3-sm border border-transparent">
+                <Sparkles size={13} className="text-on-primary-container" strokeWidth={2.5} />
+                <span className="text-[12px] font-black text-on-primary-container">{groups.length}</span>
+                <span className="text-[12px] font-bold text-on-primary-container">{t.total}</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60">
-                <Users size={13} className="text-slate-500" strokeWidth={2.5} />
-                <span className="text-[12px] font-black text-slate-700">
+              <div className="flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1 rounded-m3-sm border border-outline-variant">
+                <Users size={13} className="text-on-surface-variant" strokeWidth={2.5} />
+                <span className="text-[12px] font-black text-on-surface">
                   {groups.reduce((acc, g) => acc + (g.studentIds?.length ?? 0), 0)}
                 </span>
-                <span className="text-[12px] font-bold text-slate-500">{t.oquvchi}</span>
+                <span className="text-[12px] font-bold text-on-surface-variant">{t.oquvchi}</span>
               </div>
             </div>
           )}
@@ -151,7 +153,7 @@ export default function IeltsGroupsPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-40 bg-slate-200/60 rounded-2xl animate-pulse" />
+              <Skeleton key={i} className="h-40 rounded-m3-lg" />
             ))}
           </div>
 
@@ -166,13 +168,13 @@ export default function IeltsGroupsPage() {
               >
                 <Link
                   href={`/teacher/ielts/groups/${grp.id}`}
-                  className="group flex flex-col bg-white rounded-2xl border border-slate-200/80 hover:border-rose-300 hover:shadow-md transition-all duration-200 overflow-hidden h-full"
+                  className="group flex flex-col bg-surface-container-low rounded-m3-lg border border-outline-variant shadow-elev-1 hover:shadow-elev-2 transition-all duration-200 overflow-hidden h-full"
                 >
                   {/* ── Card body with SVG Pattern ── */}
-                  <div className="relative px-5 pt-5 pb-5 flex-1 flex flex-col gap-2 z-10 bg-white">
-                    
+                  <div className="relative px-5 pt-5 pb-5 flex-1 flex flex-col gap-2 z-10">
+
                     {/* Decorative SVG Mesh Background */}
-                    <svg className="absolute inset-0 w-full h-full text-slate-200/40 z-0 pointer-events-none" fill="currentColor">
+                    <svg className="absolute inset-0 w-full h-full text-outline-variant opacity-40 z-0 pointer-events-none" fill="currentColor">
                       <pattern id={`dots-${grp.id}`} x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
                         <circle cx="2" cy="2" r="1.5" />
                       </pattern>
@@ -181,13 +183,13 @@ export default function IeltsGroupsPage() {
 
                     <div className="relative z-10 flex-1 flex flex-col gap-2">
                       {/* Title — hero element */}
-                      <h3 className="text-[17px] font-black text-slate-900 leading-snug tracking-tight group-hover:text-rose-600 transition-colors line-clamp-2 drop-shadow-sm">
+                      <h3 className="text-[17px] font-black text-on-surface leading-snug tracking-tight group-hover:text-primary transition-colors line-clamp-2 drop-shadow-sm">
                         {grp.title}
                       </h3>
 
                       {/* Description */}
                       {grp.description ? (
-                        <p className="text-[12px] text-slate-500 font-medium line-clamp-2 leading-relaxed">
+                        <p className="text-[12px] text-on-surface-variant font-medium line-clamp-2 leading-relaxed">
                           {grp.description}
                         </p>
                       ) : (
@@ -197,23 +199,23 @@ export default function IeltsGroupsPage() {
                   </div>
 
                   {/* ── Footer: band + code + students ── */}
-                  <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2 group-hover:bg-rose-50/30 transition-colors">
+                  <div className="px-5 py-3 bg-surface-container border-t border-outline-variant flex items-center justify-between gap-2 group-hover:bg-state-hover transition-colors">
                     <div className="flex items-center gap-2 min-w-0">
                       {/* Band badge */}
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-black shrink-0 ${bandPill(Number(grp.targetBand))}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-m3-xs border border-transparent text-[11px] font-black shrink-0 ${bandPill(Number(grp.targetBand))}`}>
                         <Target size={10} strokeWidth={3} />
                         Band {Number(grp.targetBand).toFixed(1)}
                       </span>
                       {/* Code */}
-                      <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-black text-slate-500 bg-white border border-slate-200/60 px-1.5 py-0.5 rounded-md shrink-0">
-                        <Hash size={10} className="text-rose-400" />{grp.joinCode}
+                      <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-black text-on-surface-variant bg-surface-container-lowest border border-outline-variant px-1.5 py-0.5 rounded-m3-xs shrink-0">
+                        <Hash size={10} className="text-primary" />{grp.joinCode}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="flex items-center gap-1 text-[12px] font-bold text-slate-400">
+                      <span className="flex items-center gap-1 text-[12px] font-bold text-on-surface-variant">
                         <Users size={12} strokeWidth={2.5} />{grp.studentIds?.length ?? 0}
                       </span>
-                      <span className="text-[13px] font-black text-rose-400 group-hover:translate-x-0.5 transition-transform">→</span>
+                      <span className="text-[13px] font-black text-primary group-hover:translate-x-0.5 transition-transform">→</span>
                     </div>
                   </div>
                 </Link>
@@ -222,21 +224,17 @@ export default function IeltsGroupsPage() {
           </div>
 
         ) : (
-          <div className="flex flex-col items-center justify-center text-center py-28 gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center rotate-6 hover:rotate-0 transition-transform">
-              <BookOpen size={26} strokeWidth={2} />
-            </div>
-            <div>
-              <h3 className="text-[16px] font-black text-slate-800 tracking-tight mb-1">{t.empty.title}</h3>
-              <p className="text-[13px] font-medium text-slate-400 max-w-xs leading-relaxed">{t.empty.desc}</p>
-            </div>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white text-[13px] font-black rounded-xl active:scale-95 transition-all shadow-sm"
-            >
-              <Plus size={15} strokeWidth={3} /> {t.empty.btn}
-            </button>
-          </div>
+          <EmptyState
+            className="py-28"
+            icon={<BookOpen strokeWidth={2} />}
+            title={t.empty.title}
+            description={t.empty.desc}
+            action={
+              <Button variant="tonal" icon={<Plus strokeWidth={3} />} onClick={() => setIsModalOpen(true)}>
+                {t.empty.btn}
+              </Button>
+            }
+          />
         )}
 
       </div>

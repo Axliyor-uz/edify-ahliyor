@@ -35,10 +35,11 @@ Fields on `users/{uid}`: `aiDailyQuestionLimit` (fallback 50), `aiQuestionUsedTo
 - **Pattern (mandatory for new AI flows): check permission → call Gemini → deduct only the actual generated count** so failed generations don't burn credits. All 6 routes follow the check/deduct-actual shape, **but only `by_image` calls the real gatekeeper** — the other 5 inline a copy of the limit math (no feature-lock, drift risk). When touching those routes, prefer migrating them to `checkUserPermission`.
 
 ### C — Per-day server counter `ai_usage/{userId}_{YYYY-MM-DD}` — **LIVE, analyze route only**
-- Written/read ONLY by `app/api/analyze/route.ts`: reads `count`, 429s at limit, increments +1 per request (`{count, userId, date}` merge).
-- Limit = `dailyLimit` **from the client request body** (sourced from Remote Config key `ai_daily_limit`, client default 15; server fallback `|| 10`) — trivially spoofable.
+- Written/read ONLY by `app/api/analyze/route.ts`: reads `count`, 429s at limit, increments +1 per request (`{count, userId, date}` merge, `FieldValue.increment`).
+- **The route is authenticated.** It requires `Authorization: Bearer <idToken>`; the **uid comes from the verified token, never from the body**. It was previously unauthenticated and took `userId` from the request body — i.e. an open Gemini proxy that could also spend another user's quota.
+- **The limit is server-owned**: `AI_ANALYZE_DAILY_LIMIT` env (default 15). It used to arrive as `dailyLimit` in the request body (from Remote Config), so the caller chose their own cap and the check was decorative. ⚠️ Never reintroduce a client-supplied limit.
 - Date key is **UTC** (`toISOString().split('T')[0]`), unlike A/B which use Asia/Tashkent.
-- Uses the **client** SDK (`db` from `lib/firebase`) inside a server route — depends on Firestore rules for `ai_usage`, unlike every other AI route which uses `adminDb`.
+- Uses the **Admin SDK** (`adminDb`), like every other AI route. Firestore rules for `ai_usage` are therefore `read, write: if false` — no client may touch the counter. (Before: client SDK in a server route + world-open rules, so anyone could zero their own usage.)
 
 ## TTS — `app/api/tts/route.ts`
 

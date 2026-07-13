@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Download } from "lucide-react";
 import toast from "react-hot-toast";
+
+import { Button } from "@/components/ui";
 
 interface DownloadPdfButtonProps {
   targetRef: React.RefObject<HTMLDivElement>;
@@ -110,13 +112,15 @@ export default function DownloadPdfButton({
   };
 
   return (
-    <button
+    <Button
+      variant="outlined"
+      size="lg"
       onClick={handleDownload}
-      disabled={isGenerating}
-      className="w-full py-3.5 bg-white border-2 border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+      loading={isGenerating}
+      icon={<Download />}
+      className="w-full"
     >
-      {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
       {isGenerating ? "PDF Yaratilmoqda..." : buttonText}
-    </button>
+    </Button>
   );
 }

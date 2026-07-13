@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { 
+import {
   Calculator, Settings, RefreshCw, Download,
-  Plus, Minus, X as MultiplyIcon, Divide, 
-  Hash, ArrowLeft, Layers, Loader2, FileDown, Check
+  Plus, Minus, X as MultiplyIcon, Divide,
+  Hash, ArrowLeft, Layers, FileDown, Check
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import toast from 'react-hot-toast';
+
+import { Button } from '@/components/ui';
 
 // --- 1. TRANSLATION DICTIONARY ---
 const WORKSHEET_TRANSLATIONS = {
@@ -54,6 +56,30 @@ interface Problem { id: number; num1: number; num2: number; operator: Operation;
 
 const PROBLEMS_PER_PAGE = 24; // Optimal grid size for A4 (4 columns x 6 rows)
 const DIVISION_PER_PAGE = 18; // Division takes more space (3 columns x 6 rows)
+
+// --- M3 three-tone rotation for the operation cards (decorative, not status) ---
+type OpTone = 'primary' | 'secondary' | 'tertiary';
+
+const OP_TONE_STYLES: Record<OpTone, { card: string; check: string; icon: string; label: string }> = {
+  primary: {
+    card: 'border-primary bg-primary-container shadow-elev-1 ring-2 ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)]',
+    check: 'bg-primary text-on-primary',
+    icon: 'bg-primary text-on-primary shadow-elev-2',
+    label: 'text-on-primary-container',
+  },
+  secondary: {
+    card: 'border-secondary bg-secondary-container shadow-elev-1 ring-2 ring-[color-mix(in_oklab,var(--m3-secondary)_20%,transparent)]',
+    check: 'bg-secondary text-on-secondary',
+    icon: 'bg-secondary text-on-secondary shadow-elev-2',
+    label: 'text-on-secondary-container',
+  },
+  tertiary: {
+    card: 'border-tertiary bg-tertiary-container shadow-elev-1 ring-2 ring-[color-mix(in_oklab,var(--m3-tertiary)_20%,transparent)]',
+    check: 'bg-tertiary text-on-tertiary',
+    icon: 'bg-tertiary text-on-tertiary shadow-elev-2',
+    label: 'text-on-tertiary-container',
+  },
+};
 
 export default function MathOperationsGenerator() {
   const { lang } = useTeacherLanguage();
@@ -178,12 +204,12 @@ export default function MathOperationsGenerator() {
     if (p.operator === '÷') {
       return (
         <div className="relative p-2 md:p-4 flex flex-col items-center justify-start min-h-[160px] md:min-h-[200px]">
-          <span className="absolute top-0 left-0 font-black text-slate-400 text-[10px] md:text-[12px]">{p.id})</span>
-          <div className="flex items-start w-full justify-center mt-3 md:mt-4 text-lg md:text-xl font-mono tracking-widest text-slate-900">
+          <span className="absolute top-0 left-0 font-black text-on-surface-variant text-[10px] md:text-[12px]">{p.id})</span>
+          <div className="flex items-start w-full justify-center mt-3 md:mt-4 text-lg md:text-xl font-mono tracking-widest text-on-surface">
             <div className="pr-2">{p.num1}</div>
-            <div className="border-l-2 border-slate-900 pl-2 flex flex-col items-start min-w-[2.5rem] md:min-w-[3rem]">
+            <div className="border-l-2 border-on-surface pl-2 flex flex-col items-start min-w-[2.5rem] md:min-w-[3rem]">
                <div className="pb-1">{p.num2}</div>
-               <div className="border-t-2 border-slate-900 w-full pt-1 text-indigo-600 font-bold h-8 flex items-center justify-center">
+               <div className="border-t-2 border-on-surface w-full pt-1 text-primary font-bold h-8 flex items-center justify-center">
                  {isAnswerKey ? <span>{p.answer} {p.remainder ? <span className="text-[10px] md:text-sm ml-1">r{p.remainder}</span> : ''}</span> : ''}
                </div>
             </div>
@@ -195,15 +221,15 @@ export default function MathOperationsGenerator() {
     // Vertical Stack Layout (+, -, ×)
     return (
       <div className={`relative p-2 md:p-4 flex flex-col items-center justify-start min-h-[120px] md:min-h-[140px]`}>
-        <span className="absolute top-0 left-0 font-black text-slate-400 text-[10px] md:text-[12px]">{p.id})</span>
-        <div className="flex flex-col items-end text-lg md:text-xl font-mono tracking-widest text-slate-900 mt-3 md:mt-4">
+        <span className="absolute top-0 left-0 font-black text-on-surface-variant text-[10px] md:text-[12px]">{p.id})</span>
+        <div className="flex flex-col items-end text-lg md:text-xl font-mono tracking-widest text-on-surface mt-3 md:mt-4">
           <div>{p.num1}</div>
-          <div className="flex items-center w-full justify-between gap-4 md:gap-6 border-b-2 border-slate-900 pb-1">
+          <div className="flex items-center w-full justify-between gap-4 md:gap-6 border-b-2 border-on-surface pb-1">
             <span>{p.operator}</span>
             <span>{p.num2}</span>
           </div>
           {isAnswerKey ? (
-             <div className="text-indigo-600 font-bold pt-1 text-center w-full">{p.answer}</div>
+             <div className="text-primary font-bold pt-1 text-center w-full">{p.answer}</div>
           ) : (
              <div className="h-6 md:h-8 w-full"></div> 
           )}
@@ -221,17 +247,17 @@ export default function MathOperationsGenerator() {
   const problemPages = chunkArray(problems, perPage);
 
   return (
-    <div className="min-h-[100dvh] bg-[#F8FAFC] font-sans pb-[calc(2rem+env(safe-area-inset-bottom))]">
-      
+    <div className="min-h-[100dvh] bg-surface font-sans pb-[calc(2rem+env(safe-area-inset-bottom))]">
+
       {/* --- TOP HEADER --- */}
-      <div className="bg-white/90 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <div className="bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant sticky top-0 z-30 shadow-elev-1">
         <div className="max-w-5xl mx-auto px-4 py-3 md:py-4 flex items-center gap-3">
-          <Link href="/teacher/create" className="p-2 -ml-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors active:scale-95">
+          <Link href="/teacher/create" className="p-2 -ml-2 text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-m3-md transition-colors active:scale-95">
             <ArrowLeft size={20} strokeWidth={2.5} />
           </Link>
           <div className="min-w-0">
-            <h1 className="text-[16px] md:text-[18px] font-black text-slate-900 tracking-tight flex items-center gap-2 truncate">
-              <Calculator size={18} className="text-indigo-600 shrink-0" strokeWidth={2.5}/> {t.title}
+            <h1 className="text-[16px] md:text-[18px] font-black text-on-surface tracking-tight flex items-center gap-2 truncate">
+              <Calculator size={18} className="text-primary shrink-0" strokeWidth={2.5}/> {t.title}
             </h1>
           </div>
         </div>
@@ -240,36 +266,37 @@ export default function MathOperationsGenerator() {
       <div className="max-w-5xl mx-auto px-4 mt-6 md:mt-8">
         
         {/* --- CONFIGURATION PANEL --- */}
-        <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-slate-200/80 shadow-sm p-4 md:p-6 mb-6 md:mb-8">
-          
+        <div className="bg-surface-container-low rounded-m3-lg md:rounded-m3-xl border border-outline-variant shadow-elev-1 p-4 md:p-6 mb-6 md:mb-8">
+
           {/* 1. Operation Multi-Select Cards */}
           <div className="mb-6 md:mb-8">
-            <h2 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 md:mb-4 flex items-center gap-1.5 ml-1">
+            <h2 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 md:mb-4 flex items-center gap-1.5 ml-1">
               <Layers size={14} /> 1. {t.operation}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                {[
-                 { id: '+', icon: Plus, label: t.ops.add, color: 'emerald' },
-                 { id: '-', icon: Minus, label: t.ops.sub, color: 'amber' },
-                 { id: '×', icon: MultiplyIcon, label: t.ops.mult, color: 'blue' },
-                 { id: '÷', icon: Divide, label: t.ops.div, color: 'purple' }
+                 { id: '+', icon: Plus, label: t.ops.add, tone: 'primary' as OpTone },
+                 { id: '-', icon: Minus, label: t.ops.sub, tone: 'secondary' as OpTone },
+                 { id: '×', icon: MultiplyIcon, label: t.ops.mult, tone: 'tertiary' as OpTone },
+                 { id: '÷', icon: Divide, label: t.ops.div, tone: 'primary' as OpTone }
                ].map(op => {
                  const isActive = selectedOps.includes(op.id as Operation);
+                 const tone = OP_TONE_STYLES[op.tone];
                  return (
-                   <button 
-                     key={op.id} 
+                   <button
+                     key={op.id}
                      onClick={() => toggleOperation(op.id as Operation)}
-                     className={`relative flex flex-col items-center justify-center gap-2 md:gap-3 p-3 md:p-5 rounded-2xl border-2 transition-all duration-200 active:scale-[0.98] ${
-                       isActive 
-                         ? `border-${op.color}-500 bg-${op.color}-50 shadow-sm ring-2 ring-${op.color}-500/20` 
-                         : 'border-slate-200 bg-white hover:border-slate-300'
+                     className={`relative flex flex-col items-center justify-center gap-2 md:gap-3 p-3 md:p-5 rounded-m3-lg border-2 transition-all duration-200 active:scale-[0.98] ${
+                       isActive
+                         ? tone.card
+                         : 'border-outline-variant bg-surface-container-lowest hover:border-outline'
                      }`}
                    >
-                     {isActive && <div className={`absolute top-2 right-2 w-4 h-4 bg-${op.color}-500 rounded-full flex items-center justify-center`}><Check size={10} className="text-white" strokeWidth={4}/></div>}
-                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-colors duration-200 ${isActive ? `bg-${op.color}-500 text-white shadow-md` : `bg-slate-50 text-slate-400 border border-slate-100`}`}>
+                     {isActive && <div className={`absolute top-2 right-2 w-4 h-4 ${tone.check} rounded-full flex items-center justify-center`}><Check size={10} strokeWidth={4}/></div>}
+                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-colors duration-200 ${isActive ? tone.icon : 'bg-surface-container text-on-surface-variant border border-outline-variant'}`}>
                        <op.icon size={20} className="md:w-6 md:h-6" strokeWidth={isActive ? 3 : 2.5} />
                      </div>
-                     <span className={`text-[12px] md:text-[14px] font-black tracking-wide ${isActive ? `text-${op.color}-700` : 'text-slate-500'}`}>
+                     <span className={`text-[12px] md:text-[14px] font-black tracking-wide ${isActive ? tone.label : 'text-on-surface-variant'}`}>
                        {op.label}
                      </span>
                    </button>
@@ -281,86 +308,88 @@ export default function MathOperationsGenerator() {
           <div className="grid md:grid-cols-2 gap-4 md:gap-6">
              
              {/* 2. Digits & Count */}
-             <div className="bg-slate-50/50 p-4 md:p-5 rounded-[1.2rem] border border-slate-100 flex flex-col justify-between space-y-4">
-                <h2 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+             <div className="bg-surface-container p-4 md:p-5 rounded-m3-lg border border-outline-variant flex flex-col justify-between space-y-4">
+                <h2 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5">
                   <Hash size={14} /> 2. {t.digits}
                 </h2>
-                
+
                 {/* Top Digits */}
                 <div>
-                  <p className="text-[11px] md:text-[12px] font-black text-slate-600 mb-2 pl-1">{t.topNum}</p>
+                  <p className="text-[11px] md:text-[12px] font-black text-on-surface-variant mb-2 pl-1">{t.topNum}</p>
                   <div className="flex gap-1.5 md:gap-2">
                     {[1, 2, 3, 4, 5, 6].map(n => (
-                      <button key={`top-${n}`} onClick={() => setTopDigits(n)} className={`flex-1 py-2 md:py-2.5 rounded-xl text-[12px] md:text-[14px] font-black border transition-all active:scale-95 ${topDigits === n ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20' : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300'}`}>{n}</button>
+                      <button key={`top-${n}`} onClick={() => setTopDigits(n)} className={`flex-1 py-2 md:py-2.5 rounded-m3-md text-[12px] md:text-[14px] font-black border transition-all active:scale-95 ${topDigits === n ? 'bg-primary text-on-primary border-primary shadow-elev-2' : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-primary'}`}>{n}</button>
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Bottom Digits */}
                 <div>
-                  <p className="text-[11px] md:text-[12px] font-black text-slate-600 mb-2 pl-1">{t.botNum}</p>
+                  <p className="text-[11px] md:text-[12px] font-black text-on-surface-variant mb-2 pl-1">{t.botNum}</p>
                   <div className="flex gap-1.5 md:gap-2">
                     {[1, 2, 3, 4, 5, 6].map(n => (
-                      <button key={`bot-${n}`} onClick={() => setBotDigits(n)} className={`flex-1 py-2 md:py-2.5 rounded-xl text-[12px] md:text-[14px] font-black border transition-all active:scale-95 ${botDigits === n ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20' : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300'}`}>{n}</button>
+                      <button key={`bot-${n}`} onClick={() => setBotDigits(n)} className={`flex-1 py-2 md:py-2.5 rounded-m3-md text-[12px] md:text-[14px] font-black border transition-all active:scale-95 ${botDigits === n ? 'bg-primary text-on-primary border-primary shadow-elev-2' : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-primary'}`}>{n}</button>
                     ))}
                   </div>
                 </div>
 
                 {/* Problem Count Slider */}
-                <div className="pt-2 border-t border-slate-200/60">
+                <div className="pt-2 border-t border-outline-variant">
                   <div className="flex justify-between items-center mb-3">
-                    <p className="text-[11px] md:text-[12px] font-black text-slate-600 pl-1">{t.count}</p>
-                    <span className="bg-indigo-100 text-indigo-700 font-black px-2.5 py-1 rounded-lg text-[10px] md:text-[11px] uppercase tracking-widest">{problemCount} ta</span>
+                    <p className="text-[11px] md:text-[12px] font-black text-on-surface-variant pl-1">{t.count}</p>
+                    <span className="bg-primary-container text-on-primary-container font-black px-2.5 py-1 rounded-m3-sm text-[10px] md:text-[11px] uppercase tracking-widest">{problemCount} ta</span>
                   </div>
-                  <input type="range" min="12" max="60" step="4" value={problemCount} onChange={(e) => setProblemCount(Number(e.target.value))} className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg appearance-none shadow-inner"/>
+                  <input type="range" min="12" max="60" step="4" value={problemCount} onChange={(e) => setProblemCount(Number(e.target.value))} className="w-full accent-primary cursor-pointer h-2 bg-surface-container-highest rounded-m3-sm appearance-none shadow-inner"/>
                 </div>
              </div>
 
              {/* 3. Settings & Generate */}
              <div className="flex flex-col">
-                <div className="bg-slate-50/50 p-4 md:p-5 rounded-[1.2rem] border border-slate-100 flex-1 flex flex-col justify-between">
-                  <h2 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-4">
+                <div className="bg-surface-container p-4 md:p-5 rounded-m3-lg border border-outline-variant flex-1 flex flex-col justify-between">
+                  <h2 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 mb-4">
                     <Settings size={14} /> 3. {t.settings}
                   </h2>
                   
                   <div className="space-y-4 mb-6">
                     {selectedOps.includes('-') && (
-                      <label className="flex items-center justify-between cursor-pointer group bg-white px-4 py-3 rounded-xl border border-slate-200/80 shadow-sm active:scale-[0.98] transition-all">
-                          <span className="text-[12px] md:text-[13px] font-black text-slate-700">{t.toggles.noNeg}</span>
-                          <div className={`w-10 h-6 rounded-full p-1 transition-colors ${noNegatives ? 'bg-indigo-500' : 'bg-slate-200'}`}>
-                            <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${noNegatives ? 'translate-x-4' : 'translate-x-0'}`}/>
+                      <label className="flex items-center justify-between cursor-pointer group bg-surface-container-lowest px-4 py-3 rounded-m3-md border border-outline-variant shadow-elev-1 active:scale-[0.98] transition-all">
+                          <span className="text-[12px] md:text-[13px] font-black text-on-surface">{t.toggles.noNeg}</span>
+                          <div className={`w-10 h-6 rounded-full p-1 transition-colors ${noNegatives ? 'bg-primary' : 'bg-surface-container-highest'}`}>
+                            <div className={`w-4 h-4 bg-surface-container-lowest rounded-full shadow-elev-1 transition-transform ${noNegatives ? 'translate-x-4' : 'translate-x-0'}`}/>
                           </div>
                           <input type="checkbox" className="hidden" checked={noNegatives} onChange={() => setNoNegatives(!noNegatives)}/>
                       </label>
                     )}
 
                     {selectedOps.includes('÷') && (
-                      <label className="flex items-center justify-between cursor-pointer group bg-white px-4 py-3 rounded-xl border border-slate-200/80 shadow-sm active:scale-[0.98] transition-all">
-                          <span className="text-[12px] md:text-[13px] font-black text-slate-700">{t.toggles.rem}</span>
-                          <div className={`w-10 h-6 rounded-full p-1 transition-colors ${allowRemainders ? 'bg-indigo-500' : 'bg-slate-200'}`}>
-                            <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${allowRemainders ? 'translate-x-4' : 'translate-x-0'}`}/>
+                      <label className="flex items-center justify-between cursor-pointer group bg-surface-container-lowest px-4 py-3 rounded-m3-md border border-outline-variant shadow-elev-1 active:scale-[0.98] transition-all">
+                          <span className="text-[12px] md:text-[13px] font-black text-on-surface">{t.toggles.rem}</span>
+                          <div className={`w-10 h-6 rounded-full p-1 transition-colors ${allowRemainders ? 'bg-primary' : 'bg-surface-container-highest'}`}>
+                            <div className={`w-4 h-4 bg-surface-container-lowest rounded-full shadow-elev-1 transition-transform ${allowRemainders ? 'translate-x-4' : 'translate-x-0'}`}/>
                           </div>
                           <input type="checkbox" className="hidden" checked={allowRemainders} onChange={() => setAllowRemainders(!allowRemainders)}/>
                       </label>
                     )}
 
-                    <label className="flex items-center justify-between cursor-pointer group bg-white px-4 py-3 rounded-xl border border-slate-200/80 shadow-sm active:scale-[0.98] transition-all">
-                        <span className="text-[12px] md:text-[13px] font-black text-slate-700">{t.toggles.answers}</span>
-                        <div className={`w-10 h-6 rounded-full p-1 transition-colors ${includeAnswers ? 'bg-indigo-500' : 'bg-slate-200'}`}>
-                          <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${includeAnswers ? 'translate-x-4' : 'translate-x-0'}`}/>
+                    <label className="flex items-center justify-between cursor-pointer group bg-surface-container-lowest px-4 py-3 rounded-m3-md border border-outline-variant shadow-elev-1 active:scale-[0.98] transition-all">
+                        <span className="text-[12px] md:text-[13px] font-black text-on-surface">{t.toggles.answers}</span>
+                        <div className={`w-10 h-6 rounded-full p-1 transition-colors ${includeAnswers ? 'bg-primary' : 'bg-surface-container-highest'}`}>
+                          <div className={`w-4 h-4 bg-surface-container-lowest rounded-full shadow-elev-1 transition-transform ${includeAnswers ? 'translate-x-4' : 'translate-x-0'}`}/>
                         </div>
                         <input type="checkbox" className="hidden" checked={includeAnswers} onChange={() => setIncludeAnswers(!includeAnswers)}/>
                     </label>
                   </div>
 
                   {/* Generate Button */}
-                  <button 
-                    onClick={generateProblems} 
-                    className="w-full py-3.5 md:py-4 bg-slate-900 hover:bg-black text-white font-black rounded-xl shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-[13px] md:text-[14px] mt-auto"
+                  <Button
+                    variant="filled"
+                    size="lg"
+                    onClick={generateProblems}
+                    icon={<RefreshCw className={isGenerating ? "animate-spin" : ""} strokeWidth={2.5}/>}
+                    className="w-full mt-auto"
                   >
-                    <RefreshCw size={18} className={isGenerating ? "animate-spin" : ""} strokeWidth={2.5}/> 
                     {isGenerating ? "Yaratilmoqda..." : t.generate}
-                  </button>
+                  </Button>
 
                 </div>
              </div>
@@ -375,28 +404,34 @@ export default function MathOperationsGenerator() {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 md:space-y-6">
                 
                 {/* Action Bar */}
-                <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-3 md:p-4 rounded-[1.2rem] md:rounded-[1.5rem] border border-slate-200 shadow-sm gap-3">
-                   <h3 className="font-black text-slate-800 text-[13px] md:text-[15px] flex items-center gap-2 px-2"><FileDown size={18} className="text-indigo-500"/> {t.preview}</h3>
+                <div className="flex flex-col sm:flex-row justify-between items-center bg-surface-container-low p-3 md:p-4 rounded-m3-lg border border-outline-variant shadow-elev-1 gap-3">
+                   <h3 className="font-black text-on-surface text-[13px] md:text-[15px] flex items-center gap-2 px-2"><FileDown size={18} className="text-primary"/> {t.preview}</h3>
                    <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto">
-                     <button 
-                       onClick={() => handleDownloadPdf(false)} disabled={isPdfLoading}
-                       className="w-full sm:w-auto px-5 md:px-6 py-3 md:py-2.5 bg-slate-50 border border-slate-200/80 text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 text-[12px] md:text-[13px]"
+                     <Button
+                       variant="outlined"
+                       onClick={() => handleDownloadPdf(false)}
+                       loading={isPdfLoading}
+                       icon={<Download strokeWidth={2.5}/>}
+                       className="w-full sm:w-auto"
                      >
-                       {isPdfLoading ? <Loader2 size={16} className="animate-spin"/> : <Download size={16} strokeWidth={2.5}/>} {t.download}
-                     </button>
+                       {t.download}
+                     </Button>
                      {includeAnswers && (
-                       <button 
-                         onClick={() => handleDownloadPdf(true)} disabled={isPdfLoading}
-                         className="w-full sm:w-auto px-5 md:px-6 py-3 md:py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 text-[12px] md:text-[13px]"
+                       <Button
+                         variant="tonal"
+                         onClick={() => handleDownloadPdf(true)}
+                         loading={isPdfLoading}
+                         icon={<Download strokeWidth={2.5}/>}
+                         className="w-full sm:w-auto"
                        >
-                         {isPdfLoading ? <Loader2 size={16} className="animate-spin"/> : <Download size={16} strokeWidth={2.5}/>} {t.downloadAns}
-                       </button>
+                         {t.downloadAns}
+                       </Button>
                      )}
                    </div>
                 </div>
 
                 {/* THE A4 CANVAS WRAPPER (Scaled for preview) */}
-                <div className="bg-slate-200/50 p-2 md:p-6 rounded-[1.5rem] md:rounded-[2rem] overflow-x-auto flex flex-col items-center custom-scrollbar border border-slate-200 shadow-inner">
+                <div className="bg-surface-container-high p-2 md:p-6 rounded-m3-lg md:rounded-m3-xl overflow-x-auto flex flex-col items-center custom-scrollbar border border-outline-variant shadow-inner">
                   
                   {/* REAL A4 CONTAINER */}
                   <div 
@@ -409,20 +444,20 @@ export default function MathOperationsGenerator() {
                     {problemPages.map((pageProblems, pageIndex) => (
                       <div 
                         key={`student-page-${pageIndex}`}
-                        className="bg-white shadow-2xl relative flex flex-col justify-between"
+                        className="bg-surface-container-lowest shadow-elev-3 relative flex flex-col justify-between"
                         style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always' }}
                       >
                         <div>
                           {/* Header (Only on first page, or minimal on subsequent) */}
-                          <div className="flex justify-between items-end border-b-[3px] border-slate-900 pb-4 mb-8">
-                            <h1 className="text-[26px] font-black uppercase text-black tracking-tight leading-none">{t.title}</h1>
+                          <div className="flex justify-between items-end border-b-[3px] border-on-surface pb-4 mb-8">
+                            <h1 className="text-[26px] font-black uppercase text-on-surface tracking-tight leading-none">{t.title}</h1>
                             {pageIndex === 0 && (
                               <div className="flex flex-col gap-3.5 text-[14px] w-64 shrink-0">
-                                 <div className="flex items-end gap-2"><span className="font-bold uppercase tracking-widest">{t.name}:</span><div className="flex-1 border-b-2 border-slate-400"></div></div>
-                                 <div className="flex items-end gap-2"><span className="font-bold uppercase tracking-widest">{t.date}:</span><div className="flex-1 border-b-2 border-slate-400"></div><span className="font-bold uppercase tracking-widest ml-2">{t.score}:</span><div className="w-12 border-b-2 border-slate-400"></div></div>
+                                 <div className="flex items-end gap-2"><span className="font-bold uppercase tracking-widest">{t.name}:</span><div className="flex-1 border-b-2 border-outline"></div></div>
+                                 <div className="flex items-end gap-2"><span className="font-bold uppercase tracking-widest">{t.date}:</span><div className="flex-1 border-b-2 border-outline"></div><span className="font-bold uppercase tracking-widest ml-2">{t.score}:</span><div className="w-12 border-b-2 border-outline"></div></div>
                               </div>
                             )}
-                            {pageIndex > 0 && <span className="font-black text-slate-400">Page {pageIndex + 1}</span>}
+                            {pageIndex > 0 && <span className="font-black text-on-surface-variant">Page {pageIndex + 1}</span>}
                           </div>
 
                           {/* Grid */}
@@ -432,8 +467,8 @@ export default function MathOperationsGenerator() {
                         </div>
 
                         {/* Footer Watermark */}
-                        <div className="w-full text-center border-t-2 border-slate-100 pt-3 mt-auto">
-                          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t.watermark}</p>
+                        <div className="w-full text-center border-t-2 border-outline-variant pt-3 mt-auto">
+                          <p className="text-[10px] font-black text-outline uppercase tracking-widest">{t.watermark}</p>
                         </div>
                       </div>
                     ))}
@@ -442,13 +477,13 @@ export default function MathOperationsGenerator() {
                     {includeAnswers && problemPages.map((pageProblems, pageIndex) => (
                       <div 
                         key={`answer-page-${pageIndex}`}
-                        className="bg-white shadow-2xl relative answer-key-page flex flex-col justify-between"
+                        className="bg-surface-container-lowest shadow-elev-3 relative answer-key-page flex flex-col justify-between"
                         style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always' }}
                       >
                         <div>
-                          <div className="border-b-[3px] border-indigo-500 pb-4 mb-8 flex justify-between items-end">
-                            <h1 className="text-[26px] font-black uppercase text-indigo-600 tracking-tight leading-none">{t.ansTitle}</h1>
-                            <span className="font-black text-indigo-300">Page {pageIndex + 1}</span>
+                          <div className="border-b-[3px] border-primary pb-4 mb-8 flex justify-between items-end">
+                            <h1 className="text-[26px] font-black uppercase text-primary tracking-tight leading-none">{t.ansTitle}</h1>
+                            <span className="font-black text-primary opacity-40">Page {pageIndex + 1}</span>
                           </div>
 
                           <div className={`grid ${perPage === DIVISION_PER_PAGE ? 'grid-cols-3 gap-y-10 gap-x-8' : 'grid-cols-4 gap-y-8 gap-x-6'}`}>
@@ -456,8 +491,8 @@ export default function MathOperationsGenerator() {
                           </div>
                         </div>
 
-                        <div className="w-full text-center border-t-2 border-slate-100 pt-3 mt-auto">
-                          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t.watermark}</p>
+                        <div className="w-full text-center border-t-2 border-outline-variant pt-3 mt-auto">
+                          <p className="text-[10px] font-black text-outline uppercase tracking-widest">{t.watermark}</p>
                         </div>
                       </div>
                     ))}

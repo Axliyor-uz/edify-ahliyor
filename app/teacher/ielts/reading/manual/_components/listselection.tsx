@@ -3,6 +3,8 @@
 import { Plus, Trash2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
+import { Button } from '@/components/ui';
+
 export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
   
   // List Selection usually has exactly 1 "question" object that covers multiple numbers.
@@ -93,43 +95,43 @@ export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm group/block mb-4 transition-all">
+    <div className="bg-surface-container-low border border-outline-variant rounded-m3-sm shadow-elev-1 group/block mb-4 transition-all">
       {/* HEADER */}
-      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between rounded-t-lg">
+      <div className="bg-surface-container border-b border-outline-variant px-3 py-2 flex items-center justify-between rounded-t-m3-sm">
         <div className="flex items-center gap-3">
-          <span className="bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-[3px] text-[9px] font-black uppercase tracking-wider">
+          <span className="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-wider">
             LIST SELECTION
           </span>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold select-none">
-            Qs: 
-            <span className="w-8 h-5 flex items-center justify-center bg-white border border-slate-200 rounded font-bold text-slate-800 shadow-sm">{qb.start_question || 0}</span>
-            - 
-            <span className="w-8 h-5 flex items-center justify-center bg-slate-100 border border-slate-200 rounded font-bold text-slate-500">{qb.end_question || 0}</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant font-semibold select-none">
+            Qs:
+            <span className="w-8 h-5 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs font-bold text-on-surface shadow-elev-1">{qb.start_question || 0}</span>
+            -
+            <span className="w-8 h-5 flex items-center justify-center bg-surface-container-high border border-outline-variant rounded-m3-xs font-bold text-on-surface-variant">{qb.end_question || 0}</span>
           </div>
         </div>
-        <button onClick={() => deleteBlock(qbIdx)} className="text-slate-400 hover:text-red-500 opacity-0 group-hover/block:opacity-100 transition-colors">
+        <button onClick={() => deleteBlock(qbIdx)} className="text-on-surface-variant hover:text-error opacity-0 group-hover/block:opacity-100 transition-colors">
           <Trash2 size={14}/>
         </button>
       </div>
 
       <div className="p-3">
-        <input 
-          type="text" placeholder="Instructions (e.g. Choose TWO letters, A-E)..." 
-          value={qb.instructions} 
-          onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
-          className="w-full bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none mb-3 p-0" 
+        <input
+          type="text" placeholder="Instructions (e.g. Choose TWO letters, A-E)..."
+          value={qb.instructions}
+          onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
+          className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none mb-3 p-0"
         />
-        
-        <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 relative transition-colors focus-within:border-cyan-200 focus-within:bg-cyan-50/20">
-          
+
+        <div className="bg-surface-container rounded-m3-sm p-3 border border-outline-variant relative transition-colors focus-within:border-primary focus-within:bg-[color-mix(in_oklab,var(--m3-primary)_5%,transparent)]">
+
           {/* QUESTION TEXT */}
           <div className="flex gap-2 mb-3">
-            <input 
-              type="text" placeholder="Question prompt... (Try pasting question + options here!)" 
-              value={row.question_text} 
-              onChange={e => updateField('question_text', e.target.value)} 
+            <input
+              type="text" placeholder="Question prompt... (Try pasting question + options here!)"
+              value={row.question_text}
+              onChange={e => updateField('question_text', e.target.value)}
               onPaste={handleSmartPaste}
-              className="flex-1 h-8 text-[13px] font-bold bg-white border border-slate-200 rounded px-3 outline-none focus:border-cyan-400 placeholder:font-normal placeholder:text-slate-400" 
+              className="flex-1 h-8 text-[13px] font-bold bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-3 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:font-normal placeholder:text-on-surface-variant"
             />
           </div>
 
@@ -137,52 +139,49 @@ export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock
           <div className="pl-2 space-y-1.5 mb-4">
             {row.options.map((opt: any, oIdx: number) => (
               <div key={opt.id} className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-400 w-4">{opt.id}.</span>
-                <input 
-                  type="text" placeholder={`Option ${opt.id}...`} 
-                  value={opt.text} 
-                  onChange={e => updateOption(oIdx, e.target.value)} 
-                  className="flex-1 h-7 text-[12px] bg-white border border-slate-200 rounded px-2 outline-none focus:border-cyan-400" 
+                <span className="text-[10px] font-black text-on-surface-variant w-4">{opt.id}.</span>
+                <input
+                  type="text" placeholder={`Option ${opt.id}...`}
+                  value={opt.text}
+                  onChange={e => updateOption(oIdx, e.target.value)}
+                  className="flex-1 h-7 text-[12px] bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary"
                 />
-                <button 
-                  onClick={() => removeOption(oIdx)} 
+                <button
+                  onClick={() => removeOption(oIdx)}
                   disabled={row.options.length <= 2}
-                  className="text-slate-300 hover:text-red-500 disabled:opacity-0 transition-colors shrink-0"
+                  className="text-on-surface-variant hover:text-error disabled:opacity-0 transition-colors shrink-0"
                 >
                   <X size={14}/>
                 </button>
               </div>
             ))}
-            <button 
-              onClick={addOption} 
-              className="text-[10px] font-bold text-cyan-600 hover:underline flex items-center gap-1 mt-2"
-            >
-              <Plus size={10} /> Add Choice
-            </button>
+            <Button variant="text" size="sm" icon={<Plus />} onClick={addOption} className="mt-2">
+              Add Choice
+            </Button>
           </div>
 
           {/* BOTTOM BAR (ANSWERS & REFERENCE) */}
-          <div className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded-md">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Correct Answers:</span>
-            
-            <input 
-              type="text" placeholder="e.g. B, D" 
-              value={ansText} 
-              onChange={e => setAnsText(e.target.value)} 
+          <div className="flex items-center gap-3 bg-surface-container-lowest p-2 border border-outline-variant rounded-m3-sm">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase">Correct Answers:</span>
+
+            <input
+              type="text" placeholder="e.g. B, D"
+              value={ansText}
+              onChange={e => setAnsText(e.target.value)}
               onBlur={handleAnsBlur}
               onKeyDown={(e) => { if (e.key === 'Enter') handleAnsBlur(); }}
-              className="w-24 h-7 text-[11px] font-bold bg-transparent border-b border-slate-300 outline-none text-cyan-700 focus:border-cyan-500 text-center uppercase" 
+              className="w-24 h-7 text-[11px] font-black bg-transparent border-b border-outline outline-none text-success focus:border-primary text-center uppercase"
             />
-            
-            <div className="flex-1 border-l border-slate-200 pl-3">
-              <input 
-                type="text" placeholder="Passage Ref (opt)" 
-                value={row.passage_reference || ''} 
-                onChange={e => updateField('passage_reference', e.target.value.toUpperCase())} 
-                className={`w-full h-7 text-[10px] font-bold rounded outline-none uppercase bg-transparent transition-colors px-2
-                  ${row.passage_reference 
-                    ? 'text-cyan-700 bg-cyan-50 border border-cyan-200' 
-                    : 'text-slate-400 placeholder:text-slate-300 hover:border-slate-400 focus:text-cyan-600'}`} 
+
+            <div className="flex-1 border-l border-outline-variant pl-3">
+              <input
+                type="text" placeholder="Passage Ref (opt)"
+                value={row.passage_reference || ''}
+                onChange={e => updateField('passage_reference', e.target.value.toUpperCase())}
+                className={`w-full h-7 text-[10px] font-bold rounded-m3-sm outline-none uppercase transition-colors px-2
+                  ${row.passage_reference
+                    ? 'bg-secondary-container border border-transparent text-on-secondary-container focus:border-primary'
+                    : 'bg-transparent text-on-surface-variant placeholder:text-on-surface-variant focus:text-secondary'}`}
               />
             </div>
           </div>

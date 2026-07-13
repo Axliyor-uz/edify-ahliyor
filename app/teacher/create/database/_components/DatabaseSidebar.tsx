@@ -2,6 +2,8 @@
 
 import { ChevronRight, Layers, X } from "lucide-react";
 
+import { IconButton, cn } from "@/components/ui";
+
 interface DatabaseSidebarProps {
   categories: any[];
   activeCatIndex: number | null;
@@ -21,28 +23,28 @@ export default function DatabaseSidebar({
   selectedSubtopic, onSubtopicClick,
   isSyllabusOpen, setIsSyllabusOpen, t
 }: DatabaseSidebarProps) {
-  
+
   return (
     <>
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-40 w-[320px] bg-[#FAFAFA] border-r border-slate-200/80 transform transition-transform duration-300 shadow-2xl lg:shadow-none
-        ${isSyllabusOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        flex flex-col h-full shrink-0
-      `}>
+      <aside className={cn(
+        "fixed lg:static inset-y-0 left-0 z-40 w-[320px] bg-surface border-r border-outline-variant transform transition-transform duration-300 shadow-elev-3 lg:shadow-none",
+        isSyllabusOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        "flex flex-col h-full shrink-0",
+      )}>
         {/* Sticky Header */}
-        <div className="p-5 border-b border-slate-200/80 flex items-center justify-between bg-white sticky top-0 z-10 shrink-0">
+        <div className="p-5 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest sticky top-0 z-10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-indigo-50 p-2 rounded-xl border border-indigo-100/50">
-              <Layers size={18} className="text-indigo-600" />
+            <div className="bg-primary-container text-on-primary-container p-2 rounded-m3-md">
+              <Layers size={18} />
             </div>
             <div>
-              <h2 className="font-black text-slate-800 text-[15px] leading-tight">{t.syllabus.title}</h2>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{t.syllabus.subtitle}</p>
+              <h2 className="font-extrabold text-on-surface text-[15px] leading-tight">{t.syllabus.title}</h2>
+              <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">{t.syllabus.subtitle}</p>
             </div>
           </div>
-          <button onClick={() => setIsSyllabusOpen(false)} className="lg:hidden text-slate-400 p-2 hover:bg-slate-100 rounded-xl transition-colors">
-            <X size={20} />
-          </button>
+          <IconButton aria-label="Yopish" className="lg:hidden" onClick={() => setIsSyllabusOpen(false)}>
+            <X />
+          </IconButton>
         </div>
 
         {/* Accordion List */}
@@ -50,43 +52,55 @@ export default function DatabaseSidebar({
           {categories.map((cat) => {
             const isCatActive = activeCatIndex === cat.index;
             return (
-              <div key={cat.index} className={`rounded-2xl border transition-all duration-300 overflow-hidden ${isCatActive ? "bg-white border-indigo-200 shadow-sm ring-1 ring-indigo-50" : "bg-white border-slate-200/60 hover:border-slate-300"}`}>
+              <div key={cat.index} className={cn(
+                "rounded-m3-lg transition-all duration-300 overflow-hidden bg-surface-container-lowest",
+                isCatActive ? "ring-1 ring-inset ring-primary shadow-elev-1" : "ring-1 ring-inset ring-outline-variant hover:ring-outline",
+              )}>
                 <button
                   onClick={() => { setActiveCatIndex(isCatActive ? null : cat.index); setActiveChapIndex(null); }}
-                  className={`w-full text-left px-4 py-4 flex justify-between items-center transition-colors group ${isCatActive ? "bg-indigo-600" : "bg-white hover:bg-slate-50"}`}
+                  className={cn(
+                    "m3-interactive w-full text-left px-4 py-4 flex justify-between items-center transition-colors group",
+                    isCatActive ? "bg-primary" : "hover:bg-state-hover",
+                  )}
                 >
-                  <span className={`font-bold text-[13px] ${isCatActive ? "text-white" : "text-slate-700"}`}>{cat.category}</span>
-                  <ChevronRight size={16} className={`transition-transform duration-300 ${isCatActive ? "rotate-90 text-indigo-200" : "text-slate-300"}`} />
+                  <span className={cn("font-bold text-[13px]", isCatActive ? "text-on-primary" : "text-on-surface")}>{cat.category}</span>
+                  <ChevronRight size={16} className={cn("transition-transform duration-300", isCatActive ? "rotate-90 text-on-primary" : "text-on-surface-variant")} />
                 </button>
-                
+
                 {isCatActive && (
-                  <div className="bg-slate-50/50 p-2 space-y-1 border-t border-indigo-50">
+                  <div className="bg-surface-container p-2 space-y-1 border-t border-outline-variant">
                     {cat.chapters.map((chap: any) => {
                       const isChapActive = activeChapIndex === chap.index;
                       return (
-                        <div key={chap.index} className="rounded-xl overflow-hidden">
+                        <div key={chap.index} className="rounded-m3-md overflow-hidden">
                           <button
                             onClick={() => setActiveChapIndex(isChapActive ? null : chap.index)}
-                            className={`w-full text-left px-3 py-2.5 rounded-lg text-[12px] font-bold flex items-center justify-between transition-all duration-200 ${isChapActive ? "bg-indigo-100/50 text-indigo-700" : "text-slate-600 hover:bg-white"}`}
+                            className={cn(
+                              "w-full text-left px-3 py-2.5 rounded-m3-sm text-[12px] font-bold flex items-center justify-between transition-all duration-200",
+                              isChapActive ? "bg-primary-container text-on-primary-container" : "text-on-surface-variant hover:bg-state-hover",
+                            )}
                           >
                             <div className="flex items-center gap-2">
-                              <span className={`w-1.5 h-1.5 rounded-full ${isChapActive ? "bg-indigo-500" : "bg-slate-300"}`}></span>
+                              <span className={cn("w-1.5 h-1.5 rounded-full", isChapActive ? "bg-primary" : "bg-outline-variant")}></span>
                               <span className="truncate">{chap.chapter}</span>
                             </div>
-                            {isChapActive && <ChevronRight size={12} className="text-indigo-400 rotate-90" />}
+                            {isChapActive && <ChevronRight size={12} className="text-primary rotate-90" />}
                           </button>
-                          
+
                           {isChapActive && (
-                            <div className="ml-4 pl-3 border-l-2 border-indigo-100 my-2 space-y-1">
+                            <div className="ml-4 pl-3 border-l-2 border-primary-container my-2 space-y-1">
                               {chap.subtopics.map((sub: any) => (
                                 <button
                                   key={sub.index}
                                   onClick={() => onSubtopicClick(sub)}
-                                  className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-bold truncate transition-all duration-200 flex items-center gap-2 ${
-                                    selectedSubtopic?.index === sub.index ? "bg-white text-indigo-600 shadow-sm border border-indigo-100 translate-x-1" : "text-slate-500 hover:text-indigo-600 hover:bg-white/50"
-                                  }`}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-m3-sm text-[11px] font-bold truncate transition-all duration-200 flex items-center gap-2",
+                                    selectedSubtopic?.index === sub.index
+                                      ? "bg-surface-container-lowest text-primary shadow-elev-1 ring-1 ring-inset ring-primary translate-x-1"
+                                      : "text-on-surface-variant hover:text-primary hover:bg-state-hover",
+                                  )}
                                 >
-                                  {selectedSubtopic?.index === sub.index && <div className="w-1 h-3 bg-indigo-500 rounded-full shrink-0"></div>}
+                                  {selectedSubtopic?.index === sub.index && <div className="w-1 h-3 bg-primary rounded-full shrink-0"></div>}
                                   <span className="truncate">{sub.name}</span>
                                 </button>
                               ))}
@@ -105,7 +119,7 @@ export default function DatabaseSidebar({
 
       {/* Mobile Overlay */}
       {isSyllabusOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 z-30 lg:hidden backdrop-blur-sm" onClick={() => setIsSyllabusOpen(false)} />
+        <div className="fixed inset-0 bg-scrim z-30 lg:hidden backdrop-blur-sm" onClick={() => setIsSyllabusOpen(false)} />
       )}
     </>
   );

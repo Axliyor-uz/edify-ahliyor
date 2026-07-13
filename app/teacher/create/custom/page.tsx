@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ArrowLeft, BookOpen, Settings2, ChevronUp, ChevronDown, CheckCircle2, PenTool, Layers, Database, Loader2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, BookOpen, Settings2, ChevronUp, ChevronDown, CheckCircle2, PenTool, Layers, Database } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/lib/AuthContext";
@@ -13,6 +13,8 @@ import { createPortal } from "react-dom";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import RichQuestionInput from "@/app/teacher/create/_components/RichQuestionInput";
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
+
+import { Button, IconButton } from "@/components/ui";
 
 // --- TRANSLATION DICTIONARY ---
 const PAGE_TRANSLATIONS = {
@@ -317,15 +319,15 @@ export default function CreateCustomTestPage() {
     }
   };
 
-  if (!isHydrated) return <div className="min-h-[100dvh] bg-[#FAFAFA]" />;
+  if (!isHydrated) return <div className="min-h-[100dvh] bg-surface" />;
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-[#FAFAFA] font-sans selection:bg-emerald-100 selection:text-emerald-900 pb-24 lg:pb-0">
-      
+    <div className="flex flex-col min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-24 lg:pb-0">
+
       {/* 🟢 TOP BAR (Mobile Offset) */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-white/90 backdrop-blur-xl border-b border-slate-200 z-[10000] flex items-center justify-between px-3 shadow-sm">
-        <button onClick={() => router.push('/teacher/create')} className="p-2 -ml-1 text-slate-500 rounded-lg"><ArrowLeft size={18} /></button>
-        <span className="font-black text-slate-800 text-[14px]">{t.headerTitle}</span>
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant z-[10000] flex items-center justify-between px-3 shadow-elev-1">
+        <IconButton aria-label="Orqaga" size="sm" className="-ml-1" onClick={() => router.push('/teacher/create')}><ArrowLeft /></IconButton>
+        <span className="font-black text-on-surface text-[14px]">{t.headerTitle}</span>
         <div className="w-8"></div>
       </div>
 
@@ -333,14 +335,14 @@ export default function CreateCustomTestPage() {
       <AnimatePresence>
         {isTitleModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-white rounded-[1.5rem] md:rounded-3xl p-5 md:p-8 w-full max-w-[320px] md:max-w-md shadow-2xl border border-slate-100 z-10">
-              <h3 className="text-lg md:text-xl font-black text-slate-900 mb-1.5 md:mb-2">{t.modalTitle}</h3>
-              <p className="text-[12px] md:text-[14px] text-slate-500 mb-5 md:mb-6 font-medium">{t.modalDesc}</p>
-              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder="e.g., Algebra Midterm" className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-slate-50 border border-slate-200 rounded-xl text-[13px] md:text-[14px] font-bold text-slate-900 outline-none focus:bg-white focus:border-emerald-500 transition-all mb-6 md:mb-8" autoFocus/>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-md shadow-elev-3 border border-outline-variant z-10">
+              <h3 className="text-lg md:text-xl font-black text-on-surface mb-1.5 md:mb-2">{t.modalTitle}</h3>
+              <p className="text-[12px] md:text-[14px] text-on-surface-variant mb-5 md:mb-6 font-medium">{t.modalDesc}</p>
+              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder="e.g., Algebra Midterm" className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
               <div className="flex gap-2 md:gap-3 justify-end">
-                <button onClick={() => setIsTitleModalOpen(false)} className="px-4 py-2 md:px-5 md:py-2.5 text-[12px] md:text-[14px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">{t.modalCancel}</button>
-                <button onClick={handleTitleSubmit} className="px-4 py-2 md:px-6 md:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-[12px] md:text-[14px] text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 md:gap-2">{t.modalNext} <ArrowLeft className="rotate-180 w-3.5 h-3.5 md:w-4 md:h-4"/></button>
+                <Button variant="outlined" size="sm" onClick={() => setIsTitleModalOpen(false)}>{t.modalCancel}</Button>
+                <Button variant="filled" size="sm" onClick={handleTitleSubmit}>{t.modalNext} <ArrowLeft className="rotate-180"/></Button>
               </div>
             </motion.div>
           </div>
@@ -353,35 +355,43 @@ export default function CreateCustomTestPage() {
       )}
 
       {/* 🟢 UNIFIED HEADER (Desktop) */}
-      <div className="hidden lg:flex sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-8 py-3 justify-between items-center shadow-sm w-full">
+      <div className="hidden lg:flex sticky top-0 z-30 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant px-4 md:px-8 py-3 justify-between items-center shadow-elev-1 w-full">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/teacher/create')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"><ArrowLeft size={18} /></button>
-          <h1 className="text-[16px] md:text-[18px] font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <PenTool size={16} className="text-emerald-500" /> {t.headerTitle}
+          <IconButton aria-label="Orqaga" size="sm" className="-ml-2" onClick={() => router.push('/teacher/create')}><ArrowLeft /></IconButton>
+          <h1 className="text-[16px] md:text-[18px] font-bold text-on-surface tracking-tight flex items-center gap-2">
+            <PenTool size={16} className="text-primary" /> {t.headerTitle}
           </h1>
         </div>
-        
+
         <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar px-2 max-w-[40%] md:max-w-[50%]">
            {draftQuestions.map((q, i) => (
-             <button key={q.id} onClick={() => handleCardFocus(q.id)} className="w-7 h-7 rounded-md bg-slate-50 border border-slate-200 hover:border-emerald-500 hover:text-emerald-600 font-bold text-slate-500 text-[11px] flex items-center justify-center shrink-0 transition-colors">
+             <button key={q.id} onClick={() => handleCardFocus(q.id)} className="m3-interactive w-7 h-7 rounded-m3-sm bg-surface-container border border-outline-variant hover:border-primary hover:text-primary font-bold text-on-surface-variant text-[11px] flex items-center justify-center shrink-0 transition-colors">
                {i + 1}
              </button>
            ))}
         </div>
 
         <div className="flex items-center gap-3">
-          <button 
-            onClick={handleSaveToBank} 
-            disabled={isPublishing || isSavingToBank} 
-            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 text-[13px]"
+          <Button
+            variant="tonal"
+            size="sm"
+            icon={<Database />}
+            loading={isSavingToBank}
+            onClick={handleSaveToBank}
+            disabled={isPublishing || isSavingToBank}
           >
-            {isSavingToBank ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />} 
             <span>{t.saveToBankBtn}</span>
-          </button>
-          <button onClick={handleInitiatePublish} disabled={isPublishing || isSavingToBank} className="bg-slate-900 hover:bg-slate-800 text-white px-4 md:px-5 py-2 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 text-[13px] md:text-[14px]">
-            {isPublishing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} 
+          </Button>
+          <Button
+            variant="filled"
+            size="sm"
+            icon={<CheckCircle2 />}
+            loading={isPublishing}
+            onClick={handleInitiatePublish}
+            disabled={isPublishing || isSavingToBank}
+          >
             <span className="hidden sm:inline">{t.publishBtn}</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -390,29 +400,29 @@ export default function CreateCustomTestPage() {
         <div className="max-w-[900px] mx-auto px-3 md:px-8 mt-4">
           <header className="flex justify-between items-end mb-4 md:mb-8 px-1 md:px-0">
             <div>
-              <h1 className="text-[18px] md:text-3xl font-black text-slate-900 tracking-tight">{t.canvasTitle}</h1>
-              <p className="text-[11px] md:text-[13px] text-slate-500 mt-0.5 md:mt-1 font-medium">{t.canvasDesc}</p>
+              <h1 className="text-[18px] md:text-3xl font-black text-on-surface tracking-tight">{t.canvasTitle}</h1>
+              <p className="text-[11px] md:text-[13px] text-on-surface-variant mt-0.5 md:mt-1 font-medium">{t.canvasDesc}</p>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-[18px] md:text-2xl font-black text-emerald-500 leading-none">{draftQuestions.length}</span>
-              <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.blocks}</span>
+              <span className="text-[18px] md:text-2xl font-black text-primary leading-none">{draftQuestions.length}</span>
+              <span className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{t.blocks}</span>
             </div>
           </header>
 
           <div className="space-y-4 md:space-y-6">
             {draftQuestions.map((q, index) => (
-               <div key={q.id} id={`card-${q.id}`} onFocusCapture={() => handleCardFocus(q.id)} className="bg-white rounded-[1.25rem] md:rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] md:shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all duration-300">
-                  <div className="bg-slate-50/50 border-b border-slate-100 px-3.5 md:px-5 py-2.5 md:py-4 flex justify-between items-center group">
+               <div key={q.id} id={`card-${q.id}`} onFocusCapture={() => handleCardFocus(q.id)} className="bg-surface-container-low rounded-m3-lg md:rounded-m3-xl shadow-elev-1 border border-outline-variant overflow-hidden focus-within:ring-2 focus-within:ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] transition-all duration-300">
+                  <div className="bg-surface-container border-b border-outline-variant px-3.5 md:px-5 py-2.5 md:py-4 flex justify-between items-center group">
                     <div className="flex items-center gap-2 md:gap-3">
-                      <span className="bg-emerald-100 text-emerald-700 font-black px-2 md:px-3 py-1 rounded-md md:rounded-lg text-[10px] md:text-[13px] shadow-sm">Q{index + 1}</span>
-                      <span className="text-[9px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t.multChoice}</span>
+                      <span className="bg-primary-container text-on-primary-container font-black px-2 md:px-3 py-1 rounded-m3-sm text-[10px] md:text-[13px] shadow-elev-1">Q{index + 1}</span>
+                      <span className="text-[9px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">{t.multChoice}</span>
                     </div>
                     <div className="flex items-center gap-1.5 md:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                      <div className="flex items-center bg-white border border-slate-200 rounded-md md:rounded-lg overflow-hidden shadow-sm mr-1 md:mr-2 h-[26px] md:h-[32px]">
-                         <button onClick={() => moveQuestion(index, 'up')} disabled={index === 0} className="w-7 md:w-8 h-full flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors border-r border-slate-200"><ChevronUp size={14} className="md:w-4 md:h-4" /></button>
-                         <button onClick={() => moveQuestion(index, 'down')} disabled={index === draftQuestions.length - 1} className="w-7 md:w-8 h-full flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><ChevronDown size={14} className="md:w-4 md:h-4" /></button>
+                      <div className="flex items-center bg-surface-container-lowest border border-outline-variant rounded-m3-sm overflow-hidden shadow-elev-1 mr-1 md:mr-2 h-[26px] md:h-[32px]">
+                         <button onClick={() => moveQuestion(index, 'up')} disabled={index === 0} className="w-7 md:w-8 h-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-state-hover disabled:text-disabled-fg disabled:cursor-not-allowed transition-colors border-r border-outline-variant"><ChevronUp size={14} className="md:w-4 md:h-4" /></button>
+                         <button onClick={() => moveQuestion(index, 'down')} disabled={index === draftQuestions.length - 1} className="w-7 md:w-8 h-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-state-hover disabled:text-disabled-fg disabled:cursor-not-allowed transition-colors"><ChevronDown size={14} className="md:w-4 md:h-4" /></button>
                       </div>
-                      <button onClick={() => removeQuestion(q.id)} className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md md:rounded-lg transition-colors border border-transparent hover:border-red-100 h-[26px] md:h-[32px] flex items-center justify-center"><Trash2 size={14} className="md:w-4 md:h-4" /></button>
+                      <button onClick={() => removeQuestion(q.id)} className="text-on-surface-variant hover:text-error hover:bg-error-container p-1.5 rounded-m3-sm transition-colors border border-transparent h-[26px] md:h-[32px] flex items-center justify-center"><Trash2 size={14} className="md:w-4 md:h-4" /></button>
                     </div>
                   </div>
 
@@ -427,7 +437,7 @@ export default function CreateCustomTestPage() {
                          const fieldKey = `opt${letter}` as keyof DraftQuestion;
                          return (
                            <div key={letter} className="flex gap-2 md:gap-3 items-start group">
-                             <div className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[11px] md:text-[13px] font-black text-slate-400 mt-1 md:mt-2 group-focus-within:bg-emerald-50 group-focus-within:text-emerald-600 group-focus-within:border-emerald-200 transition-colors shrink-0 shadow-sm">
+                             <div className="w-7 h-7 md:w-8 md:h-8 rounded-m3-sm bg-surface-container border border-outline-variant flex items-center justify-center text-[11px] md:text-[13px] font-black text-on-surface-variant mt-1 md:mt-2 group-focus-within:bg-primary-container group-focus-within:text-on-primary-container group-focus-within:border-primary transition-colors shrink-0 shadow-elev-1">
                                {letter}
                              </div>
                              <div className="flex-1">
@@ -438,31 +448,31 @@ export default function CreateCustomTestPage() {
                        })}
                     </div>
 
-                    <div className="flex flex-wrap justify-between items-center pt-3 md:pt-5 border-t border-slate-100 gap-2 md:gap-4">
+                    <div className="flex flex-wrap justify-between items-center pt-3 md:pt-5 border-t border-outline-variant gap-2 md:gap-4">
                       <div className="flex items-center gap-2 md:gap-4 w-full sm:w-auto">
-                        <div className="flex-1 sm:flex-none flex items-center gap-1.5 md:gap-3 bg-slate-50 p-1 md:p-1.5 pr-1.5 md:pr-2 rounded-lg md:rounded-xl border border-slate-200">
-                          <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1.5 md:ml-2">{t.correctAnswer}</span>
-                          <select value={q.answer} onChange={(e) => updateDraftQuestion(q.id, 'answer', e.target.value as any)} className="pl-2 pr-6 md:pl-3 md:pr-8 py-1 md:py-1.5 border border-slate-200 rounded-md md:rounded-lg font-bold text-[11px] md:text-[13px] bg-white text-emerald-600 shadow-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer outline-none transition-colors">
+                        <div className="flex-1 sm:flex-none flex items-center gap-1.5 md:gap-3 bg-surface-container p-1 md:p-1.5 pr-1.5 md:pr-2 rounded-m3-sm md:rounded-m3-md border border-outline-variant">
+                          <span className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1.5 md:ml-2">{t.correctAnswer}</span>
+                          <select value={q.answer} onChange={(e) => updateDraftQuestion(q.id, 'answer', e.target.value as any)} className="pl-2 pr-6 md:pl-3 md:pr-8 py-1 md:py-1.5 border border-outline-variant rounded-m3-sm font-bold text-[11px] md:text-[13px] bg-surface-container-lowest text-primary shadow-elev-1 focus:ring-2 focus:ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] focus:border-primary cursor-pointer outline-none transition-colors">
                             <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
                           </select>
                         </div>
 
-                        <div className="flex-1 sm:flex-none flex items-center gap-1.5 md:gap-3 bg-slate-50 p-1 md:p-1.5 pr-1.5 md:pr-2 rounded-lg md:rounded-xl border border-slate-200">
-                          <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1.5 md:ml-2">{t.difficultyLabel}</span>
-                          <select value={q.difficulty} onChange={(e) => updateDraftQuestion(q.id, 'difficulty', e.target.value)} className="pl-2 pr-6 md:pl-3 md:pr-8 py-1 md:py-1.5 border border-slate-200 rounded-md md:rounded-lg font-bold text-[11px] md:text-[13px] bg-white text-emerald-600 shadow-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer outline-none transition-colors">
+                        <div className="flex-1 sm:flex-none flex items-center gap-1.5 md:gap-3 bg-surface-container p-1 md:p-1.5 pr-1.5 md:pr-2 rounded-m3-sm md:rounded-m3-md border border-outline-variant">
+                          <span className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1.5 md:ml-2">{t.difficultyLabel}</span>
+                          <select value={q.difficulty} onChange={(e) => updateDraftQuestion(q.id, 'difficulty', e.target.value)} className="pl-2 pr-6 md:pl-3 md:pr-8 py-1 md:py-1.5 border border-outline-variant rounded-m3-sm font-bold text-[11px] md:text-[13px] bg-surface-container-lowest text-primary shadow-elev-1 focus:ring-2 focus:ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] focus:border-primary cursor-pointer outline-none transition-colors">
                             <option value="easy">{t.easy}</option><option value="medium">{t.medium}</option><option value="hard">{t.hard}</option>
                           </select>
                         </div>
                       </div>
 
-                      <button onClick={() => updateDraftQuestion(q.id, 'showExplanation', !q.showExplanation)} className={`w-full sm:w-auto text-[11px] md:text-[13px] font-bold flex items-center justify-center gap-1.5 px-3 py-2 md:px-4 md:py-2 rounded-lg md:rounded-xl transition-all ${q.showExplanation ? 'text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200' : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 shadow-sm'}`}>
+                      <button onClick={() => updateDraftQuestion(q.id, 'showExplanation', !q.showExplanation)} className={`m3-interactive w-full sm:w-auto text-[11px] md:text-[13px] font-bold flex items-center justify-center gap-1.5 px-3 py-2 md:px-4 md:py-2 rounded-m3-sm md:rounded-m3-md transition-all ${q.showExplanation ? 'text-on-surface-variant bg-surface-container border border-outline-variant' : 'text-on-primary-container bg-primary-container border border-transparent shadow-elev-1'}`}>
                         <BookOpen size={14} className="md:w-4 md:h-4" /> {q.showExplanation ? t.hideExp : t.addExp}
                       </button>
                     </div>
 
                     {q.showExplanation && (
-                      <div className="mt-3 md:mt-5 pt-3 md:pt-5 border-t border-dashed border-slate-200 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="bg-slate-50/80 p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-slate-100">
+                      <div className="mt-3 md:mt-5 pt-3 md:pt-5 border-t border-dashed border-outline-variant animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="bg-surface-container p-2.5 md:p-4 rounded-m3-md md:rounded-m3-lg border border-outline-variant">
                           <RichQuestionInput label={t.stepByStep} value={q.explanation} onChange={(latex) => updateDraftQuestion(q.id, 'explanation', latex)} placeholder="Yechimni shu yerda tushuntiring..." compact={true} />
                         </div>
                       </div>
@@ -473,9 +483,9 @@ export default function CreateCustomTestPage() {
           </div>
 
           <div className="flex justify-center pt-6 md:pt-8 pb-10 md:pb-12">
-            <button onClick={addBlankQuestion} className="flex items-center gap-1.5 md:gap-2 px-5 py-2.5 md:px-8 md:py-3.5 bg-white border border-slate-200 hover:border-emerald-300 shadow-sm hover:shadow-md text-slate-600 hover:text-emerald-600 font-bold rounded-xl md:rounded-2xl transition-all duration-200 text-[12px] md:text-[14px]">
-              <Plus size={16} className="md:w-[18px] md:h-[18px]" /> {t.addQuestion}
-            </button>
+            <Button variant="elevated" size="lg" icon={<Plus />} onClick={addBlankQuestion}>
+              {t.addQuestion}
+            </Button>
           </div>
         </div>
       </main>
@@ -483,23 +493,29 @@ export default function CreateCustomTestPage() {
       {/* 🟢 MOBILE FLOATING ACTIONS */}
       {mounted && createPortal(
         <div className="lg:hidden fixed bottom-5 left-0 right-0 px-3 flex justify-between gap-2 z-[100] animate-in slide-in-from-bottom-10">
-          <button 
-            onClick={handleSaveToBank} 
-            disabled={isSavingToBank || isPublishing} 
-            className="flex-1 bg-emerald-50 text-emerald-700 rounded-[1rem] shadow-lg shadow-emerald-600/10 font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform text-[11px] py-3.5 border border-emerald-200/50"
+          <Button
+            variant="tonal"
+            size="lg"
+            className="flex-1 shadow-elev-2"
+            icon={<Database />}
+            loading={isSavingToBank}
+            onClick={handleSaveToBank}
+            disabled={isSavingToBank || isPublishing}
           >
-            {isSavingToBank ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />} 
             {t.saveToBankBtn}
-          </button>
-          
-          <button 
-            onClick={handleInitiatePublish} 
-            disabled={isPublishing || isSavingToBank} 
-            className="flex-1 bg-slate-900 text-white rounded-[1rem] shadow-xl shadow-slate-900/20 font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform text-[11px] py-3.5 border border-slate-800"
+          </Button>
+
+          <Button
+            variant="filled"
+            size="lg"
+            className="flex-1 shadow-elev-3"
+            icon={<CheckCircle2 />}
+            loading={isPublishing}
+            onClick={handleInitiatePublish}
+            disabled={isPublishing || isSavingToBank}
           >
-            {isPublishing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />} 
             {t.publishBtn}
-          </button>
+          </Button>
         </div>,
         document.body
       )}

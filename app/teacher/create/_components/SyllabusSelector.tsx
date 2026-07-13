@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import rawSyllabusData from '@/data/syllabus.json';
 
+import { Select, cn } from '@/components/ui';
+
 interface Props {
   onChange: (selection: any) => void;
 }
@@ -25,82 +27,74 @@ export default function SyllabusSelector({ onChange }: Props) {
   }, [selectedTopic, selectedChapter, selectedSubtopic, difficulty, onChange]);
 
   return (
-    <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-      
+    <div className="space-y-4 bg-surface-container rounded-m3-lg p-4">
+
       {/* TOPIC */}
-      <div>
-        <label className="text-xs font-bold text-slate-500 mb-1.5 block">Subject Topic</label>
-        <select 
-          className="w-full p-2.5 rounded-lg border border-slate-300 text-sm outline-none"
-          value={selectedTopic?.index || ""}
-          onChange={(e) => {
-            const topic = categories.find(c => c.index === Number(e.target.value)) || null;
-            setSelectedTopic(topic);
-            setSelectedChapter(null);
-            setSelectedSubtopic(null);
-          }}
-        >
-          <option value="" disabled>Select a Topic...</option>
-          {categories.map(cat => <option key={cat.index} value={cat.index}>{cat.category}</option>)}
-        </select>
-      </div>
+      <Select
+        label="Subject Topic"
+        value={selectedTopic?.index || ""}
+        onChange={(e) => {
+          const topic = categories.find(c => c.index === Number(e.target.value)) || null;
+          setSelectedTopic(topic);
+          setSelectedChapter(null);
+          setSelectedSubtopic(null);
+        }}
+      >
+        <option value="" disabled>Select a Topic...</option>
+        {categories.map(cat => <option key={cat.index} value={cat.index}>{cat.category}</option>)}
+      </Select>
 
       <div className="grid grid-cols-1 gap-4">
         {/* CHAPTER */}
-        <div>
-          <label className="text-xs font-bold text-slate-500 mb-1.5 block">Chapter</label>
-          <select 
-            disabled={!selectedTopic}
-            className="w-full p-2.5 rounded-lg border border-slate-300 text-sm disabled:bg-slate-100 outline-none"
-            value={selectedChapter?.index || ""}
-            onChange={(e) => {
-              const chapter = selectedTopic?.chapters.find((c: any) => c.index === Number(e.target.value)) || null;
-              setSelectedChapter(chapter);
-              setSelectedSubtopic(null);
-            }}
-          >
-            <option value="" disabled>Select Chapter...</option>
-            {selectedTopic?.chapters?.map((chap: any) => <option key={chap.index} value={chap.index}>{chap.chapter}</option>)}
-          </select>
-        </div>
+        <Select
+          label="Chapter"
+          disabled={!selectedTopic}
+          value={selectedChapter?.index || ""}
+          onChange={(e) => {
+            const chapter = selectedTopic?.chapters.find((c: any) => c.index === Number(e.target.value)) || null;
+            setSelectedChapter(chapter);
+            setSelectedSubtopic(null);
+          }}
+        >
+          <option value="" disabled>Select Chapter...</option>
+          {selectedTopic?.chapters?.map((chap: any) => <option key={chap.index} value={chap.index}>{chap.chapter}</option>)}
+        </Select>
 
         {/* SUBTOPIC */}
-        <div>
-          <label className="text-xs font-bold text-slate-500 mb-1.5 block">Subtopic</label>
-          <select 
-            disabled={!selectedChapter}
-            className="w-full p-2.5 rounded-lg border border-slate-300 text-sm disabled:bg-slate-100 outline-none"
-            value={selectedSubtopic?.index || ""}
-            onChange={(e) => {
-              const sub = selectedChapter?.subtopics.find((s: any) => s.index === Number(e.target.value)) || null;
-              setSelectedSubtopic(sub);
-            }}
-          >
-            <option value="" disabled>Select Subtopic...</option>
-            {selectedChapter?.subtopics?.map((sub: any) => <option key={sub.index} value={sub.index}>{sub.name}</option>)}
-          </select>
-        </div>
+        <Select
+          label="Subtopic"
+          disabled={!selectedChapter}
+          value={selectedSubtopic?.index || ""}
+          onChange={(e) => {
+            const sub = selectedChapter?.subtopics.find((s: any) => s.index === Number(e.target.value)) || null;
+            setSelectedSubtopic(sub);
+          }}
+        >
+          <option value="" disabled>Select Subtopic...</option>
+          {selectedChapter?.subtopics?.map((sub: any) => <option key={sub.index} value={sub.index}>{sub.name}</option>)}
+        </Select>
       </div>
 
       {/* DIFFICULTY */}
-      <div className="pt-2 border-t border-slate-200 mt-2">
-          <label className="text-xs font-bold text-slate-500 mb-2 block">Difficulty Level</label>
-          <div className="flex gap-2">
-            {['Easy', 'Medium', 'Hard'].map((lvl: any) => (
-              <button
-                key={lvl}
-                type="button"
-                onClick={() => setDifficulty(lvl)}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${
-                  difficulty === lvl 
-                    ? 'bg-indigo-600 text-white border-indigo-600' 
-                    : 'bg-white text-slate-600 border-slate-300'
-                }`}
-              >
-                {lvl}
-              </button>
-            ))}
-          </div>
+      <div className="pt-3 border-t border-outline-variant mt-2">
+        <label className="text-xs font-bold text-on-surface-variant mb-2 block">Difficulty Level</label>
+        <div className="flex gap-2">
+          {['Easy', 'Medium', 'Hard'].map((lvl: any) => (
+            <button
+              key={lvl}
+              type="button"
+              onClick={() => setDifficulty(lvl)}
+              className={cn(
+                "m3-interactive flex-1 py-2 rounded-m3-sm text-xs font-bold transition-all",
+                difficulty === lvl
+                  ? "bg-secondary-container text-on-secondary-container shadow-elev-1"
+                  : "bg-surface-container-lowest ring-1 ring-inset ring-outline-variant text-on-surface-variant hover:text-on-surface",
+              )}
+            >
+              {lvl}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

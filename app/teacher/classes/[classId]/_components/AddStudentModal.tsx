@@ -7,6 +7,7 @@ import { X, Search, UserPlus, Loader2, AtSign, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/AuthContext';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { IconButton } from '@/components/ui';
 
 // --- TRANSLATION DICTIONARY ---
 const ADD_STUDENT_TRANSLATIONS = {
@@ -102,39 +103,36 @@ export default function AddStudentModal({ classId, isOpen, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={handleClose}></div>
-      
-      <div className="relative bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in-95 fade-in duration-300">
-        
+      <div className="absolute inset-0 bg-scrim backdrop-blur-sm transition-opacity" onClick={handleClose}></div>
+
+      <div className="relative bg-surface-container-low rounded-m3-xl w-full max-w-md overflow-hidden shadow-elev-3 border border-outline-variant animate-in zoom-in-95 fade-in duration-300">
+
         {/* HEADER */}
-        <div className="px-6 md:px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+        <div className="px-6 md:px-8 py-5 border-b border-outline-variant flex justify-between items-center bg-surface-container-low shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+            <div className="w-10 h-10 rounded-m3-md bg-primary-container flex items-center justify-center text-on-primary-container shadow-elev-1 shrink-0">
                <Search size={20} strokeWidth={2.5} />
             </div>
-            <h2 className="text-[18px] font-black text-slate-900 tracking-tight">{t.title}</h2>
+            <h2 className="text-[18px] font-black text-on-surface tracking-tight">{t.title}</h2>
           </div>
-          <button 
-            onClick={handleClose} 
-            className="w-9 h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors shrink-0"
-          >
-            <X size={18} strokeWidth={2.5} />
-          </button>
+          <IconButton aria-label="Yopish" onClick={handleClose} className="shrink-0">
+            <X />
+          </IconButton>
         </div>
 
         {/* BODY */}
-        <div className="p-6 md:p-8 bg-[#FAFAFA]">
+        <div className="p-6 md:p-8 bg-surface">
           
           {/* 🟢 UPGRADED: Android-Style Search Input */}
           <div className="relative group">
-            <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+            <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors" size={18} />
             <input 
               type="text" 
               placeholder={t.placeholder}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full pl-11 pr-14 py-4 bg-white border border-slate-200/80 rounded-[1rem] text-[14px] font-bold text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all shadow-sm"
+              className="w-full pl-11 pr-14 py-4 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] outline-none transition-all shadow-elev-1"
               autoFocus
             />
             
@@ -142,8 +140,8 @@ export default function AddStudentModal({ classId, isOpen, onClose }: Props) {
             <button 
               onClick={handleSearch}
               disabled={isSearching || !hasInput}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm
-                ${hasInput && !isSearching ? 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95' : 'bg-slate-100 text-slate-400 border border-slate-200'}
+              className={`m3-interactive absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-m3-md flex items-center justify-center transition-all duration-300 shadow-elev-1
+                ${hasInput && !isSearching ? 'bg-primary text-on-primary hover:scale-105 active:scale-95' : 'bg-disabled-bg text-disabled-fg'}
               `}
             >
               {isSearching ? <Loader2 className="animate-spin" size={18}/> : <ArrowRight size={18} strokeWidth={3}/>}
@@ -152,25 +150,25 @@ export default function AddStudentModal({ classId, isOpen, onClose }: Props) {
 
           {/* Found User Result Card */}
           {foundUser && (
-            <div className="mt-6 bg-white border border-emerald-200/80 p-4 rounded-2xl flex items-center justify-between gap-4 shadow-[0_4px_20px_rgb(16,185,129,0.06)] animate-in fade-in slide-in-from-bottom-4 duration-300 relative overflow-hidden group">
-              
-              <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 rounded-full blur-2xl pointer-events-none"></div>
+            <div className="mt-6 bg-surface-container-lowest border border-success-container p-4 rounded-m3-lg flex items-center justify-between gap-4 shadow-elev-1 animate-in fade-in slide-in-from-bottom-4 duration-300 relative overflow-hidden group">
+
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-success-container rounded-full blur-2xl pointer-events-none"></div>
 
               <div className="flex items-center gap-4 relative z-10 min-w-0">
-                <div className="w-12 h-12 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-[1rem] flex items-center justify-center font-black text-white text-[18px] shadow-md shadow-emerald-500/20 shrink-0 border-2 border-white">
+                <div className="w-12 h-12 bg-success rounded-m3-md flex items-center justify-center font-black text-surface-container-lowest text-[18px] shadow-elev-2 shrink-0">
                   {foundUser.displayName?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-black text-slate-900 text-[15px] truncate">{foundUser.displayName}</p>
-                  <p className="text-[12px] font-bold text-slate-400 truncate">@{foundUser.username || username.replace('@', '')}</p>
+                  <p className="font-black text-on-surface text-[15px] truncate">{foundUser.displayName}</p>
+                  <p className="text-[12px] font-bold text-on-surface-variant truncate">@{foundUser.username || username.replace('@', '')}</p>
                 </div>
               </div>
-              
+
               {/* 🟢 UPGRADED: Android-Style Square Add Button */}
-              <button 
+              <button
                 onClick={handleAddStudent}
                 disabled={isAdding}
-                className="w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[1rem] transition-all disabled:opacity-50 shadow-md shadow-emerald-500/20 active:scale-95 flex items-center justify-center relative z-10 shrink-0"
+                className="m3-interactive w-12 h-12 bg-success text-surface-container-lowest rounded-m3-md transition-all disabled:bg-disabled-bg disabled:text-disabled-fg shadow-elev-2 active:scale-95 flex items-center justify-center relative z-10 shrink-0"
               >
                 {isAdding ? <Loader2 className="animate-spin" size={20}/> : <UserPlus size={20} strokeWidth={2.5}/>}
               </button>

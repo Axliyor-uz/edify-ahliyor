@@ -3,6 +3,8 @@
 import { Plus, Trash2, X, ChevronDown, ChevronUp, Edit3, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/components/ui';
+
 export default function MatchingSentenceEndingsBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
   const [showOptions, setShowOptions] = useState(true);
 
@@ -106,19 +108,19 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm group/block mb-4 transition-all">
+    <div className="bg-surface-container-low border border-outline-variant rounded-m3-sm shadow-elev-1 group/block mb-4 transition-all">
       {/* HEADER */}
-      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between rounded-t-lg">
+      <div className="bg-surface-container border-b border-outline-variant px-3 py-2 flex items-center justify-between rounded-t-m3-sm">
         <div className="flex items-center gap-3">
-          <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded-[3px] text-[9px] font-black uppercase tracking-wider">
+          <span className="bg-tertiary-container text-on-tertiary-container px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-wider">
             SENTENCE ENDINGS
           </span>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold select-none">
-            Qs: <span className="w-8 h-5 flex items-center justify-center bg-white border border-slate-200 rounded font-bold text-slate-800 shadow-sm">{qb.start_question || 0}</span>
-            - <span className="w-8 h-5 flex items-center justify-center bg-slate-100 border border-slate-200 rounded font-bold text-slate-500">{qb.end_question || 0}</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant font-semibold select-none">
+            Qs: <span className="w-8 h-5 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs font-bold text-on-surface shadow-elev-1">{qb.start_question || 0}</span>
+            - <span className="w-8 h-5 flex items-center justify-center bg-surface-container-high border border-outline-variant rounded-m3-xs font-bold text-on-surface-variant">{qb.end_question || 0}</span>
           </div>
         </div>
-        <button onClick={() => deleteBlock(qbIdx)} className="text-slate-400 hover:text-red-500 opacity-0 group-hover/block:opacity-100 transition-colors"><Trash2 size={14}/></button>
+        <button onClick={() => deleteBlock(qbIdx)} className="text-on-surface-variant hover:text-error opacity-0 group-hover/block:opacity-100 transition-colors"><Trash2 size={14}/></button>
       </div>
 
       <div className="p-3">
@@ -130,34 +132,34 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
             value={qb.instructions} 
             onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
             onPaste={e => handleUniversalPaste(e, 'instructions')}
-            className="w-full bg-violet-50/50 border border-dashed border-violet-200 rounded p-2 text-[11px] font-bold text-slate-700 outline-none focus:border-violet-400 focus:bg-white transition-colors pr-8" 
+            className="w-full bg-[color-mix(in_oklab,var(--m3-tertiary)_6%,transparent)] border border-dashed border-[color-mix(in_oklab,var(--m3-tertiary)_40%,transparent)] rounded-m3-xs p-2 text-[11px] font-bold text-on-surface outline-none focus:border-tertiary focus:bg-surface-container-lowest transition-colors pr-8"
           />
-          <Wand2 className="absolute right-2 top-2 text-violet-400" size={14} />
+          <Wand2 className="absolute right-2 top-2 text-tertiary" size={14} />
         </div>
         
         {/* OPTIONS EDITOR */}
-        <div className="mb-4 bg-slate-50/50 p-2 rounded border border-slate-100 transition-colors hover:border-slate-200">
-          <button onClick={() => setShowOptions(!showOptions)} className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-violet-600 uppercase tracking-wider mb-2 transition-colors">
+        <div className="mb-4 bg-surface-container p-2 rounded-m3-sm border border-outline-variant transition-colors hover:border-outline">
+          <button onClick={() => setShowOptions(!showOptions)} className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant hover:text-tertiary uppercase tracking-wider mb-2 transition-colors">
             <Edit3 size={10} /> {showOptions ? 'Hide Endings' : 'Edit Endings'} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
           </button>
           
           {showOptions && (
-            <div className="space-y-1.5 pt-2 border-t border-slate-100">
+            <div className="space-y-1.5 pt-2 border-t border-outline-variant">
               {qb.options?.map((opt: any, oIdx: number) => (
                 <div key={oIdx} className="flex items-center gap-2">
-                  <span className="w-6 text-center text-[11px] font-black text-slate-400">{opt.id}.</span>
-                  <input 
-                    type="text" value={opt.text} placeholder="Ending text..." 
-                    onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }} 
+                  <span className="w-6 text-center text-[11px] font-black text-on-surface-variant">{opt.id}.</span>
+                  <input
+                    type="text" value={opt.text} placeholder="Ending text..."
+                    onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }}
                     onPaste={e => handleUniversalPaste(e, 'options', oIdx)}
-                    className="flex-1 bg-white border border-slate-200 rounded py-1.5 px-2 text-[11px] font-medium text-slate-600 outline-none focus:border-violet-400 placeholder:text-slate-300" 
+                    className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-xs py-1.5 px-2 text-[11px] font-medium text-on-surface-variant outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:text-on-surface-variant"
                   />
-                  <button onClick={() => removeOption(oIdx)} disabled={qb.options.length <= 2} className="text-slate-300 hover:text-red-500 disabled:opacity-0 transition-colors shrink-0"><X size={14}/></button>
+                  <button onClick={() => removeOption(oIdx)} disabled={qb.options.length <= 2} className="text-outline hover:text-error disabled:opacity-0 transition-colors shrink-0"><X size={14}/></button>
                 </div>
               ))}
-              <button onClick={addOption} className="text-[10px] font-bold text-violet-600 hover:underline flex items-center gap-1 mt-2 ml-8">
-                <Plus size={10} /> Add Ending
-              </button>
+              <Button variant="text" size="sm" icon={<Plus />} onClick={addOption} className="mt-2 ml-5">
+                Add Ending
+              </Button>
             </div>
           )}
         </div>
@@ -165,9 +167,9 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
         {/* SENTENCE STARTS (Questions) - UPGRADED TO TEXTAREA */}
         <div className="space-y-1">
           {qb.questions.map((row: any, rIdx: number) => (
-            <div key={rIdx} className="flex items-start gap-2 group/row transition-colors focus-within:border-violet-200 focus-within:bg-violet-50/20 p-1.5 rounded-md border border-transparent">
-              
-              <span className="w-8 h-7 mt-0.5 flex items-center justify-center text-[11px] font-black text-white bg-slate-800 rounded shadow-sm shrink-0">
+            <div key={rIdx} className="flex items-start gap-2 group/row transition-colors focus-within:border-tertiary focus-within:bg-[color-mix(in_oklab,var(--m3-tertiary)_5%,transparent)] p-1.5 rounded-m3-sm border border-transparent">
+
+              <span className="w-8 h-7 mt-0.5 flex items-center justify-center text-[11px] font-black text-inverse-on-surface bg-inverse-surface rounded-m3-xs shadow-elev-1 shrink-0">
                 {row.question_number}
               </span>
               
@@ -188,17 +190,17 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
                     addRow(); 
                   } 
                 }}
-                className="flex-1 bg-white border border-slate-200 rounded px-2 py-1.5 text-[12px] outline-none focus:border-violet-400 font-medium placeholder:font-normal placeholder:text-slate-400 resize-none overflow-hidden min-h-[32px] leading-relaxed" 
+                className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 py-1.5 text-[12px] outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary font-medium placeholder:font-normal placeholder:text-on-surface-variant resize-none overflow-hidden min-h-[32px] leading-relaxed"
                 rows={1}
               />
-              
+
               {/* DROPDOWN */}
-              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded px-2 shrink-0 mt-0.5 h-7">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Matches:</span>
-                <select 
-                  value={row.correct_answer[0] || ''} 
-                  onChange={e => updateRow(rIdx, 'correct_answer', [e.target.value])} 
-                  className="w-12 h-6 text-[11px] font-black bg-transparent outline-none text-violet-700 cursor-pointer"
+              <div className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 shrink-0 mt-0.5 h-7">
+                <span className="text-[10px] font-bold text-on-surface-variant uppercase">Matches:</span>
+                <select
+                  value={row.correct_answer[0] || ''}
+                  onChange={e => updateRow(rIdx, 'correct_answer', [e.target.value])}
+                  className="w-12 h-6 text-[11px] font-black bg-transparent outline-none text-success cursor-pointer"
                 >
                   {qb.options.length === 0 && <option value="">-</option>}
                   {qb.options.map((o: any) => <option key={o.id} value={o.id}>{o.id}</option>)}
@@ -210,18 +212,18 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
                 type="text" placeholder="Ref (opt)" 
                 value={row.passage_reference || ''} 
                 onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
-                className={`w-14 h-7 mt-0.5 text-[10px] text-center font-bold rounded outline-none uppercase shrink-0 transition-colors
-                  ${row.passage_reference ? 'bg-violet-50 border border-violet-200 text-violet-700 focus:border-violet-400' : 'bg-transparent border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 focus:border-violet-400 focus:bg-white'}`} 
+                className={`w-14 h-7 mt-0.5 text-[10px] text-center font-bold rounded-m3-xs outline-none uppercase shrink-0 transition-colors
+                  ${row.passage_reference ? 'bg-tertiary-container border border-transparent text-on-tertiary-container focus:border-primary' : 'bg-transparent border border-dashed border-outline text-on-surface-variant hover:border-on-surface-variant focus:border-primary focus:bg-surface-container-lowest'}`}
               />
 
-              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 mt-0.5 flex items-center justify-center text-slate-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0 transition-colors"><X size={14}/></button>
+              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 mt-0.5 flex items-center justify-center text-outline hover:text-error opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0 transition-colors"><X size={14}/></button>
             </div>
           ))}
         </div>
         
-        <button onClick={addRow} className="text-[11px] font-bold text-violet-600 hover:underline flex items-center gap-1 mt-3 transition-colors">
-          <Plus size={12} /> Add Sentence Start
-        </button>
+        <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
+          Add Sentence Start
+        </Button>
       </div>
     </div>
   );

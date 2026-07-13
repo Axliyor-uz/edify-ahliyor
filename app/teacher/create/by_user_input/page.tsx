@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowLeft, Loader2, X, CheckCircle2, Wand2, BookOpen, Trash2, Layers, EyeOff, Eye, Minus, Plus, ChevronRight, Bot, Zap, Target, Database, Lightbulb, Crown } from "lucide-react";
+import { Sparkles, ArrowLeft, X, CheckCircle2, Wand2, BookOpen, Trash2, Layers, EyeOff, Eye, Minus, Plus, ChevronRight, Bot, Zap, Target, Database, Lightbulb, Crown } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/lib/AuthContext";
@@ -12,8 +12,9 @@ import 'katex/dist/katex.min.css';
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 
-import { useTeacherLanguage } from "@/app/teacher/layout"; 
+import { useTeacherLanguage } from "@/app/teacher/layout";
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
+import { Button } from "@/components/ui";
 
 // 🟢 NEW AI MONTHLY LIMIT BLOCK START
 import { useMonthlyLimit } from "@/hooks/useMonthlyLimit";
@@ -142,23 +143,23 @@ const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
     <AnimatePresence>
       {isVisible && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-          <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-[320px] md:max-w-md bg-white/90 backdrop-blur-2xl rounded-[1.5rem] md:rounded-3xl border border-indigo-100/50 shadow-2xl p-6 md:p-8 flex flex-col items-center justify-center overflow-hidden">
-            <div className="absolute top-[-30%] left-[-20%] w-[80%] h-[80%] bg-indigo-500/20 rounded-full blur-[80px] animate-pulse"></div>
-            <div className="absolute bottom-[-30%] right-[-20%] w-[80%] h-[80%] bg-blue-500/20 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: "1s" }}></div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" />
+          <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-[320px] md:max-w-md bg-surface-container-low rounded-m3-xl shadow-elev-3 p-6 md:p-8 flex flex-col items-center justify-center overflow-hidden">
+            <div className="absolute top-[-30%] left-[-20%] w-[80%] h-[80%] bg-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] rounded-full blur-[80px] animate-pulse"></div>
+            <div className="absolute bottom-[-30%] right-[-20%] w-[80%] h-[80%] bg-[color-mix(in_oklab,var(--m3-tertiary)_20%,transparent)] rounded-full blur-[80px] animate-pulse" style={{ animationDelay: "1s" }}></div>
             <div className="relative mb-6 md:mb-8 mt-2 md:mt-4">
-              <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-blue-400 rounded-full blur-xl opacity-40" />
-              <div className="relative w-20 h-20 md:w-24 md:h-24 bg-white/80 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white flex items-center justify-center shadow-xl">
-                <Bot size={36} className="text-indigo-600 animate-bounce md:w-11 md:h-11" style={{ animationDuration: "2s" }} />
-                <Sparkles size={16} className="absolute -top-2 -right-2 text-amber-400 animate-pulse md:w-5 md:h-5 md:-top-3 md:-right-3" />
+              <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-gradient-to-tr from-primary to-tertiary rounded-full blur-xl opacity-40" />
+              <div className="relative w-20 h-20 md:w-24 md:h-24 bg-surface-container-lowest rounded-m3-lg flex items-center justify-center shadow-elev-3">
+                <Bot size={36} className="text-primary animate-bounce md:w-11 md:h-11" style={{ animationDuration: "2s" }} />
+                <Sparkles size={16} className="absolute -top-2 -right-2 text-warning animate-pulse md:w-5 md:h-5 md:-top-3 md:-right-3" />
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-black text-slate-800 mb-1 md:mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
+            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
             <div className="h-5 md:h-6 relative z-10 overflow-hidden flex items-center justify-center w-full">
-              <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[12px] md:text-[14px] font-medium text-slate-500 absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
+              <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[12px] md:text-[14px] font-medium text-on-surface-variant absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
             </div>
-            <div className="w-[80%] h-1 md:h-1.5 bg-slate-200/50 rounded-full mt-6 md:mt-8 overflow-hidden relative z-10">
-              <motion.div className="h-full bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-500 rounded-full w-[200%]" animate={{ x: ["-50%", "0%"] }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} />
+            <div className="w-[80%] h-1 md:h-1.5 bg-surface-container-high rounded-full mt-6 md:mt-8 overflow-hidden relative z-10">
+              <motion.div className="h-full bg-gradient-to-r from-primary via-tertiary to-primary rounded-full w-[200%]" animate={{ x: ["-50%", "0%"] }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} />
             </div>
           </motion.div>
         </div>
@@ -183,14 +184,14 @@ const FormattedText = ({ text }: { text: any }) => {
           try {
             const html = katex.renderToString(math, { displayMode: true, throwOnError: false, strict: false });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} className="block my-2 md:my-3 text-center overflow-x-auto custom-scrollbar" />;
-          } catch (e) { return <span key={index} className="text-rose-500 font-mono text-[11px] md:text-[13px] bg-rose-50 px-1 rounded">{part}</span>; }
+          } catch (e) { return <span key={index} className="text-error font-mono text-[11px] md:text-[13px] bg-error-container px-1 rounded-m3-xs">{part}</span>; }
         }
         if (part.startsWith('$') && part.endsWith('$')) {
           const math = part.slice(1, -1).trim();
           try {
             const html = katex.renderToString(math, { displayMode: false, throwOnError: false, strict: false });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} className="px-0.5 inline-block" />;
-          } catch (e) { return <span key={index} className="text-rose-500 font-mono text-[11px] md:text-[13px] bg-rose-50 px-1 rounded">{part}</span>; }
+          } catch (e) { return <span key={index} className="text-error font-mono text-[11px] md:text-[13px] bg-error-container px-1 rounded-m3-xs">{part}</span>; }
         }
         return <span key={index}>{part.split('\n').map((line, i, arr) => (<span key={i}>{line}{i < arr.length - 1 && <br />}</span>))}</span>;
       })}
@@ -211,49 +212,49 @@ const AIQuestionCard = ({ q, idx, onRemove, t }: { q: any, idx: number, onRemove
   };
 
   return (
-    <div className="bg-white p-3.5 md:p-5 rounded-[1.25rem] md:rounded-3xl border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-md hover:border-indigo-200 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 relative group">
-      <div className="flex justify-between items-center gap-2 mb-3 md:mb-5 md:pb-4 md:border-b border-slate-100">
+    <div className="bg-surface-container-low p-3.5 md:p-5 rounded-m3-lg shadow-elev-1 hover:shadow-elev-2 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 relative group">
+      <div className="flex justify-between items-center gap-2 mb-3 md:mb-5 md:pb-4 md:border-b border-outline-variant">
         <div className="flex items-center flex-wrap gap-1.5 flex-1 min-w-0">
-          <span className="bg-indigo-50 text-indigo-700 text-[9px] md:text-[11px] font-black px-2 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-xl uppercase tracking-widest flex items-center gap-1 md:gap-1.5 border border-indigo-100/50 shrink-0">
+          <span className="bg-primary-container text-on-primary-container text-[9px] md:text-[11px] font-black px-2 md:px-3 py-1 md:py-1.5 rounded-m3-xs md:rounded-m3-sm uppercase tracking-widest flex items-center gap-1 md:gap-1.5 shrink-0">
             Q{idx + 1}
           </span>
-          <span className="bg-slate-50 text-slate-500 text-[9px] md:text-[11px] font-bold px-2 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-xl uppercase tracking-tight flex items-center border border-slate-200/60 max-w-full min-w-0">
+          <span className="bg-surface-container-high text-on-surface-variant text-[9px] md:text-[11px] font-bold px-2 md:px-3 py-1 md:py-1.5 rounded-m3-xs md:rounded-m3-sm uppercase tracking-tight flex items-center max-w-full min-w-0">
              <span className="truncate">AI Prompt</span>
           </span>
-          <span className="hidden sm:inline-flex bg-slate-900 text-white text-[10px] md:text-[11px] font-bold px-2 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-xl uppercase tracking-widest shadow-sm shrink-0">
+          <span className="hidden sm:inline-flex bg-secondary text-on-secondary text-[10px] md:text-[11px] font-bold px-2 md:px-3 py-1 md:py-1.5 rounded-m3-xs md:rounded-m3-sm uppercase tracking-widest shrink-0">
             {q.uiDifficulty}
           </span>
         </div>
-        <div className="flex items-center bg-slate-50 md:bg-transparent border border-slate-200 md:border-transparent rounded-lg md:rounded-none p-0.5 md:p-0 shrink-0">
-          <button onClick={() => setShowOptions(!showOptions)} className="text-slate-400 hover:text-slate-900 hover:bg-white md:hover:bg-slate-100 p-1 md:p-2 rounded-md md:rounded-xl transition-colors"><Eye size={14} className="md:w-[18px] md:h-[18px]" /></button>
+        <div className="flex items-center bg-surface-container md:bg-transparent border border-outline-variant md:border-transparent rounded-m3-sm md:rounded-none p-0.5 md:p-0 shrink-0">
+          <button onClick={() => setShowOptions(!showOptions)} className="m3-interactive text-on-surface-variant hover:text-on-surface hover:bg-state-hover p-1 md:p-2 rounded-m3-sm transition-colors"><Eye size={14} className="md:w-[18px] md:h-[18px]" /></button>
           {getText(q.explanation).trim().length > 0 && (
             <>
-              <div className="w-px h-3 md:h-5 bg-slate-200 mx-0.5 md:mx-1"></div>
-              <button onClick={() => setShowExplanation(!showExplanation)} className={`p-1 md:p-2 rounded-md md:rounded-xl transition-colors ${showExplanation ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-white md:hover:bg-indigo-50'}`}><BookOpen size={14} className="md:w-[18px] md:h-[18px]" /></button>
+              <div className="w-px h-3 md:h-5 bg-outline-variant mx-0.5 md:mx-1"></div>
+              <button onClick={() => setShowExplanation(!showExplanation)} className={`m3-interactive p-1 md:p-2 rounded-m3-sm transition-colors ${showExplanation ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-primary hover:bg-state-hover'}`}><BookOpen size={14} className="md:w-[18px] md:h-[18px]" /></button>
             </>
           )}
-          <div className="w-px h-3 md:h-5 bg-slate-200 mx-0.5 md:mx-1"></div>
-          <button onClick={() => onRemove(q.id)} className="text-slate-400 hover:text-red-600 hover:bg-white md:hover:bg-red-50 p-1 md:p-2 rounded-md md:rounded-xl transition-colors"><Trash2 size={14} className="md:w-[18px] md:h-[18px]" /></button>
+          <div className="w-px h-3 md:h-5 bg-outline-variant mx-0.5 md:mx-1"></div>
+          <button onClick={() => onRemove(q.id)} className="m3-interactive text-on-surface-variant hover:text-error hover:bg-error-container p-1 md:p-2 rounded-m3-sm transition-colors"><Trash2 size={14} className="md:w-[18px] md:h-[18px]" /></button>
         </div>
       </div>
-      <div className="font-semibold text-[12px] md:text-[15.5px] text-slate-900 mb-3 md:mb-6 leading-snug md:leading-relaxed"><FormattedText text={getText(q.question)} /></div>
+      <div className="font-semibold text-[12px] md:text-[15.5px] text-on-surface mb-3 md:mb-6 leading-snug md:leading-relaxed"><FormattedText text={getText(q.question)} /></div>
       {showOptions && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 md:gap-3 mb-1">
           {Object.entries(q.options).map(([key, value]) => {
             const isCorrect = q.answer === key;
             return (
-              <div key={key} className={`flex items-start p-2 md:p-3.5 rounded-xl md:rounded-2xl border transition-all ${isCorrect ? 'bg-indigo-50 border-indigo-300/50' : 'bg-slate-50/50 md:bg-white border-slate-100 md:border-slate-200 hover:border-slate-300'}`}>
-                <div className={`w-5 h-5 md:w-7 md:h-7 rounded-md md:rounded-lg flex items-center justify-center text-[10px] md:text-[12px] font-black mr-2 md:mr-3 shrink-0 transition-colors ${isCorrect ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/20' : 'bg-white md:bg-slate-100 text-slate-400 md:text-slate-500 border border-slate-200 md:border-none'}`}>{key}</div>
-                <div className={`text-[11px] md:text-[14.5px] font-medium pt-0.5 break-words overflow-hidden ${isCorrect ? 'text-indigo-950' : 'text-slate-700'}`}><FormattedText text={getText(value)} /></div>
+              <div key={key} className={`flex items-start p-2 md:p-3.5 rounded-m3-md border transition-all ${isCorrect ? 'bg-success-container border-transparent shadow-elev-1' : 'bg-surface-container-lowest border-outline-variant hover:border-outline'}`}>
+                <div className={`w-5 h-5 md:w-7 md:h-7 rounded-m3-xs md:rounded-m3-sm flex items-center justify-center text-[10px] md:text-[12px] font-black mr-2 md:mr-3 shrink-0 transition-colors ${isCorrect ? 'bg-success text-surface-container-lowest' : 'bg-surface-container-high text-on-surface-variant'}`}>{key}</div>
+                <div className={`text-[11px] md:text-[14.5px] font-medium pt-0.5 break-words overflow-hidden ${isCorrect ? 'text-on-success-container' : 'text-on-surface'}`}><FormattedText text={getText(value)} /></div>
               </div>
             );
           })}
         </div>
       )}
       {showExplanation && getText(q.explanation).trim().length > 0 && (
-        <div className="bg-indigo-50/50 border border-indigo-100/60 p-2.5 md:p-4.5 rounded-xl md:rounded-2xl mt-2 md:mt-3 animate-in fade-in slide-in-from-top-2">
-          <p className="text-[9px] md:text-[11px] font-black text-indigo-500 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-1 md:gap-1.5"><Sparkles size={10} className="md:w-[14px] md:h-[14px]" /> {t.solutionLogic}</p>
-          <p className="text-[11px] md:text-[14px] text-slate-700 leading-relaxed font-medium"><FormattedText text={getText(q.explanation)} /></p>
+        <div className="bg-tertiary-container p-2.5 md:p-4.5 rounded-m3-md mt-2 md:mt-3 animate-in fade-in slide-in-from-top-2">
+          <p className="text-[9px] md:text-[11px] font-black text-on-tertiary-container uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-1 md:gap-1.5"><Sparkles size={10} className="md:w-[14px] md:h-[14px]" /> {t.solutionLogic}</p>
+          <p className="text-[11px] md:text-[14px] text-on-tertiary-container leading-relaxed font-medium"><FormattedText text={getText(q.explanation)} /></p>
         </div>
       )}
     </div>
@@ -462,14 +463,14 @@ export default function AIUserInputPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-[#FAFAFA] font-sans pt-[60px] lg:pt-0">
-      
+    <div className="flex flex-col min-h-[100dvh] bg-surface font-sans pt-[60px] lg:pt-0">
+
       <AiThinkingModal isVisible={isGenerating} />
 
       {/* 🟢 TOP BAR (Mobile Offset) */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-white/90 backdrop-blur-xl border-b border-slate-200 z-[10000] flex items-center justify-between px-3 shadow-sm">
-        <button onClick={() => router.push('/teacher/create')} className="p-2 -ml-1 text-slate-500 rounded-lg"><ArrowLeft size={18} /></button>
-        <span className="font-black text-slate-800 text-[14px]">{t.headerTitle}</span>
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant z-[10000] flex items-center justify-between px-3 shadow-elev-1">
+        <button onClick={() => router.push('/teacher/create')} className="m3-interactive p-2 -ml-1 text-on-surface-variant rounded-m3-sm"><ArrowLeft size={18} /></button>
+        <span className="font-black text-on-surface text-[14px]">{t.headerTitle}</span>
         <div className="w-8"></div>
       </div>
 
@@ -477,26 +478,26 @@ export default function AIUserInputPage() {
       <AnimatePresence>
         {isLimitModalOpen && (
           <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsLimitModalOpen(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-white rounded-[1.5rem] md:rounded-3xl p-6 md:p-8 w-full max-w-[320px] md:max-w-sm shadow-2xl z-10 flex flex-col items-center text-center">
-              <button onClick={() => setIsLimitModalOpen(false)} className="absolute top-3 right-3 md:top-4 md:right-4 p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors"><X size={18} className="md:w-5 md:h-5" /></button>
-              
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-indigo-50 rounded-[1rem] md:rounded-2xl flex items-center justify-center mb-4 border border-indigo-100 shadow-inner">
-                <Crown size={28} className="text-amber-500" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsLimitModalOpen(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-6 md:p-8 w-full max-w-[320px] md:max-w-sm shadow-elev-3 z-10 flex flex-col items-center text-center">
+              <button onClick={() => setIsLimitModalOpen(false)} className="m3-interactive absolute top-3 right-3 md:top-4 md:right-4 p-2 text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-full transition-colors"><X size={18} className="md:w-5 md:h-5" /></button>
+
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-primary-container rounded-m3-md flex items-center justify-center mb-4">
+                <Crown size={28} className="text-warning" />
               </div>
-              
-              <h3 className="text-lg md:text-xl font-black text-slate-900 mb-2">Premium Xususiyat</h3>
-              <p className="text-[13px] md:text-[14px] text-slate-500 mb-6 font-medium leading-relaxed">
+
+              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">Premium Xususiyat</h3>
+              <p className="text-[13px] md:text-[14px] text-on-surface-variant mb-6 font-medium leading-relaxed">
                 {limitModalMessage}
               </p>
-              
+
               <div className="w-full flex flex-col gap-2">
-                <button onClick={() => router.push('/teacher/subscription')} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white text-[13px] md:text-[14px] font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                  Tariflarni ko'rish <ArrowLeft className="w-4 h-4 rotate-180" />
-                </button>
-                <button onClick={() => setIsLimitModalOpen(false)} className="w-full py-3 md:py-3.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[13px] md:text-[14px] font-bold rounded-xl transition-colors active:scale-[0.98]">
+                <Button variant="filled" size="lg" className="w-full" onClick={() => router.push('/teacher/subscription')}>
+                  Tariflarni ko'rish <ArrowLeft className="rotate-180" />
+                </Button>
+                <Button variant="outlined" size="lg" className="w-full" onClick={() => setIsLimitModalOpen(false)}>
                   Orqaga qaytish
-                </button>
+                </Button>
               </div>
             </motion.div>
           </div>
@@ -506,14 +507,14 @@ export default function AIUserInputPage() {
       <AnimatePresence>
         {isTitleModalOpen && (
           <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-white rounded-[1.5rem] md:rounded-3xl p-5 md:p-8 w-full max-w-[320px] md:max-w-md shadow-2xl border border-slate-100 z-10">
-              <h3 className="text-lg md:text-xl font-black text-slate-900 mb-1.5 md:mb-2">{t.modalTitle}</h3>
-              <p className="text-[12px] md:text-[14px] text-slate-500 mb-5 md:mb-6 font-medium">{t.modalDesc}</p>
-              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder="Masalan: 1-chorak nazorati" className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-slate-50 border border-slate-200 rounded-xl text-[13px] md:text-[14px] font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500 transition-all mb-6 md:mb-8" autoFocus/>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-md shadow-elev-3 z-10">
+              <h3 className="text-lg md:text-xl font-black text-on-surface mb-1.5 md:mb-2">{t.modalTitle}</h3>
+              <p className="text-[12px] md:text-[14px] text-on-surface-variant mb-5 md:mb-6 font-medium">{t.modalDesc}</p>
+              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder="Masalan: 1-chorak nazorati" className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
               <div className="flex gap-2 md:gap-3 justify-end">
-                <button onClick={() => setIsTitleModalOpen(false)} className="px-4 py-2 md:px-5 md:py-2.5 text-[12px] md:text-[14px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">{t.modalCancel}</button>
-                <button onClick={handleTitleSubmit} className="px-4 py-2 md:px-6 md:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-[12px] md:text-[14px] text-white font-bold rounded-xl flex items-center gap-1.5 md:gap-2">{t.modalNext} <ChevronRight size={16} strokeWidth={3}/></button>
+                <Button variant="outlined" onClick={() => setIsTitleModalOpen(false)}>{t.modalCancel}</Button>
+                <Button variant="filled" onClick={handleTitleSubmit}>{t.modalNext} <ChevronRight size={16} strokeWidth={3}/></Button>
               </div>
             </motion.div>
           </div>
@@ -526,32 +527,40 @@ export default function AIUserInputPage() {
       )}
 
       {/* 🟢 TOP BAR (Desktop) */}
-      <div className="hidden lg:flex bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-sm">
+      <div className="hidden lg:flex bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant sticky top-0 z-30 shadow-elev-1">
         <div className="max-w-4xl w-full mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/teacher/create')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors">
+            <button onClick={() => router.push('/teacher/create')} className="m3-interactive p-2 -ml-2 text-on-surface-variant hover:text-on-surface bg-surface-container hover:bg-state-hover rounded-m3-sm transition-colors">
               <ArrowLeft size={18} />
             </button>
-            <h1 className="text-[16px] font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <Sparkles size={16} className="text-indigo-500" /> {t.headerTitle}
+            <h1 className="text-[16px] font-bold text-on-surface tracking-tight flex items-center gap-2">
+              <Sparkles size={16} className="text-primary" /> {t.headerTitle}
             </h1>
           </div>
           <div className="flex items-center gap-3">
             {/* 🟢 NEW: Using Monthly Limit Card */}
             <AiMonthlyLimitCard aiData={aiData} />
-            
-            <button 
-              onClick={handleSaveToBank} 
-              disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0} 
-              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 text-[13px]"
-            >
-              {isSavingToBank ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />} 
-              <span>{t.saveToBankBtn}</span>
-            </button>
 
-            <button onClick={handleInitiatePublish} disabled={isPublishing || isGenerating || generatedQuestions.length === 0} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 text-[13px]">
-              <CheckCircle2 size={16} /> <span>{t.publishBtn}</span>
-            </button>
+            <Button
+              variant="outlined"
+              size="sm"
+              icon={<Database size={16} />}
+              loading={isSavingToBank}
+              onClick={handleSaveToBank}
+              disabled={isPublishing || isGenerating || generatedQuestions.length === 0}
+            >
+              {t.saveToBankBtn}
+            </Button>
+
+            <Button
+              variant="tonal"
+              size="sm"
+              icon={<CheckCircle2 size={16} />}
+              onClick={handleInitiatePublish}
+              disabled={isPublishing || isGenerating || generatedQuestions.length === 0}
+            >
+              {t.publishBtn}
+            </Button>
           </div>
         </div>
       </div>
@@ -560,22 +569,22 @@ export default function AIUserInputPage() {
       <div className="max-w-4xl w-full mx-auto px-3 md:px-4 mt-4 md:mt-8 pb-32">
         
         {/* HERO PROMPT AREA */}
-        <div className="bg-white rounded-[1rem] md:rounded-3xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-4 md:p-8 mb-5 md:mb-8 relative overflow-hidden">
-          <div className="absolute -right-20 -top-20 w-64 h-64 bg-indigo-50 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="bg-surface-container-low rounded-m3-lg shadow-elev-1 p-4 md:p-8 mb-5 md:mb-8 relative overflow-hidden">
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary-container rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="mb-3 md:mb-4 relative z-10 px-1 md:px-0">
-            <h2 className="text-[14px] md:text-[18px] font-black text-slate-900 tracking-tight">{t.inputTitle}</h2>
-            <p className="text-[10px] md:text-[13px] font-medium text-slate-500 mt-0.5 md:mt-1">{t.inputDesc}</p>
+            <h2 className="text-[14px] md:text-[18px] font-black text-on-surface tracking-tight">{t.inputTitle}</h2>
+            <p className="text-[10px] md:text-[13px] font-medium text-on-surface-variant mt-0.5 md:mt-1">{t.inputDesc}</p>
           </div>
 
-          <div className="relative z-10 bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl p-1.5 md:p-2 mb-3 md:mb-4">
+          <div className="relative z-10 bg-surface-container border border-outline-variant rounded-m3-md p-1.5 md:p-2 mb-3 md:mb-4">
              <textarea 
                ref={promptInputRef}
                value={userPrompt}
                onChange={e => setUserPrompt(e.target.value)}
                placeholder={t.placeholder}
                maxLength={1500} 
-               className="w-full min-h-[90px] md:min-h-[120px] p-2.5 md:p-3 bg-transparent text-[12px] md:text-[15px] font-medium text-slate-800 outline-none resize-none placeholder:text-slate-400 custom-scrollbar"
+               className="w-full min-h-[90px] md:min-h-[120px] p-2.5 md:p-3 bg-transparent text-[12px] md:text-[15px] font-medium text-on-surface outline-none resize-none placeholder:text-on-surface-variant custom-scrollbar"
              />
           </div>
 
@@ -583,63 +592,65 @@ export default function AIUserInputPage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 md:gap-4 relative z-10 px-1 md:px-0">
             
             <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
-              <div className="flex items-center bg-slate-100 p-1 rounded-lg md:rounded-xl border border-slate-200/60 flex-1 sm:flex-none justify-between h-[36px] md:h-[42px]">
-                <button onClick={() => setCount(prev => Math.max(1, prev - 1))} className="w-8 md:w-10 h-full flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-900 transition-all disabled:opacity-40" disabled={count <= 1}>
+              <div className="flex items-center bg-surface-container-high p-1 rounded-m3-sm flex-1 sm:flex-none justify-between h-[36px] md:h-[42px]">
+                <button onClick={() => setCount(prev => Math.max(1, prev - 1))} className="m3-interactive w-8 md:w-10 h-full flex items-center justify-center rounded-m3-xs text-on-surface-variant hover:bg-surface-container-lowest hover:text-on-surface transition-all disabled:text-disabled-fg" disabled={count <= 1}>
                   <Minus size={14} className="md:w-4 md:h-4" strokeWidth={2.5} />
                 </button>
                 <div className="w-8 md:w-10 text-center flex flex-col justify-center">
-                  <span className="text-[12px] md:text-[14px] font-black text-slate-800 leading-none">{count}</span>
+                  <span className="text-[12px] md:text-[14px] font-black text-on-surface leading-none">{count}</span>
                 </div>
                 {/* 🟢 NEW: Disable Plus button if count exceeds monthly limit */}
-                <button 
-                  onClick={() => setCount(prev => Math.min(15, aiData?.isUnlimited ? 15 : (aiData?.remaining ?? 15), prev + 1))} 
-                  className="w-8 md:w-10 h-full flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-900 transition-all disabled:opacity-40" 
+                <button
+                  onClick={() => setCount(prev => Math.min(15, aiData?.isUnlimited ? 15 : (aiData?.remaining ?? 15), prev + 1))}
+                  className="m3-interactive w-8 md:w-10 h-full flex items-center justify-center rounded-m3-xs text-on-surface-variant hover:bg-surface-container-lowest hover:text-on-surface transition-all disabled:text-disabled-fg"
                   disabled={count >= 15 || (!aiData?.isUnlimited && count >= (aiData?.remaining ?? 15))}
                 >
                   <Plus size={14} className="md:w-4 md:h-4" strokeWidth={2.5} />
                 </button>
               </div>
 
-              <div className="flex bg-slate-100 p-1 rounded-lg md:rounded-xl border border-slate-200/60 flex-1 sm:flex-none h-[36px] md:h-[42px]">
-                <button onClick={() => setDifficulty('Easy')} className={`flex-1 sm:flex-none px-2 md:px-3 text-[10px] md:text-[12px] font-bold rounded-md transition-all ${difficulty === 'Easy' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>{t.easy}</button>
-                <button onClick={() => setDifficulty('Medium')} className={`flex-1 sm:flex-none px-2 md:px-3 text-[10px] md:text-[12px] font-bold rounded-md transition-all ${difficulty === 'Medium' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>{t.medium}</button>
-                <button onClick={() => setDifficulty('Hard')} className={`flex-1 sm:flex-none px-2 md:px-3 text-[10px] md:text-[12px] font-bold rounded-md transition-all ${difficulty === 'Hard' ? 'bg-white text-rose-600 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>{t.hard}</button>
+              <div className="flex bg-surface-container-high p-1 rounded-m3-sm flex-1 sm:flex-none h-[36px] md:h-[42px]">
+                <button onClick={() => setDifficulty('Easy')} className={`flex-1 sm:flex-none px-2 md:px-3 text-[10px] md:text-[12px] font-bold rounded-m3-xs transition-all ${difficulty === 'Easy' ? 'bg-surface-container-lowest text-success shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>{t.easy}</button>
+                <button onClick={() => setDifficulty('Medium')} className={`flex-1 sm:flex-none px-2 md:px-3 text-[10px] md:text-[12px] font-bold rounded-m3-xs transition-all ${difficulty === 'Medium' ? 'bg-surface-container-lowest text-primary shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>{t.medium}</button>
+                <button onClick={() => setDifficulty('Hard')} className={`flex-1 sm:flex-none px-2 md:px-3 text-[10px] md:text-[12px] font-bold rounded-m3-xs transition-all ${difficulty === 'Hard' ? 'bg-surface-container-lowest text-error shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>{t.hard}</button>
               </div>
             </div>
 
-            <button 
+            <Button
+              variant="filled"
+              className="w-full sm:w-auto"
               onClick={handleGenerate}
-              disabled={isGenerating || wordsNeeded > 0}
-              className="w-full sm:w-auto px-4 py-2.5 md:px-6 md:py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 md:gap-2 disabled:opacity-50 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none text-[12px] md:text-[14px]"
+              loading={isGenerating}
+              disabled={wordsNeeded > 0}
+              icon={<Wand2 />}
             >
-              {isGenerating ? <Loader2 className="animate-spin w-4 h-4 md:w-[18px] md:h-[18px]" /> : <Wand2 className="w-4 h-4 md:w-[18px] md:h-[18px]" />}
               {wordsNeeded > 0 ? t.wordsMore.replace('{n}', wordsNeeded.toString()) : (isGenerating ? t.generating : t.generateBtn)}
-            </button>
+            </Button>
 
           </div>
         </div>
 
         {/* 🟢 HORIZONTAL SCROLLING TIPS */}
         <div className="flex flex-nowrap md:grid md:grid-cols-3 gap-2.5 md:gap-4 mb-6 md:mb-8 overflow-x-auto snap-x snap-mandatory custom-scrollbar pb-3 md:pb-0 -mx-3 px-3 md:mx-0 md:px-0">
-          <div className="bg-white p-3 md:p-5 rounded-xl md:rounded-2xl border border-slate-200 flex items-start gap-2 md:gap-3 shadow-sm w-[75vw] md:w-auto shrink-0 snap-center">
-             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0"><Target size={16} className="md:w-5 md:h-5" /></div>
+          <div className="bg-surface-container-low p-3 md:p-5 rounded-m3-md md:rounded-m3-lg flex items-start gap-2 md:gap-3 shadow-elev-1 w-[75vw] md:w-auto shrink-0 snap-center">
+             <div className="w-8 h-8 md:w-10 md:h-10 rounded-m3-sm md:rounded-m3-md bg-primary-container text-on-primary-container flex items-center justify-center shrink-0"><Target size={16} className="md:w-5 md:h-5" /></div>
              <div>
-               <h3 className="text-[11px] md:text-[14px] font-bold text-slate-800 mb-0.5 md:mb-1">{t.tips.t1.title}</h3>
-               <p className="text-[9px] md:text-[12px] text-slate-500 font-medium leading-relaxed">{t.tips.t1.desc}</p>
+               <h3 className="text-[11px] md:text-[14px] font-bold text-on-surface mb-0.5 md:mb-1">{t.tips.t1.title}</h3>
+               <p className="text-[9px] md:text-[12px] text-on-surface-variant font-medium leading-relaxed">{t.tips.t1.desc}</p>
              </div>
           </div>
-          <div className="bg-white p-3 md:p-5 rounded-xl md:rounded-2xl border border-slate-200 flex items-start gap-2 md:gap-3 shadow-sm w-[75vw] md:w-auto shrink-0 snap-center">
-             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"><Zap size={16} className="md:w-5 md:h-5" /></div>
+          <div className="bg-surface-container-low p-3 md:p-5 rounded-m3-md md:rounded-m3-lg flex items-start gap-2 md:gap-3 shadow-elev-1 w-[75vw] md:w-auto shrink-0 snap-center">
+             <div className="w-8 h-8 md:w-10 md:h-10 rounded-m3-sm md:rounded-m3-md bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0"><Zap size={16} className="md:w-5 md:h-5" /></div>
              <div>
-               <h3 className="text-[11px] md:text-[14px] font-bold text-slate-800 mb-0.5 md:mb-1">{t.tips.t2.title}</h3>
-               <p className="text-[9px] md:text-[12px] text-slate-500 font-medium leading-relaxed">{t.tips.t2.desc}</p>
+               <h3 className="text-[11px] md:text-[14px] font-bold text-on-surface mb-0.5 md:mb-1">{t.tips.t2.title}</h3>
+               <p className="text-[9px] md:text-[12px] text-on-surface-variant font-medium leading-relaxed">{t.tips.t2.desc}</p>
              </div>
           </div>
-          <div className="bg-white p-3 md:p-5 rounded-xl md:rounded-2xl border border-slate-200 flex items-start gap-2 md:gap-3 shadow-sm w-[75vw] md:w-auto shrink-0 snap-center">
-             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-violet-50 text-violet-500 flex items-center justify-center shrink-0"><Layers size={16} className="md:w-5 md:h-5" /></div>
+          <div className="bg-surface-container-low p-3 md:p-5 rounded-m3-md md:rounded-m3-lg flex items-start gap-2 md:gap-3 shadow-elev-1 w-[75vw] md:w-auto shrink-0 snap-center">
+             <div className="w-8 h-8 md:w-10 md:h-10 rounded-m3-sm md:rounded-m3-md bg-tertiary-container text-on-tertiary-container flex items-center justify-center shrink-0"><Layers size={16} className="md:w-5 md:h-5" /></div>
              <div>
-               <h3 className="text-[11px] md:text-[14px] font-bold text-slate-800 mb-0.5 md:mb-1">{t.tips.t3.title}</h3>
-               <p className="text-[9px] md:text-[12px] text-slate-500 font-medium leading-relaxed">{t.tips.t3.desc}</p>
+               <h3 className="text-[11px] md:text-[14px] font-bold text-on-surface mb-0.5 md:mb-1">{t.tips.t3.title}</h3>
+               <p className="text-[9px] md:text-[12px] text-on-surface-variant font-medium leading-relaxed">{t.tips.t3.desc}</p>
              </div>
           </div>
         </div>
@@ -649,8 +660,8 @@ export default function AIUserInputPage() {
           <div className="space-y-3.5 md:space-y-5">
             <div className="flex items-center justify-between px-1">
                <div className="flex items-center gap-1.5 md:gap-2">
-                 <Layers size={14} className="text-slate-400 md:w-4 md:h-4" />
-                 <h2 className="text-[10px] md:text-sm font-bold text-slate-600 uppercase tracking-widest">
+                 <Layers size={14} className="text-on-surface-variant md:w-4 md:h-4" />
+                 <h2 className="text-[10px] md:text-sm font-bold text-on-surface-variant uppercase tracking-widest">
                    {t.resultsTitle} ({generatedQuestions.length})
                  </h2>
                </div>
@@ -662,7 +673,7 @@ export default function AIUserInputPage() {
 
             {!isGenerating && (
               <div className="pt-4 md:pt-6 flex justify-center animate-in fade-in duration-500">
-                <button onClick={handleScrollToPrompt} className="px-5 py-2.5 md:px-6 md:py-3.5 bg-transparent border-2 border-dashed border-slate-300 text-[11px] md:text-[14px] text-slate-500 font-bold rounded-xl hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all flex items-center gap-1.5 md:gap-2">
+                <button onClick={handleScrollToPrompt} className="m3-interactive px-5 py-2.5 md:px-6 md:py-3.5 bg-transparent border-2 border-dashed border-outline text-[11px] md:text-[14px] text-on-surface-variant font-bold rounded-m3-md hover:border-primary hover:text-primary hover:bg-state-hover transition-all flex items-center gap-1.5 md:gap-2">
                   <Plus size={14} className="md:w-[18px] md:h-[18px]" /> {t.addMore}
                 </button>
               </div>
@@ -677,23 +688,27 @@ export default function AIUserInputPage() {
       {/* 🟢 MOBILE FLOATING ACTIONS */}
       {mounted && generatedQuestions.length > 0 && createPortal(
         <div className="lg:hidden fixed bottom-5 left-0 right-0 px-3 flex justify-between gap-2 z-[100] animate-in slide-in-from-bottom-10">
-          <button 
-            onClick={handleSaveToBank} 
-            disabled={isSavingToBank || isPublishing || isGenerating} 
-            className="flex-1 bg-indigo-50 text-indigo-700 rounded-[1rem] shadow-lg shadow-indigo-600/10 font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform text-[11px] py-3.5 border border-indigo-200/50"
+          <Button
+            variant="elevated"
+            className="flex-1 shadow-elev-2"
+            onClick={handleSaveToBank}
+            loading={isSavingToBank}
+            disabled={isPublishing || isGenerating}
+            icon={<Database size={14} />}
           >
-            {isSavingToBank ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />} 
             {t.saveToBankBtn}
-          </button>
-          
-          <button 
-            onClick={handleInitiatePublish} 
-            disabled={isPublishing || isSavingToBank || isGenerating} 
-            className="flex-1 bg-slate-900 text-white rounded-[1rem] shadow-xl shadow-slate-900/20 font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform text-[11px] py-3.5 border border-slate-800"
+          </Button>
+
+          <Button
+            variant="tonal"
+            className="flex-1 shadow-elev-2"
+            onClick={handleInitiatePublish}
+            loading={isPublishing}
+            disabled={isSavingToBank || isGenerating}
+            icon={<CheckCircle2 size={14} />}
           >
-            {isPublishing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />} 
             {t.publishBtn}
-          </button>
+          </Button>
         </div>,
         document.body
       )}

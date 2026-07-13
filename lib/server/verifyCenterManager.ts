@@ -15,9 +15,15 @@ export class ManagerApiError extends Error {
 
 /**
  * Verifies the Authorization: Bearer <idToken> header, requires the caller to be
- * a manager (users/{uid}.role) of an ACTIVE center — the server-side twin of the
- * `isActiveCenterManager()` rule that gates all manager writes in firestore.rules.
+ * a manager (users/{uid}.role) who OWNS an ACTIVE center — the server-side twin of
+ * the `isActiveCenterManager()` rule that gates all manager writes in firestore.rules.
  * Returns the caller's uid and centerId.
+ *
+ * ⚠️ The ownerUid comparison below is the security boundary, NOT users.role/centerId.
+ * `users/{uid}` is client-writable, so role and centerId are attacker-controlled
+ * hints: without the ownerUid check any signed-in user could point centerId at
+ * someone else's center and drive every /api/manager/* route (which use the Admin
+ * SDK and bypass rules) against it. Never relax this to trust the user doc alone.
  */
 export async function requireActiveCenterManager(request: Request): Promise<{ uid: string; centerId: string }> {
   const authHeader = request.headers.get('authorization') || '';
@@ -40,7 +46,11 @@ export async function requireActiveCenterManager(request: Request): Promise<{ ui
   }
 
   const centerSnap = await adminDb.collection('centers').doc(userData.centerId).get();
-  if (!centerSnap.exists || centerSnap.data()!.status !== 'active') {
+  const centerData = centerSnap.exists ? centerSnap.data()! : null;
+  if (!centerData || centerData.ownerUid !== decoded.uid) {
+    throw new ManagerApiError('Menejer huquqi talab qilinadi.', 403);
+  }
+  if (centerData.status !== 'active') {
     throw new ManagerApiError('Markazingiz hali faollashtirilmagan.', 403);
   }
 

@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, CheckCircle2, Loader2, Sparkles, Wand2, 
-  BookOpen, Plus, Minus, AlignLeft, Type, 
-  GripVertical, Check, Zap, X, ChevronDown, ChevronRight, 
+import {
+  ArrowLeft, CheckCircle2, Sparkles, Wand2,
+  BookOpen, Plus, Minus, AlignLeft, Type,
+  GripVertical, Check, Zap, X, ChevronDown, ChevronRight,
   Trash2, Building2, GraduationCap, CheckSquare, Bot,
   FileText, Crown
 } from "lucide-react";
+import { Button, Spinner } from "@/components/ui";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/AuthContext";
@@ -64,23 +65,23 @@ const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
     <AnimatePresence>
       {isVisible && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" />
-          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative w-full max-w-sm bg-white/95 backdrop-blur-2xl rounded-[2rem] border border-white/50 shadow-2xl p-8 flex flex-col items-center justify-center overflow-hidden">
-            <div className="absolute top-[-30%] left-[-20%] w-[80%] h-[80%] bg-indigo-500/20 rounded-full blur-[60px] animate-pulse"></div>
-            <div className="absolute bottom-[-30%] right-[-20%] w-[80%] h-[80%] bg-purple-500/20 rounded-full blur-[60px] animate-pulse" style={{ animationDelay: "1s" }}></div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" />
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative w-full max-w-sm bg-surface-container-low rounded-m3-xl shadow-elev-3 p-8 flex flex-col items-center justify-center overflow-hidden">
+            <div className="absolute top-[-30%] left-[-20%] w-[80%] h-[80%] bg-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] rounded-full blur-[60px] animate-pulse"></div>
+            <div className="absolute bottom-[-30%] right-[-20%] w-[80%] h-[80%] bg-[color-mix(in_oklab,var(--m3-tertiary)_20%,transparent)] rounded-full blur-[60px] animate-pulse" style={{ animationDelay: "1s" }}></div>
             <div className="relative mb-6 mt-2">
-              <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-400 rounded-full blur-xl opacity-40" />
-              <div className="relative w-20 h-20 bg-white/80 backdrop-blur-md rounded-3xl border border-white flex items-center justify-center shadow-xl">
-                <Bot size={36} className="text-indigo-600 animate-bounce" style={{ animationDuration: "2s" }} />
-                <Sparkles size={16} className="absolute -top-2 -right-2 text-amber-400 animate-pulse" />
+              <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-gradient-to-tr from-primary to-tertiary rounded-full blur-xl opacity-40" />
+              <div className="relative w-20 h-20 bg-surface-container-lowest rounded-m3-lg flex items-center justify-center shadow-elev-3">
+                <Bot size={36} className="text-primary animate-bounce" style={{ animationDuration: "2s" }} />
+                <Sparkles size={16} className="absolute -top-2 -right-2 text-warning animate-pulse" />
               </div>
             </div>
-            <h3 className="text-[18px] font-black text-slate-900 mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
+            <h3 className="text-[18px] font-black text-on-surface mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
             <div className="h-5 relative z-10 overflow-hidden flex items-center justify-center w-full">
-              <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[13px] font-bold text-slate-500 absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
+              <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[13px] font-bold text-on-surface-variant absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
             </div>
-            <div className="w-[70%] h-1.5 bg-slate-200/50 rounded-full mt-6 overflow-hidden relative z-10">
-              <motion.div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full w-[200%]" animate={{ x: ["-50%", "0%"] }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} />
+            <div className="w-[70%] h-1.5 bg-surface-container-high rounded-full mt-6 overflow-hidden relative z-10">
+              <motion.div className="h-full bg-gradient-to-r from-primary via-tertiary to-primary rounded-full w-[200%]" animate={{ x: ["-50%", "0%"] }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} />
             </div>
           </motion.div>
         </div>
@@ -101,21 +102,21 @@ const FormattedText = ({ text }: { text: any }) => {
   const parts = content.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g);
 
   return (
-    <span className="break-words leading-relaxed text-slate-800">
+    <span className="break-words leading-relaxed text-on-surface">
       {parts.map((part, index) => {
         if (part.startsWith('$$') && part.endsWith('$$')) {
           const math = part.slice(2, -2).trim();
           try {
             const html = katex.renderToString(math, { displayMode: true, throwOnError: false, strict: false });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} className="block my-3 text-center overflow-x-auto custom-scrollbar" />;
-          } catch (e) { return <span key={index} className="text-red-500 font-mono text-[13px] bg-red-50 px-1 rounded">{part}</span>; }
+          } catch (e) { return <span key={index} className="text-error font-mono text-[13px] bg-error-container px-1 rounded-m3-xs">{part}</span>; }
         }
         if (part.startsWith('$') && part.endsWith('$')) {
           const math = part.slice(1, -1).trim();
           try {
             const html = katex.renderToString(math, { displayMode: false, throwOnError: false, strict: false });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} className="px-0.5 inline-block align-middle" />;
-          } catch (e) { return <span key={index} className="text-red-500 font-mono text-[13px] bg-red-50 px-1 rounded">{part}</span>; }
+          } catch (e) { return <span key={index} className="text-error font-mono text-[13px] bg-error-container px-1 rounded-m3-xs">{part}</span>; }
         }
         return <span key={index}>{part.split('\n').map((line, i, arr) => (<span key={i}>{line}{i < arr.length - 1 && <br />}</span>))}</span>;
       })}
@@ -127,50 +128,50 @@ const ExamQuestionCard = ({ q, idx, onRemove }: { q: any, idx: number, onRemove:
   const getText = (field: any) => field?.uz || field || "";
 
   return (
-    <div className="bg-white p-5 md:p-8 rounded-[1.5rem] border border-slate-200 shadow-sm relative group mb-5 hover:border-indigo-200 transition-colors">
+    <div className="bg-surface-container-low p-5 md:p-8 rounded-m3-lg shadow-elev-1 relative group mb-5 hover:shadow-elev-2 transition-shadow">
       <div className="absolute top-4 right-4 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onRemove(q.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" title="Savolni o'chirish">
+        <button onClick={() => onRemove(q.id)} className="m3-interactive p-2 text-on-surface-variant hover:text-error hover:bg-error-container rounded-m3-md transition-colors" title="Savolni o'chirish">
           <Trash2 size={16} strokeWidth={2.5} />
         </button>
       </div>
 
       <div className="flex items-center gap-2 mb-4 pr-8">
-        <span className="bg-slate-900 text-white text-[11px] font-black px-2.5 py-1 rounded-md shrink-0">{idx + 1}</span>
-        <span className="text-[10px] font-black text-slate-500 border border-slate-200 px-2 py-1 rounded-md uppercase tracking-widest bg-slate-50 truncate">
+        <span className="bg-secondary text-on-secondary text-[11px] font-black px-2.5 py-1 rounded-m3-xs shrink-0">{idx + 1}</span>
+        <span className="text-[10px] font-black text-on-surface-variant px-2 py-1 rounded-m3-xs uppercase tracking-widest bg-surface-container-high truncate">
           {q.type.replace('_', ' ')} • {q.points} Ball
         </span>
       </div>
 
-      <div className="text-[14px] md:text-[15px] font-bold text-slate-900 mb-5 leading-snug">
+      <div className="text-[14px] md:text-[15px] font-bold text-on-surface mb-5 leading-snug">
         <FormattedText text={getText(q.question)} />
       </div>
 
-      <div className="pl-3 border-l-2 border-indigo-100">
+      <div className="pl-3 border-l-2 border-primary-container">
         {q.type === "mcq" && q.options && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {Object.entries(q.options).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).map(([key, value]) => {
               const isCorrect = q.answer === key;
               return (
-                <div key={key} className={`flex items-start p-2.5 rounded-xl border ${isCorrect ? 'bg-indigo-50/80 border-indigo-200 shadow-sm' : 'bg-white border-slate-200'}`}>
-                  <div className={`w-6 h-6 rounded flex items-center justify-center text-[12px] font-bold mr-3 shrink-0 ${isCorrect ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'}`}>{key}</div>
-                  <div className={`text-[13px] pt-0.5 leading-snug ${isCorrect ? 'text-indigo-900 font-bold' : 'text-slate-700 font-medium'}`}><FormattedText text={getText(value)} /></div>
+                <div key={key} className={`flex items-start p-2.5 rounded-m3-md border ${isCorrect ? 'bg-success-container border-transparent shadow-elev-1' : 'bg-surface-container-lowest border-outline-variant'}`}>
+                  <div className={`w-6 h-6 rounded-m3-xs flex items-center justify-center text-[12px] font-bold mr-3 shrink-0 ${isCorrect ? 'bg-success text-surface-container-lowest' : 'bg-surface-container-high text-on-surface-variant'}`}>{key}</div>
+                  <div className={`text-[13px] pt-0.5 leading-snug ${isCorrect ? 'text-on-success-container font-bold' : 'text-on-surface font-medium'}`}><FormattedText text={getText(value)} /></div>
                 </div>
               );
             })}
           </div>
         )}
-        
+
         {q.type === "short_answer" && (
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
-            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Javob:</span>
-            <span className="text-[14px] font-bold text-indigo-700"><FormattedText text={getText(q.answer)} /></span>
+          <div className="bg-surface-container p-3.5 rounded-m3-md border border-outline-variant flex items-center gap-3">
+            <span className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest">Javob:</span>
+            <span className="text-[14px] font-bold text-primary"><FormattedText text={getText(q.answer)} /></span>
           </div>
         )}
 
         {q.type === "true_false" && (
           <div className="flex gap-2.5">
-            <div className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-[13px] text-center font-bold border ${q.answer === true ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}>Rost</div>
-            <div className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-[13px] text-center font-bold border ${q.answer === false ? 'bg-rose-50 border-rose-200 text-rose-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}>Yolg'on</div>
+            <div className={`flex-1 md:flex-none px-5 py-2.5 rounded-m3-md text-[13px] text-center font-bold border ${q.answer === true ? 'bg-success-container border-transparent text-on-success-container shadow-elev-1' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant'}`}>Rost</div>
+            <div className={`flex-1 md:flex-none px-5 py-2.5 rounded-m3-md text-[13px] text-center font-bold border ${q.answer === false ? 'bg-error-container border-transparent text-on-error-container shadow-elev-1' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant'}`}>Yolg'on</div>
           </div>
         )}
 
@@ -178,9 +179,9 @@ const ExamQuestionCard = ({ q, idx, onRemove }: { q: any, idx: number, onRemove:
           <div className="grid gap-2">
             {q.pairs.map((pair: any, i: number) => (
               <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-                <div className="flex-1 bg-white p-3 rounded-xl border border-slate-200 text-[13px] font-medium text-slate-700 shadow-sm leading-snug"><FormattedText text={getText(pair.left)} /></div>
-                <div className="hidden sm:block text-slate-300 font-black">➔</div>
-                <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-200 text-[13px] font-bold text-slate-800 shadow-sm leading-snug"><FormattedText text={getText(pair.right)} /></div>
+                <div className="flex-1 bg-surface-container-lowest p-3 rounded-m3-md border border-outline-variant text-[13px] font-medium text-on-surface shadow-elev-1 leading-snug"><FormattedText text={getText(pair.left)} /></div>
+                <div className="hidden sm:block text-outline font-black">➔</div>
+                <div className="flex-1 bg-surface-container p-3 rounded-m3-md border border-outline-variant text-[13px] font-bold text-on-surface shadow-elev-1 leading-snug"><FormattedText text={getText(pair.right)} /></div>
               </div>
             ))}
           </div>
@@ -188,14 +189,14 @@ const ExamQuestionCard = ({ q, idx, onRemove }: { q: any, idx: number, onRemove:
 
         {q.type === "open_ended" && (
           <div className="space-y-3">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Namuna Yechim</span>
-              <p className="text-[13px] font-medium text-slate-800 leading-relaxed"><FormattedText text={getText(q.answer)} /></p>
+            <div className="bg-surface-container p-4 rounded-m3-md border border-outline-variant">
+              <span className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-1.5 block">Namuna Yechim</span>
+              <p className="text-[13px] font-medium text-on-surface leading-relaxed"><FormattedText text={getText(q.answer)} /></p>
             </div>
             {q.rubric && (
-              <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-                <span className="text-[11px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 block">Baholash Mezoni</span>
-                <p className="text-[13px] font-bold text-indigo-900 leading-relaxed"><FormattedText text={getText(q.rubric)} /></p>
+              <div className="bg-tertiary-container p-4 rounded-m3-md">
+                <span className="text-[11px] font-black text-on-tertiary-container uppercase tracking-widest mb-1.5 block">Baholash Mezoni</span>
+                <p className="text-[13px] font-bold text-on-tertiary-container leading-relaxed"><FormattedText text={getText(q.rubric)} /></p>
               </div>
             )}
           </div>
@@ -399,19 +400,19 @@ export default function BsbChsbGeneratorPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] font-sans pb-[100px] text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 pt-[64px] md:pt-[72px]">
+    <div className="min-h-[100dvh] bg-surface font-sans pb-[100px] text-on-surface selection:bg-primary-container selection:text-on-primary-container pt-[64px] md:pt-[72px]">
       
       <AiThinkingModal isVisible={isGenerating} />
       
       {mounted && createPortal(
-        <div className="fixed top-0 left-0 right-0 h-[64px] md:h-[72px] bg-white/95 backdrop-blur-xl border-b border-slate-200/80 z-[99999] px-4 sm:px-6 flex items-center justify-between shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
+        <div className="fixed top-0 left-0 right-0 h-[64px] md:h-[72px] bg-[color-mix(in_oklab,var(--m3-surface)_95%,transparent)] backdrop-blur-xl border-b border-outline-variant z-[99999] px-4 sm:px-6 flex items-center justify-between shadow-elev-1">
           <div className="flex items-center gap-2 sm:gap-4">
-            <button onClick={() => router.push('/teacher/create')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95">
+            <button onClick={() => router.push('/teacher/create')} className="m3-interactive p-2 -ml-2 text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-m3-md transition-all active:scale-95">
               <ArrowLeft size={20} strokeWidth={2.5} />
             </button>
-            <div className="w-px h-5 bg-slate-200 hidden sm:block"></div>
-            <h1 className="text-[14px] sm:text-[16px] font-black text-slate-800 tracking-tight flex items-center gap-2 truncate">
-              <FileText size={16} className="text-indigo-500 hidden sm:block" /> BSB/CHSB Generatori
+            <div className="w-px h-5 bg-outline-variant hidden sm:block"></div>
+            <h1 className="text-[14px] sm:text-[16px] font-black text-on-surface tracking-tight flex items-center gap-2 truncate">
+              <FileText size={16} className="text-primary hidden sm:block" /> BSB/CHSB Generatori
             </h1>
           </div>
 
@@ -427,7 +428,7 @@ export default function BsbChsbGeneratorPage() {
                   animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   onClick={() => { setTestTitle(`${selectedClass} ${selectedSubject.replace(/-/g,' ')} ${assessmentType}`); setIsTitleModalOpen(true); }}
-                  className="bg-slate-900 hover:bg-black text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-black transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-slate-900/20 text-[12px] sm:text-[14px]"
+                  className="m3-interactive bg-primary text-on-primary px-3 sm:px-5 py-2 sm:py-2.5 rounded-m3-btn font-black transition-all active:scale-95 flex items-center gap-2 shadow-elev-2 text-[12px] sm:text-[14px]"
                 >
                   <CheckCircle2 size={16} strokeWidth={2.5} />
                   <span className="hidden sm:block">Saqlash</span>
@@ -440,8 +441,8 @@ export default function BsbChsbGeneratorPage() {
       )}
 
       {mounted && createPortal(
-        <div className="fixed bottom-0 left-0 right-0 h-[calc(env(safe-area-inset-bottom)+70px)] bg-[#FAFAFA] z-[99998] sm:hidden flex items-center justify-center border-t border-slate-200">
-           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative -top-3">Studiya Rejimi</span>
+        <div className="fixed bottom-0 left-0 right-0 h-[calc(env(safe-area-inset-bottom)+70px)] bg-surface z-[99998] sm:hidden flex items-center justify-center border-t border-outline-variant">
+           <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest relative -top-3">Studiya Rejimi</span>
         </div>,
         document.body
       )}
@@ -449,81 +450,81 @@ export default function BsbChsbGeneratorPage() {
       <div className="max-w-[1000px] mx-auto px-4 sm:px-6 mt-6 flex flex-col lg:flex-row gap-6 md:gap-8">
         
         <div className="w-full lg:w-[40%] flex flex-col gap-4 md:gap-6">
-          <div className="bg-white rounded-[2rem] border border-slate-200/80 p-5 md:p-6 shadow-sm">
-            <div className="flex bg-slate-100/80 p-1.5 rounded-xl mb-6">
-              <button onClick={() => setSchoolType('maktab')} className={`flex-1 py-2 text-[12px] md:text-[13px] font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${schoolType === 'maktab' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          <div className="bg-surface-container-low rounded-m3-xl p-5 md:p-6 shadow-elev-1">
+            <div className="flex bg-surface-container-high p-1.5 rounded-m3-md mb-6">
+              <button onClick={() => setSchoolType('maktab')} className={`m3-interactive flex-1 py-2 text-[12px] md:text-[13px] font-bold rounded-m3-sm flex items-center justify-center gap-2 transition-all ${schoolType === 'maktab' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
                 <Building2 size={16}/> Umumta'lim
               </button>
-              <button onClick={() => setSchoolType('ixtisos')} className={`flex-1 py-2 text-[12px] md:text-[13px] font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${schoolType === 'ixtisos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              <button onClick={() => setSchoolType('ixtisos')} className={`m3-interactive flex-1 py-2 text-[12px] md:text-[13px] font-bold rounded-m3-sm flex items-center justify-center gap-2 transition-all ${schoolType === 'ixtisos' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
                 <GraduationCap size={16}/> Ixtisos
               </button>
             </div>
 
             <div className="flex gap-2.5 mb-6">
-              <button onClick={() => setAssessmentType('BSB')} className={`flex-1 py-2.5 border rounded-xl text-[13px] font-bold transition-all ${assessmentType === 'BSB' ? 'border-indigo-500 text-indigo-700 bg-indigo-50/50 shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>BSB</button>
-              <button onClick={() => setAssessmentType('CHSB')} className={`flex-1 py-2.5 border rounded-xl text-[13px] font-bold transition-all ${assessmentType === 'CHSB' ? 'border-indigo-500 text-indigo-700 bg-indigo-50/50 shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>CHSB</button>
+              <button onClick={() => setAssessmentType('BSB')} className={`m3-interactive flex-1 py-2.5 border rounded-m3-md text-[13px] font-bold transition-all ${assessmentType === 'BSB' ? 'border-primary text-on-primary-container bg-primary-container shadow-elev-1' : 'border-outline-variant text-on-surface-variant hover:bg-state-hover'}`}>BSB</button>
+              <button onClick={() => setAssessmentType('CHSB')} className={`m3-interactive flex-1 py-2.5 border rounded-m3-md text-[13px] font-bold transition-all ${assessmentType === 'CHSB' ? 'border-primary text-on-primary-container bg-primary-container shadow-elev-1' : 'border-outline-variant text-on-surface-variant hover:bg-state-hover'}`}>CHSB</button>
             </div>
 
             <div className="space-y-2.5">
-              <div onClick={() => setIsClassSubjectModalOpen(true)} className="group border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 flex justify-between items-center bg-slate-50/50 hover:bg-indigo-50/30 cursor-pointer transition-all active:scale-[0.98]">
+              <div onClick={() => setIsClassSubjectModalOpen(true)} className="group border border-outline-variant hover:border-primary rounded-m3-lg p-4 flex justify-between items-center bg-surface-container hover:bg-state-hover cursor-pointer transition-all active:scale-[0.98]">
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-indigo-400 transition-colors">1. Sinf va Fan</p>
-                  <p className="text-[14px] font-bold text-slate-900">{selectedClass && selectedSubject ? `${selectedClass} • ${selectedSubject.replace(/-/g, ' ')}` : "Tanlanmagan"}</p>
+                  <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-1 group-hover:text-primary transition-colors">1. Sinf va Fan</p>
+                  <p className="text-[14px] font-bold text-on-surface">{selectedClass && selectedSubject ? `${selectedClass} • ${selectedSubject.replace(/-/g, ' ')}` : "Tanlanmagan"}</p>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center group-hover:border-indigo-200 shadow-sm"><ChevronRight size={16} className="text-slate-400 group-hover:text-indigo-500" /></div>
+                <div className="w-8 h-8 rounded-full bg-surface-container-lowest border border-outline-variant flex items-center justify-center group-hover:border-primary shadow-elev-1"><ChevronRight size={16} className="text-on-surface-variant group-hover:text-primary" /></div>
               </div>
 
-              <div onClick={() => setIsTopicsModalOpen(true)} className={`group border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 flex justify-between items-center bg-slate-50/50 hover:bg-indigo-50/30 cursor-pointer transition-all active:scale-[0.98] ${(!selectedClass || !selectedSubject) ? 'opacity-40 pointer-events-none' : ''}`}>
+              <div onClick={() => setIsTopicsModalOpen(true)} className={`group border border-outline-variant hover:border-primary rounded-m3-lg p-4 flex justify-between items-center bg-surface-container hover:bg-state-hover cursor-pointer transition-all active:scale-[0.98] ${(!selectedClass || !selectedSubject) ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-indigo-400 transition-colors">2. Mavzular</p>
-                    {isLoadingSyllabus && <Loader2 size={12} className="animate-spin text-indigo-500" />}
+                    <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest group-hover:text-primary transition-colors">2. Mavzular</p>
+                    {isLoadingSyllabus && <Spinner size={12} />}
                   </div>
-                  <p className="text-[14px] font-bold text-slate-900">{selectedScopes.length > 0 ? `${selectedScopes.length} ta tanlandi` : "Tanlanmagan"}</p>
+                  <p className="text-[14px] font-bold text-on-surface">{selectedScopes.length > 0 ? `${selectedScopes.length} ta tanlandi` : "Tanlanmagan"}</p>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center group-hover:border-indigo-200 shadow-sm"><ChevronRight size={16} className="text-slate-400 group-hover:text-indigo-500" /></div>
+                <div className="w-8 h-8 rounded-full bg-surface-container-lowest border border-outline-variant flex items-center justify-center group-hover:border-primary shadow-elev-1"><ChevronRight size={16} className="text-on-surface-variant group-hover:text-primary" /></div>
               </div>
             </div>
           </div>
         </div>
 
         <div className="w-full lg:w-[60%] flex flex-col">
-          <div className="bg-white rounded-[2rem] border border-slate-200/80 shadow-sm flex flex-col h-full overflow-hidden">
-            
-            <div className="p-5 md:p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
+          <div className="bg-surface-container-low rounded-m3-xl shadow-elev-1 flex flex-col h-full overflow-hidden">
+
+            <div className="p-5 md:p-6 border-b border-outline-variant bg-surface-container flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
               <div>
-                <h2 className="text-[16px] md:text-[18px] font-black text-slate-900">3. Matritsa</h2>
-                <p className="text-[12px] font-bold text-slate-400 mt-0.5">Savollar va ballarni sozlang</p>
+                <h2 className="text-[16px] md:text-[18px] font-black text-on-surface">3. Matritsa</h2>
+                <p className="text-[12px] font-bold text-on-surface-variant mt-0.5">Savollar va ballarni sozlang</p>
               </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-1 flex shadow-sm w-full sm:w-auto">
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-md p-1 flex shadow-elev-1 w-full sm:w-auto">
                 {['Aralash', 'Oson', "O'rta", 'Qiyin'].map((diff) => (
-                  <button key={diff} onClick={() => setDifficulty(diff as Difficulty)} className={`flex-1 sm:flex-none px-3 py-1.5 text-[11px] font-black rounded-lg transition-colors uppercase tracking-wide ${difficulty === diff ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-900'}`}>{diff}</button>
+                  <button key={diff} onClick={() => setDifficulty(diff as Difficulty)} className={`m3-interactive flex-1 sm:flex-none px-3 py-1.5 text-[11px] font-black rounded-m3-sm transition-colors uppercase tracking-wide ${difficulty === diff ? 'bg-secondary text-on-secondary' : 'text-on-surface-variant hover:text-on-surface'}`}>{diff}</button>
                 ))}
               </div>
             </div>
 
-            <div className="p-4 md:p-6 flex-1 bg-white">
+            <div className="p-4 md:p-6 flex-1">
               <div className="space-y-3">
                 {distribution.map((item) => (
-                  <div key={item.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all ${item.enabled ? 'bg-slate-50 border-slate-200 shadow-sm' : 'bg-white border-transparent opacity-60 hover:opacity-100 hover:bg-slate-50'}`}>
-                    
+                  <div key={item.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-m3-lg border transition-all ${item.enabled ? 'bg-surface-container border-outline-variant shadow-elev-1' : 'bg-transparent border-transparent opacity-60 hover:opacity-100 hover:bg-state-hover'}`}>
+
                     <div className="flex items-center gap-3">
-                      <input type="checkbox" checked={item.enabled} onChange={() => updateDistribution(item.id, 'enabled', !item.enabled)} className="w-5 h-5 text-indigo-600 rounded-md border-slate-300 shadow-sm" />
+                      <input type="checkbox" checked={item.enabled} onChange={() => updateDistribution(item.id, 'enabled', !item.enabled)} className="w-5 h-5 text-primary rounded-m3-xs border-outline shadow-elev-1" />
                       <div className="flex items-center gap-2.5">
-                        <div className={`p-1.5 rounded-lg shrink-0 ${item.enabled ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}><item.icon size={16} strokeWidth={2.5}/></div>
-                        <span className={`text-[13px] md:text-[14px] font-bold ${item.enabled ? 'text-slate-900' : 'text-slate-500'}`}>{item.label}</span>
+                        <div className={`p-1.5 rounded-m3-sm shrink-0 ${item.enabled ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-high text-on-surface-variant'}`}><item.icon size={16} strokeWidth={2.5}/></div>
+                        <span className={`text-[13px] md:text-[14px] font-bold ${item.enabled ? 'text-on-surface' : 'text-on-surface-variant'}`}>{item.label}</span>
                       </div>
                     </div>
 
                     <div className={`flex items-center gap-3 ml-8 sm:ml-0 ${!item.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-[90px]">
-                        <button onClick={() => updateDistribution(item.id, 'count', item.count - 1)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 active:scale-95"><Minus size={14} strokeWidth={3}/></button>
-                        <span className="text-[13px] font-black text-slate-900">{item.count}</span>
-                        <button onClick={() => updateDistribution(item.id, 'count', item.count + 1)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 active:scale-95"><Plus size={14} strokeWidth={3}/></button>
+                      <div className="flex items-center justify-between bg-surface-container-lowest border border-outline-variant rounded-m3-md p-1 shadow-elev-1 w-[90px]">
+                        <button onClick={() => updateDistribution(item.id, 'count', item.count - 1)} className="m3-interactive p-1 hover:bg-state-hover rounded-m3-sm text-on-surface-variant hover:text-on-surface active:scale-95"><Minus size={14} strokeWidth={3}/></button>
+                        <span className="text-[13px] font-black text-on-surface">{item.count}</span>
+                        <button onClick={() => updateDistribution(item.id, 'count', item.count + 1)} className="m3-interactive p-1 hover:bg-state-hover rounded-m3-sm text-on-surface-variant hover:text-on-surface active:scale-95"><Plus size={14} strokeWidth={3}/></button>
                       </div>
-                      <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 shadow-sm h-9">
-                        <input type="number" min="1" max="20" value={item.points} onChange={(e) => updateDistribution(item.id, 'points', parseInt(e.target.value) || 1)} className="w-6 text-center bg-transparent text-[13px] font-black text-slate-900 outline-none" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Ball</span>
+                      <div className="flex items-center gap-1.5 bg-surface-container-lowest border border-outline-variant rounded-m3-md px-2.5 shadow-elev-1 h-9">
+                        <input type="number" min="1" max="20" value={item.points} onChange={(e) => updateDistribution(item.id, 'points', parseInt(e.target.value) || 1)} className="w-6 text-center bg-transparent text-[13px] font-black text-on-surface outline-none" />
+                        <span className="text-[10px] font-bold text-on-surface-variant uppercase">Ball</span>
                       </div>
                     </div>
 
@@ -532,20 +533,27 @@ export default function BsbChsbGeneratorPage() {
               </div>
             </div>
 
-            <div className="p-5 md:p-6 border-t border-slate-100 bg-slate-50/50 shrink-0">
+            <div className="p-5 md:p-6 border-t border-outline-variant bg-surface-container shrink-0">
               <div className="flex justify-between items-center mb-5 px-1">
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Jami Savol</p>
-                  <p className="text-[22px] font-black text-slate-900 leading-none">{totalQuestions}</p>
+                  <p className="text-[10px] text-on-surface-variant uppercase font-black tracking-widest mb-0.5">Jami Savol</p>
+                  <p className="text-[22px] font-black text-on-surface leading-none">{totalQuestions}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Jami Ball</p>
-                  <p className="text-[22px] font-black text-indigo-600 leading-none">{totalPoints}</p>
+                  <p className="text-[10px] text-on-surface-variant uppercase font-black tracking-widest mb-0.5">Jami Ball</p>
+                  <p className="text-[22px] font-black text-primary leading-none">{totalPoints}</p>
                 </div>
               </div>
-              <button onClick={handleGenerate} disabled={isGenerating || totalQuestions === 0 || selectedScopes.length === 0} className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-black text-[14px] transition-all active:scale-[0.98] shadow-md shadow-indigo-600/20 disabled:shadow-none flex items-center justify-center gap-2">
-                <Wand2 size={18} strokeWidth={2.5} /> Imtihonni Yaratish
-              </button>
+              <Button
+                variant="filled"
+                size="lg"
+                className="w-full"
+                onClick={handleGenerate}
+                disabled={isGenerating || totalQuestions === 0 || selectedScopes.length === 0}
+                icon={<Wand2 size={18} strokeWidth={2.5} />}
+              >
+                Imtihonni Yaratish
+              </Button>
             </div>
 
           </div>
@@ -557,10 +565,10 @@ export default function BsbChsbGeneratorPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-[900px] mx-auto px-4 sm:px-6 mt-12">
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
-                <h2 className="text-[20px] md:text-[24px] font-black text-slate-900">Imtihon Qog'ozi</h2>
-                <p className="text-[13px] font-medium text-slate-500 mt-1">Savollarni tekshiring. Noto'g'ri savollarni o'chirishingiz mumkin.</p>
+                <h2 className="text-[20px] md:text-[24px] font-black text-on-surface">Imtihon Qog'ozi</h2>
+                <p className="text-[13px] font-medium text-on-surface-variant mt-1">Savollarni tekshiring. Noto'g'ri savollarni o'chirishingiz mumkin.</p>
               </div>
-              <div className="text-[12px] font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-xl shadow-sm self-start sm:self-auto uppercase tracking-wide">
+              <div className="text-[12px] font-black text-on-primary-container bg-primary-container px-4 py-2 rounded-m3-md shadow-elev-1 self-start sm:self-auto uppercase tracking-wide">
                 Tasdiqlangan: {generatedQuestions.reduce((acc, q) => acc + (q.points || 0), 0)} Ball
               </div>
             </div>
@@ -579,19 +587,19 @@ export default function BsbChsbGeneratorPage() {
         <AnimatePresence>
           {isLimitModalOpen && (
             <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsLimitModalOpen(false)} />
-              <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-white rounded-[2rem] p-6 md:p-8 w-full max-w-sm shadow-2xl z-10 flex flex-col items-center text-center border border-slate-100">
-                <button onClick={() => setIsLimitModalOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
-                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4 border border-indigo-100 shadow-inner">
-                  <Crown size={28} className="text-amber-500" />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsLimitModalOpen(false)} />
+              <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-6 md:p-8 w-full max-w-sm shadow-elev-3 z-10 flex flex-col items-center text-center">
+                <button onClick={() => setIsLimitModalOpen(false)} className="m3-interactive absolute top-4 right-4 p-2 text-on-surface-variant hover:bg-state-hover rounded-full transition-colors"><X size={20} /></button>
+                <div className="w-14 h-14 bg-primary-container rounded-m3-md flex items-center justify-center mb-4">
+                  <Crown size={28} className="text-warning" />
                 </div>
-                <h3 className="text-[18px] font-black text-slate-900 mb-2">Premium Xususiyat</h3>
-                <p className="text-[13px] text-slate-500 mb-6 font-medium leading-relaxed px-2">
+                <h3 className="text-[18px] font-black text-on-surface mb-2">Premium Xususiyat</h3>
+                <p className="text-[13px] text-on-surface-variant mb-6 font-medium leading-relaxed px-2">
                   {limitModalMessage}
                 </p>
                 <div className="w-full flex flex-col gap-2.5">
-                  <button onClick={() => router.push('/teacher/subscription')} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl shadow-md transition-all active:scale-[0.98] text-[14px]">Tariflarni ko'rish</button>
-                  <button onClick={() => setIsLimitModalOpen(false)} className="w-full py-3.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl active:scale-[0.98] text-[14px]">Yopish</button>
+                  <Button variant="filled" size="lg" className="w-full" onClick={() => router.push('/teacher/subscription')}>Tariflarni ko'rish</Button>
+                  <Button variant="outlined" size="lg" className="w-full" onClick={() => setIsLimitModalOpen(false)}>Yopish</Button>
                 </div>
               </motion.div>
             </div>
@@ -605,34 +613,34 @@ export default function BsbChsbGeneratorPage() {
         <AnimatePresence>
           {isClassSubjectModalOpen && (
             <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsClassSubjectModalOpen(false)} />
-              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative bg-white rounded-t-[2rem] sm:rounded-2xl p-6 md:p-8 w-full max-w-md shadow-2xl z-10 flex flex-col max-h-[90dvh]">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsClassSubjectModalOpen(false)} />
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative bg-surface-container-low rounded-t-m3-xl sm:rounded-m3-xl p-6 md:p-8 w-full max-w-md shadow-elev-3 z-10 flex flex-col max-h-[90dvh]">
                 <div className="flex justify-between items-center mb-6 shrink-0">
-                  <h3 className="text-[18px] font-black text-slate-900">Sinf va Fan</h3>
-                  <button onClick={() => setIsClassSubjectModalOpen(false)} className="p-2 bg-slate-50 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                  <h3 className="text-[18px] font-black text-on-surface">Sinf va Fan</h3>
+                  <button onClick={() => setIsClassSubjectModalOpen(false)} className="m3-interactive p-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors"><X size={20}/></button>
                 </div>
-                
+
                 <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2 pb-6">
                   <div>
-                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 block">1. Sinfni tanlang</label>
+                    <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 block">1. Sinfni tanlang</label>
                     <div className="flex flex-wrap gap-2">
                       {availableClasses.map(c => (
-                        <button key={c} onClick={() => { setSelectedClass(c); setSelectedSubject(""); }} className={`px-4 py-2.5 rounded-xl text-[14px] font-bold border transition-colors ${selectedClass === c ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>{c}</button>
+                        <button key={c} onClick={() => { setSelectedClass(c); setSelectedSubject(""); }} className={`m3-interactive px-4 py-2.5 rounded-m3-md text-[14px] font-bold border transition-colors ${selectedClass === c ? 'bg-primary border-primary text-on-primary shadow-elev-2' : 'bg-surface-container-lowest border-outline-variant text-on-surface hover:bg-state-hover'}`}>{c}</button>
                       ))}
                     </div>
                   </div>
                   <div className={`transition-opacity duration-300 ${!selectedClass ? 'opacity-30 pointer-events-none' : ''}`}>
-                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 block">2. Fanni tanlang</label>
+                    <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 block">2. Fanni tanlang</label>
                     <div className="flex flex-wrap gap-2">
                       {availableSubjects.map((s: string) => (
-                        <button key={s} onClick={() => setSelectedSubject(s)} className={`px-4 py-2.5 rounded-xl text-[13px] font-bold border capitalize transition-colors ${selectedSubject === s ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>{s.replace(/-/g, ' ')}</button>
+                        <button key={s} onClick={() => setSelectedSubject(s)} className={`m3-interactive px-4 py-2.5 rounded-m3-md text-[13px] font-bold border capitalize transition-colors ${selectedSubject === s ? 'bg-primary border-primary text-on-primary shadow-elev-2' : 'bg-surface-container-lowest border-outline-variant text-on-surface hover:bg-state-hover'}`}>{s.replace(/-/g, ' ')}</button>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 shrink-0 mt-auto">
-                  <button onClick={() => setIsClassSubjectModalOpen(false)} className="w-full py-3.5 bg-slate-900 text-white font-black rounded-xl active:scale-[0.98] transition-transform text-[14px] shadow-md">Tasdiqlash</button>
+                <div className="pt-4 border-t border-outline-variant shrink-0 mt-auto">
+                  <Button variant="filled" size="lg" className="w-full" onClick={() => setIsClassSubjectModalOpen(false)}>Tasdiqlash</Button>
                 </div>
               </motion.div>
             </div>
@@ -645,20 +653,20 @@ export default function BsbChsbGeneratorPage() {
         <AnimatePresence>
           {isTopicsModalOpen && (
             <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsTopicsModalOpen(false)} />
-              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative bg-white rounded-t-[2rem] sm:rounded-[2rem] w-full max-w-2xl shadow-2xl z-10 h-[90dvh] flex flex-col overflow-hidden">
-                
-                <div className="p-5 md:p-6 border-b border-slate-200 flex justify-between items-center bg-white shrink-0 z-20 shadow-sm">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTopicsModalOpen(false)} />
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative bg-surface-container-low rounded-t-m3-xl sm:rounded-m3-xl w-full max-w-2xl shadow-elev-3 z-10 h-[90dvh] flex flex-col overflow-hidden">
+
+                <div className="p-5 md:p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-low shrink-0 z-20 shadow-elev-1">
                   <div className="min-w-0 pr-4">
-                    <h3 className="text-[17px] md:text-[18px] font-black text-slate-900 truncate">Qamrov (Mavzular)</h3>
-                    <p className="text-[12px] font-bold text-indigo-600 mt-0.5 truncate">{selectedClass} • {selectedSubject.replace(/-/g, ' ')}</p>
+                    <h3 className="text-[17px] md:text-[18px] font-black text-on-surface truncate">Qamrov (Mavzular)</h3>
+                    <p className="text-[12px] font-bold text-primary mt-0.5 truncate">{selectedClass} • {selectedSubject.replace(/-/g, ' ')}</p>
                   </div>
-                  <button onClick={() => setIsTopicsModalOpen(false)} className="p-2 bg-slate-50 text-slate-400 hover:bg-slate-100 rounded-full transition-colors shrink-0"><X size={20}/></button>
+                  <button onClick={() => setIsTopicsModalOpen(false)} className="m3-interactive p-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors shrink-0"><X size={20}/></button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 bg-slate-50/50">
-                  {!syllabusData && !isLoadingSyllabus && <div className="text-center py-10 text-slate-400 text-[13px] font-bold">Dastur yuklanmadi. Fan tanlang.</div>}
-                  {isLoadingSyllabus && <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" size={24}/></div>}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 bg-surface-container">
+                  {!syllabusData && !isLoadingSyllabus && <div className="text-center py-10 text-on-surface-variant text-[13px] font-bold">Dastur yuklanmadi. Fan tanlang.</div>}
+                  {isLoadingSyllabus && <div className="flex justify-center py-10"><Spinner size={24}/></div>}
                   
                   {syllabusData?.chapters?.map((chapter: any, cIdx: number) => {
                     const isExpanded = expandedChapters.includes(chapter.chapter);
@@ -667,31 +675,31 @@ export default function BsbChsbGeneratorPage() {
                     const isAllSelected = selectedCount === subNames.length && subNames.length > 0;
                     
                     return (
-                      <div key={cIdx} className="mb-4 bg-white border border-slate-200 rounded-[1.25rem] overflow-hidden shadow-sm transition-all hover:border-indigo-200">
+                      <div key={cIdx} className="mb-4 bg-surface-container-lowest border border-outline-variant rounded-m3-lg overflow-hidden shadow-elev-1 transition-all hover:border-outline">
                         <div className="flex items-center p-4 cursor-pointer" onClick={() => toggleChapterExpand(chapter.chapter)}>
                           <div onClick={(e) => { e.stopPropagation(); handleChapterCheckbox(chapter); }} className="mr-3 cursor-pointer p-1">
-                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isAllSelected ? 'bg-indigo-600 border-indigo-600 text-white' : selectedCount > 0 ? 'bg-indigo-100 border-indigo-300 text-indigo-600' : 'bg-white border-slate-300'}`}>
+                            <div className={`w-5 h-5 rounded-m3-xs border-2 flex items-center justify-center transition-colors ${isAllSelected ? 'bg-primary border-primary text-on-primary' : selectedCount > 0 ? 'bg-primary-container border-primary text-on-primary-container' : 'bg-surface-container-lowest border-outline'}`}>
                               {isAllSelected && <Check size={14} strokeWidth={3} />}
                               {!isAllSelected && selectedCount > 0 && <Minus size={14} strokeWidth={3} />}
                             </div>
                           </div>
-                          <span className="flex-1 text-[13px] md:text-[14px] font-bold text-slate-800 leading-snug">{chapter.chapter}</span>
+                          <span className="flex-1 text-[13px] md:text-[14px] font-bold text-on-surface leading-snug">{chapter.chapter}</span>
                           <div className="flex items-center gap-3 shrink-0 ml-2">
-                            <span className="text-[11px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md">{selectedCount}/{subNames.length}</span>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180 bg-indigo-50 text-indigo-500' : ''}`}><ChevronDown size={16} strokeWidth={2.5}/></div>
+                            <span className="text-[11px] font-black text-on-primary-container bg-primary-container px-2 py-1 rounded-m3-xs">{selectedCount}/{subNames.length}</span>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-300 ${isExpanded ? 'rotate-180 bg-primary-container text-on-primary-container' : 'bg-surface-container text-on-surface-variant'}`}><ChevronDown size={16} strokeWidth={2.5}/></div>
                           </div>
                         </div>
-                        
+
                         <AnimatePresence initial={false}>
                           {isExpanded && (
-                            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden border-t border-slate-100 bg-slate-50/50">
+                            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden border-t border-outline-variant bg-surface-container">
                               <div className="p-2 space-y-1">
                                 {chapter.subtopics.map((sub: any, sIdx: number) => (
-                                  <label key={sIdx} className="flex items-start gap-3 p-3 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 cursor-pointer transition-colors group">
-                                    <div className={`w-4 h-4 mt-0.5 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${selectedScopes.includes(sub.name) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-300 group-hover:border-indigo-300'}`}>
+                                  <label key={sIdx} className="flex items-start gap-3 p-3 rounded-m3-md hover:bg-surface-container-lowest border border-transparent hover:border-outline-variant cursor-pointer transition-colors group">
+                                    <div className={`w-4 h-4 mt-0.5 rounded-m3-xs border-2 flex items-center justify-center transition-colors shrink-0 ${selectedScopes.includes(sub.name) ? 'bg-primary border-primary text-on-primary' : 'bg-surface-container-lowest border-outline group-hover:border-primary'}`}>
                                       {selectedScopes.includes(sub.name) && <Check size={12} strokeWidth={4} />}
                                     </div>
-                                    <span className={`text-[13px] leading-snug ${selectedScopes.includes(sub.name) ? 'text-indigo-950 font-bold' : 'text-slate-600 font-medium'}`}>{sub.name}</span>
+                                    <span className={`text-[13px] leading-snug ${selectedScopes.includes(sub.name) ? 'text-on-surface font-bold' : 'text-on-surface-variant font-medium'}`}>{sub.name}</span>
                                   </label>
                                 ))}
                               </div>
@@ -703,8 +711,8 @@ export default function BsbChsbGeneratorPage() {
                   })}
                 </div>
 
-                <div className="p-4 md:p-5 border-t border-slate-200 bg-white shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5">
-                  <button onClick={() => setIsTopicsModalOpen(false)} className="w-full py-3.5 bg-slate-900 text-white font-black rounded-xl active:scale-[0.98] transition-transform text-[14px] shadow-md">Tanlovni Tasdiqlash</button>
+                <div className="p-4 md:p-5 border-t border-outline-variant bg-surface-container-low shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5">
+                  <Button variant="filled" size="lg" className="w-full" onClick={() => setIsTopicsModalOpen(false)}>Tanlovni Tasdiqlash</Button>
                 </div>
 
               </motion.div>
@@ -718,20 +726,19 @@ export default function BsbChsbGeneratorPage() {
         <AnimatePresence>
           {isTitleModalOpen && (
             <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white rounded-[2rem] p-6 md:p-8 w-full max-w-sm shadow-2xl z-10 border border-slate-100">
-                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-5 border border-indigo-100"><BookOpen size={24} className="text-indigo-600" /></div>
-                <h3 className="text-[18px] font-black text-slate-900 mb-1.5">Hujjat nomi</h3>
-                <p className="text-[12px] font-bold text-slate-500 mb-6">O'quvchilarga ko'rinadigan rasmiy nomni yozing.</p>
-                
-                <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-black text-slate-900 outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all mb-6" autoFocus placeholder="Masalan: 7-sinf Biologiya CHSB"/>
-                
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-surface-container-low rounded-m3-xl p-6 md:p-8 w-full max-w-sm shadow-elev-3 z-10">
+                <div className="w-14 h-14 bg-primary-container rounded-m3-md flex items-center justify-center mb-5"><BookOpen size={24} className="text-on-primary-container" /></div>
+                <h3 className="text-[18px] font-black text-on-surface mb-1.5">Hujjat nomi</h3>
+                <p className="text-[12px] font-bold text-on-surface-variant mb-6">O'quvchilarga ko'rinadigan rasmiy nomni yozing.</p>
+
+                <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[14px] font-black text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] transition-all mb-6" autoFocus placeholder="Masalan: 7-sinf Biologiya CHSB"/>
+
                 <div className="flex flex-col-reverse sm:flex-row gap-3">
-                  <button onClick={() => setIsTitleModalOpen(false)} className="w-full px-4 py-3 font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-[13px]">Bekor qilish</button>
-                  <button onClick={handleFinalPublish} disabled={isPublishing} className="w-full px-4 py-3 bg-slate-900 hover:bg-black disabled:opacity-50 text-white font-black rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 text-[13px]">
-                    {isPublishing ? <Loader2 size={16} className="animate-spin"/> : <CheckCircle2 size={16}/>}
+                  <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>Bekor qilish</Button>
+                  <Button variant="filled" className="w-full" onClick={handleFinalPublish} loading={isPublishing} icon={<CheckCircle2 size={16}/>}>
                     {isPublishing ? "Saqlanmoqda..." : "Saqlash"}
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             </div>

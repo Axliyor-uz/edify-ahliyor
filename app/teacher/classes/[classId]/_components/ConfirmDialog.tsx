@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, Loader2, X } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
+import { Button, IconButton } from '@/components/ui';
 
 interface Props {
   isOpen: boolean;
@@ -65,7 +66,7 @@ export default function ConfirmDialog({
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6">
       {/* OVERLAY */}
       <div
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-scrim backdrop-blur-sm transition-opacity"
         onClick={() => !loading && onClose()}
       />
 
@@ -74,22 +75,23 @@ export default function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="relative bg-white rounded-[2rem] w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 fade-in duration-300 shadow-2xl border border-slate-100"
+        className="relative bg-surface-container-low rounded-m3-xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 fade-in duration-300 shadow-elev-3"
       >
-        <button
+        <IconButton
+          size="sm"
           onClick={() => !loading && onClose()}
-          className="absolute top-4 right-4 p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 disabled:opacity-50"
+          className="absolute top-4 right-4"
           disabled={loading}
           aria-label={cancelLabel}
         >
-          <X size={18} strokeWidth={2.5} />
-        </button>
+          <X strokeWidth={2.5} />
+        </IconButton>
 
         <div className="px-6 pt-8 pb-6">
           {/* Icon */}
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${
-              isDanger ? 'bg-rose-50 text-rose-500' : 'bg-indigo-50 text-indigo-500'
+            className={`w-12 h-12 rounded-m3-lg flex items-center justify-center mb-4 ${
+              isDanger ? 'bg-error-container text-on-error-container' : 'bg-primary-container text-on-primary-container'
             }`}
           >
             <AlertTriangle size={24} strokeWidth={2.25} />
@@ -97,22 +99,22 @@ export default function ConfirmDialog({
 
           <h2
             id="confirm-dialog-title"
-            className="text-[18px] font-black text-slate-900 tracking-tight leading-tight"
+            className="text-[18px] font-black text-on-surface tracking-tight leading-tight"
           >
             {title}
           </h2>
-          <p className="text-[14px] text-slate-500 font-medium mt-1.5 leading-relaxed">{message}</p>
+          <p className="text-[14px] text-on-surface-variant font-medium mt-1.5 leading-relaxed">{message}</p>
 
           {/* Subject preview */}
           {subject && (
-            <div className="mt-4 flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+            <div className="mt-4 flex items-center gap-3 p-3 rounded-m3-lg bg-surface-container border border-outline-variant">
               {subject}
             </div>
           )}
 
           {/* Error */}
           {error && (
-            <p className="mt-4 text-[13px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
+            <p className="mt-4 text-[13px] font-semibold text-on-error-container bg-error-container rounded-m3-md px-3 py-2">
               {error}
             </p>
           )}
@@ -120,26 +122,23 @@ export default function ConfirmDialog({
 
         {/* Actions */}
         <div className="px-6 pb-6 flex gap-3">
-          <button
+          <Button
             ref={cancelRef}
+            variant="outlined"
             onClick={onClose}
             disabled={loading}
-            className="flex-1 h-11 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold text-[14px] hover:bg-slate-50 transition-colors active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:opacity-50"
+            className="flex-1"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={isDanger ? 'danger' : 'filled'}
             onClick={handleConfirm}
-            disabled={loading}
-            className={`flex-1 h-11 rounded-xl font-bold text-[14px] text-white transition-colors active:scale-[0.98] outline-none focus-visible:ring-2 flex items-center justify-center gap-2 disabled:opacity-70 ${
-              isDanger
-                ? 'bg-rose-500 hover:bg-rose-600 focus-visible:ring-rose-300'
-                : 'bg-indigo-500 hover:bg-indigo-600 focus-visible:ring-indigo-300'
-            }`}
+            loading={loading}
+            className="flex-1"
           >
-            {loading && <Loader2 size={16} className="animate-spin" />}
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>,

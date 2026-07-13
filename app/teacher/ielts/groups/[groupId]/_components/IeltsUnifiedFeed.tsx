@@ -25,11 +25,11 @@ const FILTERS: { id: SkillFilter; label: string; icon: string }[] = [
 ];
 
 const SKILL_CONFIG = {
-  listening: { icon: Headphones, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-  reading: { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-  writing: { icon: PenTool, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-  speaking: { icon: Mic, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
-  mock: { icon: Crown, color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-200' },
+  listening: { icon: Headphones, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent' },
+  reading: { icon: BookOpen, color: 'text-on-secondary-container', bg: 'bg-secondary-container', border: 'border-transparent' },
+  writing: { icon: PenTool, color: 'text-on-tertiary-container', bg: 'bg-tertiary-container', border: 'border-transparent' },
+  speaking: { icon: Mic, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent' },
+  mock: { icon: Crown, color: 'text-on-tertiary-container', bg: 'bg-tertiary-container', border: 'border-transparent' },
 };
 
 interface Props {
@@ -52,9 +52,9 @@ export default function IeltsUnifiedFeed({ group }: Props) {
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[13px] border-2 transition-all active:scale-95 shrink-0 ${filter === f.id
-                ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                : 'bg-white text-slate-600 border-slate-200/80 hover:border-slate-300'
+            className={`m3-interactive whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-m3-md font-black text-[13px] border transition-all active:scale-95 shrink-0 ${filter === f.id
+                ? 'bg-primary text-on-primary border-transparent shadow-elev-1'
+                : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-outline'
               }`}
           >
             {f.icon && <span>{f.icon}</span>}
@@ -86,34 +86,34 @@ export default function IeltsUnifiedFeed({ group }: Props) {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
                 key={assignment.id}
-                className="group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-white rounded-2xl border-2 border-slate-200/80 hover:border-slate-300 transition-colors"
+                className="group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-surface-container-low rounded-m3-lg border border-outline-variant shadow-elev-1 hover:shadow-elev-2 transition-all"
               >
 
                 {/* Left: Icon & Title */}
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center shrink-0 ${Config.bg} ${Config.color} ${Config.border}`}>
+                  <div className={`w-12 h-12 rounded-m3-md border flex items-center justify-center shrink-0 ${Config.bg} ${Config.color} ${Config.border}`}>
                     <Icon size={22} strokeWidth={2.5} />
                   </div>
 
                   <div className="min-w-0">
-                    <h4 className="text-[15px] font-black text-slate-900 truncate mb-1">
+                    <h4 className="text-[15px] font-black text-on-surface truncate mb-1">
                       {assignment.testTitle}
                     </h4>
-                    <p className="text-[13px] font-bold text-slate-400">
-                      Topshirish: <span className="text-slate-600">{dateStr}</span>
+                    <p className="text-[13px] font-bold text-on-surface-variant">
+                      Topshirish: <span className="text-on-surface">{dateStr}</span>
                     </p>
                   </div>
                 </div>
 
                 {/* Right: Ratio & Action */}
-                <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 justify-between sm:justify-end border-t-2 sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-[12px] font-black ${isFullyCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200/80'
+                <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 justify-between sm:justify-end border-t sm:border-t-0 border-outline-variant pt-3 sm:pt-0">
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-m3-sm border text-[12px] font-black ${isFullyCompleted ? 'bg-success-container text-on-success-container border-transparent' : 'bg-surface-container-high text-on-surface border-outline-variant'
                     }`}>
                     {isFullyCompleted ? <CheckCircle2 size={14} strokeWidth={3} /> : null}
                     {ratio} topshirdi
                   </div>
 
-                  <button className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black text-[13px] transition-colors group-hover:bg-slate-900 group-hover:text-white">
+                  <button className="m3-interactive flex items-center gap-1.5 px-4 py-2 bg-surface-container-high hover:bg-state-hover text-on-surface rounded-m3-md font-black text-[13px] transition-colors group-hover:bg-primary group-hover:text-on-primary">
                     Ko'rish <ArrowRight size={14} strokeWidth={3} />
                   </button>
                 </div>
@@ -124,8 +124,8 @@ export default function IeltsUnifiedFeed({ group }: Props) {
         </AnimatePresence>
 
         {filtered.length === 0 && (
-          <div className="text-center py-12 bg-zinc-50 border-2 border-slate-200/80 border-dashed rounded-2xl">
-            <p className="text-[14px] font-bold text-slate-500">Bu bo'limda hozircha topshiriqlar yo'q.</p>
+          <div className="text-center py-12 bg-surface-container-low border-2 border-outline-variant border-dashed rounded-m3-xl">
+            <p className="text-[14px] font-bold text-on-surface-variant">Bu bo'limda hozircha topshiriqlar yo'q.</p>
           </div>
         )}
       </div>

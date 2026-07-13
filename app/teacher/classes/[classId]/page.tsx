@@ -7,11 +7,12 @@ import { doc, onSnapshot, getDoc, collection, query, where, getDocs, limit } fro
 import { useAuth } from '@/lib/AuthContext';
 import {
   Users, UserPlus, Hash, ChevronLeft, Inbox,
-  FileText, UploadCloud, FolderOpen, Loader2,
+  FileText, UploadCloud, FolderOpen,
   Settings, Lock, Trophy, Plus, FileBadge, CalendarCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { IconButton, Spinner } from '@/components/ui';
 
 // Extracted Tabs and Modals
 import RosterTab from './_components/RosterTab';
@@ -132,9 +133,9 @@ export default function ClassDetailsPage() {
 
   if (!classData) {
     return (
-      <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="animate-spin text-indigo-500" size={32}/>
-        <p className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">{t.loading}</p>
+      <div className="min-h-[100dvh] bg-surface flex flex-col items-center justify-center gap-4">
+        <Spinner size={32} />
+        <p className="text-[13px] font-bold text-on-surface-variant uppercase tracking-widest">{t.loading}</p>
       </div>
     );
   }
@@ -150,7 +151,7 @@ export default function ClassDetailsPage() {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] font-sans selection:bg-indigo-100 selection:text-indigo-900 flex flex-col relative">
+    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container flex flex-col relative">
       
       {/* --- MODALS --- */}
       <AddStudentModal classId={classId} isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
@@ -165,33 +166,33 @@ export default function ClassDetailsPage() {
           <>
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-scrim backdrop-blur-sm"
               onClick={() => setIsPlusMenuOpen(false)}
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="absolute top-[60px] md:top-[70px] right-4 md:right-8 z-50 bg-white rounded-2xl shadow-xl border border-slate-100 w-64 p-2 flex flex-col gap-1 origin-top-right"
+              className="absolute top-[60px] md:top-[70px] right-4 md:right-8 z-50 bg-surface-container-lowest rounded-m3-lg shadow-elev-3 border border-outline-variant w-64 p-2 flex flex-col gap-1 origin-top-right"
             >
               {/* 🟢 NEW: Assign Exam Button properly clears editData */}
-              <button onClick={() => { setExamToEdit(null); setIsAssignExamOpen(true); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-rose-50 rounded-xl transition-colors text-slate-700 hover:text-rose-700 w-full text-left group">
-                <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><FileBadge size={16} strokeWidth={2.5}/></div>
+              <button onClick={() => { setExamToEdit(null); setIsAssignExamOpen(true); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group">
+                <div className="w-8 h-8 rounded-m3-sm bg-tertiary-container text-on-tertiary-container flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><FileBadge size={16} strokeWidth={2.5}/></div>
                 <span className="font-bold text-[13px]">{t.buttons.assignExam}</span>
               </button>
-              
-              <button onClick={() => { handleCreateAssignment(); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-indigo-50 rounded-xl transition-colors text-slate-700 hover:text-indigo-700 w-full text-left group">
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><FileText size={16} strokeWidth={2.5}/></div>
+
+              <button onClick={() => { handleCreateAssignment(); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group">
+                <div className="w-8 h-8 rounded-m3-sm bg-primary-container text-on-primary-container flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><FileText size={16} strokeWidth={2.5}/></div>
                 <span className="font-bold text-[13px]">{t.buttons.assign}</span>
               </button>
 
-              <button onClick={() => { setIsUploadOpen(true); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 hover:text-slate-900 w-full text-left group">
-                <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><UploadCloud size={16} strokeWidth={2.5}/></div>
+              <button onClick={() => { setIsUploadOpen(true); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group">
+                <div className="w-8 h-8 rounded-m3-sm bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><UploadCloud size={16} strokeWidth={2.5}/></div>
                 <span className="font-bold text-[13px]">{t.buttons.upload}</span>
               </button>
-              
-              <div className="h-px bg-slate-100 my-1 mx-2"></div>
-              
-              <button onClick={() => { setIsAddOpen(true); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 hover:text-slate-900 w-full text-left group">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><UserPlus size={16} strokeWidth={2.5}/></div>
+
+              <div className="h-px bg-outline-variant my-1 mx-2"></div>
+
+              <button onClick={() => { setIsAddOpen(true); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group">
+                <div className="w-8 h-8 rounded-m3-sm bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><UserPlus size={16} strokeWidth={2.5}/></div>
                 <span className="font-bold text-[13px]">{t.buttons.add}</span>
               </button>
             </motion.div>
@@ -200,46 +201,49 @@ export default function ClassDetailsPage() {
       </AnimatePresence>
 
       {/* 🟢 ULTRA MINIMALISTIC HEADER */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200/80 px-3 md:px-6 py-2.5 md:py-3 flex justify-between items-center shadow-sm shrink-0">
+      <header className="sticky top-0 z-30 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-xl border-b border-outline-variant px-3 md:px-6 py-2.5 md:py-3 flex justify-between items-center shadow-elev-1 shrink-0">
 
         <div className="flex items-center gap-2.5 md:gap-4 min-w-0">
-          <Link href="/teacher/classes" className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm transition-all shrink-0" title={t.back}>
+          <Link href="/teacher/classes" className="m3-interactive w-8 h-8 md:w-9 md:h-9 rounded-m3-md bg-surface-container border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-lowest hover:shadow-elev-1 transition-all shrink-0" title={t.back}>
             <ChevronLeft size={18} strokeWidth={2.5} />
           </Link>
 
-          <div className="w-px h-5 bg-slate-200 hidden md:block shrink-0"></div>
+          <div className="w-px h-5 bg-outline-variant hidden md:block shrink-0"></div>
 
           <div className="flex flex-col justify-center min-w-0">
-            <h1 className="text-[15px] md:text-[18px] font-black text-slate-900 tracking-tight truncate max-w-[160px] sm:max-w-xs md:max-w-sm">
+            <h1 className="text-[15px] md:text-[18px] font-black text-on-surface tracking-tight truncate max-w-[160px] sm:max-w-xs md:max-w-sm">
               {classData.title}
             </h1>
             <div className="flex items-center gap-1.5 mt-0.5">
               {classData.isLocked && (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 border border-red-100 rounded-md text-[9px] md:text-[10px] font-black text-red-600 tracking-widest uppercase shadow-sm">
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-error-container rounded-m3-xs text-[9px] md:text-[10px] font-black text-on-error-container tracking-widest uppercase shadow-elev-1">
                   <Lock size={10} strokeWidth={3}/> {t.locked}
                 </span>
               )}
-              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 border border-slate-200/60 rounded-md text-[9px] md:text-[10px] font-black text-slate-600 tracking-widest uppercase shadow-inner">
-                <Hash size={10} className="text-indigo-400"/> {classData.joinCode}
+              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-surface-container-high border border-outline-variant rounded-m3-xs text-[9px] md:text-[10px] font-black text-on-surface-variant tracking-widest uppercase shadow-inner">
+                <Hash size={10} className="text-primary"/> {classData.joinCode}
               </span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button 
-            onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)} 
-            className={`w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl transition-all shadow-sm active:scale-95 shrink-0 ${isPlusMenuOpen ? 'bg-indigo-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+          <IconButton
+            variant="filled"
+            onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
+            aria-label="Menyu"
+            className="shrink-0"
           >
-            <Plus size={20} strokeWidth={2.5} className={`transition-transform duration-300 ${isPlusMenuOpen ? 'rotate-45' : ''}`} />
-          </button>
-          <button 
-            onClick={() => setIsSettingsOpen(true)} 
-            className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center bg-slate-50 border border-slate-200/80 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm transition-all shrink-0 active:scale-95"
+            <Plus strokeWidth={2.5} className={`transition-transform duration-300 ${isPlusMenuOpen ? 'rotate-45' : ''}`} />
+          </IconButton>
+          <IconButton
+            onClick={() => setIsSettingsOpen(true)}
+            aria-label={t.buttons.settings}
             title={t.buttons.settings}
+            className="shrink-0"
           >
-            <Settings size={18} strokeWidth={2.5} />
-          </button>
+            <Settings strokeWidth={2.5} />
+          </IconButton>
         </div>
 
       </header>
@@ -248,7 +252,7 @@ export default function ClassDetailsPage() {
       <div className="flex-1 w-full flex flex-col md:px-6 md:py-6">
         
         {/* --- UNDERLINE TAB BAR (minimalist, scrollable) --- */}
-        <div className="border-b border-slate-200 px-2 md:px-1 shrink-0 z-20 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+        <div className="border-b border-outline-variant px-2 md:px-1 shrink-0 z-20 overflow-x-auto [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center gap-1 md:gap-3 min-w-max">
             {TABS_CONFIG.map((tab) => {
               const active = activeTab === tab.id;
@@ -257,20 +261,20 @@ export default function ClassDetailsPage() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
                   className={`relative flex items-center gap-2 px-3 md:px-3.5 py-3 text-[13px] font-semibold whitespace-nowrap transition-colors active:scale-95 ${
-                    active ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'
+                    active ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
                   <span className="relative flex items-center justify-center">
                     <tab.icon size={17} strokeWidth={active ? 2.5 : 2} />
                     {tab.badge > 0 && (
-                      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 bg-error text-on-error text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-surface">
                         {tab.badge}
                       </span>
                     )}
                   </span>
                   <span>{tab.label}</span>
                   {active && (
-                    <motion.div layoutId="teacherTabUnderline" className="absolute left-1 right-1 -bottom-px h-[2.5px] bg-indigo-600 rounded-full" />
+                    <motion.div layoutId="teacherTabUnderline" className="absolute left-1 right-1 -bottom-px h-[2.5px] bg-primary rounded-full" />
                   )}
                 </button>
               );
@@ -283,7 +287,7 @@ export default function ClassDetailsPage() {
         <div className={`flex-1 min-h-[500px] overflow-x-hidden relative ${
           activeTab === 'attendance'
             ? 'px-2 md:px-0 pt-3 md:pt-4 pb-8'
-            : 'bg-[#FAFAFA] md:bg-white md:rounded-[2rem] md:border border-slate-200/80 md:shadow-sm p-3 md:p-8 pb-[100px]'
+            : 'bg-surface md:bg-surface-container-low md:rounded-m3-xl md:border border-outline-variant md:shadow-elev-1 p-3 md:p-8 pb-[100px]'
         }`}>
           <AnimatePresence mode="wait">
             <motion.div

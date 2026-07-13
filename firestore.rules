@@ -75,10 +75,44 @@ service cloud.firestore {
     }
 
     // --- 2. USERS (Profile + XP Memory) ---
+    //
+    // ⚠️ SECURITY: users/{uid} is client-writable, so anything stored here that
+    // grants privilege or costs money must be UNWRITABLE by the owner. These
+    // fields are set only by the Admin SDK (API routes) or a super admin (god
+    // mode above):
+    //   role, centerId        → authorization hints; the real gate is always an
+    //                           ownerUid check (isActiveCenterManager / the server
+    //                           twin in lib/server/verifyCenterManager.ts)
+    //   subscription,
+    //   currentLimits,
+    //   includedFeatures,
+    //   usage                 → the paid plan + AI quota that lib/ai/featureGatekeeper
+    //                           reads as its authorization source
+    //   verifiedTeacher       → trust badge
+    //   isActive              → moderation / ban flag
+    //
+    // Locked on CREATE as well as UPDATE: the owner may delete their own doc, so
+    // an update-only lock would be bypassed by delete-then-recreate. See docs/AUTH.md.
     match /users/{userId} {
       allow read: if isAuth();
-      allow create, delete: if isOwner(userId);
-      allow update: if isOwner(userId) || (
+
+      // Signup is the only place a client may choose a role, and the account must
+      // be born unverified, unsubscribed and at zero XP.
+      allow create: if isOwner(userId)
+                    && request.resource.data.get('role', '') in ['student', 'teacher', 'manager']
+                    && !request.resource.data.keys().hasAny(
+                         ['subscription', 'currentLimits', 'includedFeatures', 'usage', 'isActive'])
+                    && request.resource.data.get('verifiedTeacher', false) == false
+                    && request.resource.data.get('totalXP', 0) == 0;
+
+      allow delete: if isOwner(userId);
+
+      allow update: if (
+        isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(
+          ['role', 'centerId', 'subscription', 'currentLimits',
+           'includedFeatures', 'usage', 'verifiedTeacher', 'isActive'])
+      ) || (
         isAuth() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount']) &&
         (request.resource.data.get('followersCount', 0) - resource.data.get('followersCount', 0) in [-1, 0, 1]) &&
@@ -109,8 +143,12 @@ service cloud.firestore {
     }
 
     // --- 3. QUESTION BANK ---
+    // ⚠️ Dead collection (no code reads or writes it — the live banks are
+    // `questions1` and `teacher_questions`). Writes are off: an open write here
+    // let any signed-in user dump arbitrary documents into the project.
     match /questions/{document=**} {
-      allow read, write: if isAuth();
+      allow read: if isAuth();
+      allow write: if false;
     }
 
     // --- 4. CUSTOM TESTS ---
@@ -137,8 +175,20 @@ service cloud.firestore {
            isTeacherInMyCenter(request.resource.data.teacherId)
          ) ||
 
-         // 4. O'quvchilar qo'shilayotgan bo'lsa
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['studentIds'])
+         // 4. O'quvchi o'zini qo'shmoqda yoki chiqarmoqda (self-join / self-leave).
+         //    ⚠️ Bu yerda FAQAT o'z uid'ini qo'sha/olib tashlay oladi. Ilgari bu
+         //    shart `hasOnly(['studentIds'])` edi — ya'ni istalgan foydalanuvchi
+         //    istalgan guruhga o'zgalarni qo'shishi YOKI butun ro'yxatni o'chirib
+         //    tashlashi mumkin edi.
+         (
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['studentIds']) &&
+           request.resource.data.get('studentIds', []).toSet()
+             .difference(resource.data.get('studentIds', []).toSet())
+             .hasOnly([request.auth.uid]) &&
+           resource.data.get('studentIds', []).toSet()
+             .difference(request.resource.data.get('studentIds', []).toSet())
+             .hasOnly([request.auth.uid])
+         )
       );
 
       // Guruhni o'chirish: Yo o'qituvchining o'zi, yo uning menejeri
@@ -231,8 +281,11 @@ service cloud.firestore {
     }
 
     // --- 6. ERROR LOGS ---
+    // ⚠️ Dead collection (nothing in the app writes it). `create: if true` was an
+    // unauthenticated write endpoint — anyone on the internet could inflate your
+    // Firestore bill. Signed-in callers only, in case a client logger is added.
     match /error_logs/{logId} {
-      allow create: if true;
+      allow create: if isAuth();
       allow read, update, delete: if false;
     }
 
@@ -280,9 +333,24 @@ service cloud.firestore {
     }
 
     // --- 8. NOTIFICATIONS ---
+    // Cross-user creates are legitimate and common (a submission notifies the
+    // teacher, an assignment notifies students, a follow notifies the followee),
+    // so we cannot require userId == request.auth.uid here.
+    //
+    // What we CAN forbid is the phishing payload: `link` is rendered as trusted
+    // in-app chrome, so it must be a RELATIVE path. `create: if isAuth()` alone
+    // let any user push "https://evil.example/login" to any other user. The regex
+    // is fully anchored (matches() matches the whole string) and rejects both
+    // absolute URLs and protocol-relative "//host" links.
     match /notifications/{notificationId} {
       allow read, update, delete: if isAuth() && resource.data.userId == request.auth.uid;
-      allow create: if isAuth();
+      allow create: if isAuth()
+                    && request.resource.data.userId is string
+                    && request.resource.data.get('read', false) == false
+                    && (
+                         request.resource.data.get('link', null) == null ||
+                         request.resource.data.link.matches('/|/[A-Za-z0-9_][A-Za-z0-9/_.?=&%~+-]*')
+                       );
     }
 
     // --- 9. GLOBAL LEADERBOARDS ---
@@ -303,8 +371,12 @@ service cloud.firestore {
     }
 
     // --- 11. AI USAGE ---
+    // The daily AI quota counter. Was world-readable AND world-writable, so
+    // anyone could zero out their own usage (or anyone else's) and bypass the
+    // cap entirely. `/api/analyze` now reads and writes it with the Admin SDK,
+    // which bypasses rules — so no client ever needs access. See docs/AI.md.
     match /ai_usage/{docId} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
 
     match /ai_sessions/{sessionId} {

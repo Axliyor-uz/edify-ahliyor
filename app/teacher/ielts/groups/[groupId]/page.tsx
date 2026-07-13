@@ -16,10 +16,11 @@ import IeltsRequestsTab from './_components/IeltsRequestsTab';
 
 import {
   Users, Hash, ChevronLeft, Inbox,
-  FileText, Loader2, Plus, Sparkles, UserPlus, Activity
+  FileText, Plus, Sparkles, UserPlus, Activity
 } from 'lucide-react';
 
 import { IeltsGroup } from '@/types/ielts';
+import { IconButton, Spinner, Badge } from '@/components/ui';
 
 // ─── Translations ─────────────────────────────────────────────────────────────
 const T: Record<string, any> = {
@@ -77,9 +78,9 @@ export default function IeltsGroupDetailsPage() {
 
   if (!group) {
     return (
-      <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="animate-spin text-rose-500" size={28} />
-        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">{t.loading}</p>
+      <div className="min-h-[100dvh] bg-surface flex flex-col items-center justify-center gap-3">
+        <Spinner size={28} />
+        <p className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">{t.loading}</p>
       </div>
     );
   }
@@ -92,7 +93,7 @@ export default function IeltsGroupDetailsPage() {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-[#F5F5F7] font-sans flex flex-col selection:bg-rose-100 selection:text-rose-900">
+    <div className="min-h-[100dvh] bg-surface font-sans flex flex-col selection:bg-primary-container selection:text-on-primary-container">
 
       {/* ── Modals ── */}
       <AddIeltsStudentModal groupId={groupId} isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
@@ -111,25 +112,25 @@ export default function IeltsGroupDetailsPage() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.96 }}
               transition={{ duration: 0.15 }}
-              className="fixed top-[56px] right-4 md:right-8 z-50 bg-white rounded-2xl shadow-xl border border-slate-100 w-52 p-1.5 flex flex-col gap-0.5 origin-top-right"
+              className="fixed top-[56px] right-4 md:right-8 z-50 bg-surface-container-lowest rounded-m3-lg shadow-elev-3 border border-outline-variant w-52 p-1.5 flex flex-col gap-0.5 origin-top-right"
             >
               <button
                 onClick={() => setIsPlusOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-rose-50 rounded-xl transition-colors text-slate-700 hover:text-rose-700 w-full text-left group"
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group"
               >
-                <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-m3-sm bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
                   <Sparkles size={14} strokeWidth={2.5} />
                 </div>
                 <span className="font-bold text-[13px]">{t.buttons.assign}</span>
               </button>
 
-              <div className="h-px bg-slate-100 mx-2" />
+              <div className="h-px bg-outline-variant mx-2" />
 
               <button
                 onClick={() => { setIsAddOpen(true); setIsPlusOpen(false); }}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700 w-full text-left group"
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group"
               >
-                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-m3-sm bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
                   <UserPlus size={14} strokeWidth={2.5} />
                 </div>
                 <span className="font-bold text-[13px]">{t.buttons.add}</span>
@@ -140,47 +141,47 @@ export default function IeltsGroupDetailsPage() {
       </AnimatePresence>
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 md:px-6 h-14 flex items-center justify-between shrink-0 gap-3">
+      <header className="sticky top-0 z-30 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-xl border-b border-outline-variant px-4 md:px-6 h-14 flex items-center justify-between shrink-0 gap-3">
 
         {/* Left */}
         <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/teacher/ielts/groups"
-            className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white transition-all shrink-0"
+            className="m3-interactive w-8 h-8 rounded-m3-md bg-surface-container border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-lowest transition-all shrink-0"
           >
             <ChevronLeft size={17} strokeWidth={2.5} />
           </Link>
 
-          <div className="hidden md:block w-px h-4 bg-slate-200 shrink-0" />
+          <div className="hidden md:block w-px h-4 bg-outline-variant shrink-0" />
 
           <div className="flex flex-col min-w-0">
-            <h1 className="text-[15px] md:text-[17px] font-black text-slate-900 tracking-tight truncate leading-tight">
+            <h1 className="text-[15px] md:text-[17px] font-black text-on-surface tracking-tight truncate leading-tight">
               {group.title}
             </h1>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded-md tracking-wide">
+              <span className="text-[10px] font-black text-on-tertiary-container bg-tertiary-container border border-transparent px-1.5 py-0.5 rounded-m3-xs tracking-wide">
                 🎯 Band {Number(group.targetBand).toFixed(1)}
               </span>
-              <span className="hidden sm:flex items-center gap-0.5 text-[10px] font-black text-slate-500 bg-slate-100 border border-slate-200/60 px-1.5 py-0.5 rounded-md font-mono">
-                <Hash size={9} className="text-rose-400" />{group.joinCode}
+              <span className="hidden sm:flex items-center gap-0.5 text-[10px] font-black text-on-surface-variant bg-surface-container-high border border-outline-variant px-1.5 py-0.5 rounded-m3-xs font-mono">
+                <Hash size={9} className="text-primary" />{group.joinCode}
               </span>
             </div>
           </div>
         </div>
 
         {/* Right */}
-        <button
+        <IconButton
+          variant="filled"
           onClick={() => setIsPlusOpen(!isPlusOpen)}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0 ${
-            isPlusOpen ? 'bg-rose-700 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'
-          }`}
+          aria-label="Menyu"
+          className="shrink-0"
         >
-          <Plus size={18} strokeWidth={2.5} className={`transition-transform duration-200 ${isPlusOpen ? 'rotate-45' : ''}`} />
-        </button>
+          <Plus strokeWidth={2.5} className={`transition-transform duration-200 ${isPlusOpen ? 'rotate-45' : ''}`} />
+        </IconButton>
       </header>
 
       {/* ── Tab bar ── */}
-      <div className="bg-white border-b border-slate-200/80 px-4 md:px-6 shrink-0">
+      <div className="bg-surface-container-low border-b border-outline-variant px-4 md:px-6 shrink-0">
         <div className="flex gap-0 overflow-x-auto custom-scrollbar">
           {TABS.map(tab => {
             const isActive = activeTab === tab.id;
@@ -189,20 +190,20 @@ export default function IeltsGroupDetailsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`relative flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-bold transition-colors ${
-                  isActive ? 'text-rose-600' : 'text-slate-400 hover:text-slate-700'
+                  isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
                 <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} />
                 <span>{tab.label}</span>
                 {tab.badge > 0 && (
-                  <span className="w-4 h-4 bg-red-500 text-white font-black text-[9px] rounded-full flex items-center justify-center">
+                  <Badge className="h-4 min-w-[16px] px-1 text-[9px]">
                     {tab.badge}
-                  </span>
+                  </Badge>
                 )}
                 {isActive && (
                   <motion.div
                     layoutId="ielts-tab-line"
-                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-rose-600 rounded-t-full"
+                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-primary rounded-t-full"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
                   />
                 )}

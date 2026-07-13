@@ -1,0 +1,280 @@
+/* ============================================================================
+   EDIFY TEACHER DESIGN TOKENS — Material Design 3
+   Selected in the M3 Theme Lab: Ocean Blue · Compact shapes · Elevated cards ·
+   Shaped buttons.
+
+   THIS FILE IS THE SINGLE SOURCE OF TRUTH FOR THE TEACHER UI.
+   - Change a color/radius/shadow here → every page using the UI kit changes.
+   - Never hard-code colors in teacher pages; use the Tailwind token classes
+     (bg-primary, text-on-surface, rounded-m3-md, shadow-elev-1, …) which all
+     resolve to the variables below (mapping lives in tailwind.config.ts).
+   - To try a different palette: regenerate values in the "M3 Theme Lab"
+     artifact and paste them over the two blocks below.
+   ========================================================================== */
+
+:root {
+  /* ---- Color · light (M3 roles, scheme "Ocean Blue") ---- */
+  --m3-primary: #1364b0;
+  --m3-on-primary: #ffffff;
+  --m3-primary-container: #c7e1fe;
+  --m3-on-primary-container: #052544;
+
+  --m3-secondary: #53657a;
+  --m3-on-secondary: #ffffff;
+  --m3-secondary-container: #d6dfe9;
+  --m3-on-secondary-container: #1d252e;
+
+  --m3-tertiary: #147175;
+  --m3-on-tertiary: #ffffff;
+  --m3-tertiary-container: #c5e5e7;
+  --m3-on-tertiary-container: #052a2c;
+
+  --m3-error: #aa352a;
+  --m3-on-error: #ffffff;
+  --m3-error-container: #fed2cb;
+  --m3-on-error-container: #42110c;
+
+  /* status colors — reserved for state (never decoration) */
+  --m3-success: #267543;
+  --m3-success-container: #c8e7cf;
+  --m3-on-success-container: #0b2b16;
+  --m3-warning: #855905;
+  --m3-warning-container: #f1dabd;
+  --m3-on-warning-container: #331f00;
+
+  --m3-surface: #f8f8f9;
+  --m3-surface-dim: #d5d6d8;
+  --m3-on-surface: #232425;
+  --m3-on-surface-variant: #484e54;
+  --m3-outline: #747b83;
+  --m3-outline-variant: #bfc5cb;
+
+  --m3-surface-container-lowest: #ffffff;
+  --m3-surface-container-low: #f1f2f2;
+  --m3-surface-container: #eaebec;
+  --m3-surface-container-high: #e3e5e6;
+  --m3-surface-container-highest: #dddee0;
+
+  --m3-inverse-surface: #36383a;
+  --m3-inverse-on-surface: #eeeeef;
+  --m3-inverse-primary: #99c8ff;
+  --m3-scrim: rgba(0, 0, 0, 0.45);
+
+  /* ---- Interaction states (derived — no need to touch when re-theming) ---- */
+  --m3-state-hover: color-mix(in oklab, var(--m3-on-surface) 5%, transparent);
+  --m3-state-disabled-bg: color-mix(in oklab, var(--m3-on-surface) 10%, transparent);
+  --m3-state-disabled-fg: color-mix(in oklab, var(--m3-on-surface) 38%, transparent);
+
+  /* ---- Shape · "Compact" scale ----
+     xs → chips, inputs · sm → list rows · md → buttons, small cards
+     lg → cards · xl → dialogs */
+  --m3-shape-xs: 4px;
+  --m3-shape-sm: 8px;
+  --m3-shape-md: 10px;
+  --m3-shape-lg: 12px;
+  --m3-shape-xl: 16px;
+  /* "Shaped" buttons (not pill). Switch to 9999px for pill buttons app-wide. */
+  --m3-shape-button: var(--m3-shape-md);
+
+  /* ---- Elevation (cards are "Elevated" style) ---- */
+  --m3-elev-1: 0 1px 2px rgba(16, 24, 40, 0.10), 0 1px 3px 1px rgba(16, 24, 40, 0.06);
+  --m3-elev-2: 0 1px 2px rgba(16, 24, 40, 0.10), 0 2px 6px 2px rgba(16, 24, 40, 0.08);
+  --m3-elev-3: 0 4px 8px 3px rgba(16, 24, 40, 0.10), 0 1px 3px rgba(16, 24, 40, 0.14);
+}
+
+/* ---- Color · dark (not yet enabled anywhere; add class="dark" on a wrapper
+        — e.g. the teacher layout root — to activate) ---- */
+.dark {
+  --m3-primary: #99c8ff;
+  --m3-on-primary: #043868;
+  --m3-primary-container: #054e8d;
+  --m3-on-primary-container: #c7e1fe;
+
+  --m3-secondary: #b7c6d7;
+  --m3-on-secondary: #2d3946;
+  --m3-secondary-container: #3f4f61;
+  --m3-on-secondary-container: #d6dfe9;
+
+  --m3-tertiary: #98d0d3;
+  --m3-on-tertiary: #044043;
+  --m3-tertiary-container: #05585c;
+  --m3-on-tertiary-container: #c5e5e7;
+
+  --m3-error: #feac9f;
+  --m3-on-error: #651a13;
+  --m3-error-container: #89221a;
+  --m3-on-error-container: #fed2cb;
+
+  --m3-success: #9ed3ab;
+  --m3-success-container: #155c31;
+  --m3-on-success-container: #c8e7cf;
+  --m3-warning: #e3bd8a;
+  --m3-warning-container: #694502;
+  --m3-on-warning-container: #f1dabd;
+
+  --m3-surface: #161718;
+  --m3-surface-dim: #161718;
+  --m3-on-surface: #dddee0;
+  --m3-on-surface-variant: #bfc5cb;
+  --m3-outline: #8c939b;
+  --m3-outline-variant: #484e54;
+
+  --m3-surface-container-lowest: #101112;
+  --m3-surface-container-low: #232425;
+  --m3-surface-container: #272829;
+  --m3-surface-container-high: #303234;
+  --m3-surface-container-highest: #3a3c3e;
+
+  --m3-inverse-surface: #dddee0;
+  --m3-inverse-on-surface: #36383a;
+  --m3-inverse-primary: #1364b0;
+  --m3-scrim: rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================================================
+   BEHAVIORAL PRIMITIVES — used by the components in components/ui/.
+   (Things Tailwind utilities can't express cleanly: state layers, pseudo-
+   element form controls, keyframes.)
+   ========================================================================== */
+
+/* M3 "state layer": hover/press tint on any interactive element */
+.m3-interactive {
+  position: relative;
+  overflow: hidden;
+}
+.m3-interactive::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.m3-interactive:hover::after { opacity: 0.08; }
+.m3-interactive:active::after { opacity: 0.12; }
+.m3-interactive:disabled::after { display: none; }
+
+/* Visible keyboard focus for everything in the kit */
+.m3-interactive:focus-visible,
+.m3-field:focus-visible,
+.m3-switch:focus-visible,
+.m3-checkbox:focus-visible,
+.m3-radio:focus-visible {
+  outline: 2px solid var(--m3-primary);
+  outline-offset: 2px;
+}
+
+/* Switch */
+.m3-switch {
+  appearance: none;
+  width: 48px;
+  height: 28px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--m3-surface-container-highest);
+  box-shadow: inset 0 0 0 2px var(--m3-outline);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.m3-switch::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 7px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--m3-outline);
+  transition: all 0.18s ease;
+}
+.m3-switch:checked {
+  background: var(--m3-primary);
+  box-shadow: none;
+}
+.m3-switch:checked::before {
+  left: 22px;
+  width: 20px;
+  height: 20px;
+  background: var(--m3-on-primary);
+}
+.m3-switch:disabled { opacity: 0.38; cursor: not-allowed; }
+
+/* Checkbox */
+.m3-checkbox {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: var(--m3-shape-xs);
+  box-shadow: inset 0 0 0 2px var(--m3-on-surface-variant);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+.m3-checkbox:checked {
+  background: var(--m3-primary);
+  box-shadow: none;
+}
+.m3-checkbox:checked::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--m3-on-primary);
+  clip-path: polygon(16% 52%, 38% 72%, 84% 22%, 92% 32%, 39% 88%, 8% 62%);
+}
+.m3-checkbox:disabled { opacity: 0.38; cursor: not-allowed; }
+
+/* Radio */
+.m3-radio {
+  appearance: none;
+  width: 19px;
+  height: 19px;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--m3-on-surface-variant);
+  cursor: pointer;
+  transition: box-shadow 0.12s ease;
+}
+.m3-radio:checked { box-shadow: inset 0 0 0 6px var(--m3-primary); }
+.m3-radio:disabled { opacity: 0.38; cursor: not-allowed; }
+
+/* Spinner + skeleton shimmer */
+@keyframes m3-spin { to { transform: rotate(360deg); } }
+.m3-spinner {
+  border-radius: 50%;
+  flex: none;
+  border: 3px solid var(--m3-secondary-container);
+  border-top-color: var(--m3-primary);
+  animation: m3-spin 0.9s linear infinite;
+}
+@keyframes m3-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.m3-skeleton {
+  border-radius: var(--m3-shape-xs);
+  background: linear-gradient(
+    90deg,
+    var(--m3-surface-container-high) 25%,
+    var(--m3-surface-container-highest) 50%,
+    var(--m3-surface-container-high) 75%
+  );
+  background-size: 200% 100%;
+  animation: m3-shimmer 1.4s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m3-interactive::after,
+  .m3-switch,
+  .m3-switch::before,
+  .m3-checkbox,
+  .m3-radio {
+    transition: none;
+  }
+  .m3-spinner { animation-duration: 1.8s; }
+  .m3-skeleton { animation: none; }
+}

@@ -3,6 +3,8 @@
 import { Plus, Trash2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
+import { Button } from '@/components/ui';
+
 export default function MatchingParagraphInfoBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
   
   // 1. LOCAL STATE FIX for smooth typing
@@ -74,22 +76,22 @@ const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '')
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm group/block mb-4">
-      
+    <div className="bg-surface-container-low border border-outline-variant rounded-m3-sm shadow-elev-1 group/block mb-4 transition-all">
+
       {/* HEADER */}
-      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between rounded-t-lg">
+      <div className="bg-surface-container border-b border-outline-variant px-3 py-2 flex items-center justify-between rounded-t-m3-sm">
         <div className="flex items-center gap-3">
-          <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded-[3px] text-[9px] font-black uppercase tracking-wider">
+          <span className="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-wider">
             MATCHING INFO
           </span>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold select-none">
-            Qs: 
-            <span className="w-8 h-5 flex items-center justify-center bg-white border border-slate-200 rounded font-bold text-slate-800 shadow-sm">{qb.start_question || 0}</span>
-            - 
-            <span className="w-8 h-5 flex items-center justify-center bg-slate-100 border border-slate-200 rounded font-bold text-slate-500">{qb.end_question || 0}</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant font-semibold select-none">
+            Qs:
+            <span className="w-8 h-5 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs font-bold text-on-surface shadow-elev-1">{qb.start_question || 0}</span>
+            -
+            <span className="w-8 h-5 flex items-center justify-center bg-surface-container-high border border-outline-variant rounded-m3-xs font-bold text-on-surface-variant">{qb.end_question || 0}</span>
           </div>
         </div>
-        <button onClick={() => deleteBlock(qbIdx)} className="text-slate-400 hover:text-red-500 opacity-0 group-hover/block:opacity-100 transition-colors">
+        <button onClick={() => deleteBlock(qbIdx)} className="text-on-surface-variant hover:text-error opacity-0 group-hover/block:opacity-100 transition-colors">
           <Trash2 size={14}/>
         </button>
       </div>
@@ -99,19 +101,19 @@ const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '')
         <input 
           type="text" placeholder="Instructions..." value={qb.instructions} 
           onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
-          className="w-full bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none mb-3 p-0" 
+          className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none mb-3 p-0"
         />
-        
+
         {/* PARAGRAPH OPTIONS ARRAY EDITOR */}
-        <div className="mb-3 flex items-center gap-2 flex-wrap bg-slate-50 p-2 rounded border border-slate-100 transition-colors focus-within:border-pink-200 focus-within:bg-pink-50/30">
-          <span className="text-[10px] font-bold text-slate-400 uppercase mr-2">Available Paragraphs:</span>
-          <input 
-            type="text" 
-            value={optsInput} 
+        <div className="mb-3 flex items-center gap-2 flex-wrap bg-surface-container p-2 rounded-m3-sm border border-outline-variant transition-colors focus-within:border-primary focus-within:bg-[color-mix(in_oklab,var(--m3-primary)_5%,transparent)]">
+          <span className="text-[10px] font-bold text-on-surface-variant uppercase mr-2">Available Paragraphs:</span>
+          <input
+            type="text"
+            value={optsInput}
             onChange={e => setOptsInput(e.target.value)} // Smooth local typing
             onBlur={handleOptsBlur} // Saves to JSON when clicked away
             onKeyDown={(e) => { if (e.key === 'Enter') handleOptsBlur(); }}
-            className="flex-1 bg-white border border-slate-200 rounded py-1 px-2 text-[11px] font-black text-slate-600 outline-none focus:border-pink-400 uppercase"
+            className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-sm py-1 px-2 text-[11px] font-black text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary uppercase"
             placeholder="e.g. A, B, C, D, E"
           />
         </div>
@@ -119,41 +121,41 @@ const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '')
         {/* QUESTIONS GRID */}
         <div className="space-y-1">
           {qb.questions.map((row: any, rIdx: number) => (
-            <div key={rIdx} className="flex items-center gap-2 group/row">
-              <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-white bg-slate-800 rounded shadow-sm shrink-0">
+            <div key={rIdx} className="flex items-center gap-2 group/row transition-colors focus-within:border-primary focus-within:bg-[color-mix(in_oklab,var(--m3-primary)_5%,transparent)] p-1 rounded-m3-sm border border-transparent">
+              <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-on-surface-variant bg-surface-container-high rounded-m3-xs shadow-elev-1 shrink-0">
                 {row.question_number}
               </span>
-              
-              <input 
-                type="text" placeholder="Information statement..." value={row.statement} 
-                onChange={e => updateRow(rIdx, 'statement', e.target.value)} 
+
+              <input
+                type="text" placeholder="Information statement..." value={row.statement}
+                onChange={e => updateRow(rIdx, 'statement', e.target.value)}
                 onKeyDown={e => handleKeyDown(e, rIdx)}
                 onPaste={e => handlePaste(e, rIdx)}
-                className="flex-1 h-7 text-[12px] bg-white border border-slate-200 rounded px-2 outline-none focus:border-pink-400 font-medium" 
+                className="flex-1 h-7 text-[12px] bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary font-medium placeholder:text-on-surface-variant"
               />
-              
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded px-2 shrink-0">
-                <span className="text-[10px] font-bold text-slate-400">Found in:</span>
-                <select 
-                  value={row.correct_answer} 
-                  onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)} 
-                  className="w-12 h-7 text-[11px] font-black bg-transparent outline-none text-pink-700 cursor-pointer"
+
+              <div className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 shrink-0">
+                <span className="text-[10px] font-bold text-on-surface-variant">Found in:</span>
+                <select
+                  value={row.correct_answer}
+                  onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)}
+                  className="w-12 h-7 text-[11px] font-black bg-transparent outline-none text-success cursor-pointer"
                 >
                   {qb.options.length === 0 && <option value="">-</option>}
                   {qb.options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
 
-              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 flex items-center justify-center text-slate-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0 transition-colors">
+              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 flex items-center justify-center text-on-surface-variant hover:text-error opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0 transition-colors">
                 <X size={14}/>
               </button>
             </div>
           ))}
         </div>
 
-        <button onClick={addRow} className="text-[11px] font-bold text-pink-600 hover:underline flex items-center gap-1 mt-3 transition-colors">
-          <Plus size={12} /> Add Statement
-        </button>
+        <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
+          Add Statement
+        </Button>
       </div>
     </div>
   );

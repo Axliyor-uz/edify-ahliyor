@@ -3,6 +3,8 @@
 import { Plus, Trash2, X, List, Type, Edit3, ChevronUp, ChevronDown, SquareSquare } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
+import { Button } from '@/components/ui';
+
 export default function SummaryCompletionBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
   const [showOptions, setShowOptions] = useState(true);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -110,20 +112,20 @@ export default function SummaryCompletionBlock({ qb, qbIdx, updateBlock, deleteB
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm group/block mb-4 transition-all">
-      
+    <div className="bg-surface-container-low border border-outline-variant rounded-m3-sm shadow-elev-1 group/block mb-4 transition-all">
+
       {/* 1. HEADER */}
-      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between rounded-t-lg">
+      <div className="bg-surface-container border-b border-outline-variant px-3 py-2 flex items-center justify-between rounded-t-m3-sm">
         <div className="flex items-center gap-3">
-          <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-[3px] text-[9px] font-black uppercase tracking-wider">
+          <span className="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-wider">
             SUMMARY COMPLETION
           </span>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold select-none">
-            Qs: <span className="w-8 h-5 flex items-center justify-center bg-white border border-slate-200 rounded font-bold text-slate-800 shadow-sm">{qb.start_question || 0}</span>
-            - <span className="w-8 h-5 flex items-center justify-center bg-slate-100 border border-slate-200 rounded font-bold text-slate-500">{qb.end_question || 0}</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant font-semibold select-none">
+            Qs: <span className="w-8 h-5 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs font-bold text-on-surface shadow-elev-1">{qb.start_question || 0}</span>
+            - <span className="w-8 h-5 flex items-center justify-center bg-surface-container-high border border-outline-variant rounded-m3-xs font-bold text-on-surface-variant">{qb.end_question || 0}</span>
           </div>
         </div>
-        <button onClick={() => deleteBlock(qbIdx)} className="text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover/block:opacity-100"><Trash2 size={14}/></button>
+        <button onClick={() => deleteBlock(qbIdx)} className="text-on-surface-variant hover:text-error transition-colors opacity-0 group-hover/block:opacity-100"><Trash2 size={14}/></button>
       </div>
 
       <div className="p-3">
@@ -132,48 +134,49 @@ export default function SummaryCompletionBlock({ qb, qbIdx, updateBlock, deleteB
           <input 
             type="text" placeholder="Instructions (e.g. Choose NO MORE THAN TWO WORDS...)" 
             value={qb.instructions} onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
-            className="flex-1 bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none p-0 mt-1" 
+            className="flex-1 bg-transparent border-none text-[11px] font-bold text-on-surface outline-none p-0 mt-1"
           />
-          <button onClick={toggleMode} className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0 border ${isWordBank ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
+          <button onClick={toggleMode} className={`m3-interactive flex items-center gap-1.5 px-2 py-1 rounded-m3-sm text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0 border ${isWordBank ? 'bg-primary-container text-on-primary-container border-transparent' : 'bg-surface-container text-on-surface-variant border-outline-variant'}`}>
             {isWordBank ? <><List size={12}/> Word Bank: ON</> : <><Type size={12}/> Word Bank: OFF</>}
           </button>
         </div>
 
         {/* 2. OPTIONAL WORD BANK EDITOR */}
         {isWordBank && (
-          <div className="mb-4 bg-indigo-50/30 p-2 rounded border border-indigo-100">
+          <div className="mb-4 bg-[color-mix(in_oklab,var(--m3-primary)_5%,transparent)] p-2 rounded-m3-sm border border-outline-variant">
              {/* Word bank editor UI remains exactly the same */}
              <div className="space-y-1.5 pt-1">
                 {qb.options.map((opt: any, oIdx: number) => (
                   <div key={oIdx} className="flex items-center gap-2">
-                    <input type="text" value={opt.id} onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].id = e.target.value.toUpperCase(); updateBlock(qbIdx, 'options', newOpts); }} className="w-8 h-6 text-[10px] font-black tracking-wider text-indigo-600 bg-white border border-indigo-200 rounded text-center outline-none focus:border-indigo-400" maxLength={2} />
-                    <input type="text" value={opt.text} placeholder="Word or phrase..." onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }} className="flex-1 bg-white border border-indigo-200 rounded py-1 px-2 text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-400" />
-                    <button onClick={() => { const newOpts = [...qb.options]; newOpts.splice(oIdx, 1); updateBlock(qbIdx, 'options', newOpts); }} className="text-indigo-300 hover:text-red-500"><X size={14}/></button>
+                    <input type="text" value={opt.id} onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].id = e.target.value.toUpperCase(); updateBlock(qbIdx, 'options', newOpts); }} className="w-8 h-6 text-[10px] font-black tracking-wider text-primary bg-surface-container-lowest border border-outline-variant rounded-m3-xs text-center outline-none focus:border-primary" maxLength={2} />
+                    <input type="text" value={opt.text} placeholder="Word or phrase..." onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }} className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-xs py-1 px-2 text-[11px] font-medium text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary" />
+                    <button onClick={() => { const newOpts = [...qb.options]; newOpts.splice(oIdx, 1); updateBlock(qbIdx, 'options', newOpts); }} className="text-outline hover:text-error"><X size={14}/></button>
                   </div>
                 ))}
-                <button onClick={() => { const newOpts = [...qb.options]; newOpts.push({ id: String.fromCharCode(65 + newOpts.length), text: '' }); updateBlock(qbIdx, 'options', newOpts); }} className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1 mt-2">
-                  <Plus size={10} /> Add Word Option
-                </button>
+                <Button variant="text" size="sm" icon={<Plus />} onClick={() => { const newOpts = [...qb.options]; newOpts.push({ id: String.fromCharCode(65 + newOpts.length), text: '' }); updateBlock(qbIdx, 'options', newOpts); }} className="mt-2">
+                  Add Word Option
+                </Button>
               </div>
           </div>
         )}
 
         {/* 3. SUMMARY TEXT AREA WITH MAGIC BUTTON */}
-        <div className="bg-emerald-50/30 p-3 rounded-lg border border-emerald-100 mb-4">
+        <div className="bg-[color-mix(in_oklab,var(--m3-secondary)_6%,transparent)] p-3 rounded-m3-sm border border-outline-variant mb-4">
           <div className="flex items-center justify-between mb-2">
-            <input 
-              type="text" placeholder="Summary Title (Optional)..." 
-              value={qb.summary_title} onChange={e => updateBlock(qbIdx, 'summary_title', e.target.value)} 
-              className="flex-1 bg-transparent border-none text-[13px] font-black text-slate-800 outline-none p-0 placeholder:text-slate-400" 
+            <input
+              type="text" placeholder="Summary Title (Optional)..."
+              value={qb.summary_title} onChange={e => updateBlock(qbIdx, 'summary_title', e.target.value)}
+              className="flex-1 bg-transparent border-none text-[13px] font-black text-on-surface outline-none p-0 placeholder:text-on-surface-variant"
             />
             {/* 🌟 THE MAGIC BUTTON 🌟 */}
-            <button 
-              onClick={insertBlankAtCursor} 
-              className="flex items-center gap-1 px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold shadow-sm hover:bg-emerald-700 transition-colors shrink-0"
+            <Button
+              variant="tonal" size="sm" icon={<SquareSquare />}
+              onClick={insertBlankAtCursor}
+              className="shrink-0"
               title="Insert a blank at your cursor position"
             >
-              <SquareSquare size={12} /> Insert Blank
-            </button>
+              Insert Blank
+            </Button>
           </div>
           <textarea 
             ref={textAreaRef}
@@ -183,7 +186,7 @@ export default function SummaryCompletionBlock({ qb, qbIdx, updateBlock, deleteB
               updateBlock(qbIdx, 'summary_text', e.target.value);
               e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px";
             }}
-            className="w-full bg-white border border-slate-200 rounded p-2 text-[13px] leading-relaxed text-slate-700 outline-none resize-none overflow-hidden min-h-[80px] focus:border-emerald-400 shadow-sm"
+            className="w-full bg-surface-container-lowest border border-outline-variant rounded-m3-xs p-2 text-[13px] leading-relaxed text-on-surface outline-none resize-none overflow-hidden min-h-[80px] focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary shadow-elev-1"
           />
         </div>
         
@@ -191,15 +194,15 @@ export default function SummaryCompletionBlock({ qb, qbIdx, updateBlock, deleteB
         <div className="space-y-1">
           {qb.questions.map((row: any, rIdx: number) => (
             <div key={rIdx} className="flex items-center gap-2 group/row">
-              <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-white bg-slate-800 rounded shadow-sm shrink-0">
+              <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-inverse-on-surface bg-inverse-surface rounded-m3-xs shadow-elev-1 shrink-0">
                 {row.question_number}
               </span>
-              
+
               {isWordBank ? (
-                <select 
-                  value={row.correct_answer || ''} 
-                  onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)} 
-                  className="flex-1 h-7 text-[11px] font-black bg-white border border-slate-200 rounded px-2 outline-none text-indigo-700 focus:border-indigo-400 cursor-pointer"
+                <select
+                  value={row.correct_answer || ''}
+                  onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)}
+                  className="flex-1 h-7 text-[11px] font-black bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 outline-none text-success focus:border-primary cursor-pointer"
                 >
                   <option value="">Select letter...</option>
                   {qb.options.map((o: any) => <option key={o.id} value={o.id}>{o.id} - {o.text}</option>)}
@@ -212,17 +215,17 @@ export default function SummaryCompletionBlock({ qb, qbIdx, updateBlock, deleteB
                     const arr = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
                     updateRow(rIdx, 'correct_answer', arr.length ? arr : ['']);
                   }} 
-                  className="flex-1 h-7 text-[12px] bg-white border border-slate-200 rounded px-2 outline-none focus:border-emerald-400 placeholder:text-slate-300 font-medium" 
+                  className="flex-1 h-7 text-[12px] bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:text-on-surface-variant font-medium"
                 />
               )}
-              
-              <input 
-                type="text" placeholder="Ref" value={row.passage_reference || ''} 
-                onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
-                className={`w-14 h-7 text-[10px] text-center font-bold rounded outline-none uppercase shrink-0 transition-colors ${row.passage_reference ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 focus:border-emerald-400' : 'bg-transparent border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 focus:border-emerald-400 focus:bg-white'}`} 
+
+              <input
+                type="text" placeholder="Ref" value={row.passage_reference || ''}
+                onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())}
+                className={`w-14 h-7 text-[10px] text-center font-bold rounded-m3-xs outline-none uppercase shrink-0 transition-colors ${row.passage_reference ? 'bg-secondary-container border border-transparent text-on-secondary-container focus:border-primary' : 'bg-transparent border border-dashed border-outline text-on-surface-variant hover:border-on-surface-variant focus:border-primary focus:bg-surface-container-lowest'}`}
               />
-              
-              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 flex items-center justify-center text-slate-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0 transition-colors"><X size={14}/></button>
+
+              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 flex items-center justify-center text-outline hover:text-error opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0 transition-colors"><X size={14}/></button>
             </div>
           ))}
         </div>

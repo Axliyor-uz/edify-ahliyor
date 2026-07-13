@@ -22,6 +22,7 @@ This directory is the **source of truth** for how Edify works. The workflow cont
 | Finance — charges/payments/payroll/expenses, `/api/manager/finance/*`, `financeOps`, `billingEngine` | [FINANCE.md](FINANCE.md) + [FINANCE_DATABASE.md](FINANCE_DATABASE.md) |
 | Admin panel `app/admin/*`, `/api/admin/*`, super-admin claim, god-mode writes | [ADMIN.md](ADMIN.md) |
 | IELTS (groups, reading tests) — student or teacher side | [IELTS.md](IELTS.md) |
+| Teacher UI kit / design tokens — `components/ui/*`, `--m3-*` vars (`theme.css`), `tailwind.config.ts` token mapping, restyling `app/teacher/*` pages | [UI_KIT.md](UI_KIT.md) |
 
 Historical (design rationale only, drifted — do not trust for current state): [ADMIN_CENTERS_PLAN.md](ADMIN_CENTERS_PLAN.md).
 

@@ -10,6 +10,8 @@
 - `TeacherLanguageContext` (`app/teacher/layout.tsx`): `useTeacherLanguage()` → `lang ∈ uz|en|ru`, **not persisted** (resets to uz on reload). Pattern: every page/modal defines its own inline `TRANSLATIONS` dict and picks `TRANSLATIONS[lang] || TRANSLATIONS['uz']`. Hardcoded Uzbek strings still leak (toasts, grade page).
 - AI balance widget: `hooks/useMonthlyLimit.ts` — live `onSnapshot(users/{uid})`, `currentLimits.monthlyAiQuestions` (default 100), `usage.aiQuestionsUsed`, unlimited at ≥5000, danger at 80%.
 - ⚠️ Nav entries for **subscription** and **ielts** are commented out in the layout even though both routes are fully built (subscription reachable only via the AI-balance "Buy Credits" button).
+- **Design system:** the ENTIRE teacher tree is styled with the M3 UI kit (`components/ui/*`, tokens only — no raw colors). Read [UI_KIT.md](UI_KIT.md) before styling any teacher page.
+- **Shell (layout.tsx):** desktop = flush sidebar that collapses to an 84px labeled M3 rail (header toggle, `[` shortcut, state in localStorage `edify-sb-rail`); mobile = slim top bar + **M3 bottom navigation bar** (Boshqaruv/Yaratish/Sinflar/Kutubxona + Menyu→drawer). ⚠️ The bottom bar auto-hides on deep routes with their own bottom action bars (`HIDE_BOTTOM_BAR` regexes: `create/*`, `classes/*`, `print`, IELTS builder/view) — check that list when adding a page with a floating bottom bar. Language switcher uses inline SVG flags inside the profile popover; desktop NotificationBell was replaced by a "Bildirishnomalar" nav item (bell quick-panel remains on the mobile top bar).
 
 ## Test creation (`app/teacher/create/*`)
 

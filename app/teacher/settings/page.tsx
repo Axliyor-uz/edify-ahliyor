@@ -5,11 +5,13 @@ import { db,auth } from '@/lib/firebase';
 import { doc, getDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, updateProfile, deleteUser, GoogleAuthProvider, reauthenticateWithPopup,signOut } from 'firebase/auth';
 import { useAuth } from '@/lib/AuthContext';
-import { User, Shield, Info, Loader2, AlertTriangle, Settings as SettingsIcon } from 'lucide-react';
+import { User, Shield, Info, AlertTriangle, Settings as SettingsIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useTeacherLanguage } from '@/app/teacher/layout'; 
 import { getFunctions, httpsCallable } from 'firebase/functions';
+
+import { Button, Spinner } from '@/components/ui';
 
 import ProfileTab from './_components/ProfileTab';
 import SecurityTab from './_components/SecurityTab';
@@ -290,26 +292,26 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) return <div className="min-h-[100dvh] bg-[#FAFAFA] flex items-center justify-center"><Loader2 className="animate-spin text-indigo-500" size={32}/></div>;
+  if (loading) return <div className="min-h-[100dvh] bg-surface flex items-center justify-center"><Spinner size={32}/></div>;
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] font-sans selection:bg-indigo-100 selection:text-indigo-900 pb-20">
+    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-20">
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 md:py-10 space-y-6">
         
         {/* HEADER & TABS */}
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100/50"><SettingsIcon size={20} /></div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">{t.title}</h1>
+            <div className="w-10 h-10 bg-primary-container rounded-m3-md flex items-center justify-center text-on-primary-container shadow-elev-1"><SettingsIcon size={20} /></div>
+            <h1 className="text-2xl md:text-3xl font-black text-on-surface tracking-tight">{t.title}</h1>
           </div>
-          
-          <div className="flex p-1.5 bg-slate-200/50 rounded-[1.2rem] overflow-x-auto hide-scrollbar border border-slate-200/60 shadow-inner">
+
+          <div className="flex p-1.5 bg-surface-container-high rounded-m3-lg overflow-x-auto hide-scrollbar">
             {[
-              { id: 'profile', label: t.tabs.profile, icon: User, activeClass: 'bg-white text-indigo-600 shadow-[0_2px_10px_rgb(0,0,0,0.04)] ring-1 ring-slate-200/50' },
-              { id: 'security', label: t.tabs.security, icon: Shield, activeClass: 'bg-white text-orange-600 shadow-[0_2px_10px_rgb(0,0,0,0.04)] ring-1 ring-slate-200/50' },
-              { id: 'about', label: t.tabs.about, icon: Info, activeClass: 'bg-white text-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.04)] ring-1 ring-slate-200/50' },
+              { id: 'profile', label: t.tabs.profile, icon: User },
+              { id: 'security', label: t.tabs.security, icon: Shield },
+              { id: 'about', label: t.tabs.about, icon: Info },
             ].map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-xl text-[13px] font-bold transition-all whitespace-nowrap flex-1 ${activeTab === tab.id ? tab.activeClass : 'text-slate-500 hover:text-slate-800'}`}>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-m3-md text-[13px] font-bold transition-all whitespace-nowrap flex-1 ${activeTab === tab.id ? 'bg-surface-container-lowest text-primary shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
                 <tab.icon size={16} strokeWidth={2.5} /> <span>{tab.label}</span>
               </button>
             ))}
@@ -326,14 +328,14 @@ export default function SettingsPage() {
         {/* DELETE CLASS MODAL */}
         {classToDelete && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setClassToDelete(null)}></div>
-            <div className="relative bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-in zoom-in-95 border border-slate-100 text-center">
-              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-5 mx-auto"><AlertTriangle size={28} /></div>
-              <h3 className="text-[18px] font-black text-slate-900 mb-2">{t.deleteModal.title}</h3>
-              <p className="text-[13px] text-slate-500 font-medium mb-8">{t.deleteModal.desc.replace("{title}", classToDelete.title)}</p>
+            <div className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setClassToDelete(null)}></div>
+            <div className="relative bg-surface-container-low rounded-m3-xl w-full max-w-sm p-8 shadow-elev-3 animate-in zoom-in-95 text-center">
+              <div className="w-16 h-16 bg-error-container text-on-error-container rounded-m3-lg flex items-center justify-center mb-5 mx-auto"><AlertTriangle size={28} /></div>
+              <h3 className="text-[18px] font-black text-on-surface mb-2">{t.deleteModal.title}</h3>
+              <p className="text-[13px] text-on-surface-variant font-medium mb-8">{t.deleteModal.desc.replace("{title}", classToDelete.title)}</p>
               <div className="flex gap-3">
-                <button onClick={() => setClassToDelete(null)} className="flex-1 py-3 font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors text-[13px]">{t.security.cancel}</button>
-                <button onClick={confirmDeleteClass} className="flex-1 py-3 font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md shadow-red-600/20 transition-all text-[13px]">{t.security.yesDelete}</button>
+                <Button variant="tonal" className="flex-1" onClick={() => setClassToDelete(null)}>{t.security.cancel}</Button>
+                <Button variant="danger" className="flex-1" onClick={confirmDeleteClass}>{t.security.yesDelete}</Button>
               </div>
             </div>
           </div>

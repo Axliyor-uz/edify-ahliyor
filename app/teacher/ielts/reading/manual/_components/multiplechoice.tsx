@@ -2,6 +2,8 @@
 
 import { Plus, Trash2, X } from 'lucide-react';
 
+import { Button } from '@/components/ui';
+
 export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
   
   // ==========================================================================
@@ -106,22 +108,22 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm group/block mb-4 transition-all">
-      
+    <div className="bg-surface-container-low border border-outline-variant rounded-m3-sm shadow-elev-1 group/block mb-4 transition-all">
+
       {/* 1. HEADER */}
-      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between rounded-t-lg">
+      <div className="bg-surface-container border-b border-outline-variant px-3 py-2 flex items-center justify-between rounded-t-m3-sm">
         <div className="flex items-center gap-3">
-          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-[3px] text-[9px] font-black uppercase tracking-wider">
+          <span className="bg-primary-container text-on-primary-container px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-wider">
             MULTIPLE CHOICE
           </span>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold select-none">
+          <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant font-semibold select-none">
             Qs:
-            <span className="w-8 h-5 flex items-center justify-center bg-white border border-slate-200 rounded font-bold text-slate-800 shadow-sm">{qb.start_question || 0}</span>
+            <span className="w-8 h-5 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs font-bold text-on-surface shadow-elev-1">{qb.start_question || 0}</span>
             -
-            <span className="w-8 h-5 flex items-center justify-center bg-slate-100 border border-slate-200 rounded font-bold text-slate-500">{qb.end_question || 0}</span>
+            <span className="w-8 h-5 flex items-center justify-center bg-surface-container-high border border-outline-variant rounded-m3-xs font-bold text-on-surface-variant">{qb.end_question || 0}</span>
           </div>
         </div>
-        <button onClick={() => deleteBlock(qbIdx)} className="text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover/block:opacity-100"><Trash2 size={14}/></button>
+        <button onClick={() => deleteBlock(qbIdx)} className="text-on-surface-variant hover:text-error transition-colors opacity-0 group-hover/block:opacity-100"><Trash2 size={14}/></button>
       </div>
 
       <div className="p-3">
@@ -129,16 +131,16 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
         <input 
           type="text" placeholder="Instructions (e.g. Choose the correct letter, A, B, C or D...)" 
           value={qb.instructions} onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
-          className="w-full bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none mb-4 p-0" 
+          className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none mb-4 p-0"
         />
         
         {/* 2. QUESTIONS LIST */}
         <div className="space-y-4">
           {qb.questions.map((row: any, rIdx: number) => (
-            <div key={rIdx} className="bg-slate-50 rounded-lg p-3 border border-slate-100 relative group/row transition-colors focus-within:border-blue-200 focus-within:bg-blue-50/20">
-              
+            <div key={rIdx} className="bg-surface-container rounded-m3-sm p-3 border border-outline-variant relative group/row transition-colors focus-within:border-primary focus-within:bg-[color-mix(in_oklab,var(--m3-primary)_5%,transparent)]">
+
               <div className="flex gap-2 mb-3">
-                <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-white bg-slate-800 rounded shadow-sm shrink-0">
+                <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-inverse-on-surface bg-inverse-surface rounded-m3-xs shadow-elev-1 shrink-0">
                   {row.question_number}
                 </span>
                 <input 
@@ -146,7 +148,7 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
                   value={row.question_text} 
                   onChange={e => updateRow(rIdx, 'question_text', e.target.value)} 
                   onPaste={e => handleSmartPaste(e, rIdx)}
-                  className="flex-1 h-7 text-[13px] font-bold bg-white border border-slate-200 rounded px-2 outline-none focus:border-blue-400 placeholder:font-normal placeholder:text-slate-400" 
+                  className="flex-1 h-7 text-[13px] font-bold bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:font-normal placeholder:text-on-surface-variant"
                 />
               </div>
 
@@ -154,37 +156,34 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
               <div className="pl-10 space-y-1.5 mb-3">
                 {row.options.map((opt: any, oIdx: number) => (
                   <div key={oIdx} className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-400 w-4">{opt.id}.</span>
-                    <input 
+                    <span className="text-[10px] font-black text-on-surface-variant w-4">{opt.id}.</span>
+                    <input
                       type="text" placeholder={`Option ${opt.id}...`} value={opt.text}
                       onChange={e => updateOption(rIdx, oIdx, e.target.value)}
-                      className="flex-1 h-6 text-[12px] bg-white border border-slate-200 rounded px-2 outline-none focus:border-blue-400"
+                      className="flex-1 h-6 text-[12px] bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary"
                     />
-                    <button 
-                      onClick={() => removeOption(rIdx, oIdx)} 
+                    <button
+                      onClick={() => removeOption(rIdx, oIdx)}
                       disabled={row.options.length <= 2} // Minimum 2 options
-                      className="text-slate-300 hover:text-red-500 disabled:opacity-0 transition-colors shrink-0"
+                      className="text-outline hover:text-error disabled:opacity-0 transition-colors shrink-0"
                     >
                       <X size={14}/>
                     </button>
                   </div>
                 ))}
                 
-                <button 
-                  onClick={() => addOption(rIdx)} 
-                  className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1 mt-1 ml-6"
-                >
-                  <Plus size={10} /> Add Option
-                </button>
+                <Button variant="text" size="sm" icon={<Plus />} onClick={() => addOption(rIdx)} className="mt-1 ml-3.5">
+                  Add Option
+                </Button>
               </div>
 
               {/* 3. BOTTOM BAR (Correct Answer & Ref) */}
               <div className="pl-10 flex items-center gap-3">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Correct Answer:</span>
-                <select 
-                  value={row.correct_answer[0] || 'A'} 
-                  onChange={e => updateRow(rIdx, 'correct_answer', [e.target.value])} 
-                  className="w-16 h-7 text-[11px] font-black bg-white border border-slate-200 rounded outline-none text-blue-700 focus:border-blue-400 cursor-pointer text-center"
+                <span className="text-[10px] font-bold text-on-surface-variant uppercase">Correct Answer:</span>
+                <select
+                  value={row.correct_answer[0] || 'A'}
+                  onChange={e => updateRow(rIdx, 'correct_answer', [e.target.value])}
+                  className="w-16 h-7 text-[11px] font-black bg-surface-container-lowest border border-outline-variant rounded-m3-xs outline-none text-success focus:border-primary cursor-pointer text-center"
                 >
                   {row.options.map((o: any) => <option key={o.id} value={o.id}>{o.id}</option>)}
                 </select>
@@ -193,21 +192,21 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
                   type="text" placeholder="Ref (opt)" 
                   value={row.passage_reference || ''} 
                   onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
-                  className={`w-14 h-7 text-[10px] text-center font-bold rounded outline-none uppercase shrink-0 transition-colors
-                    ${row.passage_reference 
-                      ? 'bg-blue-50 border border-blue-200 text-blue-700 focus:border-blue-400' 
-                      : 'bg-transparent border border-dashed border-slate-300 text-slate-400 placeholder:text-slate-300 hover:border-slate-400 focus:border-blue-400 focus:bg-white'}`} 
+                  className={`w-14 h-7 text-[10px] text-center font-bold rounded-m3-xs outline-none uppercase shrink-0 transition-colors
+                    ${row.passage_reference
+                      ? 'bg-primary-container border border-transparent text-on-primary-container focus:border-primary'
+                      : 'bg-transparent border border-dashed border-outline text-on-surface-variant placeholder:text-outline hover:border-on-surface-variant focus:border-primary focus:bg-surface-container-lowest'}`}
                 />
               </div>
 
-              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="absolute top-3 right-3 text-slate-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 disabled:opacity-0 transition-colors"><X size={14}/></button>
+              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="absolute top-3 right-3 text-outline hover:text-error opacity-0 group-hover/row:opacity-100 disabled:opacity-0 transition-colors"><X size={14}/></button>
             </div>
           ))}
         </div>
 
-        <button onClick={addRow} className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 mt-3 transition-colors">
-          <Plus size={12} /> Add Question
-        </button>
+        <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
+          Add Question
+        </Button>
       </div>
     </div>
   );

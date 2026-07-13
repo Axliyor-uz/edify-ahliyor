@@ -3,6 +3,8 @@
 import { Plus, Trash2, X, Repeat, ChevronDown, ChevronUp, Edit3 } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/components/ui';
+
 export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
   
   // UX State: Hide the bulky options template by default to keep the UI clean
@@ -88,34 +90,34 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm group/block">
-      
+    <div className="bg-surface-container-low border border-outline-variant rounded-m3-sm shadow-elev-1 group/block">
+
       {/* 1. HEADER ROW */}
-      <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between rounded-t-lg">
+      <div className="bg-surface-container border-b border-outline-variant px-3 py-2 flex items-center justify-between rounded-t-m3-sm">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-[3px]">
+          <div className="flex items-center gap-1 bg-primary-container text-on-primary-container px-2 py-0.5 rounded-m3-xs">
             <span className="text-[9px] font-black uppercase tracking-wider">
               {isYesNo ? 'YNNG' : 'TFNG'}
             </span>
-            <button onClick={toggleVariant} className="hover:text-indigo-900 transition-colors" title="Change to YES/NO/NOT GIVEN">
+            <button onClick={toggleVariant} className="hover:text-primary transition-colors" title="Change to YES/NO/NOT GIVEN">
               <Repeat size={10} strokeWidth={3} />
             </button>
           </div>
 
-          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold">
+          <div className="flex items-center gap-1 text-[11px] text-on-surface-variant font-semibold">
             Qs:
             {/* MADE READ-ONLY: So teachers don't break the global numbering */}
-            <input 
+            <input
               type="number" value={qb.start_question} readOnly
-              className="w-8 h-5 text-center bg-white border border-slate-200 rounded px-1 outline-none font-bold text-slate-800 cursor-default" 
+              className="w-8 h-5 text-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-1 outline-none font-bold text-on-surface cursor-default"
             />
             -
-            <span className="w-8 h-5 flex items-center justify-center bg-slate-100 border border-slate-200 rounded text-slate-500 font-bold select-none">
+            <span className="w-8 h-5 flex items-center justify-center bg-surface-container-high border border-outline-variant rounded-m3-xs text-on-surface-variant font-bold select-none">
               {qb.end_question}
             </span>
           </div>
         </div>
-        <button onClick={() => deleteBlock(qbIdx)} className="text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover/block:opacity-100">
+        <button onClick={() => deleteBlock(qbIdx)} className="text-on-surface-variant hover:text-error transition-colors opacity-0 group-hover/block:opacity-100">
           <Trash2 size={14}/>
         </button>
       </div>
@@ -123,7 +125,7 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
       <div className="p-3">
         
         {/* 2. META DATA (Instructions & Collapsible Options) */}
-        <div className="mb-4 bg-slate-50/50 p-2 rounded border border-transparent hover:border-slate-100 transition-colors">
+        <div className="mb-4 bg-surface-container p-2 rounded-m3-sm border border-transparent hover:border-outline-variant transition-colors">
           
           <textarea 
             placeholder="Instructions (e.g. Do the following statements agree...)" value={qb.instructions} 
@@ -131,22 +133,22 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
               updateBlock(qbIdx, 'instructions', e.target.value);
               e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px";
             }} 
-            className="w-full bg-transparent border-none text-[11px] font-bold text-slate-700 outline-none p-0 resize-none overflow-hidden min-h-[16px]" 
+            className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none p-0 resize-none overflow-hidden min-h-[16px]"
           />
-          
-          <button 
-            onClick={() => setShowOptions(!showOptions)} 
-            className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-wider mt-1 transition-colors"
+
+          <button
+            onClick={() => setShowOptions(!showOptions)}
+            className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant hover:text-primary uppercase tracking-wider mt-1 transition-colors"
           >
             <Edit3 size={10} /> {showOptions ? 'Hide option descriptions' : 'Edit option descriptions'}
             {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
           </button>
 
           {showOptions && (
-            <div className="mt-2 space-y-1.5 pt-2 border-t border-slate-100">
+            <div className="mt-2 space-y-1.5 pt-2 border-t border-outline-variant">
               {qb.options?.map((opt: any, oIdx: number) => (
                 <div key={oIdx} className="flex items-center gap-2">
-                  <span className="w-16 text-[9px] font-black tracking-wider text-slate-500 bg-white border border-slate-200 px-1 py-1 rounded text-center select-none shrink-0">
+                  <span className="w-16 text-[9px] font-black tracking-wider text-on-surface-variant bg-surface-container-lowest border border-outline-variant px-1 py-1 rounded-m3-xs text-center select-none shrink-0">
                     {opt.label}
                   </span>
                   <input 
@@ -156,7 +158,7 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
                       newOptions[oIdx].description = e.target.value;
                       updateBlock(qbIdx, 'options', newOptions);
                     }}
-                    className="flex-1 bg-white border border-slate-200 rounded py-1 px-2 text-[11px] font-medium text-slate-600 outline-none focus:border-indigo-400 transition-colors"
+                    className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-xs py-1 px-2 text-[11px] font-medium text-on-surface-variant outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary transition-colors"
                     placeholder="Description of this option..."
                   />
                 </div>
@@ -169,22 +171,22 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
         <div className="space-y-1">
           {qb.questions.map((row: any, rIdx: number) => (
             <div key={rIdx} className="flex items-center gap-2 group/row">
-              <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-slate-400 bg-slate-50 border border-slate-100 rounded select-none shrink-0">
+              <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-on-surface-variant bg-surface-container border border-outline-variant rounded-m3-xs select-none shrink-0">
                 {row.question_number}
               </span>
-              
-              <input 
-                type="text" placeholder="Statement text..." 
-                value={row.statement} 
-                onChange={e => updateRow(rIdx, 'statement', e.target.value)} 
+
+              <input
+                type="text" placeholder="Statement text..."
+                value={row.statement}
+                onChange={e => updateRow(rIdx, 'statement', e.target.value)}
                 onPaste={e => handlePaste(e, rIdx)}
-                className="flex-1 h-7 text-[12px] bg-white border border-slate-200 rounded px-2 outline-none focus:border-indigo-400 placeholder:text-slate-300 font-medium" 
+                className="flex-1 h-7 text-[12px] bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:text-on-surface-variant font-medium"
               />
-              
-              <select 
-                value={row.correct_answer} 
-                onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)} 
-                className="w-[88px] h-7 text-[10px] font-bold bg-white border border-slate-200 rounded px-1 outline-none text-indigo-700 focus:border-indigo-400 cursor-pointer shrink-0"
+
+              <select
+                value={row.correct_answer}
+                onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)}
+                className="w-[88px] h-7 text-[10px] font-bold bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-1 outline-none text-success focus:border-primary cursor-pointer shrink-0"
               >
                 {isYesNo ? (
                   <><option value="YES">YES</option><option value="NO">NO</option><option value="NOT GIVEN">NOT GIVEN</option></>
@@ -198,19 +200,19 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
                 value={row.passage_reference} 
                 onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
                 onKeyDown={e => handleKeyDown(e, rIdx)}
-                className="w-10 h-7 text-[10px] text-center font-bold bg-white border border-slate-200 rounded outline-none placeholder:text-slate-300 uppercase focus:border-indigo-400 shrink-0" 
+                className="w-10 h-7 text-[10px] text-center font-bold bg-surface-container-lowest border border-outline-variant rounded-m3-xs outline-none placeholder:text-outline uppercase focus:border-primary shrink-0"
               />
-              
-              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 flex items-center justify-center text-slate-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0">
+
+              <button onClick={() => deleteRow(rIdx)} disabled={qb.questions.length === 1} className="w-6 h-7 flex items-center justify-center text-outline hover:text-error opacity-0 group-hover/row:opacity-100 disabled:opacity-0 shrink-0">
                 <X size={14}/>
               </button>
             </div>
           ))}
         </div>
 
-        <button onClick={addRow} className="text-[11px] font-bold text-indigo-600 hover:underline flex items-center gap-1 mt-3 transition-colors">
-          <Plus size={12} /> Add Row
-        </button>
+        <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
+          Add Row
+        </Button>
       </div>
     </div>
   );

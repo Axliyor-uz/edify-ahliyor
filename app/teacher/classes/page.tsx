@@ -8,7 +8,8 @@ import { Users, Plus, BookOpen, Sparkles } from 'lucide-react';
 import { motion, Variants } from 'framer-motion';
 import ClassCard from './_components/ClassCard';
 import CreateClassModal from './_components/CreateClassModal';
-import { useTeacherLanguage } from '@/app/teacher/layout'; 
+import { useTeacherLanguage } from '@/app/teacher/layout';
+import { Button, Skeleton } from '@/components/ui';
 
 // --- TRANSLATION DICTIONARY ---
 const CLASSES_TRANSLATIONS: Record<string, any> = {
@@ -37,8 +38,8 @@ export default function ClassesPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // Dynamic Theme Palette for Cards
-  const THEMES = ['blue', 'violet', 'emerald', 'rose', 'amber', 'cyan'];
+  // Dynamic Theme Palette for Cards (M3 three-tone rotation)
+  const THEMES = ['primary', 'secondary', 'tertiary'];
 
   useEffect(() => {
     if (!user) return;
@@ -53,30 +54,31 @@ export default function ClassesPage() {
   if (loading || isLoadingData) return <ClassesSkeleton />;
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] font-sans selection:bg-indigo-100 selection:text-indigo-900 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12">
+    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12">
       
       <CreateClassModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
 
       <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 mt-4 md:mt-8 relative z-10">
         
         {/* 🟢 ULTRA MINIMALISTIC HEADER SECTION */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 mb-5 md:mb-8 bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-200/80 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 mb-5 md:mb-8 bg-surface-container-low p-4 md:p-6 rounded-m3-lg md:rounded-m3-xl border border-outline-variant shadow-elev-1">
           <div className="flex items-center gap-3 md:gap-4">
-            <div className="w-10 h-10 md:w-14 md:h-14 bg-indigo-50 border border-indigo-100 rounded-[10px] md:rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner shrink-0">
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-primary-container rounded-m3-sm md:rounded-m3-lg flex items-center justify-center text-on-primary-container shrink-0">
                <Users size={20} strokeWidth={2.5} className="md:w-7 md:h-7" />
             </div>
             <div>
-              <h1 className="text-[18px] md:text-3xl font-black text-slate-900 tracking-tight leading-tight">{t.title}</h1>
-              <p className="text-[11px] md:text-[14px] font-bold text-slate-400 md:font-medium md:text-slate-500 mt-0.5">{t.subtitle}</p>
+              <h1 className="text-[18px] md:text-3xl font-black text-on-surface tracking-tight leading-tight">{t.title}</h1>
+              <p className="text-[11px] md:text-[14px] font-bold md:font-medium text-on-surface-variant mt-0.5">{t.subtitle}</p>
             </div>
           </div>
 
-          <button 
+          <Button
             onClick={() => setIsCreateOpen(true)}
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 md:px-6 py-2.5 md:py-3.5 rounded-xl font-black shadow-md md:shadow-lg shadow-indigo-600/20 transition-all active:scale-95 w-full sm:w-auto text-[13px] md:text-[15px]"
+            icon={<Plus strokeWidth={3} />}
+            className="w-full sm:w-auto"
           >
-            <Plus size={16} strokeWidth={3} className="md:w-[18px] md:h-[18px]"/> {t.createBtn}
-          </button>
+            {t.createBtn}
+          </Button>
         </div>
 
         {/* 🟢 CLASS GRID OR EMPTY STATE */}
@@ -89,16 +91,16 @@ export default function ClassesPage() {
             })}
           </motion.div>
         ) : (
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="col-span-full py-12 md:py-24 text-center flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-[1.5rem] md:rounded-[2rem] shadow-sm relative overflow-hidden group mx-1 md:mx-0">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-colors duration-700 pointer-events-none z-0"></div>
-            <div className="w-14 h-14 md:w-16 md:h-16 bg-slate-50 border border-slate-100 rounded-[14px] md:rounded-2xl flex items-center justify-center mb-4 md:mb-5 shadow-sm relative z-10">
-              <BookOpen size={24} className="text-slate-400 md:w-7 md:h-7" />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="col-span-full py-12 md:py-24 text-center flex flex-col items-center justify-center bg-surface-container-low border-2 border-dashed border-outline-variant rounded-m3-lg md:rounded-m3-xl shadow-elev-1 relative overflow-hidden group mx-1 md:mx-0">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] rounded-full blur-3xl group-hover:bg-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] transition-colors duration-700 pointer-events-none z-0"></div>
+            <div className="w-14 h-14 md:w-16 md:h-16 bg-surface-container rounded-m3-md md:rounded-m3-lg flex items-center justify-center mb-4 md:mb-5 shadow-elev-1 relative z-10">
+              <BookOpen size={24} className="text-on-surface-variant md:w-7 md:h-7" />
             </div>
-            <h3 className="text-[16px] md:text-[20px] font-black text-slate-800 tracking-tight relative z-10">{t.empty.title}</h3>
-            <p className="text-[12px] md:text-[14px] font-medium text-slate-500 mt-1 md:mt-1.5 mb-6 md:mb-8 max-w-sm relative z-10 px-4">{t.empty.desc}</p>
-            <button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all active:scale-95 text-[13px] md:text-[14px] relative z-10">
-              <Sparkles size={16} /> {t.empty.btn}
-            </button>
+            <h3 className="text-[16px] md:text-[20px] font-black text-on-surface tracking-tight relative z-10">{t.empty.title}</h3>
+            <p className="text-[12px] md:text-[14px] font-medium text-on-surface-variant mt-1 md:mt-1.5 mb-6 md:mb-8 max-w-sm relative z-10 px-4">{t.empty.desc}</p>
+            <Button variant="tonal" icon={<Sparkles />} onClick={() => setIsCreateOpen(true)} className="relative z-10">
+              {t.empty.btn}
+            </Button>
           </motion.div>
         )}
 
@@ -109,11 +111,11 @@ export default function ClassesPage() {
 
 // Skeleton Loader Component (Adjusted for minimal mobile layout)
 const ClassesSkeleton = () => (
-  <div className="min-h-[100dvh] bg-[#FAFAFA] px-3 sm:px-6 lg:px-8 pt-4 md:pt-10">
+  <div className="min-h-[100dvh] bg-surface px-3 sm:px-6 lg:px-8 pt-4 md:pt-10">
     <div className="max-w-6xl mx-auto">
-      <div className="h-[120px] md:h-28 bg-slate-200 rounded-[1.5rem] md:rounded-[2rem] w-full animate-pulse mb-5 md:mb-8"></div>
+      <Skeleton className="h-[120px] md:h-28 rounded-m3-lg md:rounded-m3-xl w-full mb-5 md:mb-8" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-        {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-[160px] md:h-48 bg-slate-200 rounded-[1.2rem] md:rounded-[2rem] animate-pulse"></div>)}
+        {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-[160px] md:h-48 rounded-m3-lg md:rounded-m3-xl" />)}
       </div>
     </div>
   </div>

@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { X, Hash, CheckCircle, Loader2, Target } from 'lucide-react';
+import { X, Hash, CheckCircle, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/AuthContext';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button, IconButton } from '@/components/ui';
 
 const T: Record<string, any> = {
   uz: {
@@ -95,7 +96,7 @@ export default function CreateIeltsGroupModal({ isOpen, onClose }: Props) {
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-slate-900/50"
+            className="absolute inset-0 bg-scrim"
             onClick={handleClose}
           />
 
@@ -105,20 +106,17 @@ export default function CreateIeltsGroupModal({ isOpen, onClose }: Props) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 30 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="relative bg-white w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-2xl overflow-hidden z-10 flex flex-col"
+            className="relative bg-surface-container-low w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-m3-xl overflow-hidden z-10 flex flex-col shadow-elev-3"
           >
             {/* Mobile drag handle */}
-            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mt-3 sm:hidden" />
+            <div className="w-10 h-1 bg-outline-variant rounded-full mx-auto mt-3 sm:hidden" />
 
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <h2 className="text-[17px] font-black text-slate-900 tracking-tight">{t.title}</h2>
-              <button
-                onClick={handleClose}
-                className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors"
-              >
-                <X size={16} strokeWidth={2.5} />
-              </button>
+              <h2 className="text-[17px] font-black text-on-surface tracking-tight">{t.title}</h2>
+              <IconButton aria-label="Yopish" size="sm" onClick={handleClose} className="shrink-0">
+                <X strokeWidth={2.5} />
+              </IconButton>
             </div>
 
             {/* Form */}
@@ -131,18 +129,18 @@ export default function CreateIeltsGroupModal({ isOpen, onClose }: Props) {
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 autoFocus
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[15px] font-bold text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-rose-400 outline-none transition-all"
+                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[15px] font-bold text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] outline-none transition-all"
               />
 
               {/* Band + Description row */}
               <div className="flex gap-2">
                 {/* Band selector */}
                 <div className="relative shrink-0">
-                  <Target size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 pointer-events-none" strokeWidth={2.5} />
+                  <Target size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none" strokeWidth={2.5} />
                   <select
                     value={targetBand}
                     onChange={e => setTargetBand(e.target.value)}
-                    className="pl-8 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-black text-slate-800 outline-none focus:border-rose-400 cursor-pointer appearance-none transition-all hover:border-slate-300"
+                    className="pl-8 pr-3 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[14px] font-black text-on-surface outline-none focus:border-primary cursor-pointer appearance-none transition-all hover:border-outline"
                   >
                     {BANDS.map(b => (
                       <option key={b} value={b}>Band {b}</option>
@@ -156,34 +154,34 @@ export default function CreateIeltsGroupModal({ isOpen, onClose }: Props) {
                   placeholder={t.descPlaceholder}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  className="flex-1 min-w-0 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-rose-400 outline-none transition-all"
+                  className="flex-1 min-w-0 px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[13px] font-medium text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] outline-none transition-all"
                 />
               </div>
 
               {/* Join code display */}
-              <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between bg-surface-container-lowest border border-outline-variant rounded-m3-md px-4 py-3">
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.codeLabel}</p>
-                  <p className="text-[20px] font-black font-mono text-slate-900 tracking-widest mt-0.5 leading-none">{joinCode}</p>
+                  <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">{t.codeLabel}</p>
+                  <p className="text-[20px] font-black font-mono text-on-surface tracking-widest mt-0.5 leading-none">{joinCode}</p>
                 </div>
-                <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500">
+                <div className="w-9 h-9 rounded-m3-md bg-primary-container border border-transparent flex items-center justify-center text-on-primary-container">
                   <Hash size={16} strokeWidth={2.5} />
                 </div>
               </div>
-              <p className="text-[11px] font-medium text-slate-400 -mt-1 px-1">{t.codeHint}</p>
+              <p className="text-[11px] font-medium text-on-surface-variant -mt-1 px-1">{t.codeHint}</p>
 
               {/* Submit */}
-              <button
+              <Button
+                variant="filled"
+                size="lg"
                 onClick={handleCreate}
-                disabled={isSaving || !title.trim()}
-                className="py-3.5 w-full  bg-rose-600 hover:bg-rose-700 text-white font-black text-[14px] rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shadow-sm mt-1"
+                disabled={!title.trim()}
+                loading={isSaving}
+                icon={<CheckCircle strokeWidth={2.5} />}
+                className="w-full mt-1"
               >
-                {isSaving
-                  ? <Loader2 className="animate-spin" size={17} />
-                  : <CheckCircle size={17} strokeWidth={2.5} />
-                }
                 {t.btn}
-              </button>
+              </Button>
 
             </div>
           </motion.div>

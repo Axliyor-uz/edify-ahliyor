@@ -11,6 +11,7 @@ import Link from 'next/link';
 import LatexRenderer from '@/components/LatexRenderer';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import DownloadPdfButton from '@/app/teacher/print/_components/DownloadPdfButton';
+import { Button, IconButton } from '@/components/ui';
 
 // --- TRANSLATION DICTIONARY ---
 const PRINT_TRANSLATIONS = {
@@ -245,10 +246,10 @@ export default function PrintStudioPage() {
         style={{ breakInside: 'avoid-column', display: 'inline-block', width: '100%', paddingTop: '0.2rem' }}
       >
         <div className="flex items-start gap-2 mb-2.5">
-          <span className="font-bold text-black shrink-0 text-[1.1em] mt-[0.1em]">
+          <span className="font-bold text-on-surface shrink-0 text-[1.1em] mt-[0.1em]">
             {globalIdx + 1}.
           </span>
-          <div className="text-black leading-relaxed text-[1em] py-1">
+          <div className="text-on-surface leading-relaxed text-[1em] py-1">
             <LatexRenderer latex={getContentText(q.question)} />
           </div>
         </div>
@@ -264,8 +265,8 @@ export default function PrintStudioPage() {
             const rawText = getContentText(val);
             const safeText = rawText ? rawText.replace(/\$\$/g, '$') : '';
             return (
-              <div key={key} className={`flex items-start gap-1.5 ${showCorrect ? 'font-bold text-black' : 'text-slate-900'}`}>
-                <span className={`font-bold shrink-0 mt-[0.15em] text-[0.95em] ${showCorrect ? 'text-black' : 'text-slate-900'}`}>
+              <div key={key} className={`flex items-start gap-1.5 text-on-surface ${showCorrect ? 'font-bold' : ''}`}>
+                <span className="font-bold shrink-0 mt-[0.15em] text-[0.95em] text-on-surface">
                   {key}.
                 </span>
                 <span className="text-[0.95em] leading-relaxed break-words py-0.5">
@@ -280,26 +281,26 @@ export default function PrintStudioPage() {
   };
 
   const renderHeader = () => (
-    <div className="mb-5 pb-3 border-b-2 border-slate-800">
+    <div className="mb-5 pb-3 border-b-2 border-on-surface">
       <div className="flex justify-between items-start">
         <div className="flex-1 pr-4">
           {headerInfo.school && (
-            <h3 className="text-[1.1em] font-black uppercase tracking-widest text-slate-500 mb-1">
+            <h3 className="text-[1.1em] font-black uppercase tracking-widest text-on-surface-variant mb-1">
               {headerInfo.school}
             </h3>
           )}
-          <h1 className="text-[2em] font-black text-black uppercase leading-tight">
+          <h1 className="text-[2em] font-black text-on-surface uppercase leading-tight">
             {originalData?.title}
           </h1>
           {headerInfo.teacher && (
-            <div className="text-[0.9em] font-bold text-slate-600 mt-1">
+            <div className="text-[0.9em] font-bold text-on-surface-variant mt-1">
               {t.teacherPlace}: {headerInfo.teacher}
             </div>
           )}
         </div>
         <div className="text-right shrink-0">
-          <div className="font-bold text-slate-500 text-[0.8em] uppercase tracking-widest">
-            {t.total}: <span className="text-black text-[1.2em] ml-1">{activeQuestions.length}</span>
+          <div className="font-bold text-on-surface-variant text-[0.8em] uppercase tracking-widest">
+            {t.total}: <span className="text-on-surface text-[1.2em] ml-1">{activeQuestions.length}</span>
           </div>
         </div>
       </div>
@@ -307,19 +308,19 @@ export default function PrintStudioPage() {
         <div className="flex gap-4 mt-5 pt-2 text-[0.9em]">
           <div className="flex-1 flex items-end gap-2">
             <span className="font-bold uppercase tracking-wide shrink-0">{t.name}:</span>
-            <div className="flex-1 border-b border-slate-400 h-4"></div>
+            <div className="flex-1 border-b border-outline h-4"></div>
           </div>
           <div className="w-32 flex items-end gap-2">
             <span className="font-bold uppercase tracking-wide shrink-0">{t.date}:</span>
-            <div className="flex-1 border-b border-slate-400 h-4"></div>
+            <div className="flex-1 border-b border-outline h-4"></div>
           </div>
           <div className="w-24 flex items-end gap-2">
             <span className="font-bold uppercase tracking-wide shrink-0">{t.group}:</span>
-            <div className="flex-1 border-b border-slate-400 h-4"></div>
+            <div className="flex-1 border-b border-outline h-4"></div>
           </div>
           <div className="w-20 flex items-end gap-2">
             <span className="font-bold uppercase tracking-wide shrink-0">{t.score}:</span>
-            <div className="flex-1 border-b border-slate-400 h-4"></div>
+            <div className="flex-1 border-b border-outline h-4"></div>
           </div>
         </div>
       )}
@@ -329,12 +330,12 @@ export default function PrintStudioPage() {
   const renderAnswerSheet = () => {
     if (answerSheet === 'none') return null;
     return (
-      <div className="mt-8 pt-6 border-t-2 border-black">
+      <div className="mt-8 pt-6 border-t-2 border-on-surface">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-[1.2em] font-black uppercase tracking-widest">{t.answers}</h2>
           <div className="flex items-end gap-2">
             <span className="text-[0.9em] font-bold uppercase tracking-wide">{t.score}:</span>
-            <div className="w-16 h-8 border-2 border-black rounded-md"></div>
+            <div className="w-16 h-8 border-2 border-on-surface rounded-m3-xs"></div>
           </div>
         </div>
         {answerSheet === 'standard' && (
@@ -344,7 +345,7 @@ export default function PrintStudioPage() {
                 <span className="font-black w-6 text-right">{idx + 1}.</span>
                 <div className="flex gap-1.5">
                   {['A', 'B', 'C', 'D'].map(opt => (
-                    <div key={opt} className="w-5 h-5 rounded-full border-2 border-slate-400 flex items-center justify-center font-bold text-[0.7em] text-slate-500">
+                    <div key={opt} className="w-5 h-5 rounded-full border-2 border-outline flex items-center justify-center font-bold text-[0.7em] text-on-surface-variant">
                       {opt}
                     </div>
                   ))}
@@ -358,7 +359,7 @@ export default function PrintStudioPage() {
             {activeQuestions.map((q, idx) => (
               <div key={idx} className="flex items-end gap-2 mb-3" style={{ breakInside: 'avoid' }}>
                 <span className="font-black w-6 text-right">{idx + 1}.</span>
-                <div className="w-10 h-6 border-b-2 border-black bg-slate-50/50"></div>
+                <div className="w-10 h-6 border-b-2 border-on-surface bg-surface-container"></div>
               </div>
             ))}
           </div>
@@ -371,11 +372,11 @@ export default function PrintStudioPage() {
             fontSize: '0.85em'
           }}>
             {activeQuestions.map((q, idx) => (
-              <div key={idx} className="border-2 border-slate-300 p-2 rounded-lg flex justify-between items-center bg-slate-50/50">
+              <div key={idx} className="border-2 border-outline-variant p-2 rounded-m3-sm flex justify-between items-center bg-surface-container">
                 <span className="font-black mr-2">{idx + 1}</span>
                 <div className="flex gap-1">
                   {['A', 'B', 'C', 'D'].map(opt => (
-                    <div key={opt} className="w-4 h-4 rounded-full border border-slate-400 flex items-center justify-center text-[0.65em] font-bold text-slate-500 bg-white">
+                    <div key={opt} className="w-4 h-4 rounded-full border border-outline flex items-center justify-center text-[0.65em] font-bold text-on-surface-variant bg-surface-container-lowest">
                       {opt}
                     </div>
                   ))}
@@ -391,14 +392,14 @@ export default function PrintStudioPage() {
   const renderAnswerKey = () => {
     if (showAnswers !== 'end') return null;
     return (
-      <div className="mt-8 pt-6 border-t-2 border-dashed border-slate-400">
-        <h3 className="font-black text-[1.2em] text-black mb-4 uppercase tracking-widest flex items-center gap-2">
+      <div className="mt-8 pt-6 border-t-2 border-dashed border-outline">
+        <h3 className="font-black text-[1.2em] text-on-surface mb-4 uppercase tracking-widest flex items-center gap-2">
           <CheckSquare size={18} /> {t.keys}
         </h3>
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-[1em] font-mono">
           {activeQuestions.map((q: any, idx: number) => (
-            <span key={idx} className="inline-block bg-slate-50 px-2 py-1 border border-slate-200 rounded">
-              <strong className="text-slate-500 mr-1">{idx + 1}.</strong>
+            <span key={idx} className="inline-block bg-surface-container px-2 py-1 border border-outline-variant rounded-m3-xs">
+              <strong className="text-on-surface-variant mr-1">{idx + 1}.</strong>
               <span className="font-black">{q.answer}</span>
             </span>
           ))}
@@ -421,7 +422,7 @@ export default function PrintStudioPage() {
 
   if (!isLoaded) return null;
   if (!originalData) return (
-    <div className="p-10 text-center font-bold text-slate-500">
+    <div className="p-10 text-center font-bold text-on-surface-variant">
       No data found. Please return to the library and select a test to print.
     </div>
   );
@@ -432,84 +433,84 @@ export default function PrintStudioPage() {
       - Sidebar: fixed width, independent scroll
       - Preview: flex-1, overflow-hidden (its inner scroller handles scroll)
     */
-    <div className="h-screen overflow-hidden bg-[#FAFAFA] flex flex-row font-sans text-slate-900 print:bg-white print:block print:h-auto print:overflow-visible">
+    <div className="h-screen overflow-hidden bg-surface flex flex-row font-sans text-on-surface print:bg-surface-container-lowest print:block print:h-auto print:overflow-visible">
 
       {/* ── SIDEBAR ──────────────────────────────────────────────────────────── */}
-      <aside className="w-80 shrink-0 bg-white border-r border-slate-200/80 h-screen overflow-y-auto flex flex-col shadow-xl z-20 print:hidden">
+      <aside className="w-80 shrink-0 bg-surface-container-low border-r border-outline-variant h-screen overflow-y-auto flex flex-col shadow-elev-2 z-20 print:hidden">
 
-        <div className="p-5 border-b border-slate-100 bg-white sticky top-0 z-10 flex items-center justify-between">
-          <h2 className="font-black text-[16px] text-slate-900 tracking-tight flex items-center gap-2">
-            <Printer size={18} className="text-indigo-600" /> {t.title}
+        <div className="p-5 border-b border-outline-variant bg-surface-container-low sticky top-0 z-10 flex items-center justify-between">
+          <h2 className="font-black text-[16px] text-on-surface tracking-tight flex items-center gap-2">
+            <Printer size={18} className="text-primary" /> {t.title}
           </h2>
-          <Link href="/teacher/library" className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+          <Link href="/teacher/library" className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-state-hover transition-colors">
             <ArrowLeft size={16} strokeWidth={2.5} />
           </Link>
         </div>
 
         <div className="p-5 space-y-5 flex-1 overflow-y-auto">
 
-          <button onClick={handleShuffle} className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-[1rem] flex items-center justify-center gap-2 transition-colors border border-indigo-100 active:scale-95">
-            <Shuffle size={18} strokeWidth={2.5} /> {t.shuffle}
-          </button>
+          <Button variant="tonal" size="lg" onClick={handleShuffle} icon={<Shuffle strokeWidth={2.5} />} className="w-full">
+            {t.shuffle}
+          </Button>
 
           {/* Layout */}
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Layout size={14} /> {t.layout}</label>
+          <div className="bg-surface-container-low border border-outline-variant p-4 rounded-m3-lg shadow-elev-1 space-y-3">
+            <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5"><Layout size={14} /> {t.layout}</label>
             <div className="grid grid-cols-3 gap-2">
               {[1, 2, 3].map(col => (
-                <button key={col} onClick={() => setColumns(col as any)} className={`p-2 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all ${columns === col ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
+                <button key={col} onClick={() => setColumns(col as any)} className={`p-2 rounded-m3-md border text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all ${columns === col ? 'bg-primary text-on-primary border-primary shadow-elev-2' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:bg-state-hover hover:text-on-surface'}`}>
                   {col === 1 ? <Smartphone size={16} /> : col === 2 ? <Columns size={16} /> : <Grid size={16} />}
                   {t.cols.replace("{n}", col.toString())}
                 </button>
               ))}
             </div>
             {columns > 1 && (
-              <label className="flex items-center gap-2 cursor-pointer mt-3 text-[12px] font-bold text-slate-600">
-                <input type="checkbox" checked={showLines} onChange={() => setShowLines(!showLines)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /> {t.lines}
+              <label className="flex items-center gap-2 cursor-pointer mt-3 text-[12px] font-bold text-on-surface-variant">
+                <input type="checkbox" checked={showLines} onChange={() => setShowLines(!showLines)} className="rounded border-outline text-primary focus:ring-primary" /> {t.lines}
               </label>
             )}
           </div>
 
           {/* Header Info */}
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Settings size={14} /> {t.header}</label>
-            <input type="text" placeholder={t.schoolPlace} value={headerInfo.school} onChange={e => setHeaderInfo({ ...headerInfo, school: e.target.value })} className="w-full px-3 py-2.5 text-[13px] bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none font-medium transition-colors" />
-            <input type="text" placeholder={t.teacherPlace} value={headerInfo.teacher} onChange={e => setHeaderInfo({ ...headerInfo, teacher: e.target.value })} className="w-full px-3 py-2.5 text-[13px] bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none font-medium transition-colors" />
-            <label className="flex items-center gap-2 cursor-pointer mt-2 text-[12px] font-bold text-slate-600">
-              <input type="checkbox" checked={showStudentHeader} onChange={() => setShowStudentHeader(!showStudentHeader)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /> {t.studentInfo}
+          <div className="bg-surface-container-low border border-outline-variant p-4 rounded-m3-lg shadow-elev-1 space-y-3">
+            <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5"><Settings size={14} /> {t.header}</label>
+            <input type="text" placeholder={t.schoolPlace} value={headerInfo.school} onChange={e => setHeaderInfo({ ...headerInfo, school: e.target.value })} className="w-full px-3 py-2.5 text-[13px] bg-surface-container-lowest border border-outline-variant rounded-m3-md focus:border-primary outline-none font-medium transition-colors" />
+            <input type="text" placeholder={t.teacherPlace} value={headerInfo.teacher} onChange={e => setHeaderInfo({ ...headerInfo, teacher: e.target.value })} className="w-full px-3 py-2.5 text-[13px] bg-surface-container-lowest border border-outline-variant rounded-m3-md focus:border-primary outline-none font-medium transition-colors" />
+            <label className="flex items-center gap-2 cursor-pointer mt-2 text-[12px] font-bold text-on-surface-variant">
+              <input type="checkbox" checked={showStudentHeader} onChange={() => setShowStudentHeader(!showStudentHeader)} className="rounded border-outline text-primary focus:ring-primary" /> {t.studentInfo}
             </label>
           </div>
 
           {/* Typography */}
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
+          <div className="bg-surface-container-low border border-outline-variant p-4 rounded-m3-lg shadow-elev-1 space-y-3">
             <div className="flex justify-between items-center">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Type size={14} /> {t.typography}</label>
-              <span className="text-[10px] font-black bg-slate-100 px-2 py-0.5 rounded-md text-slate-500">{fontSize}pt</span>
+              <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5"><Type size={14} /> {t.typography}</label>
+              <span className="text-[10px] font-black bg-surface-container-high px-2 py-0.5 rounded-m3-xs text-on-surface-variant">{fontSize}pt</span>
             </div>
-            <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-              <button onClick={() => setFontSize(Math.max(8, fontSize - 1))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg shadow-sm"><Minus size={14} /></button>
-              <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${((fontSize - 8) / 16) * 100}%` }}></div>
+            <div className="flex items-center gap-3 bg-surface-container p-1.5 rounded-m3-md border border-outline-variant">
+              <IconButton aria-label="Shriftni kichraytirish" size="sm" onClick={() => setFontSize(Math.max(8, fontSize - 1))} className="bg-surface-container-lowest shadow-elev-1"><Minus /></IconButton>
+              <div className="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${((fontSize - 8) / 16) * 100}%` }}></div>
               </div>
-              <button onClick={() => setFontSize(Math.min(24, fontSize + 1))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg shadow-sm"><Plus size={14} /></button>
+              <IconButton aria-label="Shriftni kattalashtirish" size="sm" onClick={() => setFontSize(Math.min(24, fontSize + 1))} className="bg-surface-container-lowest shadow-elev-1"><Plus /></IconButton>
             </div>
           </div>
 
           {/* Answer Sheet */}
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><ScanLine size={14} /> {t.answers}</label>
+          <div className="bg-surface-container-low border border-outline-variant p-4 rounded-m3-lg shadow-elev-1 space-y-3">
+            <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5"><ScanLine size={14} /> {t.answers}</label>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setAnswerSheet('none')} className={`p-2 rounded-xl border text-[11px] font-bold ${answerSheet === 'none' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}>{t.ansStyles.none}</button>
-              <button onClick={() => setAnswerSheet('standard')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'standard' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><List size={14} /> {t.ansStyles.standard}</button>
-              <button onClick={() => setAnswerSheet('writein')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'writein' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><Edit3 size={14} /> {t.ansStyles.writein}</button>
-              <button onClick={() => setAnswerSheet('grid')} className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'grid' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><Grid3X3 size={14} /> {t.ansStyles.grid}</button>
+              <button onClick={() => setAnswerSheet('none')} className={`p-2 rounded-m3-md border text-[11px] font-bold ${answerSheet === 'none' ? 'bg-primary-container text-on-primary-container border-primary' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:bg-state-hover'}`}>{t.ansStyles.none}</button>
+              <button onClick={() => setAnswerSheet('standard')} className={`p-2 rounded-m3-md border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'standard' ? 'bg-primary-container text-on-primary-container border-primary' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:bg-state-hover'}`}><List size={14} /> {t.ansStyles.standard}</button>
+              <button onClick={() => setAnswerSheet('writein')} className={`p-2 rounded-m3-md border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'writein' ? 'bg-primary-container text-on-primary-container border-primary' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:bg-state-hover'}`}><Edit3 size={14} /> {t.ansStyles.writein}</button>
+              <button onClick={() => setAnswerSheet('grid')} className={`p-2 rounded-m3-md border text-[11px] font-bold flex items-center justify-center gap-1 ${answerSheet === 'grid' ? 'bg-primary-container text-on-primary-container border-primary' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:bg-state-hover'}`}><Grid3X3 size={14} /> {t.ansStyles.grid}</button>
             </div>
           </div>
 
           {/* Answer Key */}
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[1.2rem] shadow-sm space-y-3">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><CheckSquare size={14} /> {t.keys}</label>
-            <select value={showAnswers} onChange={(e) => setShowAnswers(e.target.value as any)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-colors cursor-pointer">
+          <div className="bg-surface-container-low border border-outline-variant p-4 rounded-m3-lg shadow-elev-1 space-y-3">
+            <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5"><CheckSquare size={14} /> {t.keys}</label>
+            <select value={showAnswers} onChange={(e) => setShowAnswers(e.target.value as any)} className="w-full p-2.5 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[13px] font-bold outline-none focus:border-primary transition-colors cursor-pointer">
               <option value="none">{t.keyStyles.none}</option>
               <option value="inline">{t.keyStyles.inline}</option>
               <option value="end">{t.keyStyles.end}</option>
@@ -519,15 +520,15 @@ export default function PrintStudioPage() {
         </div>
 
         {/* Bottom actions */}
-        <div className="p-5 border-t border-slate-200/80 bg-white sticky bottom-0 space-y-3 z-10">
+        <div className="p-5 border-t border-outline-variant bg-surface-container-low sticky bottom-0 space-y-3 z-10">
           <DownloadPdfButton
             targetRef={printRootRef as any}
             fileName={`${originalData?.title || 'Test'}_Edify.pdf`}
             buttonText={lang === 'uz' ? "PDF Yuklab Olish" : lang === 'ru' ? "Скачать PDF" : "Download PDF"}
           />
-          <button onClick={handleNativePrint} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2 transition-all active:scale-95">
-            <Printer size={18} /> {t.print}
-          </button>
+          <Button variant="filled" size="lg" onClick={handleNativePrint} icon={<Printer />} className="w-full">
+            {t.print}
+          </Button>
         </div>
       </aside>
 
@@ -536,18 +537,18 @@ export default function PrintStudioPage() {
         This div is flex-1, overflow-hidden.
         Its child (the scroll container) gets overflow-y-auto so ONLY this scrolls.
       */}
-      <div className="flex-1 relative overflow-hidden flex flex-col bg-slate-200/60 print:hidden">
+      <div className="flex-1 relative overflow-hidden flex flex-col bg-surface-container print:hidden">
 
         {/* Zoom Controls */}
-        <div className="absolute top-4 right-4 z-10 flex gap-1.5 bg-white/90 backdrop-blur-md p-1.5 rounded-xl shadow-sm border border-slate-200/80">
-          <button onClick={() => setPreviewZoom(z => Math.max(0.4, parseFloat((z - 0.1).toFixed(1))))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-500"><ZoomOut size={16} /></button>
-          <span className="text-[12px] font-black self-center w-12 text-center text-slate-700">{Math.round(previewZoom * 100)}%</span>
-          <button onClick={() => setPreviewZoom(z => Math.min(1.5, parseFloat((z + 0.1).toFixed(1))))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-500"><ZoomIn size={16} /></button>
+        <div className="absolute top-4 right-4 z-10 flex gap-1.5 bg-[color-mix(in_oklab,var(--m3-surface-container-low)_90%,transparent)] backdrop-blur-md p-1.5 rounded-m3-md shadow-elev-1 border border-outline-variant">
+          <IconButton aria-label="Uzoqlashtirish" size="sm" onClick={() => setPreviewZoom(z => Math.max(0.4, parseFloat((z - 0.1).toFixed(1))))}><ZoomOut /></IconButton>
+          <span className="text-[12px] font-black self-center w-12 text-center text-on-surface">{Math.round(previewZoom * 100)}%</span>
+          <IconButton aria-label="Yaqinlashtirish" size="sm" onClick={() => setPreviewZoom(z => Math.min(1.5, parseFloat((z + 0.1).toFixed(1))))}><ZoomIn /></IconButton>
         </div>
 
         {/* Page count badge */}
         {pages.length > 0 && (
-          <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-sm border border-slate-200/80 text-[12px] font-black text-slate-600">
+          <div className="absolute top-4 left-4 z-10 bg-[color-mix(in_oklab,var(--m3-surface-container-low)_90%,transparent)] backdrop-blur-md px-3 py-1.5 rounded-m3-md shadow-elev-1 border border-outline-variant text-[12px] font-black text-on-surface-variant">
             {pages.length} {pages.length === 1 ? 'page' : 'pages'}
           </div>
         )}
@@ -574,7 +575,7 @@ export default function PrintStudioPage() {
             {pages.length === 0 ? (
               // Fallback single page while paginating
               <div
-                className="bg-white shadow-2xl font-serif tracking-tight"
+                className="bg-surface-container-lowest shadow-elev-3 font-serif tracking-tight"
                 style={{ ...paperStyle, transformOrigin: 'top center' }}
               >
                 {renderHeader()}
@@ -596,11 +597,11 @@ export default function PrintStudioPage() {
                 return (
                   <div
                     key={pageNum}
-                    className="a4-capture-page bg-white shadow-2xl font-serif tracking-tight relative"
+                    className="a4-capture-page bg-surface-container-lowest shadow-elev-3 font-serif tracking-tight relative"
                     style={paperStyle}
                   >
                     {/* Page number */}
-                    <div className="absolute bottom-3 right-4 text-[8pt] text-slate-300 font-bold select-none">
+                    <div className="absolute bottom-3 right-4 text-[8pt] text-outline font-bold select-none">
                       {pageNum + 1} / {pages.length}
                     </div>
 
@@ -653,7 +654,7 @@ export default function PrintStudioPage() {
         }}
       >
         {/* Measure header */}
-        <div className="measure-header mb-5 pb-3 border-b-2 border-slate-800">
+        <div className="measure-header mb-5 pb-3 border-b-2 border-on-surface">
           {renderHeader()}
         </div>
 

@@ -5,11 +5,12 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, where, limit, doc, updateDoc } from 'firebase/firestore';
-import { 
-  FileBadge, Clock, Play, Lock, Users, ChevronRight, Loader2, Plus, 
-  Edit2, X, CheckCircle, CircleDashed, UserIcon, Trophy, EyeOff, Eye 
+import {
+  FileBadge, Clock, Play, Lock, Users, ChevronRight, Plus,
+  Edit2, X, CheckCircle, CircleDashed, UserIcon, Trophy, EyeOff, Eye
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button, IconButton, StatusChip, Spinner, EmptyState } from '@/components/ui';
 
 export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
   const [exams, setExams] = useState<any[]>([]);
@@ -65,19 +66,21 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
     }
   };
 
-  if (loading && exams.length === 0) return <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-rose-500" size={28}/></div>;
+  if (loading && exams.length === 0) return <div className="py-12 flex justify-center"><Spinner size={28}/></div>;
 
   if (exams.length === 0) {
     return (
-      <div className="text-center py-12 md:py-16 bg-white rounded-3xl md:rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center shadow-sm mx-2 md:mx-0">
-         <div className="w-14 h-14 md:w-16 md:h-16 bg-rose-50 rounded-2xl md:rounded-[1.2rem] flex items-center justify-center mb-3 md:mb-4 shadow-sm text-rose-400 border border-rose-100">
-           <FileBadge size={28} strokeWidth={2.5} />
-         </div>
-         <h3 className="text-slate-800 font-black text-[15px] md:text-[16px] mb-1">Imtihonlar yo'q</h3>
-         <p className="text-[12px] md:text-[13px] font-medium text-slate-500 mb-5">Sinf uchun BSB yoki CHSB biriktirmagansiz.</p>
-         <button onClick={onAdd} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md shadow-rose-600/20 transition-all active:scale-95 flex items-center gap-2 text-[12px] md:text-[13px]">
-           <Plus size={16} strokeWidth={2.5}/> BSB / CHSB Biriktirish
-         </button>
+      <div className="py-6 md:py-8 bg-surface-container-low rounded-m3-xl border-2 border-dashed border-outline-variant shadow-elev-1 mx-2 md:mx-0">
+        <EmptyState
+          icon={<FileBadge strokeWidth={2.5} />}
+          title="Imtihonlar yo'q"
+          description="Sinf uchun BSB yoki CHSB biriktirmagansiz."
+          action={
+            <Button variant="filled" size="sm" icon={<Plus strokeWidth={2.5}/>} onClick={onAdd}>
+              BSB / CHSB Biriktirish
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -102,21 +105,21 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
               key={exam.id} 
               ref={isLastElement ? lastExamElementRef : null} 
               onClick={() => setViewingSubmissions({ exam, status })} 
-              className="bg-white rounded-2xl md:rounded-[1.5rem] border border-slate-200/80 p-4 md:p-5 shadow-sm flex flex-col sm:flex-row justify-between gap-4 group hover:border-rose-300 transition-all cursor-pointer active:scale-[0.98] sm:active:scale-100"
+              className="bg-surface-container-low rounded-m3-lg border border-outline-variant p-4 md:p-5 shadow-elev-1 flex flex-col sm:flex-row justify-between gap-4 group hover:border-primary transition-all cursor-pointer active:scale-[0.98] sm:active:scale-100"
             >
-              
+
               <div className="flex items-start md:items-center gap-3 md:gap-4 min-w-0">
-                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-[10px] md:rounded-xl flex items-center justify-center shrink-0 border transition-colors ${
-                  status === 'active' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20 border-rose-500 animate-pulse' :
-                  status === 'scheduled' ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-200'
+                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-m3-sm md:rounded-m3-md flex items-center justify-center shrink-0 border transition-colors ${
+                  status === 'active' ? 'bg-primary text-on-primary shadow-elev-2 border-primary animate-pulse' :
+                  status === 'scheduled' ? 'bg-primary-container text-on-primary-container border-transparent' : 'bg-surface-container-highest text-on-surface-variant border-outline-variant'
                 }`}>
                   {status === 'active' ? <Play size={18} className="ml-0.5 md:w-5 md:h-5" fill="currentColor"/> : status === 'scheduled' ? <Clock size={18} className="md:w-5 md:h-5" strokeWidth={2.5}/> : <Lock size={18} className="md:w-5 md:h-5" strokeWidth={2.5}/>}
                 </div>
-                
+
                 <div className="min-w-0 pr-2">
-                  <h3 className="font-black text-[14px] md:text-[16px] text-slate-900 group-hover:text-rose-600 transition-colors truncate leading-snug">{exam.title}</h3>
-                  <div className="flex flex-wrap items-center gap-x-2 md:gap-3 gap-y-1 mt-1 md:mt-1.5 text-[10px] md:text-[12px] font-bold text-slate-500">
-                    <span className="uppercase tracking-widest text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100/50">{exam.assessmentType}</span>
+                  <h3 className="font-black text-[14px] md:text-[16px] text-on-surface group-hover:text-primary transition-colors truncate leading-snug">{exam.title}</h3>
+                  <div className="flex flex-wrap items-center gap-x-2 md:gap-3 gap-y-1 mt-1 md:mt-1.5 text-[10px] md:text-[12px] font-bold text-on-surface-variant">
+                    <span className="uppercase tracking-widest text-on-primary-container bg-primary-container px-1.5 py-0.5 rounded-m3-xs">{exam.assessmentType}</span>
                     <span className="hidden sm:inline">•</span>
                     <span>{examDate.toLocaleDateString()} {examDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                     <span>•</span>
@@ -125,22 +128,22 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0 w-full sm:w-auto shrink-0">
-                 <div className="flex items-center gap-1.5 text-[11px] md:text-[12px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/50">
-                    <Users size={14} className="text-indigo-400"/>
+              <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 border-t border-outline-variant sm:border-0 pt-3 sm:pt-0 w-full sm:w-auto shrink-0">
+                 <div className="flex items-center gap-1.5 text-[11px] md:text-[12px] font-black text-on-surface-variant uppercase tracking-widest bg-surface-container px-3 py-1.5 rounded-m3-sm border border-outline-variant">
+                    <Users size={14} className="text-primary"/>
                     {exam.submittedStudentIds?.length || 0} / {roster.length}
                  </div>
-                 
+
                  {/* 🟢 NEW: QUICK ACTION BUTTONS */}
                  <div className="flex items-center gap-1.5">
-                   
+
                    {/* QUICK TOGGLE VISIBILITY */}
-                   <button 
+                   <button
                      onClick={(e) => toggleVisibility(e, exam)}
-                     className={`w-8 h-8 md:w-10 md:h-10 rounded-[10px] md:rounded-xl flex items-center justify-center transition-all border active:scale-95 ${
-                       isHidden 
-                         ? 'bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 border-slate-200/50' 
-                         : 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm ring-1 ring-emerald-500/20'
+                     className={`w-8 h-8 md:w-10 md:h-10 rounded-m3-sm md:rounded-m3-md flex items-center justify-center transition-all border active:scale-95 ${
+                       isHidden
+                         ? 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border-outline-variant'
+                         : 'bg-success-container text-on-success-container border-success shadow-elev-1'
                      }`}
                      title={isHidden ? "Natijalar yashirilgan (Ochish uchun bosing)" : "Natijalar ochiq (Yashirish uchun bosing)"}
                    >
@@ -148,16 +151,16 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
                    </button>
 
                    {/* EDIT EXAM */}
-                   <button 
-                     onClick={(e) => { e.stopPropagation(); onEdit(exam); }} 
-                     className="w-8 h-8 md:w-10 md:h-10 bg-slate-50 rounded-[10px] md:rounded-xl flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors border border-slate-200/50 hover:border-blue-200 active:scale-95"
+                   <button
+                     onClick={(e) => { e.stopPropagation(); onEdit(exam); }}
+                     className="w-8 h-8 md:w-10 md:h-10 bg-surface-container rounded-m3-sm md:rounded-m3-md flex items-center justify-center text-on-surface-variant hover:text-on-primary-container hover:bg-primary-container transition-colors border border-outline-variant active:scale-95"
                      title="Tahrirlash"
                    >
                      <Edit2 size={16} className="md:w-[18px] md:h-[18px]" strokeWidth={2.5}/>
                    </button>
 
                    {/* ENTER SUBMISSIONS */}
-                   <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-50 rounded-[10px] md:rounded-xl flex items-center justify-center text-slate-400 group-hover:text-rose-500 group-hover:bg-rose-50 transition-colors border border-slate-200/50 group-hover:border-rose-200">
+                   <div className="w-8 h-8 md:w-10 md:h-10 bg-surface-container rounded-m3-sm md:rounded-m3-md flex items-center justify-center text-on-surface-variant group-hover:text-on-primary-container group-hover:bg-primary-container transition-colors border border-outline-variant">
                      <ChevronRight size={18} className="md:w-5 md:h-5" strokeWidth={3}/>
                    </div>
 
@@ -170,7 +173,7 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
         
         {hasMore && (
           <div className="py-4 flex justify-center">
-            <Loader2 className="animate-spin text-slate-300" size={24}/>
+            <Spinner size={24}/>
           </div>
         )}
       </div>
@@ -236,36 +239,36 @@ function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-6">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-      
-      <div className="relative bg-white rounded-t-[2rem] sm:rounded-[2rem] w-full max-w-lg h-[90vh] sm:h-[80vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 fade-in duration-300 border border-slate-100 overflow-hidden">
-        
-        <div className="p-4 sm:p-6 border-b border-slate-100 flex items-start justify-between shrink-0 bg-white/90 backdrop-blur-md z-20 shadow-sm">
+      <div className="absolute inset-0 bg-scrim backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+
+      <div className="relative bg-surface-container-low rounded-t-m3-xl sm:rounded-m3-xl w-full max-w-lg h-[90vh] sm:h-[80vh] flex flex-col shadow-elev-3 animate-in slide-in-from-bottom-10 sm:zoom-in-95 fade-in duration-300 overflow-hidden">
+
+        <div className="p-4 sm:p-6 border-b border-outline-variant flex items-start justify-between shrink-0 bg-[color-mix(in_oklab,var(--m3-surface-container-low)_90%,transparent)] backdrop-blur-md z-20 shadow-elev-1">
           <div className="flex-1 pr-4 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-               <span className={`w-2 h-2 rounded-full ${data.status === 'active' ? 'bg-emerald-500 animate-pulse' : data.status === 'scheduled' ? 'bg-amber-500' : 'bg-slate-400'}`}></span>
-               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{data.status === 'active' ? 'Imtihon jarayonda' : data.status === 'scheduled' ? 'Kutilmoqda' : 'Yakunlangan'}</span>
+               <span className={`w-2 h-2 rounded-full ${data.status === 'active' ? 'bg-success animate-pulse' : data.status === 'scheduled' ? 'bg-warning' : 'bg-outline'}`}></span>
+               <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">{data.status === 'active' ? 'Imtihon jarayonda' : data.status === 'scheduled' ? 'Kutilmoqda' : 'Yakunlangan'}</span>
             </div>
-            <h2 className="text-[15px] sm:text-[18px] font-black text-slate-900 leading-tight truncate">{exam.title}</h2>
+            <h2 className="text-[15px] sm:text-[18px] font-black text-on-surface leading-tight truncate">{exam.title}</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 sm:w-9 sm:h-9 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-full flex items-center justify-center text-slate-400 transition-colors shrink-0 active:scale-95"><X size={18} strokeWidth={2.5}/></button>
+          <IconButton aria-label="Yopish" size="sm" onClick={onClose} className="shrink-0"><X strokeWidth={2.5}/></IconButton>
         </div>
 
-        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-[#FAFAFA] shrink-0 z-10 border-b border-slate-100">
-          <div className="flex p-1 bg-slate-200/60 rounded-xl shadow-inner border border-slate-200/50">
-            <button onClick={() => setActiveTab('submitted')} className={`flex-1 py-2 text-[11px] sm:text-[12px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === 'submitted' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-surface shrink-0 z-10 border-b border-outline-variant">
+          <div className="flex p-1 bg-surface-container-high rounded-m3-md shadow-inner border border-outline-variant">
+            <button onClick={() => setActiveTab('submitted')} className={`flex-1 py-2 text-[11px] sm:text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-1.5 ${activeTab === 'submitted' ? 'bg-surface-container-lowest text-success shadow-elev-1 ring-1 ring-outline-variant' : 'text-on-surface-variant hover:text-on-surface'}`}>
               <CheckCircle size={14} strokeWidth={2.5}/> Topshirganlar ({submittedList.length})
             </button>
-            <button onClick={() => setActiveTab('pending')} className={`flex-1 py-2 text-[11px] sm:text-[12px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${activeTab === 'pending' ? 'bg-white text-amber-600 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}>
+            <button onClick={() => setActiveTab('pending')} className={`flex-1 py-2 text-[11px] sm:text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-1.5 ${activeTab === 'pending' ? 'bg-surface-container-lowest text-warning shadow-elev-1 ring-1 ring-outline-variant' : 'text-on-surface-variant hover:text-on-surface'}`}>
               <CircleDashed size={14} strokeWidth={2.5}/> Kutilmoqda ({pendingList.length})
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-4 pb-20 bg-[#FAFAFA] custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-4 pb-20 bg-surface custom-scrollbar">
           {displayList.length === 0 ? (
-            <div className="py-16 flex flex-col items-center text-slate-400 gap-3 border-2 border-dashed border-slate-200/80 rounded-[1.5rem] bg-white shadow-sm">
-              {activeTab === 'submitted' ? <CircleDashed size={32} className="opacity-30"/> : <CheckCircle size={32} className="opacity-30 text-emerald-500"/>}
+            <div className="py-16 flex flex-col items-center text-on-surface-variant gap-3 border-2 border-dashed border-outline-variant rounded-m3-lg bg-surface-container-low shadow-elev-1">
+              {activeTab === 'submitted' ? <CircleDashed size={32} className="opacity-30"/> : <CheckCircle size={32} className="opacity-30 text-success"/>}
               <p className="font-bold text-[12px] sm:text-[13px]">{activeTab === 'submitted' ? 'Hali hech kim topshirmadi.' : "Barcha o'quvchilar topshirib bo'ldi!"}</p>
             </div>
           ) : (
@@ -276,8 +279,8 @@ function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
                 const currentScore = attempt?.teacherScore || 0;
                 
                 return (
-                  <div key={student.uid} className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 bg-white border border-slate-200/80 rounded-[1.2rem] shadow-sm hover:border-indigo-100 transition-colors">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-slate-100 rounded-xl flex items-center justify-center font-black text-slate-500 text-[13px] shrink-0 overflow-hidden">
+                  <div key={student.uid} className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 bg-surface-container-lowest border border-outline-variant rounded-m3-lg shadow-elev-1 hover:border-outline transition-colors">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-surface-container-high rounded-m3-md flex items-center justify-center font-black text-on-surface-variant text-[13px] shrink-0 overflow-hidden">
                       {student.photoURL || student.photoUrl || student.avatar ? (
                         <img src={student.photoURL || student.photoUrl || student.avatar} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
@@ -285,10 +288,10 @@ function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-black text-slate-900 text-[12px] sm:text-[14px] truncate leading-tight">{student.displayName}</p>
-                      <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate">@{student.username || 'student'}</p>
+                      <p className="font-black text-on-surface text-[12px] sm:text-[14px] truncate leading-tight">{student.displayName}</p>
+                      <p className="text-[10px] sm:text-[11px] font-bold text-on-surface-variant truncate">@{student.username || 'student'}</p>
                     </div>
-                    
+
                     {/* 🟢 NEW: ULTRA-MINIMAL MOBILE LAYOUT FOR BADGES */}
                     <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
                       {activeTab === 'submitted' ? (
@@ -296,35 +299,38 @@ function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
                           {isGraded ? (
                             <div className="flex items-center gap-1.5">
                               {/* Always visible Score Badge */}
-                              <span className="flex bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2 py-1.5 sm:px-2.5 rounded-lg items-center gap-1 sm:gap-1.5 border border-emerald-200 shadow-inner">
-                                <Trophy size={12} strokeWidth={2.5} className="text-emerald-500"/> {currentScore} <span className="hidden sm:inline">Ball</span>
-                              </span>
+                              <StatusChip tone="success" noDot className="text-[10px] font-black uppercase tracking-widest">
+                                <Trophy size={12} strokeWidth={2.5}/> {currentScore} <span className="hidden sm:inline">Ball</span>
+                              </StatusChip>
                               {/* Edit Button (Icon only on mobile) */}
-                              <button 
+                              <Button
+                                variant="tonal"
+                                size="sm"
+                                icon={<Edit2 strokeWidth={2.5} />}
                                 onClick={() => router.push(`/teacher/classes/${classId}/grade/${exam.id}/${student.uid}`)}
-                                className="px-2.5 sm:px-4 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 text-[11px] sm:text-[12px] font-black rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 border border-amber-200"
                               >
-                                <Edit2 size={14} strokeWidth={2.5} /> <span className="hidden sm:inline">Tahrirlash</span>
-                              </button>
+                                <span className="hidden sm:inline">Tahrirlash</span>
+                              </Button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1.5">
-                              <span className="hidden sm:flex bg-indigo-50 text-indigo-400 text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg items-center gap-1.5 border border-indigo-100">
+                              <StatusChip tone="info" noDot className="hidden sm:inline-flex text-[10px] font-black uppercase tracking-widest">
                                 <Clock size={12} strokeWidth={2.5}/> Tekshirilmoqda
-                              </span>
-                              <button 
+                              </StatusChip>
+                              <Button
+                                variant="filled"
+                                size="sm"
                                 onClick={() => router.push(`/teacher/classes/${classId}/grade/${exam.id}/${student.uid}`)}
-                                className="px-3 sm:px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-[12px] font-black rounded-lg shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-1"
                               >
                                 Baholash <ChevronRight size={14} strokeWidth={3}/>
-                              </button>
+                              </Button>
                             </div>
                           )}
                         </>
                       ) : (
-                        <span className="bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md flex items-center gap-1 border border-amber-100">
+                        <StatusChip tone="warning" noDot className="text-[10px] font-black uppercase tracking-widest px-2">
                           <CircleDashed size={12} className="animate-spin-slow"/>
-                        </span>
+                        </StatusChip>
                       )}
                     </div>
                   </div>

@@ -24,6 +24,7 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | Finance (charges, payments, payroll, expenses) | [docs/FINANCE.md](docs/FINANCE.md) + [docs/FINANCE_DATABASE.md](docs/FINANCE_DATABASE.md) |
 | `app/admin/*`, `/api/admin/*`, god-mode | [docs/ADMIN.md](docs/ADMIN.md) |
 | IELTS | [docs/IELTS.md](docs/IELTS.md) |
+| Teacher UI kit — `components/ui/*`, M3 tokens, restyling `app/teacher/*` | [docs/UI_KIT.md](docs/UI_KIT.md) |
 
 ## Commands
 

@@ -5,10 +5,11 @@ import { createPortal } from 'react-dom'; // 🟢 ADDED PORTAL
 import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { X, UploadCloud, Loader2, File as FileIcon, Link as LinkIcon, Folder, Cloud } from 'lucide-react';
+import { X, UploadCloud, File as FileIcon, Link as LinkIcon, Folder, Cloud } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/AuthContext';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { Button, IconButton, ProgressBar, Spinner } from '@/components/ui';
 
 // --- TRANSLATION DICTIONARY ---
 const UPLOAD_MODAL_TRANSLATIONS = {
@@ -128,41 +129,38 @@ export default function UploadMaterialModal({ classId, isOpen, onClose }: Props)
     <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-6">
       
       {/* Premium Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={!isUploading ? handleClose : undefined}></div>
-      
+      <div className="absolute inset-0 bg-scrim backdrop-blur-sm transition-opacity" onClick={!isUploading ? handleClose : undefined}></div>
+
       {/* 🟢 ULTRA MINIMALISTIC MOBILE-FIRST MODAL */}
-      <div className="relative bg-white rounded-t-[2rem] sm:rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-10 sm:zoom-in-95 fade-in duration-300 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]">
-        
+      <div className="relative bg-surface-container-low rounded-t-m3-xl sm:rounded-m3-xl w-full max-w-lg overflow-hidden shadow-elev-3 animate-in slide-in-from-bottom-10 sm:zoom-in-95 fade-in duration-300 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]">
+
         {/* HEADER */}
-        <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-white/90 backdrop-blur-xl shrink-0 z-20 shadow-sm">
+        <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-outline-variant flex justify-between items-center bg-[color-mix(in_oklab,var(--m3-surface-container-low)_90%,transparent)] backdrop-blur-xl shrink-0 z-20 shadow-elev-1">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-m3-md bg-primary-container flex items-center justify-center text-on-primary-container shadow-elev-1 shrink-0">
                <Cloud size={18} strokeWidth={2.5} className="sm:w-5 sm:h-5"/>
             </div>
-            <h2 className="text-[16px] sm:text-[18px] font-black text-slate-900 tracking-tight leading-tight">{t.modalTitle}</h2>
+            <h2 className="text-[16px] sm:text-[18px] font-black text-on-surface tracking-tight leading-tight">{t.modalTitle}</h2>
           </div>
-          <button 
-            onClick={handleClose} disabled={isUploading}
-            className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors shrink-0 disabled:opacity-50 active:scale-95"
-          >
-            <X size={18} strokeWidth={2.5} />
-          </button>
+          <IconButton aria-label="Yopish" size="sm" onClick={handleClose} disabled={isUploading} className="shrink-0">
+            <X strokeWidth={2.5} />
+          </IconButton>
         </div>
 
         {/* BODY */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#FAFAFA] space-y-5 sm:space-y-6 custom-scrollbar relative pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-8">
-          
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-surface space-y-5 sm:space-y-6 custom-scrollbar relative pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-8">
+
           {/* Segmented Tabs */}
-          <div className="flex p-1.5 bg-slate-200/50 rounded-[1rem] shadow-inner">
-            <button 
+          <div className="flex p-1.5 bg-surface-container-high rounded-m3-lg shadow-inner">
+            <button
               onClick={() => setUploadMode('file')} disabled={isUploading}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-2 text-[12px] font-bold rounded-[0.8rem] sm:rounded-xl transition-all ${uploadMode === 'file' ? 'bg-white shadow-sm text-blue-600 ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-800 disabled:opacity-50'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-2 text-[12px] font-bold rounded-m3-md transition-all ${uploadMode === 'file' ? 'bg-surface-container-lowest shadow-elev-1 text-primary ring-1 ring-outline-variant' : 'text-on-surface-variant hover:text-on-surface disabled:opacity-50'}`}
             >
               <FileIcon size={14}/> {t.modes.file}
             </button>
-            <button 
+            <button
               onClick={() => setUploadMode('link')} disabled={isUploading}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-2 text-[12px] font-bold rounded-[0.8rem] sm:rounded-xl transition-all ${uploadMode === 'link' ? 'bg-white shadow-sm text-blue-600 ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-800 disabled:opacity-50'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-2 text-[12px] font-bold rounded-m3-md transition-all ${uploadMode === 'link' ? 'bg-surface-container-lowest shadow-elev-1 text-primary ring-1 ring-outline-variant' : 'text-on-surface-variant hover:text-on-surface disabled:opacity-50'}`}
             >
               <LinkIcon size={14}/> {t.modes.link}
             </button>
@@ -171,40 +169,40 @@ export default function UploadMaterialModal({ classId, isOpen, onClose }: Props)
           {/* Title & Topic Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">{t.form.title} <span className="text-red-500">*</span></label>
+              <label className="block text-[10px] sm:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-1.5 sm:mb-2">{t.form.title} <span className="text-error">*</span></label>
               <input 
                 type="text" value={title} onChange={e => setTitle(e.target.value)} disabled={isUploading} placeholder={t.form.titlePlaceholder} 
-                className="w-full px-4 py-3 bg-white border border-slate-200/80 rounded-[1rem] text-[13px] sm:text-[14px] font-bold text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all shadow-sm disabled:opacity-50" 
+                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[13px] sm:text-[14px] font-bold text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_12%,transparent)] outline-none transition-all shadow-elev-1 disabled:opacity-50" 
               />
             </div>
             <div>
-              <label className="block text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 flex items-center gap-1.5"><Folder size={12}/> {t.form.topic}</label>
+              <label className="block text-[10px] sm:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-1.5 sm:mb-2 flex items-center gap-1.5"><Folder size={12}/> {t.form.topic}</label>
               <input 
                 type="text" value={topic} onChange={e => setTopic(e.target.value)} disabled={isUploading} placeholder={t.form.topicPlaceholder} 
-                className="w-full px-4 py-3 bg-white border border-slate-200/80 rounded-[1rem] text-[13px] sm:text-[14px] font-bold text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all shadow-sm disabled:opacity-50" 
+                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[13px] sm:text-[14px] font-bold text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_12%,transparent)] outline-none transition-all shadow-elev-1 disabled:opacity-50" 
               />
             </div>
           </div>
           
           {/* Description */}
           <div>
-            <label className="block text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">{t.form.description}</label>
+            <label className="block text-[10px] sm:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-1.5 sm:mb-2">{t.form.description}</label>
             <textarea 
               value={description} onChange={e => setDescription(e.target.value)} disabled={isUploading} rows={2} placeholder={t.form.descPlaceholder} 
-              className="w-full px-4 py-3 bg-white border border-slate-200/80 rounded-[1rem] text-[13px] sm:text-[14px] font-medium text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 outline-none resize-none transition-all shadow-sm disabled:opacity-50" 
+              className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[13px] sm:text-[14px] font-medium text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_12%,transparent)] outline-none resize-none transition-all shadow-elev-1 disabled:opacity-50" 
             />
           </div>
 
           {/* DYNAMIC INPUT: Link OR File */}
-          <div className="pt-2 sm:pt-3 border-t border-slate-200/60">
+          <div className="pt-2 sm:pt-3 border-t border-outline-variant">
             {uploadMode === 'link' ? (
               <div>
-                <label className="block text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">{t.form.url} <span className="text-red-500">*</span></label>
+                <label className="block text-[10px] sm:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-1.5 sm:mb-2">{t.form.url} <span className="text-error">*</span></label>
                 <div className="relative group">
-                  <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16}/>
+                  <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors" size={16}/>
                   <input 
                     type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} disabled={isUploading} placeholder={t.form.urlPlaceholder} 
-                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200/80 rounded-[1rem] text-[13px] sm:text-[14px] font-bold text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all shadow-sm disabled:opacity-50" 
+                    className="w-full pl-11 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[13px] sm:text-[14px] font-bold text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_12%,transparent)] outline-none transition-all shadow-elev-1 disabled:opacity-50" 
                   />
                 </div>
               </div>
@@ -213,28 +211,28 @@ export default function UploadMaterialModal({ classId, isOpen, onClose }: Props)
                 <input type="file" id="file-upload" className="hidden" onChange={e => setFile(e.target.files?.[0] || null)} disabled={isUploading} />
                 <label 
                   htmlFor="file-upload" 
-                  className={`flex flex-col items-center justify-center w-full h-32 sm:h-36 border-2 border-dashed rounded-[1.2rem] cursor-pointer transition-all relative overflow-hidden group active:scale-[0.98] sm:active:scale-100 ${
-                    file 
-                      ? 'border-blue-400 bg-blue-50' 
-                      : 'border-slate-300 bg-white hover:bg-slate-50 hover:border-blue-300'
+                  className={`flex flex-col items-center justify-center w-full h-32 sm:h-36 border-2 border-dashed rounded-m3-lg cursor-pointer transition-all relative overflow-hidden group active:scale-[0.98] sm:active:scale-100 ${
+                    file
+                      ? 'border-primary bg-primary-container'
+                      : 'border-outline bg-surface-container-lowest hover:bg-surface-container hover:border-primary'
                   } ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
                 >
                   {/* Subtle hover flare */}
-                  {!file && <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 to-blue-400/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
+                  {!file && <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[color-mix(in_oklab,var(--m3-primary)_6%,transparent)] opacity-0 group-hover:opacity-100 transition-opacity"></div>}
 
                   {file ? (
                     <div className="text-center relative z-10 flex flex-col items-center">
-                      <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center mb-2 text-blue-600">
+                      <div className="w-10 h-10 bg-surface-container-lowest rounded-m3-md shadow-elev-1 flex items-center justify-center mb-2 text-primary">
                         <FileIcon size={20} strokeWidth={2.5} />
                       </div>
-                      <p className="text-[13px] font-black text-slate-800 truncate px-4 max-w-[250px]">{file.name}</p>
-                      <p className="text-[11px] font-bold text-blue-500 mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB • <span className="underline decoration-blue-200 hover:decoration-blue-500">{t.dropzone.change}</span></p>
+                      <p className="text-[13px] font-black text-on-surface truncate px-4 max-w-[250px]">{file.name}</p>
+                      <p className="text-[11px] font-bold text-primary mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB • <span className="underline decoration-[color-mix(in_oklab,var(--m3-primary)_35%,transparent)] hover:decoration-primary">{t.dropzone.change}</span></p>
                     </div>
                   ) : (
-                    <div className="text-center text-slate-500 relative z-10">
-                      <UploadCloud className="mx-auto mb-2 text-slate-400 group-hover:text-blue-500 transition-colors group-hover:-translate-y-1 duration-300" size={28} />
-                      <p className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{t.dropzone.select}</p>
-                      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1.5">{t.dropzone.types}</p>
+                    <div className="text-center text-on-surface-variant relative z-10">
+                      <UploadCloud className="mx-auto mb-2 text-on-surface-variant group-hover:text-primary transition-colors group-hover:-translate-y-1 duration-300" size={28} />
+                      <p className="text-[12px] sm:text-[13px] font-bold text-on-surface group-hover:text-primary transition-colors">{t.dropzone.select}</p>
+                      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-on-surface-variant mt-1.5">{t.dropzone.types}</p>
                     </div>
                   )}
                 </label>
@@ -246,26 +244,27 @@ export default function UploadMaterialModal({ classId, isOpen, onClose }: Props)
           {isUploading && uploadMode === 'file' && (
             <div className="pt-2 animate-in fade-in duration-300">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Loader2 size={12} className="animate-spin text-blue-500"/> {t.progress}</span>
-                <span className="text-[10px] sm:text-[11px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{progress}%</span>
+                <span className="text-[10px] sm:text-[11px] font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5"><Spinner size={12}/> {t.progress}</span>
+                <span className="text-[10px] sm:text-[11px] font-black text-on-primary-container bg-primary-container px-2 py-0.5 rounded-m3-xs">{progress}%</span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
-                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full transition-all duration-300 rounded-full" style={{ width: `${progress}%` }}></div>
-              </div>
+              <ProgressBar value={progress} className="h-2.5" />
             </div>
           )}
         </div>
 
         {/* FOOTER */}
-        <div className="px-4 sm:px-8 py-4 sm:py-5 bg-white border-t border-slate-100 flex justify-end shrink-0 z-20 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5 shadow-[0_-10px_30px_rgb(0,0,0,0.03)]">
-          <button 
-            onClick={handleSave} 
-            disabled={isUploading || !title.trim()} 
-            className="w-full sm:w-auto px-8 py-3.5 sm:py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all flex justify-center items-center gap-2 active:scale-95 text-[13px] sm:text-[14px]"
+        <div className="px-4 sm:px-8 py-4 sm:py-5 bg-surface-container-low border-t border-outline-variant flex justify-end shrink-0 z-20 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5 shadow-[0_-10px_30px_rgb(0,0,0,0.03)]">
+          <Button
+            variant="filled"
+            size="lg"
+            onClick={handleSave}
+            disabled={isUploading || !title.trim()}
+            loading={isUploading}
+            icon={<Cloud strokeWidth={2.5}/>}
+            className="w-full sm:w-auto"
           >
-            {isUploading ? <Loader2 className="animate-spin" size={18}/> : <Cloud size={18} strokeWidth={2.5}/>}
             {isUploading ? t.buttons.saving : t.buttons.save}
-          </button>
+          </Button>
         </div>
 
       </div>

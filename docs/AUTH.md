@@ -15,7 +15,10 @@ How users sign up, log in, get a role, and get authorized — client-side (layou
 | `lib/firebase.ts` | Client SDK singleton (`auth`, `db`, …) |
 | `lib/firebaseAdmin.ts` | Admin SDK (`adminAuth`, `adminDb`, `adminStorage`); env `FIREBASE_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY` (`\n` un-escaped at load) |
 | `lib/AuthContext.tsx` | `AuthProvider` + `useAuth()` → `{user, loading}`. Renders children only after first auth resolution (`{!loading && children}`) |
-| `app/(public)/auth/login/page.tsx` | Login, role-based redirect, forgot-password, SSO auto-redirect |
+| `app/(public)/auth/login/page.tsx` | Login (email **or** username), role-based redirect, forgot-password, SSO auto-redirect |
+| `app/api/auth/login/route.ts` | Username login: resolves username→email server-side, verifies password via Identity Toolkit REST, returns a custom token |
+| `app/api/auth/reset-password/route.ts` | Forgot-password by username (sends Firebase reset email server-side; always replies `{ok:true}`) |
+| `lib/server/authRateLimit.ts` | In-memory per-IP throttle shared by the two `/api/auth/*` routes |
 | `app/(public)/auth/signup/_components/{Student,Teacher,Manager}SignupFlow.tsx` | Per-role signup wizards |
 | `lib/sso.ts` + `app/api/sso/token/route.ts` | SSO custom-token mint for partner apps (e.g. tez-yozish typing trainer) |
 | `lib/server/verifySuperAdmin.ts` | `requireSuperAdmin(request)` — gates every `/api/admin/*` route |
@@ -41,8 +44,10 @@ Common: `createUserWithEmailAndPassword` → `updateProfile(displayName)` → on
 - **Teacher** → `/teacher/dashboard`. Writes `subject`, `grade:'Teacher'`, `verifiedTeacher:false`, `experience:0`.
 - **Manager** → `/manager/dashboard`. 3 steps; phone regex `+998 XX XXX XX XX`; auto-slugified center name (**slug format is NOT validated in the public flow** — only the admin API route validates it). Writes `users` doc (`role:'manager'`, `centerId`) + `centers` doc: `{id, name, slug, ownerUid, size, status:'pending', subscription:{plan:'free_trial', validUntil:+14d ISO}, createdAt}`.
 
-### Login (`app/(public)/auth/login/page.tsx` ~460-495)
-`signInWithEmailAndPassword`, then precedence:
+### Login (`app/(public)/auth/login/page.tsx`)
+One smart identifier field. Input contains `@` → email path (`signInWithEmailAndPassword`, unchanged legacy behavior). No `@` → username path: `POST /api/auth/login {username, password}`; the route lowercases the username, resolves `usernames/{name}` → uid → `adminAuth.getUser(uid).email` (**email never reaches the browser**), verifies the password via Identity Toolkit REST `accounts:signInWithPassword` (Firebase's per-account lockout applies; key = `NEXT_PUBLIC_FIREBASE_API_KEY`), then returns `createCustomToken(uid)`; the client finishes with `signInWithCustomToken`. Unknown username, wrong password, and disabled account all get the identical generic 401 (`invalid-credentials`) — no account enumeration. Per-IP throttle: 20 attempts / 10 min (429 → "too many attempts" toast).
+
+Both paths then run the same post-sign-in precedence:
 1. SSO `returnTo` pending → `completeSsoRedirect` and stop.
 2. `getIdTokenResult(true)` → `super_admin` claim → `/admin`.
 3. `users/{uid}` doc; missing → "Profile not found" error.
@@ -51,7 +56,7 @@ Common: `createUserWithEmailAndPassword` → `updateProfile(displayName)` → on
 Already-signed-in users landing on the login page with `?returnTo=` are auto-SSO-redirected (one-shot `onAuthStateChanged`).
 
 ### Password reset
-Login page "forgot password" → `sendPasswordResetEmail` (needs email typed in the field; no separate page). Admin can mint a reset link for a center owner via `POST /api/admin/centers/[id]/manager` action `reset-password`.
+Login page "forgot password" uses whatever is in the identifier field (no separate page). Email typed → client `sendPasswordResetEmail` (legacy behavior, incl. its per-address error toasts). Username typed → `POST /api/auth/reset-password {username}`: the route resolves the username server-side and sends the reset email via Identity Toolkit `accounts:sendOobCode`, but **always responds `{ok:true}`** whether or not the username exists (enumeration-safe; the success toast means "sent if the account exists"). Per-IP throttle: 5 requests / 15 min. Admin can mint a reset link for a center owner via `POST /api/admin/centers/[id]/manager` action `reset-password`.
 
 ### SSO (partner hand-off)
 Partner sends the user to login/signup with `?returnTo=<callbackURL>`:
@@ -79,12 +84,32 @@ Security invariant: the caller proves identity with its own ID token, so SSO can
 - `isSuperAdmin()` + god-mode wildcard match.
 - `centers`: create requires `ownerUid == uid` AND `status == 'pending'` (no self-approval); owner update `hasOnly(['name','slug','size'])`. Activation happens only via god-mode client write from `/admin/centers` or Admin SDK.
 - `usernames`: public read; create-if-absent with own uid; owner delete; **update: false** (immutable).
-- `users`: read if authed; owner create/delete/update, plus a carve-out allowing any authed user a ±1 delta on `followersCount`/`followingCount` only (social follow, `lib/social.ts`).
+- `users`: read if authed. Owner create/delete/update, **minus a privileged-field denylist** (below), plus a carve-out allowing any authed user a ±1 delta on `followersCount`/`followingCount` only (social follow, `lib/social.ts`).
+
+### The `users` privileged-field denylist (the core of the authz model)
+
+`users/{uid}` is client-writable, so **anything stored there that grants privilege or costs money must be unwritable by its owner**. These fields are settable only by the Admin SDK (API routes) or a super admin (god mode):
+
+| Field | Why it's locked |
+|---|---|
+| `role`, `centerId` | authorization *hints* only — the real gate is always an ownerUid check |
+| `subscription`, `currentLimits`, `includedFeatures`, `usage` | the paid plan + AI quota that `lib/ai/featureGatekeeper` reads as its authorization source — self-writable meant free premium + unlimited Gemini on your bill |
+| `verifiedTeacher` | trust badge |
+| `isActive` | moderation / ban flag |
+
+⚠️ **Locked on `create` as well as `update`** — the owner may delete their own doc, so an update-only lock is bypassed in two calls by delete-then-recreate. `create` additionally forces `role ∈ {student,teacher,manager}`, `verifiedTeacher == false`, `totalXP == 0`.
+
+⚠️ **Never trust `users.role` / `users.centerId` as an authorization source.** They are attacker-controlled. Every privileged path must prove ownership independently: `isActiveCenterManager()` / `isCenterManager()` in rules, and `requireActiveCenterManager()` server-side — all three compare `centers/{centerId}.ownerUid` to the caller's uid.
+
+Not yet locked (see docs/STUDENT.md): `totalXP`, `currentStreak`, `dailyHistory` are still client-written by the test runner, so XP remains forgeable until scoring moves server-side.
 
 ## Invariants & traps
 
-- **Usernames are always lowercased** — in `users.username`, in the `usernames/{id}` doc ID, and in the availability check.
+- **Usernames are always lowercased** — in `users.username`, in the `usernames/{id}` doc ID, in the availability check, and in the `/api/auth/*` lookups.
+- **Username login/reset must stay enumeration-safe**: the `/api/auth/*` routes never reveal whether a username exists (identical generic responses) and never return the account's email to the client. Don't "improve" the error messages into specific ones, and don't put emails in the public-read `usernames/*` docs.
 - **Pending-center gate is triple-enforced**: rules (`isActiveCenterManager`), server (`requireActiveCenterManager`), UX (`ApprovalGate.tsx` overlay). The rules are the security boundary; the component is UX only.
+- **`requireActiveCenterManager` must compare `centers.ownerUid` to the caller's uid** — not just `users.role == 'manager'` + `users.centerId`. It previously trusted the (client-writable) user doc alone, so any signed-in user could point `centerId` at someone else's center and drive every `/api/manager/*` route — which use the Admin SDK and bypass rules — against it. Regression-tested in `tests/rules/`.
+- **Rules are regression-tested.** `npm run test:rules` runs `firestore.rules` against the emulator: attack tests (each reproduces a real escalation) + legit-flow tests (signup ×3, profile edit, XP submit, social follow, center admin, god mode). **Never tighten a rule without first adding the legit-flow test that proves you didn't break the live app.**
 - Rules changes require `firebase deploy --only firestore:rules`.
 - Center approval by admin is a **raw client `updateDoc`** on `centers.status`, legal only because of god-mode — there is no approve API route.
 - Manager ownership transfer (`/api/admin/centers/[id]/manager` action transfer) mutates `role`/`centerId` on both users; `oldOwnerAction` ∈ demote-teacher | demote-student | keep.
@@ -99,4 +124,4 @@ Security invariant: the caller proves identity with its own ID token, so SSO can
 
 ## How to verify changes
 
-No test suite. `npm run dev`, then exercise: signup per role (check `users` + `usernames` docs), login redirect per role, a pending manager hitting `ApprovalGate`, SSO round-trip with `NEXT_PUBLIC_SSO_ALLOWED_ORIGINS=http://localhost:3001` and a fake `?returnTo=`. Rules edits: deploy to a test project or use the emulator before production deploy.
+No test suite. `npm run dev`, then exercise: signup per role (check `users` + `usernames` docs), login redirect per role — **with email AND with username** (username of an existing account + correct password → same redirect as email login; wrong password and non-existent username → the same generic "invalid" toast; verify the `/api/auth/login` response carries only `{token}`, no email), forgot-password with a username in the field (generic success toast; reset email arrives for real accounts), a pending manager hitting `ApprovalGate`, SSO round-trip with `NEXT_PUBLIC_SSO_ALLOWED_ORIGINS=http://localhost:3001` and a fake `?returnTo=`. Rules edits: deploy to a test project or use the emulator before production deploy.

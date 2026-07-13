@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import toast from 'react-hot-toast';
+import { Button, IconButton, EmptyState } from '@/components/ui';
 
 // --- 1. TRANSLATION DICTIONARY ---
 const NOTIFICATIONS_TRANSLATIONS = {
@@ -204,11 +205,11 @@ export default function TeacherNotificationsPage() {
   // 4. HELPERS
   const getIcon = (type: string) => {
     switch (type) {
-      case 'submission': return <div className="bg-green-100 text-green-600 p-3 rounded-full"><Trophy size={20} /></div>;
-      case 'request': return <div className="bg-purple-100 text-purple-600 p-3 rounded-full"><UserPlus size={20} /></div>;
-      case 'alert': return <div className="bg-red-100 text-red-600 p-3 rounded-full"><AlertTriangle size={20} /></div>;
-      case 'assignment': return <div className="bg-blue-100 text-blue-600 p-3 rounded-full"><FileText size={20} /></div>;
-      default: return <div className="bg-slate-100 text-slate-600 p-3 rounded-full"><Bell size={20} /></div>;
+      case 'submission': return <div className="bg-primary-container text-on-primary-container p-3 rounded-full"><Trophy size={20} /></div>;
+      case 'request': return <div className="bg-secondary-container text-on-secondary-container p-3 rounded-full"><UserPlus size={20} /></div>;
+      case 'alert': return <div className="bg-error-container text-on-error-container p-3 rounded-full"><AlertTriangle size={20} /></div>;
+      case 'assignment': return <div className="bg-tertiary-container text-on-tertiary-container p-3 rounded-full"><FileText size={20} /></div>;
+      default: return <div className="bg-surface-container-highest text-on-surface-variant p-3 rounded-full"><Bell size={20} /></div>;
     }
   };
 
@@ -218,7 +219,7 @@ export default function TeacherNotificationsPage() {
     return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  if (loading) return <div className="p-12 text-center text-slate-400 font-medium">{t.loading}</div>;
+  if (loading) return <div className="p-12 text-center text-on-surface-variant font-medium">{t.loading}</div>;
 
   return (
     <div className="max-w-4xl mx-auto pb-20">
@@ -226,50 +227,48 @@ export default function TeacherNotificationsPage() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 animate-in fade-in slide-in-from-top-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900">{t.title}</h1>
-          <p className="text-slate-500 font-medium mt-1">{t.subtitle}</p>
+          <h1 className="text-3xl font-black text-on-surface">{t.title}</h1>
+          <p className="text-on-surface-variant font-medium mt-1">{t.subtitle}</p>
         </div>
 
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="outlined"
+            icon={<Check />}
             onClick={markAllRead}
             disabled={!notifications.some(n => !n.read)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors"
             title="Dismiss all new notifications"
           >
-            <Check size={16} /> {t.dismiss}
-          </button>
-          <button
+            {t.dismiss}
+          </Button>
+          <IconButton
+            aria-label={t.clear}
             onClick={clearAll}
             disabled={notifications.length === 0}
-            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+            className="hover:bg-error-container hover:text-on-error-container"
             title="Clear History"
           >
-            <Trash2 size={20} />
-          </button>
+            <Trash2 />
+          </IconButton>
         </div>
       </div>
 
       {/* LIST */}
       <div className="space-y-3 animate-in fade-in slide-in-from-bottom-8 duration-500">
         {notifications.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-            <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Bell size={40} />
-            </div>
-            <h3 className="text-slate-900 font-bold text-lg">{t.emptyTitle}</h3>
-            <p className="text-slate-500 text-sm mt-1">{t.emptyDesc}</p>
+          <div className="bg-surface-container-low rounded-m3-xl border-2 border-dashed border-outline-variant">
+            <EmptyState className="py-20" icon={<Bell />} title={t.emptyTitle} description={t.emptyDesc} />
           </div>
         ) : (
           notifications.map((n) => (
             <div
               key={n.id}
               onClick={() => handleRead(n.id, n.read, n.link)}
-              className={`relative bg-white p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-lg hover:border-indigo-200 hover:-translate-y-0.5 ${!n.read ? 'border-indigo-200 shadow-sm bg-indigo-50/10' : 'border-slate-100 opacity-80 hover:opacity-100'}`}
+              className={`relative bg-surface-container-low p-5 rounded-m3-lg border transition-all cursor-pointer group hover:shadow-elev-2 hover:border-primary hover:-translate-y-0.5 ${!n.read ? 'border-primary shadow-elev-1' : 'border-outline-variant opacity-80 hover:opacity-100'}`}
             >
               {/* "New" Badge */}
               {!n.read && (
-                <span className="absolute top-4 right-4 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm shadow-indigo-200">
+                <span className="absolute top-4 right-4 bg-primary text-on-primary text-[10px] font-bold px-2 py-1 rounded-full shadow-elev-1">
                   {t.new}
                 </span>
               )}
@@ -281,40 +280,42 @@ export default function TeacherNotificationsPage() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className={`text-base leading-tight ${!n.read ? 'font-black text-slate-900' : 'font-bold text-slate-700'}`}>
+                    <h3 className={`text-base leading-tight ${!n.read ? 'font-black text-on-surface' : 'font-bold text-on-surface'}`}>
                       {n.title}
                     </h3>
                   </div>
-                  <p className={`text-sm leading-relaxed mb-3 ${!n.read ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
+                  <p className={`text-sm leading-relaxed mb-3 ${!n.read ? 'text-on-surface font-medium' : 'text-on-surface-variant'}`}>
                     {n.message}
                   </p>
 
                   {/* 🟢 ACTION BUTTONS FOR JOIN REQUESTS 🟢 */}
                   {n.type === 'request' && n.classId && n.studentId && (
                     <div className="flex items-center gap-2 mb-3 mt-2">
-                      <button
+                      <IconButton
+                        aria-label={t.confirmReject}
                         onClick={(e) => handleRejectRequest(e, n)}
-                        className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-[12px] transition-colors border border-red-100/50 active:scale-95"
+                        className="bg-error-container text-on-error-container active:scale-95"
                         title={t.confirmReject}
                       >
-                        <X size={18} strokeWidth={3} />
-                      </button>
-                      <button
+                        <X strokeWidth={3} />
+                      </IconButton>
+                      <IconButton
+                        aria-label={t.accept.replace("{name}", "")}
                         onClick={(e) => handleAcceptRequest(e, n)}
-                        className="w-10 h-10 flex items-center justify-center bg-emerald-500 text-white hover:bg-emerald-600 rounded-[12px] transition-all shadow-sm shadow-emerald-500/20 active:scale-95"
+                        className="bg-success text-surface-container-lowest active:scale-95"
                         title={t.accept.replace("{name}", "")}
                       >
-                        <Check size={18} strokeWidth={3} />
-                      </button>
+                        <Check strokeWidth={3} />
+                      </IconButton>
                     </div>
                   )}
 
-                  <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                  <div className="flex items-center gap-4 text-xs font-bold text-on-surface-variant">
                     <span className="flex items-center gap-1">
                       <Clock size={12} /> {getTimeString(n.createdAt)}
                     </span>
                     {n.link && n.type !== 'request' && (
-                      <span className="text-indigo-500 group-hover:underline flex items-center gap-1">
+                      <span className="text-primary group-hover:underline flex items-center gap-1">
                         {t.view}
                       </span>
                     )}

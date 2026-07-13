@@ -8,7 +8,7 @@ Conventions: **Writer** says which SDK writes it (client = browser SDK under sec
 
 ## Accounts & identity
 
-- **`users/{uid}`** — master doc for all roles; doc ID = Auth uid. Writer: client (signup flows, profile, XP transactions), admin UIs via god-mode, `deductMonthlyAiCredits` (admin SDK). Union of role fields:
+- **`users/{uid}`** — master doc for all roles; doc ID = Auth uid. Writer: client (signup flows, profile, XP transactions), admin UIs via god-mode, `deductMonthlyAiCredits` (admin SDK). ⚠️ **Privileged fields are denied to the client on BOTH create and update** — `role`, `centerId`, `subscription`, `currentLimits`, `includedFeatures`, `usage`, `verifiedTeacher`, `isActive`. Never treat `role`/`centerId` as an authorization source; prove ownership via `centers.ownerUid`. Full table + rationale in [AUTH.md](AUTH.md). Union of role fields:
   - Identity: `email`, `username` (**always lowercased**), `displayName`, `role` ∈ student|teacher|manager, `phone`, `birthDate`, `gender`, `institution`, `location{country,region,district}`, `photoURL`, `bio`, `createdAt` (ISO string). Moderation: `isActive`.
   - Student gamification: `totalXP`, `currentStreak`, `level` (⚠️ written 1 at signup, never updated — levels are derived `floor(totalXP/1000)+1`), `lastActiveDate` (⚠️ live field; the `lastStudyDate` in `UserProfile` interface is dead), `dailyHistory{YYYY-MM-DD: xp}` (UTC keys, trimmed to 30), `dailyGoal`, `recentActivity[]`, `progress{...}` (⚠️ dead — writer is unwired).
   - Teacher: `subject`, `grade:'Teacher'`, `verifiedTeacher`, `experience`; `activeClassCount`/`totalStudents`/`customTestCount` are ⚠️ Cloud-Function-generated (functions not in repo — may be absent).
@@ -16,7 +16,7 @@ Conventions: **Writer** says which SDK writes it (client = browser SDK under sec
   - Manager: `centerId`. Social: `followersCount`/`followingCount` (rules allow any authed user ±1 delta on these two only).
   - Queried by: `role ==`, `email ==`, `orderBy totalStudents desc` (explore).
 - **`users/{uid}/following/{targetUid}`**, **`users/{uid}/followers/{followerUid}`** — social edges, `{followedAt}`. Writer: client (`lib/social.ts`, atomic batch with counters + notification).
-- **`usernames/{lowercaseUsername}`** — uniqueness reservation, `{uid}`. Immutable (rules: update false). Writer: client signup batches, admin center-create route.
+- **`usernames/{lowercaseUsername}`** — uniqueness reservation, `{uid}`. Immutable (rules: update false). Writer: client signup batches, admin center-create route. Read by Admin SDK in `/api/auth/login` + `/api/auth/reset-password` to resolve username→uid for username login (see [AUTH.md](AUTH.md)) — never add emails here; the collection is public-read.
 
 ## Question banks (three separate stores — never mix)
 
@@ -70,8 +70,8 @@ All written by **Admin SDK** via `lib/server/financeOps.ts` behind `/api/manager
 - **`leaderboards/{periodId}/users/{uid}`** — periods `day_YYYY_MM_DD` / `week_YYYY_WW` / `month_YYYY_MM` / `all_time` (UTC). `{uid, displayName, avatar, classId, xp: increment, lastActive}` merge-set. ⚠️ `getPeriodIds()` is copy-pasted in 3 files — keep identical.
 - **`online_books/{bookId}`** — bulk-managed catalog. ⚠️ counters are lowercase `viewscount`/`downloadscount`; incremented on every click (non-unique). `description{en,uz,ru}`, `parts[]` with `telegramLink`.
 - **`ai_sessions/{sess_${Date.now()}}`** — teacher analytics chats `{teacherId, title, createdAt (ISO), messages[]}`.
-- **`ai_usage/{userId}_{YYYY-MM-DD}`** — `{count, userId, date}` (UTC date key). ⚠️ Written by the **client SDK inside a server route** (`app/api/analyze/route.ts` — the only API route not using Admin SDK). Distinct from `users.usage.aiQuestionsUsed`.
-- **`notifications/{autoId}`** — `{userId, type (assignment|submission|request|result|alert|attendance), title, message, link|null, read:false, createdAt (serverTimestamp)}`. Index userId+createdAt, userId+read.
+- **`ai_usage/{userId}_{YYYY-MM-DD}`** — `{count, userId, date}` (UTC date key). Writer: **admin** (`app/api/analyze/route.ts`). Rules are `read, write: if false` — no client may touch it. ⚠️ Was previously written by the *client* SDK inside that server route with world-open rules, so anyone could zero their own counter; don't reintroduce a client-SDK write here. Distinct from `users.usage.aiQuestionsUsed`.
+- **`notifications/{autoId}`** — `{userId, type (assignment|submission|request|result|alert|attendance), title, message, link|null, read:false, createdAt (serverTimestamp)}`. Index userId+createdAt, userId+read. Cross-user creates are legitimate (a submission notifies the teacher; `lib/social.ts` notifies the followee), so rules can't require `userId == auth.uid`. ⚠️ Instead, rules force `read == false` at create and require `link` to be a **relative in-app path** — an absolute or `//host` URL here is an in-app phishing vector, since the link renders as trusted chrome.
 - **`active_games/{4-digit code}`** — checkers realtime; `board` is a JSON **string**; `{host, guest, status, turn, winner, mustJumpPiece, forfeitedBy?}`. ⚠️ Never deleted.
 - **`parents/{uid}`** — referenced only by the rules helper `isParentOf` (`children[]`); no app code reads/writes it.
 
