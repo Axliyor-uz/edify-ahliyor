@@ -14,7 +14,7 @@ import {
   assertFails,
   assertSucceeds,
 } from "@firebase/rules-unit-testing";
-import { doc, setDoc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, deleteDoc, getDoc, writeBatch } from "firebase/firestore";
 
 let testEnv;
 
@@ -181,6 +181,29 @@ describe("LEGIT FLOWS — must keep working after the lockdown", () => {
     );
   });
 
+  it("allows Google signup: same batch shape plus photoURL on create", async () => {
+    const db = as("googleuser");
+    await assertSucceeds(
+      setDoc(doc(db, "users/googleuser"), {
+        uid: "googleuser",
+        email: "g@gmail.com",
+        username: "googleuser",
+        displayName: "Google User",
+        photoURL: "https://lh3.googleusercontent.com/a/abc123",
+        role: "student",
+        grade: "school_9",
+        totalXP: 0,
+        currentStreak: 0,
+        level: 1,
+        dailyHistory: {},
+        createdAt: new Date().toISOString(),
+      }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, "usernames/googleuser"), { uid: "googleuser" }),
+    );
+  });
+
   it("allows teacher signup (verifiedTeacher:false is fine)", async () => {
     await assertSucceeds(
       setDoc(doc(as("newteacher"), "users/newteacher"), {
@@ -271,6 +294,105 @@ describe("LEGIT FLOWS — must keep working after the lockdown", () => {
         teacherName: "Teacher One",
       }),
     );
+  });
+
+  // ⚠️ The real signup flows commit ONE ATOMIC writeBatch, and batched writes
+  // change rules semantics: exists()/get() see the batch's post-commit state.
+  // These tests mirror the app's exact batches — the per-setDoc tests above
+  // cannot catch a rule that only breaks inside a batch.
+  it("allows the student signup writeBatch (user + username + private contact)", async () => {
+    const db = as("batchstudent");
+    const batch = writeBatch(db);
+    batch.set(doc(db, "users/batchstudent"), {
+      uid: "batchstudent",
+      email: "bs@x.uz",
+      username: "batchstudent",
+      displayName: "Batch Student",
+      photoURL: "https://lh3.googleusercontent.com/a/abc123",
+      role: "student",
+      grade: "school_9",
+      phone: "",
+      birthDate: "",
+      gender: "",
+      institution: "",
+      location: { country: "Uzbekistan", region: "", district: "" },
+      totalXP: 0,
+      currentStreak: 0,
+      level: 1,
+      dailyHistory: {},
+      progress: { completedTopicIndex: 0, completedChapterIndex: 0, completedSubtopicIndex: 0 },
+      createdAt: new Date().toISOString(),
+    });
+    batch.set(doc(db, "usernames/batchstudent"), { uid: "batchstudent" });
+    batch.set(doc(db, "users/batchstudent/private/contact"), { email: "bs@x.uz", phone: "" });
+    await assertSucceeds(batch.commit());
+  });
+
+  it("allows the teacher signup writeBatch", async () => {
+    const db = as("batchteacher");
+    const batch = writeBatch(db);
+    batch.set(doc(db, "users/batchteacher"), {
+      uid: "batchteacher",
+      email: "bt@x.uz",
+      username: "batchteacher",
+      displayName: "Batch Teacher",
+      photoURL: "https://lh3.googleusercontent.com/a/abc123",
+      role: "teacher",
+      subject: "matematika",
+      phone: "",
+      birthDate: "",
+      gender: "",
+      institution: "",
+      location: { country: "Uzbekistan", region: "", district: "" },
+      grade: "Teacher",
+      verifiedTeacher: false,
+      experience: 0,
+      createdAt: new Date().toISOString(),
+    });
+    batch.set(doc(db, "usernames/batchteacher"), { uid: "batchteacher" });
+    batch.set(doc(db, "users/batchteacher/private/contact"), { email: "bt@x.uz", phone: "" });
+    await assertSucceeds(batch.commit());
+  });
+
+  it("allows the manager signup writeBatch (center + user + username + contact)", async () => {
+    const db = as("batchmanager");
+    const batch = writeBatch(db);
+    batch.set(doc(db, "centers/centerBatch"), {
+      id: "centerBatch",
+      name: "Batch Center",
+      slug: "batch-center",
+      ownerUid: "batchmanager",
+      size: "1-50",
+      status: "pending",
+      subscription: { plan: "free_trial", validUntil: new Date().toISOString() },
+      createdAt: new Date().toISOString(),
+    });
+    batch.set(doc(db, "users/batchmanager"), {
+      uid: "batchmanager",
+      email: "bm@x.uz",
+      username: "batchmanager",
+      displayName: "Batch Manager",
+      phone: "+998901112233",
+      role: "manager",
+      centerId: "centerBatch",
+      createdAt: new Date().toISOString(),
+    });
+    batch.set(doc(db, "usernames/batchmanager"), { uid: "batchmanager" });
+    batch.set(doc(db, "users/batchmanager/private/contact"), { email: "bm@x.uz", phone: "+998901112233" });
+    await assertSucceeds(batch.commit());
+  });
+
+  it("still denies the signup batch when the username is already taken", async () => {
+    const db = as("batchthief");
+    const batch = writeBatch(db);
+    batch.set(doc(db, "users/batchthief"), {
+      uid: "batchthief",
+      username: "student1", // seeded as taken
+      role: "student",
+      totalXP: 0,
+    });
+    batch.set(doc(db, "usernames/student1"), { uid: "batchthief" });
+    await assertFails(batch.commit());
   });
 
   it("keeps usernames readable (signup availability check) and immutable", async () => {

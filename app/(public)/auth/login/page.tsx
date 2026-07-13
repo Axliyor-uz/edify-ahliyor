@@ -11,6 +11,7 @@ import { Loader2, Mail, User, ChevronRight, Eye, EyeOff, BookOpen } from "lucide
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { LanguageContext } from "@/app/(public)/layout";
+import GoogleAuthButton from "../_components/GoogleAuthButton";
 import React from "react";
 
 // --- 1. TRANSLATION DICTIONARY ---
@@ -495,7 +496,12 @@ export default function LoginPage() {
         return;
       }
       const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (!userDoc.exists()) throw new Error("Profile not found");
+      if (!userDoc.exists()) {
+        // Auth account exists but onboarding never finished (e.g. a Google
+        // sign-in abandoned mid-profile) — resume it instead of erroring.
+        router.push("/auth/complete-profile");
+        return;
+      }
       const profile = userDoc.data();
       toast.dismiss();
       toast.success(t.welcomeBack.replace("{name}", profile.displayName || "User"), { duration: 4000 });
@@ -512,7 +518,6 @@ export default function LoginPage() {
       if (error.code === "auth/invalid-credential") toast.error(t.invalidCred);
       else if (error.code === "auth/too-many-requests") toast.error(t.tooManyAttempts);
       else if (error.code === "auth/user-not-found") toast.error(t.noUser);
-      else if (error.message === "Profile not found") toast.error(t.accNotFound);
       else toast.error(t.loginFail);
     }
   };
@@ -744,6 +749,10 @@ export default function LoginPage() {
               {loading ? <Loader2 className="animate-spin" size={20} /> : <>{t.signInBtn} <ChevronRight size={18} /></>}
             </button>
           </form>
+
+          {/* New Google users are routed to /auth/complete-profile to pick a
+              role and username — no password is ever asked for them */}
+          <GoogleAuthButton lang={lang} />
 
           <div className="mt-10 pt-6 border-t border-[#E2E8F0] text-center text-[14px] text-[#64748B]">
             {t.noAccount}{' '}

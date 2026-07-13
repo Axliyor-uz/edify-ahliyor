@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching auth, signup, login, role guards, SSO, or `firestore.rules` helper functions. Update this doc in the same change whenever you alter behavior described here. Index of all docs: [README.md](README.md).
 
-**Last verified:** 2026-07-12 (commit `7c31a96`).
+**Last verified:** 2026-07-13.
 
 ## Purpose & scope
 
@@ -19,7 +19,10 @@ How users sign up, log in, get a role, and get authorized — client-side (layou
 | `app/api/auth/login/route.ts` | Username login: resolves username→email server-side, verifies password via Identity Toolkit REST, returns a custom token |
 | `app/api/auth/reset-password/route.ts` | Forgot-password by username (sends Firebase reset email server-side; always replies `{ok:true}`) |
 | `lib/server/authRateLimit.ts` | In-memory per-IP throttle shared by the two `/api/auth/*` routes |
-| `app/(public)/auth/signup/_components/{Student,Teacher,Manager}SignupFlow.tsx` | Per-role signup wizards |
+| `app/(public)/auth/signup/_components/{Student,Teacher,Manager}SignupFlow.tsx` | Per-role signup wizards; all three accept a `googleMode` prop (see Google sign-in) |
+| `lib/googleAuth.ts` | `signInWithGoogle()` (popup + profile-existence check) and `suggestUsername()` |
+| `app/(public)/auth/_components/GoogleAuthButton.tsx` | "Continue with Google" button (login + signup pages) incl. post-sign-in routing |
+| `app/(public)/auth/complete-profile/page.tsx` | Onboarding for authenticated users with no `users/{uid}` doc (role picker + wizards in `googleMode`) |
 | `lib/sso.ts` + `app/api/sso/token/route.ts` | SSO custom-token mint for partner apps (e.g. tez-yozish typing trainer) |
 | `lib/server/verifySuperAdmin.ts` | `requireSuperAdmin(request)` — gates every `/api/admin/*` route |
 | `lib/server/verifyCenterManager.ts` | `requireActiveCenterManager(request)` — gates every `/api/manager/*` route; returns `{uid, centerId}` |
@@ -36,7 +39,7 @@ How users sign up, log in, get a role, and get authorized — client-side (layou
 ## Flows
 
 ### Signup (all client-side, per-role wizard)
-Common: `createUserWithEmailAndPassword` → `updateProfile(displayName)` → one atomic `writeBatch` (`users/{uid}` + `usernames/{lowerUsername}`, manager also `centers/{autoId}`) → commit → SSO check (`getSsoReturnTo` → `completeSsoRedirect`) **before** the normal dashboard redirect. On any error: `deleteUser(auth.currentUser)` rolls back the orphaned Auth account.
+Common: `createUserWithEmailAndPassword` → `updateProfile(displayName)` → one atomic `writeBatch` (`users/{uid}` + `usernames/{lowerUsername}`, manager also `centers/{autoId}`) → commit → SSO check (`getSsoReturnTo` → `completeSsoRedirect`) **before** the normal dashboard redirect. On any error: `deleteUser(auth.currentUser)` rolls back the orphaned Auth account (**password path only** — never in `googleMode`, see Google sign-in).
 
 - Password ≥ 8 chars. Username ≥ 5 chars, starts with a letter, `[a-zA-Z0-9_]`.
 - Username availability: debounced 800ms `checkUsernameUnique` with in-memory cache — **fails open** (network error → treated as available); the batch create against immutable `usernames/{name}` is the real uniqueness guarantee.
@@ -44,13 +47,33 @@ Common: `createUserWithEmailAndPassword` → `updateProfile(displayName)` → on
 - **Teacher** → `/teacher/dashboard`. Writes `subject`, `grade:'Teacher'`, `verifiedTeacher:false`, `experience:0`.
 - **Manager** → `/manager/dashboard`. 3 steps; phone regex `+998 XX XXX XX XX`; auto-slugified center name (**slug format is NOT validated in the public flow** — only the admin API route validates it). Writes `users` doc (`role:'manager'`, `centerId`) + `centers` doc: `{id, name, slug, ownerUid, size, status:'pending', subscription:{plan:'free_trial', validUntil:+14d ISO}, createdAt}`.
 
+### Google sign-in (no password ever)
+
+"Continue with Google" appears on the login page and on the signup role-selection screen (`GoogleAuthButton`, self-contained). `signInWithPopup` with `prompt: 'select_account'`; default provider scopes already supply `displayName`, `email`, `photoURL`. Popup only — `signInWithRedirect` is deliberately avoided (broken on Safari/ITP without an authDomain proxy). Requires the Google provider to be enabled in Firebase Console → Authentication.
+
+After the popup, `signInWithGoogle()` checks `users/{uid}`:
+
+- **Profile exists** → the exact post-sign-in precedence as password login (SSO `returnTo` → `super_admin` claim → role redirect).
+- **No profile (new user)** → redirect to **`/auth/complete-profile`** (forwarding `?returnTo=` if an SSO hand-off is pending). Exception: a `super_admin` claim with no user doc goes to `/admin` (admin accounts are provisioned out-of-band and have no profile).
+
+**`/auth/complete-profile`** = role picker + the same three signup wizards rendered with `googleMode`:
+
+- Step 1 (email/password) is skipped; the account is `auth.currentUser`; email comes from Google. Full name is pre-filled from the Google `displayName`, username is pre-suggested from the email local part (`suggestUsername`, editable, same debounced uniqueness check).
+- Commits the **same atomic batch** as password signup (`users/{uid}` + `usernames/{name}` + `private/contact` dual-write, manager also `centers/{autoId}`), plus `photoURL` (built conditionally — never `undefined`). No rules changes were needed.
+- **No `deleteUser` rollback in `googleMode`** — the Google account pre-exists and onboarding is *resumable*: the page itself redirects doc-holders to their dashboard, and login sends doc-less users back here (below).
+- SSO check runs after commit, exactly like password signup.
+
+**Onboarding is resumable:** any authenticated user whose `users/{uid}` doc is missing is sent to `/auth/complete-profile` by the login page (this replaced the old "Profile not found" error) — covering abandoned Google onboarding and password signups whose batch never committed.
+
+**Account linking:** Firebase is on the default *one account per email* setting, so a Google sign-in with the email of an existing password account resolves to the **same uid** (profile intact). Caveat: Google is a "trusted provider" — for a previously **unverified** email/password account it removes the password credential. Do not use `fetchSignInMethodsForEmail` anywhere (account-enumeration oracle).
+
 ### Login (`app/(public)/auth/login/page.tsx`)
 One smart identifier field. Input contains `@` → email path (`signInWithEmailAndPassword`, unchanged legacy behavior). No `@` → username path: `POST /api/auth/login {username, password}`; the route lowercases the username, resolves `usernames/{name}` → uid → `adminAuth.getUser(uid).email` (**email never reaches the browser**), verifies the password via Identity Toolkit REST `accounts:signInWithPassword` (Firebase's per-account lockout applies; key = `NEXT_PUBLIC_FIREBASE_API_KEY`), then returns `createCustomToken(uid)`; the client finishes with `signInWithCustomToken`. Unknown username, wrong password, and disabled account all get the identical generic 401 (`invalid-credentials`) — no account enumeration. Per-IP throttle: 20 attempts / 10 min (429 → "too many attempts" toast).
 
 Both paths then run the same post-sign-in precedence:
 1. SSO `returnTo` pending → `completeSsoRedirect` and stop.
 2. `getIdTokenResult(true)` → `super_admin` claim → `/admin`.
-3. `users/{uid}` doc; missing → "Profile not found" error.
+3. `users/{uid}` doc; missing → redirect to `/auth/complete-profile` (resume onboarding — see Google sign-in).
 4. `role`: teacher → `/teacher/dashboard`, manager → `/manager/dashboard`, else `/dashboard`.
 
 Already-signed-in users landing on the login page with `?returnTo=` are auto-SSO-redirected (one-shot `onAuthStateChanged`).
@@ -131,11 +154,14 @@ Not yet locked (see docs/STUDENT.md): `totalXP`, `currentStreak`, `dailyHistory`
 ## Invariants & traps
 
 - **Usernames are always lowercased** — in `users.username`, in the `usernames/{id}` doc ID, in the availability check, and in the `/api/auth/*` lookups.
+- **Google users have no password** — password login/reset simply doesn't apply to them; they must use the Google button. Don't add a "set a password" shortcut without deciding on the linking story deliberately.
+- **`photoURL` written at Google signup is the `lh3.googleusercontent.com` URL** — it can go stale if the user changes their Google photo. Copying it into Firebase Storage is a known future improvement, not done yet.
 - **Username login/reset must stay enumeration-safe**: the `/api/auth/*` routes never reveal whether a username exists (identical generic responses) and never return the account's email to the client. Don't "improve" the error messages into specific ones, and don't put emails in the public-read `usernames/*` docs.
 - **Pending-center gate is triple-enforced**: rules (`isActiveCenterManager`), server (`requireActiveCenterManager`), UX (`ApprovalGate.tsx` overlay). The rules are the security boundary; the component is UX only.
 - **`requireActiveCenterManager` must compare `centers.ownerUid` to the caller's uid** — not just `users.role == 'manager'` + `users.centerId`. It previously trusted the (client-writable) user doc alone, so any signed-in user could point `centerId` at someone else's center and drive every `/api/manager/*` route — which use the Admin SDK and bypass rules — against it. Regression-tested in `tests/rules/`.
-- **Rules are regression-tested.** `npm run test:rules` runs `firestore.rules` against the emulator: attack tests (each reproduces a real escalation) + legit-flow tests (signup ×3, profile edit, XP submit, social follow, center admin, god mode). **Never tighten a rule without first adding the legit-flow test that proves you didn't break the live app.**
-- Rules changes require `firebase deploy --only firestore:rules`.
+- **Rules are regression-tested.** `npm run test:rules` runs `firestore.rules` against the emulator: attack tests (each reproduces a real escalation) + legit-flow tests (signup ×3 — both per-doc AND as the app's real atomic `writeBatch` — profile edit, XP submit, social follow, center admin, god mode). **Never tighten a rule without first adding the legit-flow test that proves you didn't break the live app.**
+- Rules changes require `firebase deploy --only firestore:rules`. ⚠️ **Local/live rules drift breaks signup completely**: on 2026-07-13 the released ruleset was missing the `users/{uid}/private/contact` block, so every signup batch (password AND Google) died with `permission-denied` — a batch write to a path with no matching rule denies the whole batch. When signup fails with permission-denied, diff the released ruleset against `firestore.rules` before debugging code.
+- **complete-profile must fail CLOSED** when the profile-existence check errors (it shows a retry screen). Showing the wizard to a user who might already have a profile lets a full-overwrite `set` wipe XP/role data; as a second layer, `googleMode` `handleSignup` re-checks `users/{uid}` and redirects instead of writing if it exists.
 - Center approval by admin is a **raw client `updateDoc`** on `centers.status`, legal only because of god-mode — there is no approve API route.
 - Manager ownership transfer (`/api/admin/centers/[id]/manager` action transfer) mutates `role`/`centerId` on both users; `oldOwnerAction` ∈ demote-teacher | demote-student | keep.
 
@@ -149,4 +175,4 @@ Not yet locked (see docs/STUDENT.md): `totalXP`, `currentStreak`, `dailyHistory`
 
 ## How to verify changes
 
-No test suite. `npm run dev`, then exercise: signup per role (check `users` + `usernames` docs), login redirect per role — **with email AND with username** (username of an existing account + correct password → same redirect as email login; wrong password and non-existent username → the same generic "invalid" toast; verify the `/api/auth/login` response carries only `{token}`, no email), forgot-password with a username in the field (generic success toast; reset email arrives for real accounts), a pending manager hitting `ApprovalGate`, SSO round-trip with `NEXT_PUBLIC_SSO_ALLOWED_ORIGINS=http://localhost:3001` and a fake `?returnTo=`. Rules edits: deploy to a test project or use the emulator before production deploy.
+No test suite. `npm run dev`, then exercise: signup per role (check `users` + `usernames` docs), **Google flow** (Google button on login with a brand-new Google account → complete-profile → each role → check `users` doc has `photoURL` and `private/contact` has the Google email; abandon onboarding mid-way, log in again → lands back on complete-profile; Google button with an existing account → straight to the right dashboard), login redirect per role — **with email AND with username** (username of an existing account + correct password → same redirect as email login; wrong password and non-existent username → the same generic "invalid" toast; verify the `/api/auth/login` response carries only `{token}`, no email), forgot-password with a username in the field (generic success toast; reset email arrives for real accounts), a pending manager hitting `ApprovalGate`, SSO round-trip with `NEXT_PUBLIC_SSO_ALLOWED_ORIGINS=http://localhost:3001` and a fake `?returnTo=`. Rules edits: deploy to a test project or use the emulator before production deploy.

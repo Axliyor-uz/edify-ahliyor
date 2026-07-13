@@ -7,6 +7,7 @@ import { Step0Role } from "./_components/FormSteps";
 import TeacherSignupFlow from "./_components/TeacherSignupFlow";
 import StudentSignupFlow from "./_components/StudentSignupFlow";
 import ManagerSignupFlow from "./_components/ManagerSignupFlow";
+import GoogleAuthButton from "../_components/GoogleAuthButton";
 import { BookOpen } from "lucide-react";
 
 // --- 1. TURBO TRANSLATION DICTIONARY ---
@@ -17,7 +18,8 @@ export const SIGNUP_TRANSLATIONS = {
     steps: {
       0: { title: "Yo'nalishni tanlang", sub: "O'qishni xohlaysizmi yoki o'qitishni?" },
       1: { title: "Hisob yaratish", sub: "1 / 2 qadam" },
-      2: { title: "Shaxsiy ma'lumotlar", sub: "2 / 2 qadam" }
+      2: { title: "Shaxsiy ma'lumotlar", sub: "2 / 2 qadam" },
+      google: { title: "Profilni to'ldiring", sub: "Google hisobingiz ulandi — parol kerak emas" }
     },
     roles: {
       student: { title: "Men O'quvchiman", desc: "Fanlarni o'rganish, XP yig'ish va natijalarni kuzatish." },
@@ -46,7 +48,8 @@ export const SIGNUP_TRANSLATIONS = {
     steps: {
       0: { title: "Choose your path", sub: "Are you learning or teaching?" },
       1: { title: "Create Account", sub: "Step 1 of 2" },
-      2: { title: "Personal Details", sub: "Step 2 of 2" }
+      2: { title: "Personal Details", sub: "Step 2 of 2" },
+      google: { title: "Complete your profile", sub: "Your Google account is connected — no password needed" }
     },
     roles: {
       student: { title: "I am a Student", desc: "Learn, earn XP, and track progress." },
@@ -75,7 +78,8 @@ export const SIGNUP_TRANSLATIONS = {
     steps: {
       0: { title: "Выберите путь", sub: "Вы учитесь или преподаете?" },
       1: { title: "Создать аккаунт", sub: "Шаг 1 из 2" },
-      2: { title: "Личные данные", sub: "Шаг 2 из 2" }
+      2: { title: "Личные данные", sub: "Шаг 2 из 2" },
+      google: { title: "Заполните профиль", sub: "Аккаунт Google подключён — пароль не нужен" }
     },
     roles: {
       student: { title: "Я Ученик", desc: "Учиться, получать XP и следить за прогрессом." },
@@ -499,6 +503,9 @@ export default function SignupPage() {
                   <p className="text-[#64748B] mt-1.5 text-[15px] font-medium">{t.steps[0].sub}</p>
                 </div>
                 <Step0Role setRole={setRole} t={t} />
+                {/* New Google users finish onboarding (role, username, …) at
+                    /auth/complete-profile; existing ones go straight to their dashboard */}
+                <GoogleAuthButton lang={lang} />
               </motion.div>
             )}
 
