@@ -401,9 +401,13 @@ export default function TestRunnerPage() {
 
         const updatedHistory = [{ id: attemptDocId, testTitle: state.test.title, score: correctCount, totalQuestions: state.questions.length, submittedAt: Date.now() }, ...existingHistory].slice(0, 5);
 
+        // ⚠️ Do NOT write `email` here. Contact details live in the owner-only
+        // users/{uid}/private/contact subcollection (docs/AUTH.md); re-mirroring the
+        // email onto this world-readable doc on every submit would silently undo the
+        // migration that removed it.
         transaction.set(doc(db, 'users', userId), {
           totalXP: increment(xpToAward), currentStreak, dailyHistory, lastActiveDate: todayStr,
-          displayName: user.displayName, email: user.email, lastActiveTimestamp: serverTimestamp(), recentActivity: updatedHistory
+          displayName: user.displayName, lastActiveTimestamp: serverTimestamp(), recentActivity: updatedHistory
         }, { merge: true });
 
         transaction.set(doc(db, 'attempts', attemptDocId), {

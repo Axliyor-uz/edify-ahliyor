@@ -115,6 +115,14 @@ export default function StudentSignupFlow({ onBack, t }: any) {
       });
 
       batch.set(doc(db, "usernames", lowerUsername), { uid: user.uid });
+
+      // Contact details live in an owner-only subcollection — the parent users/{uid}
+      // doc is readable by every signed-in user (docs/AUTH.md). The `email` above is
+      // a migration mirror and goes away with DEPLOY 2.
+      batch.set(doc(db, "users", user.uid, "private", "contact"), {
+        email: formData.email,
+        phone: "",
+      });
       
       // Execute Write
       await batch.commit();

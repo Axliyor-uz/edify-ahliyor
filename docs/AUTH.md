@@ -86,6 +86,31 @@ Security invariant: the caller proves identity with its own ID token, so SSO can
 - `usernames`: public read; create-if-absent with own uid; owner delete; **update: false** (immutable).
 - `users`: read if authed. Owner create/delete/update, **minus a privileged-field denylist** (below), plus a carve-out allowing any authed user a ±1 delta on `followersCount`/`followingCount` only (social follow, `lib/social.ts`).
 
+### Contact details: `users/{uid}/private/contact` (email, phone)
+
+`users/{uid}` is readable by **every signed-in user** (class rosters, leaderboards, social profiles, explore all need it) and Firestore has **no field-level read rules** — so any field left on that doc is world-readable to anyone who signs up. Contact details therefore live in `users/{uid}/private/contact`, whose rule is a flat `isOwner(userId)`.
+
+| Who | How they read contact details |
+|---|---|
+| the user themselves | directly, client SDK (`getOwnContact()` in `lib/directory.ts`) |
+| teacher of the student / manager of the center | **`POST /api/directory/contact`** — the relationship is proven with the Admin SDK (`lib/server/directory.ts`), because a rules-level "is this student in one of my classes?" check would need a query, which rules cannot do |
+| super admin | god mode |
+| anyone else | never |
+
+`POST /api/directory/lookup` resolves an email → account (teacher/manager/admin only, rate-limited) via `adminAuth.getUserByEmail`. It replaced four client-side `where('email','==')` queries, which broke once `email` left the doc **and** were themselves a leak — any signed-in user could use one as an email→account oracle.
+
+⚠️ **Never write `email`/`phone` onto `users/{uid}`.** Every profile save and every XP submit used to mirror them there; each such write silently re-opens the leak. Use `setOwnContact()`.
+
+#### Migration status (staged, zero-downtime)
+
+- **DEPLOY 1 (done):** subcollection + API routes live; signup and profile saves dual-write; readers moved. `users.email/phone` still present as a fallback, so nothing breaks.
+- **DEPLOY 2 (pending):** `scripts/stripPublicContact.mjs --apply` deletes `email`/`phone` from `users/*` — **this is what actually closes the leak.** It refuses to strip any user whose details are not already in the subcollection.
+
+  **DEPLOY-2 BLOCKERS — these still read `phone` off the public doc and must be moved to `getOwnContact()` / `getContactOf()` first, or they will silently render blank:**
+  `app/manager/profile/page.tsx` · `app/teacher/profile/page.tsx` (both → `getOwnContact`) · `app/manager/students/_components/ManagerStudentInfoPanel.tsx` · `app/manager/teachers/_components/ManagerTeacherInfoPanel.tsx` · `app/manager/finance/_components/StudentInfoDialog.tsx` (→ `getContactOf`) · `services/centerAdminService.ts` (admin; read the subcollection under god mode).
+
+  Then delete the `mirror` write in `setOwnContact()` and the `legacy` fallbacks in `getOwnContact()` / `readContact()`.
+
 ### The `users` privileged-field denylist (the core of the authz model)
 
 `users/{uid}` is client-writable, so **anything stored there that grants privilege or costs money must be unwritable by its owner**. These fields are settable only by the Admin SDK (API routes) or a super admin (god mode):

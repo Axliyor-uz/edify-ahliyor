@@ -10,6 +10,7 @@ import {
   CalendarDays, Activity, UserCircle, BookOpen, ChevronRight
 } from 'lucide-react';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { getContactOf } from '@/lib/directory';
 import toast from 'react-hot-toast';
 import { Button, Spinner } from '@/components/ui';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
@@ -140,13 +141,18 @@ export default function StudentProfilePage() {
 
       // 🟢 Background Fetch (or initial fetch)
       try {
-        const [profileSnap, classesSnap] = await Promise.all([
+        // Contact details are NOT on the users doc — they live in the owner-only
+        // private subcollection, and a teacher reads them through the API route,
+        // which proves this student is actually in one of their classes
+        // (docs/AUTH.md). Resolves to blanks if the relationship doesn't hold.
+        const [profileSnap, classesSnap, contact] = await Promise.all([
           getDoc(doc(db, 'users', studentId)),
-          getDocs(query(collection(db, 'classes'), where('studentIds', 'array-contains', studentId)))
+          getDocs(query(collection(db, 'classes'), where('studentIds', 'array-contains', studentId))),
+          getContactOf(studentId).catch(() => ({ email: '', phone: '' })),
         ]);
 
         if (profileSnap.exists()) {
-          const profileData = profileSnap.data();
+          const profileData = { ...profileSnap.data(), ...contact };
           const classesData = classesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
           setProfile(profileData);

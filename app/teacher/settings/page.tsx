@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { User, Shield, Info, AlertTriangle, Settings as SettingsIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { getOwnContact, setOwnContact } from '@/lib/directory';
 import { useTeacherLanguage } from '@/app/teacher/layout'; 
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -103,12 +104,15 @@ export default function SettingsPage() {
         const snap = await getDoc(docRef);
         if (snap.exists()) {
           const data = snap.data();
-          setFormData({ 
-            displayName: data.displayName || '', 
-            username: data.username || '', 
-            originalUsername: data.username || '', 
-            email: data.email || user.email || '', 
-            phone: data.phone || '', 
+          // Contact details come from the owner-only subcollection (docs/AUTH.md),
+          // not the public profile doc.
+          const contact = await getOwnContact();
+          setFormData({
+            displayName: data.displayName || '',
+            username: data.username || '',
+            originalUsername: data.username || '',
+            email: contact.email || user.email || '',
+            phone: contact.phone || '',
             birthDate: data.birthDate || '', 
             institution: data.institution || '', 
             bio: data.bio || '', 
@@ -214,17 +218,19 @@ export default function SettingsPage() {
       const batch = writeBatch(db);
       
       // 🚀 BULLETPROOF FIX: Changed .update to .set with merge: true
-      batch.set(doc(db, 'users', user.uid), { 
-        displayName: formData.displayName, 
-        username: formData.username.toLowerCase(), 
-        phone: formData.phone, 
-        birthDate: formData.birthDate, 
-        institution: formData.institution, 
-        bio: formData.bio, 
+      // `phone` is NOT written here on purpose — contact details go to the owner-only
+      // users/{uid}/private/contact subcollection (docs/AUTH.md). Writing it onto this
+      // world-readable doc would re-open the PII leak on every profile save.
+      batch.set(doc(db, 'users', user.uid), {
+        displayName: formData.displayName,
+        username: formData.username.toLowerCase(),
+        birthDate: formData.birthDate,
+        institution: formData.institution,
+        bio: formData.bio,
         location: formData.location,
         gender: formData.gender,
         subject: formData.subject,
-        experience: Number(formData.experience) || 0 
+        experience: Number(formData.experience) || 0
       }, { merge: true }); // <--- THIS IS THE MAGIC SHIELD
 
       if (formData.username.toLowerCase() !== formData.originalUsername.toLowerCase()) {
@@ -232,10 +238,11 @@ export default function SettingsPage() {
         batch.set(doc(db, 'usernames', formData.username.toLowerCase()), { uid: user.uid });
       }
       
-      await batch.commit(); 
+      await batch.commit();
+      await setOwnContact({ phone: formData.phone });
       await updateProfile(user, { displayName: formData.displayName });
-      setFormData(prev => ({ ...prev, originalUsername: prev.username })); 
-      toast.success(t.toasts.saved); 
+      setFormData(prev => ({ ...prev, originalUsername: prev.username }));
+      toast.success(t.toasts.saved);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) { 
       toast.error(t.toasts.failSave); 

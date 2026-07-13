@@ -7,6 +7,7 @@ import {
 } from "firebase/firestore";
 import { X, Search, UserPlus, Loader2, ArrowRight, Users } from "lucide-react";
 import toast from "react-hot-toast";
+import { lookupByEmail } from "@/lib/directory";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import ManagerSheet from "@/app/manager/_components/ManagerSheet";
 import { patchStudentFinanceApi } from "@/services/financeService";
@@ -109,13 +110,12 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
       let uidToFetch = null;
 
       if (isEmail) {
+        // Resolved server-side: `users.email` is no longer client-queryable (contact
+        // details are owner-only now — docs/AUTH.md).
         const formattedEmail = searchInput.trim().toLowerCase();
-        const usersRef = collection(db, "users");
-        const userQuery = query(usersRef, where("email", "==", formattedEmail), limit(1));
-        const userSnapshot = await getDocs(userQuery);
-
-        if (!userSnapshot.empty) {
-          uidToFetch = userSnapshot.docs[0].id;
+        const match = await lookupByEmail(formattedEmail).catch(() => null);
+        if (match) {
+          uidToFetch = match.uid;
         }
       } else {
         const cleanName = searchInput.replace("@", "").toLowerCase().trim();

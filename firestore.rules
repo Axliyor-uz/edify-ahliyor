@@ -119,6 +119,23 @@ service cloud.firestore {
         (request.resource.data.get('followingCount', 0) - resource.data.get('followingCount', 0) in [-1, 0, 1])
       );
 
+      // 🔒 PRIVATE CONTACT DETAILS — users/{uid}/private/contact = {email, phone}
+      //
+      // The parent `users/{uid}` doc is readable by every signed-in user (class
+      // rosters, leaderboards, social profiles, explore all need it), and Firestore
+      // has NO field-level read rules — so any field left on it is world-readable to
+      // anyone who signs up. Contact details therefore live down here, where the
+      // rule is a flat owner-only check.
+      //
+      // Teachers and managers who legitimately need a student's/teacher's contact
+      // details do NOT read this path. They call /api/directory/contact, which
+      // verifies the relationship with the Admin SDK. Do not widen this rule to
+      // grant them access — a rules-level relationship check would need a query,
+      // which rules cannot do.
+      match /private/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
       // SOCIAL SUBCOLLECTIONS
       match /following/{targetId} {
         allow read: if isAuth();

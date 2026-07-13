@@ -6,6 +6,7 @@ import { collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, onSn
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
+import { getContactOf, lookupByEmail } from "@/lib/directory";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import toast from "react-hot-toast";
 import ManagerTeacherInfoPanel from "./_components/ManagerTeacherInfoPanel";
@@ -139,7 +140,14 @@ export default function TeachersPage() {
     let mounted = true;
     (async () => {
       try {
-        const snaps = await Promise.all(teachers.map((t) => getDoc(doc(db, "users", t.teacherId))));
+        // Public profile from the users doc; the phone comes from /api/directory/contact,
+        // which verifies this teacher really belongs to my center (docs/AUTH.md).
+        const [snaps, contacts] = await Promise.all([
+          Promise.all(teachers.map((t) => getDoc(doc(db, "users", t.teacherId)))),
+          Promise.all(
+            teachers.map((t) => getContactOf(t.teacherId).catch(() => ({ email: "", phone: "" }))),
+          ),
+        ]);
         if (!mounted) return;
         const map: Record<string, TeacherProfile> = {};
         snaps.forEach((s, i) => {
@@ -147,7 +155,7 @@ export default function TeachersPage() {
           const d = s.data();
           map[teachers[i].teacherId] = {
             photoURL: d.photoURL,
-            phone: d.phone,
+            phone: contacts[i].phone,
             subject: d.subject,
             experience: d.experience,
             verifiedTeacher: d.verifiedTeacher,
@@ -173,20 +181,13 @@ export default function TeachersPage() {
     
     try {
       const formattedEmail = emailInput.trim().toLowerCase();
-      
-      // 1. Query users collection
-      const usersRef = collection(db, "users");
-      const userQuery = query(usersRef, where("email", "==", formattedEmail), limit(1));
-      const userSnapshot = await getDocs(userQuery);
-      
-      if (userSnapshot.empty) {
-        throw new Error("Bu email tizimda topilmadi.");
-      }
-      
-      const foundUserDoc = userSnapshot.docs[0];
-      const foundUserData = foundUserDoc.data();
-      const foundUserUid = foundUserDoc.id;
-      
+
+      // 1. Resolve the email server-side. `users.email` is no longer client-queryable
+      // (contact details are owner-only now — docs/AUTH.md), and this route also stops
+      // any signed-in user from using the old query as an email→account oracle.
+      const foundUserData = await lookupByEmail(formattedEmail); // throws "Bu email tizimda topilmadi." on 404
+      const foundUserUid = foundUserData.uid;
+
       // 2. Validation 1 (Role)
       if (foundUserData.role !== "teacher") {
         throw new Error("Bu foydalanuvchi o'qituvchi emas.");

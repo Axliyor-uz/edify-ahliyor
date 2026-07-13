@@ -223,6 +223,14 @@ export default function ManagerSignupFlow({ onBack, t }: any) {
 
       // 3. Username Payload
       batch.set(doc(db, "usernames", lowerUsername), { uid: user.uid });
+
+      // 4. Contact details — owner-only subcollection, because the parent users/{uid}
+      // doc is readable by every signed-in user (docs/AUTH.md). The email/phone above
+      // are a migration mirror and go away with DEPLOY 2.
+      batch.set(doc(db, "users", user.uid, "private", "contact"), {
+        email: formData.email,
+        phone: formData.phone,
+      });
       
       // Execute Write
       await batch.commit();

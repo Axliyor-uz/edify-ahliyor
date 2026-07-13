@@ -7,6 +7,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import toast from "react-hot-toast";
+import { lookupByEmail } from "@/lib/directory";
 import {
   Loader2, Plus, Search, Trash2, Users, X, AlertTriangle, ChevronRight
 } from "lucide-react";
@@ -42,20 +43,20 @@ export default function TeachersTab({ data, onUpdated }: { data: CenterDetailDat
     setAdding(true);
     setConflict(null);
     try {
-      const snap = await getDocs(query(collection(db, "users"), where("email", "==", trimmed)));
-      if (snap.empty) {
+      // Resolved server-side: `users.email` is no longer client-queryable — contact
+      // details live in the owner-only private subcollection (docs/AUTH.md).
+      const userData = await lookupByEmail(trimmed).catch(() => null);
+      if (!userData) {
         toast.error("No account found with this email.");
         return;
       }
-      const userDoc = snap.docs[0];
-      const userData = userDoc.data();
       if (userData.role !== "teacher") {
         toast.error(`This account's role is "${userData.role || "unknown"}", not teacher.`);
         return;
       }
 
       // Steal-protection: doc ID == teacher uid, so one membership per teacher.
-      const existing = await getDoc(doc(db, "center_teachers", userDoc.id));
+      const existing = await getDoc(doc(db, "center_teachers", userData.uid));
       if (existing.exists()) {
         const existingCenterId = existing.data().centerId;
         if (existingCenterId === center.id) {
@@ -63,7 +64,7 @@ export default function TeachersTab({ data, onUpdated }: { data: CenterDetailDat
           return;
         }
         setConflict({
-          uid: userDoc.id,
+          uid: userData.uid,
           name: userData.displayName || "Unknown",
           email: trimmed,
           otherCenterId: existingCenterId,
@@ -71,7 +72,7 @@ export default function TeachersTab({ data, onUpdated }: { data: CenterDetailDat
         return;
       }
 
-      await writeMembership(userDoc.id, userData.displayName || "Unknown", trimmed);
+      await writeMembership(userData.uid, userData.displayName || "Unknown", trimmed);
     } catch (error: any) {
       console.error("Add teacher error:", error);
       toast.error(error.message || "Failed to add teacher.");

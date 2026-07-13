@@ -14,6 +14,7 @@ import {
 import { checkUsernameUnique } from '@/services/userService';
 import { useStudentLanguage } from '../layout';
 import toast from 'react-hot-toast';
+import { getOwnContact, setOwnContact } from '@/lib/directory';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Icons
@@ -167,7 +168,8 @@ export default function SettingsPage() {
           district: data.location?.district || '',
           institution: data.institution || data.institutionName || '',
           username: data.username || '',
-          phone: data.phone || '',
+          // Contact details come from the owner-only subcollection (docs/AUTH.md).
+          phone: (await getOwnContact()).phone,
         });
         setOriginalUsername(data.username || '');
       }
@@ -212,16 +214,19 @@ export default function SettingsPage() {
       const newUsername = formData.username?.trim().toLowerCase() || '';
       await updateProfile(user, { displayName: formData.displayName.trim() });
 
+      // `phone` is NOT in here on purpose — contact details go to the owner-only
+      // users/{uid}/private/contact subcollection (docs/AUTH.md). Writing it onto
+      // this world-readable doc would re-open the leak on every profile save.
       const updates = {
         displayName: formData.displayName.trim(),
         bio: formData.bio.trim(),
         birthDate: formData.birthDate,
         gender: formData.gender,
         grade: formData.grade,
-        phone: formData.phone,
         institution: formData.institution.trim(),
         location: { country: "Uzbekistan", region: formData.region, district: formData.district }
       };
+      await setOwnContact({ phone: formData.phone });
 
       if (newUsername !== originalUsername.toLowerCase() && newUsername) {
         const batch = writeBatch(db);

@@ -437,6 +437,55 @@ describe("PHASE 2 — notification phishing", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+describe("PHASE 3 — private contact details (email/phone)", () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "users/student1/private/contact"), {
+        email: "student1@school.uz",
+        phone: "+998901234567",
+      });
+    });
+  });
+
+  it("denies a stranger reading another user's contact details", async () => {
+    await assertFails(getDoc(doc(as("attacker"), "users/student1/private/contact")));
+  });
+
+  it("denies even a TEACHER reading it directly (they must use /api/directory/contact)", async () => {
+    await assertFails(getDoc(doc(as("teacher1"), "users/student1/private/contact")));
+  });
+
+  it("denies a stranger WRITING to someone's contact doc", async () => {
+    await assertFails(
+      setDoc(doc(as("attacker"), "users/student1/private/contact"), {
+        email: "attacker@evil.example",
+      }),
+    );
+  });
+
+  it("allows the owner to read and update their own contact details", async () => {
+    await assertSucceeds(getDoc(doc(as("student1"), "users/student1/private/contact")));
+    await assertSucceeds(
+      setDoc(doc(as("student1"), "users/student1/private/contact"), {
+        email: "student1@school.uz",
+        phone: "+998900000000",
+      }),
+    );
+  });
+
+  it("still lets a super admin read it (support / god mode)", async () => {
+    const admin = testEnv
+      .authenticatedContext("admin1", { super_admin: true })
+      .firestore();
+    await assertSucceeds(getDoc(doc(admin, "users/student1/private/contact")));
+  });
+
+  it("keeps the PUBLIC profile doc readable (rosters, leaderboards, explore)", async () => {
+    await assertSucceeds(getDoc(doc(as("attacker"), "users/student1")));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe("PHASE 2 — quota + dead collections", () => {
   it("denies anonymous and authed clients touching ai_usage (Admin SDK only)", async () => {
     await assertFails(setDoc(doc(anon(), "ai_usage/x_2026-07-13"), { count: 0 }));
