@@ -75,9 +75,13 @@ All written by **Admin SDK** via `lib/server/financeOps.ts` behind `/api/manager
 - **`active_games/{4-digit code}`** — checkers realtime; `board` is a JSON **string**; `{host, guest, status, turn, winner, mustJumpPiece, forfeitedBy?}`. ⚠️ Never deleted.
 - **`parents/{uid}`** — referenced only by the rules helper `isParentOf` (`children[]`); no app code reads/writes it.
 
-## Composite indexes (`firestore.indexes.json` — 13, all collection-scope)
+## Composite indexes (`firestore.indexes.json` — 47, all collection-scope)
 
-attendance: `center_attendance` classId+date, centerId+date; `center_staff_attendance` centerId+date, staffUid+date. rooms: centerId+orderIndex. finance: `center_charges` centerId+status+dueDate, centerId+studentId+periodStart↓, centerId+periodStart; `center_payments` centerId+createdAt↓, centerId+studentId+createdAt↓, centerId+paidAt; `center_student_finance` centerId+balance; `center_expenses` centerId+date. (Other queries in code — e.g. `questions1`, `bsb_chsb_tests` teacherId+createdAt, notifications — rely on indexes created ad-hoc in the console; if you hit a FAILED_PRECONDITION index error, add it to `firestore.indexes.json` and deploy.)
+**The file is now the full mirror of what is live in Firebase.** It used to list only 13→20 indexes while 27 more had been created ad-hoc in the console, so every `deploy --only firestore:indexes` prompted *"Would you like to delete these indexes?"* — one careless **yes** would have dropped indexes that production queries depend on, breaking them with FAILED_PRECONDITION. The file was regenerated from `firebase firestore:indexes` (verified as a strict superset: all 20 previous entries retained, 27 adopted).
+
+Counts by collection: `questions1` 10 · `users` 6 · `attempts`/`center_charges`/`center_payments`/`teacher_questions` 3 each · `center_attendance`/`center_staff_attendance`/`custom_tests`/`materials` 2 each · `ai_sessions`, `assignments`, `bsb_chsb_tests`, `center_expenses`, `center_student_finance`, `classes`, `ielts_groups`, `notifications`, `online_books`, `rooms`, `rush_attempts` 1 each.
+
+⚠️ **Create indexes in the file, not the console.** A console-created index drifts out of the file and re-arms the delete prompt. If you hit a FAILED_PRECONDITION error, add the index to `firestore.indexes.json` and deploy. If someone *does* create one in the console, re-sync with `npx firebase-tools firestore:indexes --project scanqr-64512 > firestore.indexes.json`. Many of the 47 (notably the 10 `questions1` permutations and 6 `users` ones) predate the file and may be unused — do not prune them without checking the query that needs them; the entries carry an explicit `__name__` tie-breaker exactly as Firebase reports them.
 
 Deploy: `npx firebase-tools deploy --only firestore:rules,firestore:indexes` (project `scanqr-64512`). ⚠️ `firebase.json` contains a `functions` block but there is **no `functions/` dir** — a bare `firebase deploy` fails at the functions predeploy; always use `--only`.
 
