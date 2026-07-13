@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "backfill:rand": "tsx scripts/backfillrandfield.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -47,6 +48,7 @@
     "eslint-config-next": "16.1.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.0",
     "typescript": "^5"
   }
 }
