@@ -199,60 +199,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "subjectId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "chapterId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "difficultyId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "number",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "questions1",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "subjectId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "chapterId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "number",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "questions1",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "topicId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "chapterId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "questions1",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
           "fieldPath": "topicId",
           "order": "ASCENDING"
         },
@@ -261,21 +207,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "difficultyId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "questions1",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "topicId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "chapterId",
+          "fieldPath": "subtopicId",
           "order": "ASCENDING"
         },
         {
@@ -305,6 +237,24 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "uploadedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "questions1",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "topicId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "chapterId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "difficultyId",
           "order": "ASCENDING"
         },
@@ -314,22 +264,12 @@
         }
       ]
     },
-
-
-
-
-
-
-
-
-
-
     {
       "collectionGroup": "questions1",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "subjectId",
+          "fieldPath": "topicId",
           "order": "ASCENDING"
         },
         {
@@ -337,12 +277,8 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "difficultyId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "number",
-          "order": "ASCENDING"
+          "fieldPath": "uploadedAt",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -351,7 +287,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "subjectId",
+          "fieldPath": "topicId",
           "order": "ASCENDING"
         },
         {
@@ -359,7 +295,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "number",
+          "fieldPath": "difficultyId",
           "order": "ASCENDING"
         }
       ]
@@ -375,19 +311,9 @@
         {
           "fieldPath": "chapterId",
           "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "questions1",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "topic",
-          "order": "ASCENDING"
         },
         {
-          "fieldPath": "testType",
+          "fieldPath": "difficultyId",
           "order": "ASCENDING"
         },
         {
@@ -397,16 +323,16 @@
       ]
     },
     {
-      "collectionGroup": "questions1",
+      "collectionGroup": "rush_attempts",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "topic",
+          "fieldPath": "userId",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "rand",
-          "order": "ASCENDING"
+          "fieldPath": "submittedAt",
+          "order": "DESCENDING"
         }
       ]
     }
