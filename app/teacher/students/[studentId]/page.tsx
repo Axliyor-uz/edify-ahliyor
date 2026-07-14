@@ -13,7 +13,9 @@ import { useTeacherLanguage } from '@/app/teacher/layout';
 import { getContactOf } from '@/lib/directory';
 import toast from 'react-hot-toast';
 import { Button, Spinner } from '@/components/ui';
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
+import { AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
+import ChartFrame from '@/components/ChartFrame';
+import { calculateStreak, xpDayKey } from '@/lib/xpDays';
 
 // ============================================================================
 // 🟢 1. GLOBAL CACHE (Saves Firebase Reads & Surivives Back Navigation)
@@ -55,56 +57,20 @@ const PROFILE_TRANSLATIONS: any = {
   }
 };
 
-// 🟢 SMART STREAK CALCULATOR
-const calculateTrueStreak = (dailyHistory: Record<string, number> | undefined) => {
-  if (!dailyHistory) return 0;
-  
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  const formatDate = (d: Date) => {
-    const offset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - offset).toISOString().split('T')[0];
-  };
-
-  const todayStr = formatDate(today);
-  const yesterdayStr = formatDate(yesterday);
-
-  if (!dailyHistory[todayStr] && !dailyHistory[yesterdayStr]) return 0;
-
-  let streakCount = 0;
-  let checkDate = new Date(dailyHistory[todayStr] ? today : yesterday);
-
-  while (true) {
-    const checkStr = formatDate(checkDate);
-    if (dailyHistory[checkStr] && dailyHistory[checkStr] > 0) {
-      streakCount++;
-      checkDate.setDate(checkDate.getDate() - 1); 
-    } else {
-      break; 
-    }
-  }
-
-  return streakCount;
-};
-
-// 🟢 CHART DATA GENERATOR
+// 🟢 CHART DATA GENERATOR — 14 days, keyed the way the XP writers key them (UTC).
+// Reading a device-local key here showed the teacher a different streak and a
+// different "today" than the student sees on their own dashboard.
 const generateChartData = (dailyHistory: Record<string, number> | undefined, lang: string) => {
-  const data = [];
-  const today = new Date();
-  
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(today.getDate() - i);
-    
-    const offset = d.getTimezoneOffset() * 60000;
-    const dateStr = new Date(d.getTime() - offset).toISOString().split('T')[0];
-    const displayDate = d.toLocaleDateString(lang === 'uz' ? 'uz-UZ' : 'en-US', { month: 'short', day: 'numeric' });
-    
-    data.push({ name: displayDate, XP: dailyHistory?.[dateStr] || 0 });
-  }
-  return data;
+  const locale = lang === 'uz' ? 'uz-UZ' : 'en-US';
+  const now = Date.now();
+
+  return Array.from({ length: 14 }, (_, i) => {
+    const day = new Date(now - (13 - i) * 86_400_000);
+    return {
+      name: day.toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+      XP: dailyHistory?.[xpDayKey(day)] ?? 0,
+    };
+  });
 };
 
 export default function StudentProfilePage() {
@@ -178,7 +144,7 @@ export default function StudentProfilePage() {
   }, [studentId]);
 
   // Derived Data
-  const trueStreak = useMemo(() => calculateTrueStreak(profile?.dailyHistory), [profile]);
+  const trueStreak = useMemo(() => calculateStreak(profile?.dailyHistory), [profile]);
   const chartData = useMemo(() => generateChartData(profile?.dailyHistory, lang), [profile, lang]);
 
   if (loading) {
@@ -274,12 +240,12 @@ export default function StudentProfilePage() {
               {profile.totalXP > 0 && <span className="bg-success-container text-on-success-container text-[9px] font-black px-2 py-0.5 rounded-m3-xs uppercase tracking-widest">Live</span>}
            </div>
            
-           <div className="w-full h-[180px] md:h-[220px]">
-              <ResponsiveContainer width="100%" height="100%">
-                {/* Recharts colors are SVG attributes (CSS vars don't resolve there) —
-                    hex values pinned to components/ui/theme.css: primary #1364b0,
-                    outline #747b83, outline-variant #bfc5cb, inverse-surface #36383a. */}
-                <AreaChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+           {/* Recharts colors are SVG attributes (CSS vars don't resolve there) —
+               hex values pinned to components/ui/theme.css: primary #1364b0,
+               outline #747b83, outline-variant #bfc5cb, inverse-surface #36383a. */}
+           <ChartFrame className="w-full h-[180px] md:h-[220px]">
+              {({ width, height }) => (
+                <AreaChart width={width} height={height} data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorXP" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#1364b0" stopOpacity={0.3}/>
@@ -295,8 +261,8 @@ export default function StudentProfilePage() {
                   />
                   <Area type="monotone" dataKey="XP" stroke="#1364b0" strokeWidth={2.5} fillOpacity={1} fill="url(#colorXP)" activeDot={{ r: 5, fill: '#1364b0', stroke: '#ffffff', strokeWidth: 2 }} />
                 </AreaChart>
-              </ResponsiveContainer>
-           </div>
+              )}
+           </ChartFrame>
         </div>
 
         {/* --- 4. DETAILS LISTS (Apple Settings Style) --- */}

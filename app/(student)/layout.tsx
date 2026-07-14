@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Firebase & Auth
 import { useAuth } from '@/lib/AuthContext';
+import { calculateStreak } from '@/lib/xpDays';
 import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -44,19 +45,19 @@ export function useStudentLanguage() {
 // ============================================================================
 const LAYOUT_TRANSLATIONS: any = {
   uz: {
-    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", ielts: "IELTS", profile: "Profil" },
+    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", ielts: "IELTS", profile: "Profil", RASCHmodel: "Rasch" },
     topbar: { streak: "Seriya", profile: "Profil", settings: "Sozlamalar", logout: "Chiqish", language: "Til" },
     loading: "Yuklanmoqda...",
     logoutConfirm: { title: "Tizimdan chiqish", desc: "Haqiqatan ham hisobingizdan chiqmoqchimisiz?", cancel: "Bekor qilish", confirm: "Ha, chiqish" }
   },
   en: {
-    menu: { dashboard: "Dashboard", classes: "Classes", explore: "Courses", library: "Library", games: "Games", leaderboard: "Rank", ielts: "IELTS", profile: "Profile" },
+    menu: { dashboard: "Dashboard", classes: "Classes", explore: "Courses", library: "Library", games: "Games", leaderboard: "Rank", ielts: "IELTS", profile: "Profile", RASCHmodel: "Rasch" },
     topbar: { streak: "Streak", profile: "Profile", settings: "Settings", logout: "Sign Out", language: "Language" },
     loading: "Loading...",
     logoutConfirm: { title: "Sign Out", desc: "Are you sure you want to sign out of your account?", cancel: "Cancel", confirm: "Yes, Sign Out" }
   },
   ru: {
-    menu: { dashboard: "Главная", classes: "Классы", explore: "Курсы", library: "Библиотека", games: "Игры", leaderboard: "Рейтинг", ielts: "IELTS", profile: "Профиль" },
+    menu: { dashboard: "Главная", classes: "Классы", explore: "Курсы", library: "Библиотека", games: "Игры", leaderboard: "Рейтинг", ielts: "IELTS", profile: "Профиль", RASCHmodel: "Rasch" },
     topbar: { streak: "Серия", profile: "Профиль", settings: "Настройки", logout: "Выйти", language: "Язык" },
     loading: "Загрузка...",
     logoutConfirm: { title: "Выход", desc: "Вы уверены, что хотите выйти из аккаунта?", cancel: "Отмена", confirm: "Да, выйти" }
@@ -68,26 +69,6 @@ const LANGUAGE_OPTIONS = [
   { code: 'en', label: "English", flag: "🇬🇧" },
   { code: 'ru', label: "Русский", flag: "🇷🇺" },
 ];
-
-const calculateTrueStreak = (dailyHistory: Record<string, number> | undefined) => {
-  if (!dailyHistory) return 0;
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  const formatDate = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-
-  if (!dailyHistory[formatDate(today)] && !dailyHistory[formatDate(yesterday)]) return 0;
-
-  let streakCount = 0;
-  let checkDate = new Date(dailyHistory[formatDate(today)] ? today : yesterday);
-
-  while (dailyHistory[formatDate(checkDate)] && dailyHistory[formatDate(checkDate)] > 0) {
-    streakCount++;
-    checkDate.setDate(checkDate.getDate() - 1);
-  }
-  return streakCount;
-};
 
 // ============================================================================
 // 3. MAIN LAYOUT COMPONENT
@@ -142,7 +123,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         const data = docSnap.data();
         setStats({
           xp: data.totalXP ?? data.xp ?? 0,
-          streak: calculateTrueStreak(data.dailyHistory)
+          streak: calculateStreak(data.dailyHistory)
         });
       }
     });
@@ -183,7 +164,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     { name: t.menu.library, href: '/library', icon: BookMarked, hideOnMobile: true },
     { name: t.menu.games, href: '/games', icon: Gamepad2 },
     { name: t.menu.leaderboard, href: '/leaderboard', icon: Trophy },
-    // { name: t.menu.ielts, href: '/ielts', icon: Target },
+    { name: t.menu.RASCHmodel, href: '/RASCHmodel', icon: Target },
     { name: t.menu.profile, href: '/profile', icon: UserIcon },
   ];
 

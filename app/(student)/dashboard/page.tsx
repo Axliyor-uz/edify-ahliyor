@@ -10,9 +10,12 @@ import {
   CheckCircle, Activity, Sparkles, School, BookOpen, BookMarked
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useStudentLanguage } from '../layout'; 
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
+import { useStudentLanguage } from '../layout';
+import { AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
 import toast from 'react-hot-toast';
+import ChartFrame from '@/components/ChartFrame';
+import MathLevelSummary from '../RASCHmodel/components/MathLevelSummary';
+import { calculateStreak, last7Days, xpDayKey } from '@/lib/xpDays';
 
 // ============================================================================
 // 🟢 1. GLOBAL CACHE (0 Reads on Back Navigation)
@@ -63,38 +66,15 @@ interface UserProfile {
   recentActivity: any[]; 
 }
 
-const generateChartData = (dailyHistory: Record<string, number> | undefined, lang: string) => {
-  const data = [];
-  const today = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(today.getDate() - i);
-    const offset = d.getTimezoneOffset() * 60000;
-    const dateStr = new Date(d.getTime() - offset).toISOString().split('T')[0];
-    const displayDate = d.toLocaleDateString(lang === 'uz' ? 'uz-UZ' : lang === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'short' });
-    data.push({ name: displayDate.toUpperCase(), XP: dailyHistory?.[dateStr] || 0 });
-  }
-  return data;
-};
-
-const calculateTrueStreak = (dailyHistory: Record<string, number> | undefined) => {
-  if (!dailyHistory) return 0;
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const formatDate = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-
-  if (!dailyHistory[formatDate(today)] && !dailyHistory[formatDate(yesterday)]) return 0;
-
-  let streakCount = 0;
-  let checkDate = new Date(dailyHistory[formatDate(today)] ? today : yesterday);
-
-  while (dailyHistory[formatDate(checkDate)] && dailyHistory[formatDate(checkDate)] > 0) {
-    streakCount++;
-    checkDate.setDate(checkDate.getDate() - 1);
-  }
-  return streakCount;
-};
+// The four daily-goal tiers. Tailwind only ships classes it can see as whole
+// strings, so the palette is spelled out here — `bg-${color}-50` compiled to
+// nothing and the selected tier came out unstyled.
+const GOAL_TIERS = [
+  { xp: 50, label: 'Casual', emoji: '😌', selected: 'border-emerald-500 bg-emerald-50', text: 'text-emerald-700', icon: 'text-emerald-500' },
+  { xp: 100, label: 'Regular', emoji: '🎯', selected: 'border-blue-500 bg-blue-50', text: 'text-blue-700', icon: 'text-blue-500' },
+  { xp: 200, label: 'Serious', emoji: '🔥', selected: 'border-orange-500 bg-orange-50', text: 'text-orange-700', icon: 'text-orange-500' },
+  { xp: 500, label: 'Insane', emoji: '⚡', selected: 'border-indigo-500 bg-indigo-50', text: 'text-indigo-700', icon: 'text-indigo-500' },
+] as const;
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -106,7 +86,7 @@ export default function StudentDashboard() {
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [newGoal, setNewGoal] = useState(200);
 
-  const chartData = useMemo(() => generateChartData(profile?.dailyHistory, lang), [profile, lang]);
+  const chartData = useMemo(() => last7Days(profile?.dailyHistory, lang), [profile, lang]);
 
   // ============================================================================
   // 🟢 2. DATA FETCHING (Strictly 1 Read per session)
@@ -133,7 +113,7 @@ export default function StudentDashboard() {
           userData = {
             displayName: data.displayName || user.displayName || 'Student',
             totalXP: data.totalXP ?? data.xp ?? 0,
-            currentStreak: calculateTrueStreak(data.dailyHistory),
+            currentStreak: calculateStreak(data.dailyHistory),
             dailyGoal: data.dailyGoal || 200,
             dailyHistory: data.dailyHistory || {},
             recentActivity: data.recentActivity || []
@@ -156,8 +136,7 @@ export default function StudentDashboard() {
   // ============================================================================
   // 🟢 3. ACTIONS & HELPERS
   // ============================================================================
-  const todayKey = new Date().toISOString().split('T')[0];
-  const todayXP = profile?.dailyHistory?.[todayKey] || 0;
+  const todayXP = profile?.dailyHistory?.[xpDayKey()] || 0;
   const dailyGoal = profile?.dailyGoal || 200;
   const progressPercent = Math.min(Math.round((todayXP / dailyGoal) * 100), 100);
   
@@ -225,8 +204,10 @@ export default function StudentDashboard() {
               <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center text-orange-500 border-2 border-orange-200"><Flame size={16} strokeWidth={3}/></div>
               <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">{t.stats.streak}</span>
             </div>
-            <p className={`text-2xl md:text-3xl font-black tracking-tight ${profile!.currentStreak > 0 ? 'text-orange-500' : 'text-zinc-900'}`}>
-              {profile?.currentStreak} <span className="text-[14px] font-bold text-zinc-400">{t.stats.days}</span>
+            {/* `profile` is null when the read failed — the page still renders, so
+                nothing here may assume it exists. */}
+            <p className={`text-2xl md:text-3xl font-black tracking-tight ${(profile?.currentStreak ?? 0) > 0 ? 'text-orange-500' : 'text-zinc-900'}`}>
+              {profile?.currentStreak ?? 0} <span className="text-[14px] font-bold text-zinc-400">{t.stats.days}</span>
             </p>
           </div>
 
@@ -260,6 +241,12 @@ export default function StudentDashboard() {
             </div>
           </div>
         </div>
+
+        {/* 🟢 MATHEMATICS ABILITY (Rasch θ → a 0–3 level)
+            The XP level above measures activity; this one measures ability. It
+            costs no extra read on a warm cache — the Rasch hub and /progress read
+            the same RASCH_levels/{uid} document through the same 12h cache. */}
+        <MathLevelSummary lang={lang} className="" />
 
         {/* 🟢 MAIN CONTENT AREA */}
         <div className="grid lg:grid-cols-3 gap-6">
@@ -312,9 +299,9 @@ export default function StudentDashboard() {
               )}
             </div>
             
-            <div className="w-full h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+            <ChartFrame className="w-full h-[200px]">
+              {({ width, height }) => (
+                <AreaChart width={width} height={height} data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorXP" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4}/>
@@ -323,14 +310,14 @@ export default function StudentDashboard() {
                   </defs>
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 900 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 900 }} />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#18181B', borderRadius: '16px', border: 'none', color: '#fff', fontWeight: '900', fontSize: '13px', padding: '8px 14px' }}
-                    itemStyle={{ color: '#6366F1' }} cursor={{ stroke: '#E4E4E7', strokeWidth: 2, strokeDasharray: '4 4' }} 
+                    itemStyle={{ color: '#6366F1' }} cursor={{ stroke: '#E4E4E7', strokeWidth: 2, strokeDasharray: '4 4' }}
                   />
                   <Area type="monotone" dataKey="XP" stroke="#6366F1" strokeWidth={4} fillOpacity={1} fill="url(#colorXP)" activeDot={{ r: 6, fill: '#6366F1', stroke: '#fff', strokeWidth: 3 }} />
                 </AreaChart>
-              </ResponsiveContainer>
-            </div>
+              )}
+            </ChartFrame>
           </div>
           
           {/* 🟢 NEW: FULL-WIDTH LIBRARY PROMO BANNER */}
@@ -365,27 +352,22 @@ export default function StudentDashboard() {
                 <p className="text-[14px] font-bold text-zinc-500 mb-6">{t.modal.desc}</p>
                 
                 <div className="space-y-3">
-                  {[
-                    { xp: 50, label: 'Casual', emoji: '😌', color: 'emerald' },
-                    { xp: 100, label: 'Regular', emoji: '🎯', color: 'blue' },
-                    { xp: 200, label: 'Serious', emoji: '🔥', color: 'orange' },
-                    { xp: 500, label: 'Insane', emoji: '⚡', color: 'indigo' }
-                  ].map(({ xp, label, emoji, color }) => {
+                  {GOAL_TIERS.map(({ xp, label, emoji, selected, text, icon }) => {
                     const isSelected = newGoal === xp;
                     return (
                       <button
                         key={xp}
                         onClick={() => handleSaveGoal(xp)}
-                        className={`w-full p-4 rounded-2xl border-2 transition-all flex justify-between items-center ${isSelected ? `border-${color}-500 bg-${color}-50 border-b-2 translate-y-[2px]` : 'border-zinc-200 border-b-4 bg-white hover:bg-zinc-50 active:border-b-2 active:translate-y-[2px]'}`}
+                        className={`w-full p-4 rounded-2xl border-2 transition-all flex justify-between items-center ${isSelected ? `${selected} border-b-2 translate-y-[2px]` : 'border-zinc-200 border-b-4 bg-white hover:bg-zinc-50 active:border-b-2 active:translate-y-[2px]'}`}
                       >
                         <div className="flex items-center gap-4">
                           <span className="text-2xl">{emoji}</span>
                           <div className="text-left">
-                            <div className={`font-black text-[16px] ${isSelected ? `text-${color}-700` : 'text-zinc-900'}`}>{xp} XP</div>
+                            <div className={`font-black text-[16px] ${isSelected ? text : 'text-zinc-900'}`}>{xp} XP</div>
                             <div className="text-[11px] font-black text-zinc-400 uppercase tracking-widest mt-0.5">{t.modal.levels[label as keyof typeof t.modal.levels]}</div>
                           </div>
                         </div>
-                        {isSelected && <CheckCircle className={`text-${color}-500`} size={24} strokeWidth={3} />}
+                        {isSelected && <CheckCircle className={icon} size={24} strokeWidth={3} />}
                       </button>
                     );
                   })}
