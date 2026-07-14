@@ -46,8 +46,8 @@ The student route tree `app/(student)/` (route group, no URL segment): dashboard
 Key traps:
 - **Live writers use `lastActiveDate`; the `UserProfile` interface (and dead code) says `lastStudyDate`.** Trust `lastActiveDate`.
 - **Levels are derived, never stored**: `floor(totalXP/1000)+1` (the stored `level:1` from signup is dead).
-- **Displayed streak is recomputed from `dailyHistory` keys** (`calculateTrueStreak` on dashboard/profile) — it can differ from the stored `currentStreak`.
-- `dailyHistory` keys are **UTC** dates in writers but the dashboard chart uses local-adjusted dates → possible off-by-one near midnight. `dailyHistory` trimmed to last 30 entries on write.
+- **Displayed streak is recomputed from `dailyHistory` keys**, never read from the stored `currentStreak` (which can differ).
+- `dailyHistory` keys are **UTC** dates (`toISOString().slice(0,10)`) — in the writers AND now in every reader. [lib/xpDays.ts](../lib/xpDays.ts) (`xpDayKey`, `calculateStreak`, `last7Days`) is the single source of that convention; the student layout, dashboard, profile and the teacher student-detail page all import it. They each used to re-derive the key from **device-local** time, so east of UTC (Tashkent = UTC+5) every key between 00:00 and 05:00 local named a day the writers never wrote — today's XP read as 0 and the streak broke overnight. Don't reintroduce a local-time day key. `dailyHistory` is trimmed to the last 30 entries on write.
 - `dailyGoal` (50/100/200/500, default 200) written from the dashboard modal.
 
 ### Leaderboards
@@ -64,6 +64,15 @@ Key traps:
 - **Notifications**: `where userId== orderBy createdAt limit 50`, 60s SWR, optimistic batch mark-read/clear. ⚠️ Type mismatch: service emits `alert`/`attendance` (page renders default icon), page handles `general` (never emitted). Class-join deliberately sends no notification.
 - **Social** (`lib/social.ts`): atomic batch — edges `users/{a}/following/{b}` + `users/{b}/followers/{a}` (`{followedAt}`), ±1 `followersCount`/`followingCount` (the rules carve-out), follow notification. ⚠️ Unfollow has no existence checks — stale state can drive counters negative.
 - **Explore**: top teachers `users where role=='teacher' orderBy totalStudents desc` (⚠️ `totalStudents` is Cloud-Function-generated, may be absent) + the divergent join-request shape noted above.
+
+## Charts
+
+Every recharts chart mounts inside [components/ChartFrame.tsx](../components/ChartFrame.tsx), which measures its own box and passes numeric `width`/`height` to the chart. **Do not go back to `<ResponsiveContainer width="100%" height="100%">`**: its default `initialDimension` is `-1 × -1`, so on the first pass of every mount it renders nothing and logs *"The width(-1) and height(-1) of chart should be greater than 0…"*. The frame also leaves the chart unmounted inside a zero-sized (hidden/collapsed) parent instead of warning. Give the frame its size via `className`; the chart takes `width`/`height` from the render prop.
+
+## The dashboard's two "levels" (they measure different things)
+
+- **Level** (the stat tile) is XP: `floor(totalXP/1000)+1` — how much the student has *done*.
+- **Mathematics level** (`MathLevelSummary`, under the stat grid) is Rasch ability θ mapped to 0–3 — how hard a problem the student can *solve*. It is the same card the Rasch hub (`/RASCHmodel`) shows, reading the same `RASCH_levels/{uid}` document through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so mounting it on the dashboard costs no extra read on a warm cache. It renders `null` until that read resolves.
 
 ## Caching convention
 

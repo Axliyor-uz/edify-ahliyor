@@ -71,7 +71,8 @@ Multi-role SaaS ("Edify") with four role trees, each with a `'use client'` role-
 - **Timestamps are inconsistent by collection** (serverTimestamp vs ISO string vs `YYYY-MM-DD` key vs number) — check the writer before comparing/ordering. Table in [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
 - **`attempts` is polymorphic** — always branch on `type` ('assignment'|'exam'); exam docs overload `assignmentId` with the examId.
 - **Rules `list` queries must not call `get()` per document** — use the split `get`(strict)/`list: if isAuth()` pattern (attendance) or a provable constant-path check (finance).
-- Date keys for attendance/finance are Asia/Tashkent via [lib/dateUtils.ts](lib/dateUtils.ts); gamification/`ai_usage` use UTC — don't mix.
+- Date keys for attendance/finance are Asia/Tashkent via [lib/dateUtils.ts](lib/dateUtils.ts); gamification/`ai_usage` use UTC — don't mix. XP day keys (`users.dailyHistory`) go through [lib/xpDays.ts](lib/xpDays.ts) on both sides; never re-derive one from device-local time.
+- Charts go in [components/ChartFrame.tsx](components/ChartFrame.tsx), never `<ResponsiveContainer width="100%" height="100%">` (it mounts at `-1 × -1` and warns on every mount).
 - `online_books` counters are lowercase `viewscount`/`downloadscount`.
 - Join codes / access codes have **no uniqueness checks** anywhere.
 - API routes using `fs`/native modules need `export const dynamic = 'force-dynamic'` (see `/api/tts`).

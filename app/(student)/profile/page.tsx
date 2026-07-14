@@ -17,7 +17,9 @@ import {
   AtSign, RefreshCw, CheckCircle, XCircle, BookOpen, Users, UserMinus 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
+import { AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
+import ChartFrame from '@/components/ChartFrame';
+import { calculateStreak, last7Days } from '@/lib/xpDays';
 import { useStudentLanguage } from '../layout';
 import { checkUsernameUnique } from '@/services/userService'; 
 
@@ -77,27 +79,6 @@ const formatGrade = (gradeId: string, lang: string) => {
   return gradeId;
 };
 
-const calculateTrueStreak = (dailyHistory: Record<string, number> | undefined) => {
-  if (!dailyHistory) return 0;
-  const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-  const formatDate = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-  if (!dailyHistory[formatDate(today)] && !dailyHistory[formatDate(yesterday)]) return 0;
-  let streakCount = 0; let checkDate = new Date(dailyHistory[formatDate(today)] ? today : yesterday);
-  while (dailyHistory[formatDate(checkDate)] && dailyHistory[formatDate(checkDate)] > 0) { streakCount++; checkDate.setDate(checkDate.getDate() - 1); }
-  return streakCount;
-};
-
-const generateChartData = (dailyHistory: Record<string, number> | undefined, lang: string) => {
-  const data = []; const today = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(today.getDate() - i);
-    const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-    const displayDate = d.toLocaleDateString(lang === 'uz' ? 'uz-UZ' : lang === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'short' });
-    data.push({ name: displayDate.toUpperCase(), XP: dailyHistory?.[dateStr] || 0 });
-  }
-  return data;
-};
-
 export default function StudentProfilePage() {
   const { user } = useAuth();
   const { lang } = useStudentLanguage();
@@ -150,7 +131,7 @@ export default function StudentProfilePage() {
             displayName: data.displayName || user.displayName || 'Student',
             photoURL: data.photoURL || data.photoUrl || user.photoURL || null,
             totalXP: data.totalXP ?? data.xp ?? 0,
-            currentStreak: calculateTrueStreak(data.dailyHistory),
+            currentStreak: calculateStreak(data.dailyHistory),
             dailyHistory: data.dailyHistory || {},
             followersCount: data.followersCount || 0, // 🟢 Ensure numbers exist
             followingCount: data.followingCount || 0 
@@ -369,7 +350,7 @@ export default function StudentProfilePage() {
     } catch (error) { showToast(t.photo.errDelete, 'error'); } finally { setIsUploading(false); }
   };
 
-  const chartData = useMemo(() => generateChartData(profile?.dailyHistory, lang), [profile, lang]);
+  const chartData = useMemo(() => last7Days(profile?.dailyHistory, lang), [profile, lang]);
   const currentLevel = Math.floor((profile?.totalXP || 0) / 1000) + 1;
   const avatarUrl = !imgError && profile?.photoURL ? profile.photoURL : null;
 
@@ -544,17 +525,17 @@ export default function StudentProfilePage() {
         {/* 4. RECHARTS ACTIVITY GRAPH */}
         <div className="bg-white border-2 border-zinc-200 rounded-[2rem] p-6 md:p-8 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-6"><h3 className="font-black text-zinc-900 flex items-center gap-2 text-[16px] tracking-tight"><Activity size={20} strokeWidth={3} className="text-violet-500" /> {t.sections.activity}</h3></div>
-          <div className="w-full h-[220px] mt-2 relative" style={{ minWidth: 0, minHeight: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+          <ChartFrame className="w-full h-[220px] mt-2 relative">
+            {({ width, height }) => (
+              <AreaChart width={width} height={height} data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                 <defs><linearGradient id="colorXPProfile" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.4}/><stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/></linearGradient></defs>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#A1A1AA', fontWeight: 900 }} dy={10} />
                 <YAxis hide={true} domain={[0, 'dataMax + 50']} />
                 <Tooltip contentStyle={{ backgroundColor: '#18181B', borderRadius: '16px', border: 'none', color: '#fff', fontWeight: '900', fontSize: '14px', padding: '10px 16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)' }} itemStyle={{ color: '#8B5CF6' }} cursor={{ stroke: '#E4E4E7', strokeWidth: 2, strokeDasharray: '4 4' }} />
                 <Area type="monotone" dataKey="XP" stroke="#8B5CF6" strokeWidth={4} fillOpacity={1} fill="url(#colorXPProfile)" activeDot={{ r: 6, fill: '#8B5CF6', stroke: '#fff', strokeWidth: 3 }} />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </div>
 
         {/* 5. DANGER ZONE */}

@@ -10,7 +10,8 @@ import {
   TrendingUp, Briefcase, MapPin, GraduationCap, Smile, Mail,Trophy, Star,X, Users, UserPlus, UserCheck, Loader2
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
+import ChartFrame from '@/components/ChartFrame';
 import { useStudentLanguage } from '@/app/(student)/layout'; 
 
 // 🟢 1. IMPORT YOUR CLEAN SOCIAL ENGINE
@@ -458,15 +459,17 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userId
                  {myUserData && <div className="flex items-center gap-1.5"><span className="w-3 h-1 rounded-full bg-zinc-300"></span><span className="text-[10px] font-black text-zinc-500 uppercase">{t.charts.you}</span></div>}
                </div>
 
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={comparisonData} margin={{ top: 20, right: 0, left: -25, bottom: 0 }}>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 900 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 900 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#18181B', borderRadius: '12px', border: 'none', color: '#fff', fontWeight: '900', fontSize: '13px', padding: '8px 12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)' }} cursor={{ stroke: '#E4E4E7', strokeWidth: 2, strokeDasharray: '4 4' }} />
-                  <Line type="monotone" dataKey={t.charts.target} stroke="#3B82F6" strokeWidth={4} dot={{ r: 4, fill: '#3B82F6', strokeWidth: 0 }} activeDot={{ r: 6, stroke: '#fff', strokeWidth: 3 }} />
-                  {myUserData && <Line type="monotone" dataKey={t.charts.you} stroke="#D4D4D8" strokeWidth={3} strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: '#D4D4D8', stroke: '#fff', strokeWidth: 2 }} />}
-                </LineChart>
-              </ResponsiveContainer>
+              <ChartFrame className="w-full h-[220px]">
+                {({ width, height }) => (
+                  <LineChart width={width} height={height} data={comparisonData} margin={{ top: 20, right: 0, left: -25, bottom: 0 }}>
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 900 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 900 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#18181B', borderRadius: '12px', border: 'none', color: '#fff', fontWeight: '900', fontSize: '13px', padding: '8px 12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)' }} cursor={{ stroke: '#E4E4E7', strokeWidth: 2, strokeDasharray: '4 4' }} />
+                    <Line type="monotone" dataKey={t.charts.target} stroke="#3B82F6" strokeWidth={4} dot={{ r: 4, fill: '#3B82F6', strokeWidth: 0 }} activeDot={{ r: 6, stroke: '#fff', strokeWidth: 3 }} />
+                    {myUserData && <Line type="monotone" dataKey={t.charts.you} stroke="#D4D4D8" strokeWidth={3} strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: '#D4D4D8', stroke: '#fff', strokeWidth: 2 }} />}
+                  </LineChart>
+                )}
+              </ChartFrame>
             </div>
           </div>
 
