@@ -262,6 +262,7 @@ export default function CreatedQuestionsList({ creatorId, sessionQuestions, onEd
           <p className="text-[12px] font-bold text-on-surface-variant">{labels.noMore}</p>
         )}
       </div>
+      
     </Card>
   );
 }
