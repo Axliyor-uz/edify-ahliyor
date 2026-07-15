@@ -85,3 +85,7 @@ Multi-role SaaS ("Edify") with four role trees, each with a `'use client'` role-
 - User-facing content is trilingual `{uz, ru, en}`; Uzbek is the default UI language. Teacher pages use inline `TRANSLATIONS` dicts + `useTeacherLanguage()`; student pages use `useStudentLanguage()`.
 - AI flows follow **check permission → generate → deduct actual count** with the monthly gatekeeper ([docs/AI.md](docs/AI.md)).
 - Student pages use module-level 60s caches — mutations must patch the cache too.
+
+## Android manager app sync (required)
+
+A native Android port of the **manager panel** lives at `/home/matimatik/AndroidStudioProjects/EdifyManager` and mirrors this repo's manager logic 1:1. Whenever a change touches manager-facing behavior, any Firestore document shape/query, `firestore.rules`, or a `/api/manager|directory|auth` contract: **append one line to [ANDROID_IMPACT.md](ANDROID_IMPACT.md)** in the same change (date, files, one-line summary of what the Android app must mirror). The Android repo's `/sync-web` command consumes that ledger plus the git diff.
