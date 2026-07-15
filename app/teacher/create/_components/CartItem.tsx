@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { Trash2, BookOpen, Eye, ChevronDown, CheckCircle2 } from 'lucide-react';
 import LatexRenderer from '@/components/LatexRenderer';
+import { normalizeQuestion } from '@/lib/questionSchema';
+import QuestionPartsPreview from '@/components/QuestionPartsPreview';
+import QuestionCreator from '@/components/QuestionCreator';
 
 import { cn } from '@/components/ui';
 
@@ -30,18 +33,23 @@ export default function CartItem({ question, index, onRemove }: Props) {
     return obj?.uz || obj?.en || obj?.ru || "No text";
   };
 
-  const questionText = getText(question.question || question.text);
-  const options = question.options || {};
-  const correctAnswer = question.answer;
-  const explanation = getText(question.explanation);
+  // Normalized here: the cart holds both freshly generated questions (legacy
+  // shape) and docs read back from Firestore (v1 shape).
+  const q = normalizeQuestion(question);
+
+  const questionText = getText(q.question);
+  const options = q.options;
+  // multiple_select marks several letters correct; mcq just one.
+  const correctKeys = Array.isArray(q.correctAnswer.value) ? q.correctAnswer.value : [q.answer];
+  const explanation = getText(q.explanation);
 
   const singleSolution = getText(question.solution);
-  const multiSolutions = question.solutions || [];
+  const multiSolutions = q.solutions;
   const hasSolution = (explanation && explanation !== "No text") ||
     multiSolutions.length > 0 ||
     (singleSolution && singleSolution !== "No text");
 
-  const difficultyKey = (question.uiDifficulty || question.difficulty || 'medium').toLowerCase();
+  const difficultyKey = q.difficulty;
   const diffStyle = DIFFICULTY_BADGE[difficultyKey] || 'bg-surface-container-highest text-on-surface-variant';
 
   return (
@@ -60,6 +68,7 @@ export default function CartItem({ question, index, onRemove }: Props) {
           <div className="text-[14px] font-semibold text-on-surface leading-relaxed break-words overflow-x-auto custom-scrollbar">
             <LatexRenderer latex={questionText} />
           </div>
+          <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="mt-1.5 text-on-surface-variant" />
         </div>
 
         <button
@@ -74,14 +83,21 @@ export default function CartItem({ question, index, onRemove }: Props) {
       {/* 2. ACTION BAR */}
       <div className="bg-surface-container px-4 py-3 border-t border-outline-variant flex flex-wrap items-center justify-between gap-3 shrink-0">
 
-        {/* Difficulty Badge */}
-        <span className={cn("text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-m3-xs", diffStyle)}>
-          {question.uiDifficulty || question.difficulty || 'Normal'}
-        </span>
+        {/* Difficulty + block label — a block holds several sub-questions and must say so. */}
+        <div className="flex items-center gap-1.5">
+          <span className={cn("text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-m3-xs", diffStyle)}>
+            {q.uiDifficulty}
+          </span>
+          {q.isBlock && (
+            <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-m3-xs bg-primary-container text-on-primary-container">
+              Blok · {q.parts.length} savol
+            </span>
+          )}
+        </div>
 
         {/* Toggles */}
         <div className="flex items-center gap-2">
-          {Object.keys(options).length > 0 && (
+          {(Object.keys(options).length > 0 || q.isBlock) && (
             <button
               onClick={() => setIsOptionsOpen(!isOptionsOpen)}
               className={cn(
@@ -118,10 +134,16 @@ export default function CartItem({ question, index, onRemove }: Props) {
       {/* 3. EXPANDABLE PANELS */}
 
       {/* OPTIONS PANEL */}
-      {isOptionsOpen && (
+      {isOptionsOpen && q.isBlock && (
+        <div className="border-t border-outline-variant p-4 bg-surface-container-lowest animate-in slide-in-from-top-2 fade-in duration-200">
+          <QuestionPartsPreview question={q} compact />
+        </div>
+      )}
+
+      {isOptionsOpen && !q.isBlock && (
         <div className="border-t border-outline-variant p-4 bg-surface-container-lowest space-y-2 animate-in slide-in-from-top-2 fade-in duration-200">
           {Object.entries(options).map(([key, val]: any) => {
-            const isCorrect = key === correctAnswer;
+            const isCorrect = correctKeys.includes(key);
             return (
               <div key={key} className={cn(
                 "flex gap-3 items-center p-3 rounded-m3-md transition-colors",

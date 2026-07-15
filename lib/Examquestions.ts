@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { EXAM_BLUEPRINT, bandFor } from './Examblueprint';
+import { buildTeacherSection, examSlotCount, newTeacherPools } from './ExamTeacher';
 import type { DifficultyId, QuestionDoc } from '@/types/Math';
 import type {
   BlueprintSection,
@@ -283,10 +284,59 @@ export async function buildPractice(params: {
  */
 export async function buildExam(): Promise<BuildExamResult> {
   const budget: Budget = { used: new Set(), reads: 0 };
+  const teacherPools = newTeacherPools();
   const questions: ExamQuestion[] = [];
   const shortfalls: Shortfall[] = [];
+  // A shared_options card holds several exam questions, so slot numbers advance
+  // by examSlotCount — a 3-part block at slot 33 covers 33/34/35, matching the
+  // DTM "33-35 testlar" numbering. A card's `slotNumber` is its FIRST slot.
+  let nextSlot = 1;
 
   for (const section of EXAM_BLUEPRINT) {
+    // Teacher sections (33–45) come from teacher_questions already shaped as
+    // ExamQuestion cores — blocks handled, section fields set. Bank sections
+    // (1–32) come from questions1 as flat QuestionDocs, wrapped here.
+    if (section.source === 'teacher') {
+      const items = await buildTeacherSection(section, teacherPools);
+      let placedSlots = items.reduce((sum, i) => sum + examSlotCount(i), 0);
+      for (const item of items) {
+        questions.push({ ...item, slotNumber: nextSlot });
+        nextSlot += examSlotCount(item);
+      }
+
+      // Guarantee the exam is always 45: if the teacher bank can't fill the
+      // section, top up the shortfall from questions1 (same chapters + test-type
+      // difficulty band), so a thin teacher bank never yields a short paper.
+      const shortBy = section.count - placedSlots;
+      if (shortBy > 0) {
+        const filler = await buildSection({ ...section, count: shortBy }, budget);
+        for (const q of filler) {
+          questions.push({
+            ...q,
+            slotNumber: nextSlot,
+            sectionId: section.id,
+            sectionLabel: section.label,
+            testType: section.testType,
+            source: 'bank',
+          });
+          nextSlot += 1;
+          placedSlots += 1;
+        }
+      }
+
+      // Only a genuine shortfall (questions1 also ran dry) is reported.
+      if (placedSlots < section.count) {
+        shortfalls.push({
+          sectionId: section.id,
+          label: section.label,
+          testType: section.testType,
+          requested: section.count,
+          received: placedSlots,
+        });
+      }
+      continue;
+    }
+
     const picked = await buildSection(section, budget);
 
     if (picked.length < section.count) {
@@ -302,13 +352,15 @@ export async function buildExam(): Promise<BuildExamResult> {
     for (const q of picked) {
       questions.push({
         ...q,
-        slotNumber: questions.length + 1,
+        slotNumber: nextSlot,
         sectionId: section.id,
         sectionLabel: section.label,
         testType: section.testType,
+        source: 'bank',
       });
+      nextSlot += 1;
     }
   }
 
-  return { questions, shortfalls, docsRead: budget.reads };
+  return { questions, shortfalls, docsRead: budget.reads + teacherPools.budget.reads };
 }

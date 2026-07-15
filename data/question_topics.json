@@ -1,0 +1,1032 @@
+{
+  "version": 1,
+  "note": "Fan -> Mavzu -> Ichki mavzu (subject -> topic -> subtopic) for /teacher/create/question. Replace `subjects` with the real hierarchy; ids must stay unique inside their parent and stable (they are written into created_questions docs).",
+  "subjects": [
+    {
+      "id": "algebra",
+      "name": "Algebra",
+      "topics": [
+        {
+          "id": "natural-va-butun-sonlar",
+          "name": "Natural va butun sonlar",
+          "subtopics": [
+            {
+              "id": "sonlar-ustida-amallarning-xossalari",
+              "name": "Sonlar ustida amallarning xossalari"
+            },
+            {
+              "id": "tub-va-murakkab-sonlar-ozaro-tub-sonlar",
+              "name": "Tub va murakkab sonlar. O'zaro tub sonlar"
+            },
+            {
+              "id": "sonlarning-bolinish-belgilari",
+              "name": "Sonlarning bo'linish belgilari"
+            },
+            {
+              "id": "sonlarning-umumiy-boluvchisi",
+              "name": "Sonlarning umumiy bo'luvchisi"
+            },
+            {
+              "id": "qoldiqli-bolish",
+              "name": "Qoldiqli bo'lish"
+            },
+            {
+              "id": "taqqoslama",
+              "name": "Taqqoslama"
+            },
+            {
+              "id": "ekub-va-ekuk-sonning-natural-boluvchilari-sonning-natural-boluvchilari-yigindisi",
+              "name": "EKUB va EKUK. Sonning natural bo'luvchilari. Sonning natural bo'luvchilari yig'indisi"
+            },
+            {
+              "id": "sonning-oxirgi-raqami",
+              "name": "Sonning oxirgi raqami"
+            },
+            {
+              "id": "butun-sonlar-kopaytmasida-nollar-sonini-topish",
+              "name": "Butun sonlar ko'paytmasida nollar sonini topish"
+            }
+          ]
+        },
+        {
+          "id": "butun-va-ratsional-sonlar",
+          "name": "Butun va ratsional sonlar",
+          "subtopics": [
+            {
+              "id": "butun-sonlar-ustida-amallar",
+              "name": "Butun sonlar ustida amallar"
+            },
+            {
+              "id": "oddiy-kasrlar-ustida-amallar",
+              "name": "Oddiy kasrlar ustida amallar"
+            },
+            {
+              "id": "kasrli-ifodalar",
+              "name": "Kasrli ifodalar"
+            },
+            {
+              "id": "sonning-natural-va-butun-korsatkichli-darajasi-daraja-xossalari",
+              "name": "Sonning natural va butun ko'rsatkichli darajasi. Daraja xossalari"
+            },
+            {
+              "id": "aralash-kasrlar-va-ular-ustida-amallar",
+              "name": "Aralash kasrlar va ular ustida amallar"
+            },
+            {
+              "id": "onli-kasrlar-va-ular-ustida-amallar",
+              "name": "O'nli kasrlar va ular ustida amallar"
+            },
+            {
+              "id": "cheksiz-davriy-onli-kasrlar",
+              "name": "Cheksiz davriy o'nli kasrlar"
+            },
+            {
+              "id": "kompleks-sonlar-va-ular-ustida-amallar",
+              "name": "Kompleks sonlar va ular ustida amallar"
+            }
+          ]
+        },
+        {
+          "id": "algebraik-ifodalar",
+          "name": "Algebraik ifodalar",
+          "subtopics": [
+            {
+              "id": "kophadning-standart-korinishi-kophadlar-ayirmasi-va-yigindisi-kophadlar-ustida-amallar",
+              "name": "Ko'phadning standart ko'rinishi. Ko'phadlar ayirmasi va yig'indisi. Ko'phadlar ustida amallar"
+            },
+            {
+              "id": "qisqa-kopaytirish-formulalari",
+              "name": "Qisqa ko'paytirish formulalari"
+            },
+            {
+              "id": "kophadlarni-kopaytuvchilarga-ajratish-kvadrat-uchhadni-chiziqli-kopaytuvchilarga-ajratish",
+              "name": "Ko'phadlarni ko'paytuvchilarga ajratish. Kvadrat uchhadni chiziqli ko'paytuvchilarga ajratish"
+            },
+            {
+              "id": "algebraik-kasrlar-ustida-amallar",
+              "name": "Algebraik kasrlar ustida amallar"
+            },
+            {
+              "id": "ifodalarni-soddalashtirish",
+              "name": "Ifodalarni soddalashtirish"
+            }
+          ]
+        },
+        {
+          "id": "haqiqiy-sonlar",
+          "name": "Haqiqiy sonlar",
+          "subtopics": [
+            {
+              "id": "arifmetik-kvadrat-ildiz-ildizlarning-xossalari",
+              "name": "Arifmetik kvadrat ildiz. Ildizlarning xossalari"
+            },
+            {
+              "id": "kvadrat-ildiz-hisoblashga-doir-misollar",
+              "name": "Kvadrat ildiz. Hisoblashga doir misollar"
+            },
+            {
+              "id": "kvadrat-ildiz-qatnashgan-ifodalarni-soddalashtirish",
+              "name": "Kvadrat ildiz qatnashgan ifodalarni soddalashtirish"
+            },
+            {
+              "id": "ratsional-korsatkichli-daraja-va-uning-xossalari",
+              "name": "Ratsional ko'rsatkichli daraja va uning xossalari"
+            },
+            {
+              "id": "daraja-qatnashgan-ifodalarni-soddalashtirish",
+              "name": "Daraja qatnashgan ifodalarni soddalashtirish"
+            }
+          ]
+        },
+        {
+          "id": "tenglama",
+          "name": "Tenglama",
+          "subtopics": [
+            {
+              "id": "chiziqli-tenglama-ayniyat",
+              "name": "Chiziqli tenglama. Ayniyat"
+            },
+            {
+              "id": "proportsiya-proportsiyaning-nomalum-hadini-topish-proportsiya-xossasi",
+              "name": "Proportsiya. Proportsiyaning nomalum hadini topish. Proportsiya xossasi"
+            },
+            {
+              "id": "kvadrat-tenglama",
+              "name": "Kvadrat tenglama"
+            },
+            {
+              "id": "viyet-teoremasi-viyet-teoremasini-qollash",
+              "name": "Viyet teoremasi. Viyet teoremasini qo'llash"
+            },
+            {
+              "id": "bikvadrat-tenglama-kvadrat-tenglamaga-keltiriladigan-tenglamalar",
+              "name": "Bikvadrat tenglama. Kvadrat tenglamaga keltiriladigan tenglamalar"
+            },
+            {
+              "id": "ratsional-tenglama",
+              "name": "Ratsional tenglama"
+            },
+            {
+              "id": "parametrli-chiziqli-tenglamalar",
+              "name": "Parametrli chiziqli tenglamalar"
+            },
+            {
+              "id": "parametrli-kvadrat-tenglamalar",
+              "name": "Parametrli kvadrat tenglamalar"
+            }
+          ]
+        },
+        {
+          "id": "tenglamalar-sistemasi",
+          "name": "Tenglamalar sistemasi",
+          "subtopics": [
+            {
+              "id": "chiziqli-tenglamalar-sistemasi",
+              "name": "Chiziqli tenglamalar sistemasi"
+            },
+            {
+              "id": "i-va-ii-darajali-tenglamalar-sistemasi",
+              "name": "I va II darajali tenglamalar sistemasi"
+            },
+            {
+              "id": "yuqori-darajali-tenglamalar-sistemasi",
+              "name": "Yuqori darajali tenglamalar sistemasi"
+            },
+            {
+              "id": "parametrli-tenglamalar-sistemasi",
+              "name": "Parametrli tenglamalar sistemasi"
+            }
+          ]
+        },
+        {
+          "id": "tengsizliklar",
+          "name": "Tengsizliklar",
+          "subtopics": [
+            {
+              "id": "bir-nomalumli-chiziqli-tengsizliklar",
+              "name": "Bir nomalumli chiziqli tengsizliklar"
+            },
+            {
+              "id": "qosh-tengsizlik",
+              "name": "Qo'sh tengsizlik"
+            },
+            {
+              "id": "intervallar-usuli-ratsional-tengsizlik",
+              "name": "Intervallar usuli. Ratsional tengsizlik"
+            },
+            {
+              "id": "parametrli-tengsizliklar-tengsizliklar-sistemasi",
+              "name": "Parametrli tengsizliklar. Tengsizliklar sistemasi"
+            },
+            {
+              "id": "tengsizliklarni-isbotlash",
+              "name": "Tengsizliklarni isbotlash"
+            }
+          ]
+        },
+        {
+          "id": "irratsional-tenglama-va-tengsizliklar",
+          "name": "Irratsional tenglama va tengsizliklar",
+          "subtopics": [
+            {
+              "id": "irratsional-tenglamalar",
+              "name": "Irratsional tenglamalar"
+            },
+            {
+              "id": "irratsional-tenglamalar-sistemasi",
+              "name": "Irratsional tenglamalar sistemasi"
+            },
+            {
+              "id": "irratsional-tengsizliklar-irratsional-tengsizliklar-sistemasi",
+              "name": "Irratsional tengsizliklar. Irratsional tengsizliklar sistemasi"
+            }
+          ]
+        },
+        {
+          "id": "progressiya",
+          "name": "Progressiya",
+          "subtopics": [
+            {
+              "id": "arifmetik-progressiya-arifmetik-progressiyaning-n-hadi",
+              "name": "Arifmetik progressiya. Arifmetik progressiyaning n-hadi"
+            },
+            {
+              "id": "arifmetik-progressiya-xossalari",
+              "name": "Arifmetik progressiya xossalari"
+            },
+            {
+              "id": "arifmetik-progressiyaning-dastlabki-n-ta-hadi-yigindisi",
+              "name": "Arifmetik progressiyaning dastlabki n ta hadi yig'indisi"
+            },
+            {
+              "id": "geometrik-progressiya-geometrik-progressiyaning-n-hadi",
+              "name": "Geometrik progressiya. Geometrik progressiyaning n-hadi"
+            },
+            {
+              "id": "geometrik-progressiyaning-xossalari",
+              "name": "Geometrik progressiyaning xossalari"
+            },
+            {
+              "id": "geometrik-progressiyaning-dastlabki-n-ta-hadi-yigindisi",
+              "name": "Geometrik progressiyaning dastlabki n ta hadi yig'indisi"
+            },
+            {
+              "id": "cheksiz-kamayuvchi-geometrik-progressiya",
+              "name": "Cheksiz kamayuvchi geometrik progressiya"
+            }
+          ]
+        },
+        {
+          "id": "matnli-masalalar",
+          "name": "Matnli masalalar",
+          "subtopics": [
+            {
+              "id": "sodda-mushohada",
+              "name": "Sodda mushohada"
+            },
+            {
+              "id": "qismlarga-doir-masalalar",
+              "name": "Qismlarga doir masalalar"
+            },
+            {
+              "id": "togri-va-teskari-proporsionallikka-doir-masalalar",
+              "name": "To'g'ri va teskari proporsionallikka doir masalalar"
+            },
+            {
+              "id": "masshtabga-doir-masalalar-toplamga-oid",
+              "name": "Masshtabga doir masalalar. To'plamga oid"
+            },
+            {
+              "id": "tenglamalar-va-tenglamalar-sistemasi-yordamida-yechiladigan-masalalar",
+              "name": "Tenglamalar va tenglamalar sistemasi yordamida yechiladigan masalalar"
+            },
+            {
+              "id": "ishga-oid-masalalar",
+              "name": "Ishga oid masalalar"
+            },
+            {
+              "id": "protsentlarga-doir-masalalar",
+              "name": "Protsentlarga doir masalalar"
+            },
+            {
+              "id": "harakatga-doir-masalalar",
+              "name": "Harakatga doir masalalar"
+            },
+            {
+              "id": "aralashmaga-doir-masalalar",
+              "name": "Aralashmaga doir masalalar"
+            }
+          ]
+        },
+        {
+          "id": "funksiyalar",
+          "name": "Funksiyalar",
+          "subtopics": [
+            {
+              "id": "funksiya-argumenti-va-aniqlanish-sohasi",
+              "name": "Funksiya argumenti va aniqlanish sohasi"
+            },
+            {
+              "id": "funksiyaning-juft-va-toqligi",
+              "name": "Funksiyaning juft va toqligi"
+            },
+            {
+              "id": "funksiya-grafigi-eng-katta-qiymati-qiymatlar-sohasi",
+              "name": "Funksiya grafigi, eng katta qiymati, qiymatlar sohasi"
+            },
+            {
+              "id": "chiziqli-funksiya-va-uning-xossalari-funksiyaning-berilish-usullari-nuqtadan-togri-chiziqqacha-bolgan-masofa",
+              "name": "Chiziqli funksiya va uning xossalari. Funksiyaning berilish usullari. Nuqtadan to'g'ri chiziqqacha bo'lgan masofa"
+            },
+            {
+              "id": "kvadrat-funksiya-va-uning-xossalari",
+              "name": "Kvadrat funksiya va uning xossalari"
+            },
+            {
+              "id": "funksiyani-tekshirish-teskari-funksiya",
+              "name": "Funksiyani tekshirish. Teskari funksiya"
+            },
+            {
+              "id": "murakkab-funksiya-aralash-bolim",
+              "name": "Murakkab funksiya. Aralash bo'lim"
+            }
+          ]
+        },
+        {
+          "id": "korsatkichli-va-logarifmik-funksiyalar",
+          "name": "Ko'rsatkichli va logarifmik funksiyalar",
+          "subtopics": [
+            {
+              "id": "korsatkichli-funksiya-va-uning-xossalari",
+              "name": "Ko'rsatkichli funksiya va uning xossalari"
+            },
+            {
+              "id": "korsatkichli-tenglamalar",
+              "name": "Ko'rsatkichli tenglamalar"
+            },
+            {
+              "id": "korsatkichli-tenglamalar-sistemasi",
+              "name": "Ko'rsatkichli tenglamalar sistemasi"
+            },
+            {
+              "id": "korsatkichli-tengsizliklar-tengsizliklar-sistemasi",
+              "name": "Ko'rsatkichli tengsizliklar. Tengsizliklar sistemasi"
+            },
+            {
+              "id": "logarifmik-funksiya-va-uning-xossalari",
+              "name": "Logarifmik funksiya va uning xossalari"
+            },
+            {
+              "id": "logarifmik-funksiyaning-aniqlanish-sohasi-logarifmik-funksiyaning-qiymatlar-sohasi",
+              "name": "Logarifmik funksiyaning aniqlanish sohasi. Logarifmik funksiyaning qiymatlar sohasi"
+            },
+            {
+              "id": "sonning-logarifmi-va-uning-xossalari-logarifmik-ifodalarni-shakl-almashtirish",
+              "name": "Sonning logarifmi va uning xossalari, logarifmik ifodalarni shakl almashtirish"
+            },
+            {
+              "id": "logarifmik-tenglamalar",
+              "name": "Logarifmik tenglamalar"
+            },
+            {
+              "id": "logarifmik-tengsizliklar",
+              "name": "Logarifmik tengsizliklar"
+            }
+          ]
+        },
+        {
+          "id": "trigonometriya",
+          "name": "Trigonometriya",
+          "subtopics": [
+            {
+              "id": "burchakning-gradus-va-radian-olchovi-nuqtani-burish",
+              "name": "Burchakning gradus va radian o'lchovi. Nuqtani burish"
+            },
+            {
+              "id": "trigonometrik-funksiyalarning-juft-va-toqligi-choraklardagi-ishoralari",
+              "name": "Trigonometrik funksiyalarning juft va toqligi. Choraklardagi ishoralari"
+            },
+            {
+              "id": "asosiy-trigonometrik-ayniyatlar",
+              "name": "Asosiy trigonometrik ayniyatlar"
+            },
+            {
+              "id": "keltrish-formulalari",
+              "name": "Keltrish formulalari"
+            },
+            {
+              "id": "qoshish-formulalari",
+              "name": "Qo'shish formulalari"
+            },
+            {
+              "id": "yarim-burchak-formulalari",
+              "name": "Yarim burchak formulalari"
+            },
+            {
+              "id": "ikkilangan-burchak-formulalari-uchlangan-burchak-formulalari",
+              "name": "Ikkilangan burchak formulalari. Uchlangan burchak formulalari"
+            },
+            {
+              "id": "trigonometrik-funksiyalar-yigindisi-va-ayirmasi-uchun-formulalar",
+              "name": "Trigonometrik funksiyalar yig'indisi va ayirmasi uchun formulalar"
+            },
+            {
+              "id": "trigonometrik-funksiyalar-kopaytmasi-uchun-formulalar",
+              "name": "Trigonometrik funksiyalar ko'paytmasi uchun formulalar"
+            },
+            {
+              "id": "trigonometrik-formulalar-funksiyalarning-qiymatlar-toplami",
+              "name": "Trigonometrik formulalar, funksiyalarning qiymatlar to'plami"
+            },
+            {
+              "id": "arksinus-arkkosinus-arktangens-va-arkkotangens-xossalari-teskari-trigonometrik-funksiyalarga-doir-tenglama-va-tengsizliklar",
+              "name": "Arksinus, arkkosinus, arktangens va arkkotangens. Xossalari. Teskari trigonometrik funksiyalarga doir tenglama va tengsizliklar"
+            },
+            {
+              "id": "trigonometrik-tenglamalar-trigonometrik-tenglamalar-sistemasi",
+              "name": "Trigonometrik tenglamalar. Trigonometrik tenglamalar sistemasi"
+            },
+            {
+              "id": "trigonometrik-tengsizliklar-tengsizliklar-sistemasi",
+              "name": "Trigonometrik tengsizliklar. Tengsizliklar sistemasi"
+            },
+            {
+              "id": "trigonometrik-funksiyalar-xossalari-davri-osish-va-kamayish-oraligi-aniqlanish-sohasi",
+              "name": "Trigonometrik funksiyalar xossalari. Davri. O'sish va kamayish oralig'i. Aniqlanish sohasi"
+            }
+          ]
+        },
+        {
+          "id": "modul",
+          "name": "Modul",
+          "subtopics": [
+            {
+              "id": "sonning-moduli-modul-xossasi-modulli-ifodalar",
+              "name": "Sonning moduli, modul xossasi. Modulli ifodalar"
+            },
+            {
+              "id": "modul-qatnashgan-tenglamalar-modul-qatnashgan-parametrli-tenglamalar",
+              "name": "Modul qatnashgan tenglamalar. Modul qatnashgan parametrli tenglamalar"
+            },
+            {
+              "id": "modul-qatnashgan-tengsizliklar",
+              "name": "Modul qatnashgan tengsizliklar"
+            },
+            {
+              "id": "modul-qatnashgan-tenglamalar-sistemasi",
+              "name": "Modul qatnashgan tenglamalar sistemasi"
+            },
+            {
+              "id": "modulli-funksiyaning-grafigi-qiymatlar-sohasi",
+              "name": "Modulli funksiyaning grafigi, qiymatlar sohasi"
+            }
+          ]
+        },
+        {
+          "id": "hosila",
+          "name": "Hosila",
+          "subtopics": [
+            {
+              "id": "funksiya-hosilasi-differensiallash-formulalari-va-ularni-qollash",
+              "name": "Funksiya hosilasi. Differensiallash formulalari va ularni qo'llash"
+            },
+            {
+              "id": "yigindi-ayirma-kopaytma-va-bolinmaning-hosilasi",
+              "name": "Yig'indi, ayirma, ko'paytma va bo'linmaning hosilasi"
+            },
+            {
+              "id": "murakkab-funksiya-hosilasi",
+              "name": "Murakkab funksiya hosilasi"
+            },
+            {
+              "id": "funksiyaning-osish-va-kamayish-oraliqlari",
+              "name": "Funksiyaning o'sish va kamayish oraliqlari"
+            },
+            {
+              "id": "funksiyaning-eng-katta-va-eng-kichik-qiymati-funksiyaning-kritik-nuqtalari-maksimum-va-minimumlar",
+              "name": "Funksiyaning eng katta va eng kichik qiymati. Funksiyaning kritik nuqtalari, maksimum va minimumlar"
+            },
+            {
+              "id": "urinmaning-burchak-koeffitsiyenti",
+              "name": "Urinmaning burchak koeffitsiyenti"
+            },
+            {
+              "id": "urinma-tenglamasi",
+              "name": "Urinma tenglamasi"
+            },
+            {
+              "id": "hosilaning-geometrik-va-mexanik-manosi",
+              "name": "Hosilaning geometrik va mexanik manosi"
+            }
+          ]
+        },
+        {
+          "id": "boshlangich-funksiya-va-integral",
+          "name": "Boshlang'ich funksiya va integral",
+          "subtopics": [
+            {
+              "id": "boshlangich-funksiya-tushunchasi-uning-xossalari-boshlangich-funksiyani-topish-jadvali",
+              "name": "Boshlang'ich funksiya tushunchasi. Uning xossalari. Boshlang'ich funksiyani topish jadvali"
+            },
+            {
+              "id": "boshlangich-funksiyani-topish-qoidalari",
+              "name": "Boshlang'ich funksiyani topish qoidalari"
+            },
+            {
+              "id": "aniq-integral",
+              "name": "Aniq integral"
+            },
+            {
+              "id": "egri-chiziqli-trapetsiya-yuzi",
+              "name": "Egri chiziqli trapetsiya yuzi"
+            }
+          ]
+        },
+        {
+          "id": "nostandart-masalalar",
+          "name": "Nostandart masalalar",
+          "subtopics": [
+            {
+              "id": "nostandart-masalalar-matritsalar-binom",
+              "name": "Nostandart masalalar. Matritsalar. Binom"
+            },
+            {
+              "id": "mantiqiy-ifodalar",
+              "name": "Mantiqiy ifodalar"
+            }
+          ]
+        },
+        {
+          "id": "kombinatorika-ehtimollar-nazariyasi-toplam",
+          "name": "Kombinatorika. Ehtimollar nazariyasi. To'plam",
+          "subtopics": [
+            {
+              "id": "kombinatorika",
+              "name": "Kombinatorika"
+            },
+            {
+              "id": "ehtimollar-nazariyasi",
+              "name": "Ehtimollar nazariyasi"
+            },
+            {
+              "id": "toplamlar",
+              "name": "To'plamlar"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "geometriya",
+      "name": "Geometriya",
+      "topics": [
+        {
+          "id": "burchak-masofa-togri-chiziqlar",
+          "name": "Burchak. Masofa. To'g'ri chiziqlar",
+          "subtopics": [
+            {
+              "id": "qoshni-va-vertikal-burchaklar-parallel-va-kesishuvchi-togri-chiziqlar-orasidagi-burchaklar",
+              "name": "Qo'shni va vertikal burchaklar. Parallel va kesishuvchi to'g'ri chiziqlar orasidagi burchaklar"
+            },
+            {
+              "id": "kesmaga-doir-masalalar",
+              "name": "Kesmaga doir masalalar"
+            }
+          ]
+        },
+        {
+          "id": "uchburchaklar",
+          "name": "Uchburchaklar",
+          "subtopics": [
+            {
+              "id": "uchburchakning-perimetri-medianasi-bissetktrisasi-balandligi-orta-chizigi",
+              "name": "Uchburchakning perimetri, medianasi, bissetktrisasi, balandligi, o'rta chizig'i"
+            },
+            {
+              "id": "uchburchak-tengsizligi",
+              "name": "Uchburchak tengsizligi"
+            },
+            {
+              "id": "uchburchakning-burchaklari-yigindisi-uchburchakning-tashqi-burchaklari",
+              "name": "Uchburchakning burchaklari yig'indisi. Uchburchakning tashqi burchaklari"
+            },
+            {
+              "id": "teng-yonli-uchburchak",
+              "name": "Teng yonli uchburchak"
+            },
+            {
+              "id": "teng-tomonli-uchburchak",
+              "name": "Teng tomonli uchburchak"
+            },
+            {
+              "id": "togri-burchakli-uchburchak-pifagor-teoremasi",
+              "name": "To'g'ri burchakli uchburchak. Pifagor teoremasi"
+            },
+            {
+              "id": "togri-burchakdan-tushirilgan-balandik-katetlarning-gipotenuzadagi-proyeksiyalari",
+              "name": "To'g'ri burchakdan tushirilgan balandik, katetlarning gipotenuzadagi proyeksiyalari"
+            },
+            {
+              "id": "sinuslar-teoremasi",
+              "name": "Sinuslar teoremasi"
+            },
+            {
+              "id": "kosinuslar-teoremasi",
+              "name": "Kosinuslar teoremasi"
+            },
+            {
+              "id": "uchburchak-bisektrisalarining-xossasi",
+              "name": "Uchburchak bisektrisalarining xossasi"
+            },
+            {
+              "id": "uchburchak-medianasining-xossalari",
+              "name": "Uchburchak medianasining xossalari"
+            },
+            {
+              "id": "uchburchak-balandligining-xossalari",
+              "name": "Uchburchak balandligining xossalari"
+            },
+            {
+              "id": "uchburchak-turlari",
+              "name": "Uchburchak turlari"
+            },
+            {
+              "id": "uchburchak-yuzasi",
+              "name": "Uchburchak yuzasi"
+            },
+            {
+              "id": "oxshash-uchburchaklar",
+              "name": "O'xshash uchburchaklar"
+            },
+            {
+              "id": "oxshash-uchburchaklarning-yuzalari-yuzalar-nisbati",
+              "name": "O'xshash uchburchaklarning yuzalari. Yuzalar nisbati"
+            },
+            {
+              "id": "aralash-bolim",
+              "name": "Aralash bo'lim"
+            },
+            {
+              "id": "uchburchakning-tenglik-xossalari",
+              "name": "Uchburchakning tenglik xossalari"
+            }
+          ]
+        },
+        {
+          "id": "tortburchaklar",
+          "name": "To'rtburchaklar",
+          "subtopics": [
+            {
+              "id": "tortburchak-xossalari",
+              "name": "To'rtburchak xossalari"
+            },
+            {
+              "id": "kvadrat-kvadrat-xossasi",
+              "name": "Kvadrat, kvadrat xossasi"
+            },
+            {
+              "id": "kvadrat-yuzasi",
+              "name": "Kvadrat yuzasi"
+            },
+            {
+              "id": "togri-tortburchak-perimetri-xossalari",
+              "name": "To'g'ri to'rtburchak, perimetri, xossalari"
+            },
+            {
+              "id": "togri-tortburchak-yuzi",
+              "name": "To'g'ri to'rtburchak yuzi"
+            },
+            {
+              "id": "parallelogramm-va-uning-xossasi",
+              "name": "Parallelogramm va uning xossasi"
+            },
+            {
+              "id": "parallelogramm-yuzi",
+              "name": "Parallelogramm yuzi"
+            },
+            {
+              "id": "romb-romb-xossasi",
+              "name": "Romb. Romb xossasi"
+            },
+            {
+              "id": "romb-yuzi",
+              "name": "Romb yuzi"
+            },
+            {
+              "id": "qavariq-kopburchak",
+              "name": "Qavariq ko'pburchak"
+            },
+            {
+              "id": "qavariq-kopburchak-xossalari",
+              "name": "Qavariq ko'pburchak xossalari"
+            },
+            {
+              "id": "trapetsiya-va-uning-xossalari",
+              "name": "Trapetsiya va uning xossalari"
+            },
+            {
+              "id": "trapetsiya-yuzi",
+              "name": "Trapetsiya yuzi"
+            },
+            {
+              "id": "kopburchak-yuzasi-oxshash-kopburchaklarning-yuzalari",
+              "name": "Ko'pburchak yuzasi. O'xshash ko'pburchaklarning yuzalari"
+            }
+          ]
+        },
+        {
+          "id": "aylana-va-doira",
+          "name": "Aylana va doira",
+          "subtopics": [
+            {
+              "id": "aylana-doira-radius-diametr-vatar",
+              "name": "Aylana, doira, radius, diametr, vatar"
+            },
+            {
+              "id": "aylanaga-otkazilgan-urinma",
+              "name": "Aylanaga o'tkazilgan urinma"
+            },
+            {
+              "id": "aylana-va-kesuvchi",
+              "name": "Aylana va kesuvchi"
+            },
+            {
+              "id": "aylana-uzunligi",
+              "name": "Aylana uzunligi"
+            },
+            {
+              "id": "aylana-yoyi-uzunligi",
+              "name": "Aylana yoyi uzunligi"
+            },
+            {
+              "id": "ichki-chizilgan-burchaklar",
+              "name": "Ichki chizilgan burchaklar"
+            },
+            {
+              "id": "kesuvchi-va-urinma-ular-orasidagi-burchak",
+              "name": "Kesuvchi va urinma. Ular orasidagi burchak"
+            },
+            {
+              "id": "doira-yuzi",
+              "name": "Doira yuzi"
+            },
+            {
+              "id": "sektor-yuzi",
+              "name": "Sektor yuzi"
+            },
+            {
+              "id": "segment-yuzi",
+              "name": "Segment yuzi"
+            },
+            {
+              "id": "aylana-tenglamasi",
+              "name": "Aylana tenglamasi"
+            }
+          ]
+        },
+        {
+          "id": "aylana-va-kopburchak",
+          "name": "Aylana va ko'pburchak",
+          "subtopics": [
+            {
+              "id": "uchburchakka-ichki-chizilgan-aylana",
+              "name": "Uchburchakka ichki chizilgan aylana"
+            },
+            {
+              "id": "uchburchakka-tashqi-chizilgan-aylana",
+              "name": "Uchburchakka tashqi chizilgan aylana"
+            },
+            {
+              "id": "kvadratga-ichki-chizilgan-aylana-tortburchak-va-aylana",
+              "name": "Kvadratga ichki chizilgan aylana. To'rtburchak va aylana"
+            },
+            {
+              "id": "togri-tortburchakka-tashqi-chizilgan-aylana",
+              "name": "To'g'ri to'rtburchakka tashqi chizilgan aylana"
+            },
+            {
+              "id": "aylana-va-romb",
+              "name": "Aylana va romb"
+            },
+            {
+              "id": "trapesiyaga-tashqi-chizilgan-aylana-trapesiyaga-ichki-chizilgan-aylana",
+              "name": "Trapesiyaga tashqi chizilgan aylana. Trapesiyaga ichki chizilgan aylana"
+            },
+            {
+              "id": "aylanaga-ichki-chizilgan-kopburchak",
+              "name": "Aylanaga ichki chizilgan ko'pburchak"
+            },
+            {
+              "id": "aylanaga-tashqi-chizilgan-kopburchak",
+              "name": "Aylanaga tashqi chizilgan ko'pburchak"
+            }
+          ]
+        },
+        {
+          "id": "koordinatalar-sistemasi",
+          "name": "Koordinatalar sistemasi",
+          "subtopics": [
+            {
+              "id": "nuqta-koordinatasi-kesma-ortasi-koordinatasi",
+              "name": "Nuqta koordinatasi, kesma o'rtasi koordinatasi"
+            },
+            {
+              "id": "nuqtalar-orasidagi-masofa-medianalar-kesishish-nuqtalarining-koordinatalari",
+              "name": "Nuqtalar orasidagi masofa. Medianalar kesishish nuqtalarining koordinatalari"
+            },
+            {
+              "id": "nuqtaga-togri-chiziqqa-nisbatan-simmetriya",
+              "name": "Nuqtaga, to'g'ri chiziqqa nisbatan simmetriya"
+            }
+          ]
+        },
+        {
+          "id": "vektorlar",
+          "name": "Vektorlar",
+          "subtopics": [
+            {
+              "id": "vektor-haqida-tushuncha-vektor-koordinatasi",
+              "name": "Vektor haqida tushuncha. Vektor koordinatasi"
+            },
+            {
+              "id": "koordinatalari-bilan-berilgan-vektorlar-ustida-amallar",
+              "name": "Koordinatalari bilan berilgan vektorlar ustida amallar"
+            },
+            {
+              "id": "vektor-uzunligi-va-moduli",
+              "name": "Vektor uzunligi va moduli"
+            },
+            {
+              "id": "vektorlarning-skalyar-kopaytmasi",
+              "name": "Vektorlarning skalyar ko'paytmasi"
+            },
+            {
+              "id": "vektorlar-orasidagi-burchak",
+              "name": "Vektorlar orasidagi burchak"
+            },
+            {
+              "id": "kolliniyar-vektorlar",
+              "name": "Kolliniyar vektorlar"
+            }
+          ]
+        },
+        {
+          "id": "fazoda-togri-chiziq-va-tekisliklar",
+          "name": "Fazoda to'g'ri chiziq va tekisliklar",
+          "subtopics": [
+            {
+              "id": "perpendikulyar-ogma-ogmaning-tekislikdagi-proyeksiyasi",
+              "name": "Perpendikulyar, og'ma, og'maning tekislikdagi proyeksiyasi"
+            },
+            {
+              "id": "fazoda-togri-chiziqlar-va-tekisliklar",
+              "name": "Fazoda to'g'ri chiziqlar va tekisliklar"
+            },
+            {
+              "id": "tekisliklar-orasidagi-burchak-ikkiyoqli-va-uchyoqli-burchaklar-tekislik-tenglamasi",
+              "name": "Tekisliklar orasidagi burchak. Ikkiyoqli va uchyoqli burchaklar. Tekislik tenglamasi"
+            },
+            {
+              "id": "nuqtadan-tekislikkacha-bolgan-masofa",
+              "name": "Nuqtadan tekislikkacha bo'lgan masofa"
+            }
+          ]
+        },
+        {
+          "id": "kop-yoqlar",
+          "name": "Ko'p yoqlar",
+          "subtopics": [
+            {
+              "id": "kub-va-uning-xossalari",
+              "name": "Kub va uning xossalari"
+            },
+            {
+              "id": "kub-sirtining-yuzi",
+              "name": "Kub sirtining yuzi"
+            },
+            {
+              "id": "kub-hajmi",
+              "name": "Kub hajmi"
+            },
+            {
+              "id": "parallelepiped-va-uning-xossasi",
+              "name": "Parallelepiped va uning xossasi"
+            },
+            {
+              "id": "parallelepiped-sirtlarining-yuzi",
+              "name": "Parallelepiped sirtlarining yuzi"
+            },
+            {
+              "id": "parallelepiped-hajmi",
+              "name": "Parallelepiped hajmi"
+            },
+            {
+              "id": "prizma-va-uning-xossasi-prizma-sirtlarining-yuzalari",
+              "name": "Prizma va uning xossasi. Prizma sirtlarining yuzalari"
+            },
+            {
+              "id": "prizma-hajmi",
+              "name": "Prizma hajmi"
+            },
+            {
+              "id": "piramida-va-uning-elementlari",
+              "name": "Piramida va uning elementlari"
+            },
+            {
+              "id": "piramida-sirtlarining-yuzi",
+              "name": "Piramida sirtlarining yuzi"
+            },
+            {
+              "id": "piramida-hajmi",
+              "name": "Piramida hajmi"
+            },
+            {
+              "id": "kesik-piramida",
+              "name": "Kesik piramida"
+            }
+          ]
+        },
+        {
+          "id": "aylanish-jismlari",
+          "name": "Aylanish jismlari",
+          "subtopics": [
+            {
+              "id": "silindr-sirtlarining-yuzi",
+              "name": "Silindr sirtlarining yuzi"
+            },
+            {
+              "id": "silindr-hajmi",
+              "name": "Silindr hajmi"
+            },
+            {
+              "id": "konus-sirtining-yuzi",
+              "name": "Konus sirtining yuzi"
+            },
+            {
+              "id": "konus-hajmi",
+              "name": "Konus hajmi"
+            },
+            {
+              "id": "kesik-konus-sirtlarining-yuzi",
+              "name": "Kesik konus sirtlarining yuzi"
+            },
+            {
+              "id": "kesik-konus-hajmi",
+              "name": "Kesik konus hajmi"
+            },
+            {
+              "id": "sfera-sfera-sirti-sfera-tenglamasi",
+              "name": "Sfera. Sfera sirti. Sfera tenglamasi"
+            },
+            {
+              "id": "shar-shar-hajmi-sfera",
+              "name": "Shar. Shar hajmi. Sfera"
+            }
+          ]
+        },
+        {
+          "id": "jismlar-kombinatsiyasi",
+          "name": "Jismlar kombinatsiyasi",
+          "subtopics": [
+            {
+              "id": "shar-segmenti-shar-segmentining-hajmi",
+              "name": "Shar segmenti. Shar segmentining hajmi"
+            },
+            {
+              "id": "prizmaga-ichki-chizilgan-shar-prizmaga-tashqi-chizilgan-shar-piramida-va-shar",
+              "name": "Prizmaga ichki chizilgan shar. Prizmaga tashqi chizilgan shar. Piramida va shar"
+            },
+            {
+              "id": "silindrga-ichki-chizilgan-shar-silindrga-tashqi-chizilgan-shar",
+              "name": "Silindrga ichki chizilgan shar. Silindrga tashqi chizilgan shar"
+            },
+            {
+              "id": "konusga-ichki-chizilgan-shar-konus-prizma",
+              "name": "Konusga ichki chizilgan shar. Konus prizma"
+            },
+            {
+              "id": "konusga-tashqi-chizilgan-shar",
+              "name": "Konusga tashqi chizilgan shar"
+            },
+            {
+              "id": "kub-va-konus-kub-va-shar",
+              "name": "Kub va konus. Kub va shar"
+            },
+            {
+              "id": "prizma-va-silindr",
+              "name": "Prizma va silindr"
+            },
+            {
+              "id": "silindr-va-konus",
+              "name": "Silindr va konus"
+            },
+            {
+              "id": "kopyoqlar-kombinatsiyalari",
+              "name": "Ko'pyoqlar kombinatsiyalari"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

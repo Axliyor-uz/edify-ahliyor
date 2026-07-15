@@ -4,7 +4,9 @@ import { useState, useRef, useEffect, DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowLeft, Wand2, CheckCircle2, Trash2, EyeOff, Eye, BookOpen, Layers, Minus, Plus, UploadCloud, Image as ImageIcon, X, Bot, Zap, Lightbulb, Database, Crown } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { collection, doc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
+import { toQuestionV1, InvalidTopicError } from "@/lib/questionSchema";
+import type { TopicPath } from "@/lib/questionTopics";
 import { useAuth } from "@/lib/AuthContext";
 import toast from "react-hot-toast";
 import katex from 'katex';
@@ -13,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { useTeacherLanguage } from "@/app/teacher/layout"; 
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
+import TopicAssignModal from "@/app/teacher/create/_components/TopicAssignModal";
 
 // 🟢 NEW AI MONTHLY LIMIT BLOCK START
 import { useMonthlyLimit } from "@/hooks/useMonthlyLimit";
@@ -30,6 +33,7 @@ const PAGE_TRANSLATIONS = {
     publishBtn: "Chop Qilish",
     saveToBankBtn: "Bazaga Saqlash",
     savedToBankSuccess: "Savollar bazangizga muvaffaqiyatli saqlandi!",
+    topicRequired: "Iltimos, savollar uchun mavzu tanlang.",
     modalTitle: "Test nomini kiriting",
     modalDesc: "Yangi yaratilgan testni saqlash va sozlashdan oldin unga nom bering.",
     modalCancel: "Bekor qilish",
@@ -59,6 +63,7 @@ const PAGE_TRANSLATIONS = {
     publishBtn: "Publish Test",
     saveToBankBtn: "Save to Bank",
     savedToBankSuccess: "Questions successfully saved to your bank!",
+    topicRequired: "Please choose a topic for the questions.",
     modalTitle: "Name Your Test",
     modalDesc: "Give your newly generated test a clear title before configuring the settings.",
     modalCancel: "Cancel",
@@ -88,6 +93,7 @@ const PAGE_TRANSLATIONS = {
     publishBtn: "Опубликовать",
     saveToBankBtn: "Сохранить в базу",
     savedToBankSuccess: "Вопросы успешно сохранены в вашу базу!",
+    topicRequired: "Пожалуйста, выберите тему для вопросов.",
     modalTitle: "Назовите свой тест",
     modalDesc: "Дайте вашему новому тесту понятное название перед настройкой.",
     modalCancel: "Отмена",
@@ -114,19 +120,44 @@ const PAGE_TRANSLATIONS = {
   }
 };
 
-interface AIQuestion { 
-  id: string; 
-  uiDifficulty: string; 
-  question: { uz: string; ru: string; en: string }; 
-  options: { A: { uz: string; ru: string; en: string }; B: { uz: string; ru: string; en: string }; C: { uz: string; ru: string; en: string }; D: { uz: string; ru: string; en: string }; }; 
-  answer: string; 
-  explanation: { uz: string; ru: string; en: string }; 
-  subject: string; 
-  topic: string; 
-  chapter: string; 
-  subtopic: string; 
-  difficultyId: number; 
+interface AIQuestion {
+  id: string;
+  uiDifficulty: string;
+  question: { uz: string; ru: string; en: string };
+  options: { A: { uz: string; ru: string; en: string }; B: { uz: string; ru: string; en: string }; C: { uz: string; ru: string; en: string }; D: { uz: string; ru: string; en: string }; };
+  answer: string;
+  explanation: { uz: string; ru: string; en: string };
+  difficultyId: number;
 }
+
+/* ─── topic taxonomy ────────────────────────────────────────────────────────
+ * An LLM cannot pick a topic from data/question_topics.json, so the teacher does
+ * it in TopicAssignModal before anything is written. `toQuestionV1()` throws
+ * InvalidTopicError on any other path — the old `subject: "by_image"` placeholder
+ * is gone for good. */
+
+/** Short plain-text label for one topic-picker row. */
+const getPlainText = (value: unknown): string => {
+  if (!value) return "";
+  if (typeof value === "string") return value.slice(0, 120);
+  const v = value as Record<string, unknown>;
+  const raw = v.uz ?? v.ru ?? v.en ?? "";
+  return typeof raw === "string" ? raw.slice(0, 120) : getPlainText(raw);
+};
+
+/** ⚠️ objects, not bare strings — `normalizeQuestion` reads `.id`/`.name`. */
+const topicFields = (p: TopicPath) => ({
+  subject: { id: p.subjectId, name: p.subjectName },
+  topic: { id: p.topicId, name: p.topicName },
+  subtopic: { id: p.subtopicId, name: p.subtopicName },
+  chapter: { id: "", name: "" },
+});
+
+/** custom_tests header name: the shared value, or "Aralash" when the batch spans several. */
+const sharedName = (paths: TopicPath[], key: "subjectName" | "topicName" | "subtopicName") => {
+  const uniq = [...new Set(paths.map((p) => p[key]))];
+  return uniq.length === 1 ? uniq[0] : "Aralash";
+};
 
 const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
   const phrases = [
@@ -289,7 +320,10 @@ export default function AIImageInputPage() {
   const [isTitleModalOpen, setIsTitleModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isSavingToBank, setIsSavingToBank] = useState(false); 
+  const [isSavingToBank, setIsSavingToBank] = useState(false);
+  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+  const [topicIntent, setTopicIntent] = useState<"bank" | "publish">("bank");
+  const [topicPaths, setTopicPaths] = useState<TopicPath[]>([]);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [limitModalMessage, setLimitModalMessage] = useState("");
   const [isCompressing, setIsCompressing] = useState(false);
@@ -407,13 +441,10 @@ export default function AIImageInputPage() {
 
       const diffVal = difficulty === "Easy" ? 1 : difficulty === "Medium" ? 2 : 3;
 
+      // No taxonomy here on purpose: the teacher assigns it in TopicAssignModal at save time.
       const enrichedQuestions: AIQuestion[] = data.questions.map((q: any) => ({
         ...q,
         id: `tq_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        subject: "by_image",
-        topic: "by_image",
-        chapter: "by_image",
-        subtopic: "by_image",
         difficultyId: diffVal,
         uiDifficulty: difficulty
       }));
@@ -434,43 +465,74 @@ export default function AIImageInputPage() {
     }
   };
 
+  // --- TOPIC GATE (runs before BOTH save paths) ---
+  const openTopicModal = (intent: "bank" | "publish") => {
+    if (generatedQuestions.length === 0) return toast.error("Iltimos, oldin savol yarating.");
+    setTopicIntent(intent);
+    setIsTopicModalOpen(true);
+  };
+
+  const handleTopicConfirm = (paths: TopicPath[]) => {
+    setTopicPaths(paths);
+    if (topicIntent === "bank") {
+      void handleSaveToBank(paths);
+      return;
+    }
+    // publish: topic first, then title, then TestConfigurationModal.
+    setIsTopicModalOpen(false);
+    setIsTitleModalOpen(true);
+  };
+
+  /** Defensive: toQuestionV1 should never throw once the modal is wired. */
+  const onInvalidTopic = (intent: "bank" | "publish") => {
+    toast.error(t.topicRequired);
+    setTopicIntent(intent);
+    setIsTopicModalOpen(true);
+  };
+
   // --- SAVE TO BANK LOGIC ---
-  const handleSaveToBank = async () => {
+  const handleSaveToBank = async (paths: TopicPath[]) => {
     if (generatedQuestions.length === 0) return toast.error("Iltimos, oldin savol yarating.");
     if (!user) return;
 
     setIsSavingToBank(true);
     const batch = writeBatch(db);
-    const currentTimestampString = new Date().toISOString();
 
     try {
-      for (const q of generatedQuestions) {
-        const questionRef = doc(collection(db, "teacher_questions"));
-        const finalQ = {
-          ...q,
-          id: `tq_${questionRef.id}`, 
-          creatorId: user.uid, 
-          number: "", 
-          track: "by_image",
-          subject: q.subject || "by_image",
-          topic: q.topic || "by_image",
-          chapter: q.chapter || "by_image",
-          subtopic: q.subtopic || "by_image",
-          creationMethod: "by_image", 
-          difficulty: q.uiDifficulty.toLowerCase(),
-          difficultyId: q.difficultyId, 
-          tags: ["ai_generated", "by_image"],
-          language: ["uz", "ru", "en"],
-          solutions: [], 
-          uploadedAt: currentTimestampString, 
-        };
-        batch.set(questionRef, { ...finalQ, createdAt: serverTimestamp() });
-      }
+      generatedQuestions.forEach((q, i) => {
+        const id = `tq_${doc(collection(db, "teacher_questions")).id}`;
+        const v1 = toQuestionV1(
+          {
+            ...q,
+            ...topicFields(paths[i]),
+            difficulty: q.uiDifficulty?.toLowerCase() || "medium",
+            difficultyId: q.difficultyId,
+            tags: ["ai_generated", "by_image"],
+            language: ["uz", "ru", "en"],
+            solutions: [],
+          },
+          {
+            id,
+            creatorId: user.uid,
+            creatorName: user.displayName || "Teacher",
+            creationMethod: "ai_generated",
+            status: "published",
+            aiModel: "gemini-2.5-flash",
+            timestamp: serverTimestamp(),
+          },
+        );
+        batch.set(doc(db, "teacher_questions", id), v1);
+      });
 
       await batch.commit();
+      setIsTopicModalOpen(false);
       toast.success(t.savedToBankSuccess);
       router.push('/teacher/create/my_questions');
     } catch (error) {
+      if (error instanceof InvalidTopicError) {
+        onInvalidTopic("bank");
+        return;
+      }
       console.error("Save to bank error:", error);
       toast.error("Bazaga saqlashda xatolik yuz berdi.");
     } finally {
@@ -479,70 +541,72 @@ export default function AIImageInputPage() {
   };
 
   // --- PUBLISH LOGIC ---
-  const handleInitiatePublish = () => {
-    if (generatedQuestions.length === 0) return toast.error("Please generate questions first.");
-    setIsTitleModalOpen(true); 
-  };
-
   const handleFinalPublish = async (testSettings: any) => {
     if (!user) return;
-    setIsPublishing(true);
-    
-    const batch = writeBatch(db);
-    const finalQuestionsToSave = [];
-    const currentTimestampString = new Date().toISOString();
-
-    for (const q of generatedQuestions) {
-      const secureFirebaseId = doc(collection(db, "teacher_questions")).id;
-
-      const finalQ = {
-        ...q,
-        id: `tq_${secureFirebaseId}`, 
-        creatorId: user.uid, 
-        number: "", 
-        track: "by_image",
-        subject: "by_image",
-        topic: "by_image",
-        chapter: "by_image",
-        subtopic: "by_image",
-        creationMethod: "by_image",
-        difficulty: q.uiDifficulty.toLowerCase(),
-        difficultyId: q.difficultyId, 
-        tags: ["ai_generated", "by_image"],
-        language: ["uz", "ru", "en"],
-        solutions: [], 
-        uploadedAt: currentTimestampString, 
-      };
-      
-      finalQuestionsToSave.push(finalQ);
-      batch.set(doc(db, "teacher_questions", finalQ.id), { ...finalQ, createdAt: serverTimestamp() });
+    if (topicPaths.length !== generatedQuestions.length) {
+      setIsConfigModalOpen(false);
+      return onInvalidTopic("publish");
     }
+    setIsPublishing(true);
 
-    batch.set(doc(collection(db, "custom_tests")), {
-      teacherId: user.uid,
-      teacherName: user.displayName || "Teacher",
-      title: testTitle,
-      track: "by_image",
-      subjectName: "by_image",
-      topicName: "by_image",
-      chapterName: "by_image",
-      subtopicName: "by_image",
-      questions: finalQuestionsToSave, 
-      duration: testSettings.duration,
-      shuffle: testSettings.shuffleQuestions,
-      resultsVisibility: testSettings.resultsVisibility,
-      accessCode: testSettings.accessCode,
-      status: "active",
-      createdAt: serverTimestamp(),
-      questionCount: finalQuestionsToSave.length,
-    });
+    const batch = writeBatch(db);
+    const finalQuestionsToSave: ReturnType<typeof toQuestionV1>[] = [];
 
     try {
+      generatedQuestions.forEach((q, i) => {
+        const id = `tq_${doc(collection(db, "teacher_questions")).id}`;
+        const source = {
+          ...q,
+          ...topicFields(topicPaths[i]),
+          difficulty: q.uiDifficulty?.toLowerCase() || "medium",
+          difficultyId: q.difficultyId,
+          tags: ["ai_generated", "by_image"],
+          language: ["uz", "ru", "en"],
+          solutions: [],
+        };
+        const meta = {
+          id,
+          creatorId: user.uid,
+          creatorName: user.displayName || "Teacher",
+          creationMethod: "ai_generated" as const,
+          status: "published" as const,
+          aiModel: "gemini-2.5-flash",
+        };
+
+        batch.set(doc(db, "teacher_questions", id), toQuestionV1(source, { ...meta, timestamp: serverTimestamp() }));
+        // The embedded snapshot needs a CONCRETE time: Firestore rejects serverTimestamp() sentinels inside arrays.
+        finalQuestionsToSave.push(toQuestionV1(source, { ...meta, timestamp: Timestamp.now() }));
+      });
+
+      batch.set(doc(collection(db, "custom_tests")), {
+        teacherId: user.uid,
+        teacherName: user.displayName || "Teacher",
+        title: testTitle,
+        track: "by_image",
+        subjectName: sharedName(topicPaths, "subjectName"),
+        topicName: sharedName(topicPaths, "topicName"),
+        chapterName: "",
+        subtopicName: sharedName(topicPaths, "subtopicName"),
+        questions: finalQuestionsToSave,
+        duration: testSettings.duration,
+        shuffle: testSettings.shuffleQuestions,
+        resultsVisibility: testSettings.resultsVisibility,
+        accessCode: testSettings.accessCode,
+        status: "active",
+        createdAt: serverTimestamp(),
+        questionCount: finalQuestionsToSave.length,
+      });
+
       await batch.commit();
       toast.success("Test published successfully!");
       setIsConfigModalOpen(false);
       router.push("/teacher/library/tests");
     } catch (error) {
+      if (error instanceof InvalidTopicError) {
+        setIsConfigModalOpen(false);
+        onInvalidTopic("publish");
+        return;
+      }
       toast.error("Error publishing test.");
     } finally {
       setIsPublishing(false);
@@ -601,6 +665,14 @@ export default function AIImageInputPage() {
         )}
       </AnimatePresence>
 
+      <TopicAssignModal
+        open={isTopicModalOpen}
+        questions={generatedQuestions.map(q => getPlainText(q.question))}
+        isSaving={isSavingToBank}
+        onClose={() => setIsTopicModalOpen(false)}
+        onConfirm={handleTopicConfirm}
+      />
+
       <TestConfigurationModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} onConfirm={handleFinalPublish} questionCount={generatedQuestions.length} testTitle={testTitle} isSaving={isPublishing} />
 
       {/* TOP STICKY BAR */}
@@ -620,7 +692,7 @@ export default function AIImageInputPage() {
               size="sm"
               icon={<Database />}
               loading={isSavingToBank}
-              onClick={handleSaveToBank}
+              onClick={() => openTopicModal("bank")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
               {t.saveToBankBtn}
@@ -631,7 +703,7 @@ export default function AIImageInputPage() {
               size="sm"
               icon={<CheckCircle2 />}
               loading={isPublishing}
-              onClick={handleInitiatePublish}
+              onClick={() => openTopicModal("publish")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
               {t.publishBtn}

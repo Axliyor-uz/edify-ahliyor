@@ -17,7 +17,10 @@ import type { ExamQuestion, ExamSnapshot } from '@/types/Exam';
  */
 
 const KEY = 'RASCHmodel:exam:v1';
-const VERSION = 1;
+// v2: teacher_questions slots (33–45) carry images, blocks and a `stem`. A paper
+// drawn under v1 lacks those fields, so an old snapshot is discarded rather than
+// resumed — otherwise a mid-flight exam keeps rendering the pre-teacher shape.
+const VERSION = 2;
 
 /** Outlives the 150-minute exam with room to spare, without hoarding forever. */
 const TTL_MS = 6 * 60 * 60 * 1000;

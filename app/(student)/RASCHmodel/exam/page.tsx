@@ -11,14 +11,18 @@ import {
 
 import Link from 'next/link';
 import LatexRenderer from '@/components/LatexRenderer';
+import QuestionCreator from '@/components/QuestionCreator';
 import { useAuth } from '@/lib/AuthContext';
 import { useStudentLanguage } from '../../layout';
 import { saveExamResult, toItemResponses } from '@/services/RASCHProgressService';
 import { RASCH_TOPICS } from '@/lib/RASCHtopics';
-import { archiveExam } from '@/lib/RASCHsolved';
+import { archiveExam, setSolvedUser } from '@/lib/RASCHsolved';
 import type { RASCHLevels } from '@/types/RASCH';
 import { buildExam } from '@/lib/Examquestions';
-import { expectedAnswerText, isOpenAnswerCorrect } from '@/lib/Examanswers';
+import {
+  examMode, examOptionKeys, examExpectedText, examPartExpected, examScore, examSlotCount,
+  hasExamAnswer, isExamItemCorrect, isExamPartCorrect, partKey,
+} from '@/lib/ExamTeacher';
 import {
   clearExamSnapshot,
   getExamSnapshot,
@@ -28,7 +32,7 @@ import {
 } from '@/lib/Examsession';
 import { EXAM_BLUEPRINT, EXAM_DURATION_MINUTES, EXAM_TOTAL_QUESTIONS } from '@/lib/Examblueprint';
 import type { ExamQuestion, Shortfall } from '@/types/Exam';
-import type { Lang, OptionKey } from '@/types/Math';
+import type { Lang, LocalizedText } from '@/types/Math';
 
 // Question content carries $...$ LaTeX — LatexRenderer wraps the bundled katex
 // build the rest of the app already renders questions with.
@@ -48,10 +52,12 @@ const UI: Record<Lang, Record<string, string>> = {
     yourAnswer: 'Sizning javobingiz', correctAnswer: "To'g'ri javob", explanation: 'Izoh',
     loadingExam: 'Test tayyorlanmoqda…', shortfallWarning: "Ba'zi bo'limlar uchun yetarli savol topilmadi:",
     loadFailed: "Testni yuklab bo'lmadi. Qayta urinib ko'ring.",
+    discarded: "Oldingi testning vaqti tugagan, lekin unda birorta ham savolga javob berilmagan — u natija sifatida saqlanmadi.",
     emptyBank: "Savollar bazasidan savol topilmadi. Administrator `npm run backfill:rand` ni ishga tushirishi kerak.",
     openLabel: 'Javobingizni yozing',
     openPlaceholder: 'Masalan: 16  yoki  4pi*sqrt(3)',
     openHint: "Variantlar berilmaydi. Javobni matn ko'rinishida kiriting — bo'sh joylar va qavslar hisobga olinmaydi.",
+    sharedPool: 'Umumiy variantlar',
     langTitle: 'Savollar tili',
     langHint: "Testni boshlagandan so'ng savollar tili o'zgarmaydi — interfeys tilidan mustaqil.",
     resumed: 'Boshlangan test tiklandi — savollar qayta yuklanmadi.',
@@ -74,10 +80,12 @@ const UI: Record<Lang, Record<string, string>> = {
     yourAnswer: 'Ваш ответ', correctAnswer: 'Правильный ответ', explanation: 'Объяснение',
     loadingExam: 'Подготовка теста…', shortfallWarning: 'Недостаточно вопросов для некоторых разделов:',
     loadFailed: 'Не удалось загрузить тест. Попробуйте ещё раз.',
+    discarded: 'Время прошлого теста истекло, но в нём не было отвечено ни одного вопроса — он не сохранён как результат.',
     emptyBank: 'В банке вопросов ничего не найдено. Администратору нужно выполнить `npm run backfill:rand`.',
     openLabel: 'Введите ваш ответ',
     openPlaceholder: 'Например: 16  или  4pi*sqrt(3)',
     openHint: 'Варианты не даются. Введите ответ текстом — пробелы и скобки не учитываются.',
+    sharedPool: 'Общие варианты',
     langTitle: 'Язык вопросов',
     langHint: 'После начала теста язык вопросов не меняется — он не зависит от языка интерфейса.',
     resumed: 'Начатый тест восстановлен — вопросы не загружались заново.',
@@ -100,10 +108,12 @@ const UI: Record<Lang, Record<string, string>> = {
     yourAnswer: 'Your answer', correctAnswer: 'Correct answer', explanation: 'Explanation',
     loadingExam: 'Preparing the test…', shortfallWarning: 'Not enough questions found for some sections:',
     loadFailed: 'Could not load the test. Please try again.',
+    discarded: 'Your previous paper ran out of time with nothing answered on it, so it was not recorded as a result.',
     emptyBank: 'No questions found in the bank. An admin needs to run `npm run backfill:rand`.',
     openLabel: 'Type your answer',
     openPlaceholder: 'e.g. 16  or  4pi*sqrt(3)',
     openHint: 'No options are given. Type the answer — spaces and brackets are ignored.',
+    sharedPool: 'Shared options',
     langTitle: 'Question language',
     langHint: "Once the test starts the question language is fixed — it is independent of the interface language.",
     resumed: 'Resumed your test — no questions were re-fetched.',
@@ -166,13 +176,22 @@ export default function ExamPage() {
   const { lang: appLang } = useStudentLanguage();
   const [pendingLang, setPendingLang] = useState<Lang>('uz');
 
+  // Saving the result to the student's account. `user` is already settled here —
+  // AuthProvider renders children only after auth resolves — so it can gate the
+  // restore below without a loading race.
+  const { user } = useAuth();
+  const uid = user?.uid ?? '';
+
   // The stored exam, read through an external store: the server gets null, the
   // browser gets the real snapshot after hydration. No restore effect, so no
   // setState-in-effect and no hydration mismatch.
   const stored = useSyncExternalStore(subscribeExamSnapshot, getExamSnapshot, getServerExamSnapshot);
   const restored = useMemo<Session | null>(
     () =>
-      stored
+      // localStorage is shared by every account on one browser — only resume a
+      // paper that belongs to the student currently signed in, so student B never
+      // sees student A's exam or results.
+      stored && (stored.uid ?? '') === uid
         ? {
           examLang: stored.examLang,
           questions: stored.questions,
@@ -188,7 +207,7 @@ export default function ExamPage() {
           seconds: stored.seconds ?? {},
         }
         : null,
-    [stored],
+    [stored, uid],
   );
 
   // `null` means "untouched — fall back to whatever is stored"; { session: null }
@@ -205,8 +224,6 @@ export default function ExamPage() {
   // is never persisted and never re-fetched.
   const [openExplanations, setOpenExplanations] = useState<Set<string>>(new Set());
 
-  // Saving the result to the student's account.
-  const { user } = useAuth();
   const [levels, setLevels] = useState<RASCHLevels | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -216,17 +233,38 @@ export default function ExamPage() {
   // Nothing is pushed on expiry: `submitted` below is derived from the
   // deadline, so a paper whose time ran out while the tab was shut comes back
   // already submitted.
+  //
+  // …unless the student never answered anything on it. Drawing a paper and
+  // walking away used to produce a *result*: the deadline passed, the next mount
+  // saw `expired`, and a 0% exam went onto the account and the progress chart
+  // for an exam nobody sat. An untouched expired paper is abandoned, not
+  // submitted — it is discarded below and never reaches the account.
   const expired = !!session && now >= session.endsAt;
-  const submitted = !!session && (session.submitted || expired);
-  const autoSubmitted = !!session && !session.submitted && expired;
+  const answeredCount = session
+    ? session.questions.filter((q) => hasExamAnswer(q, session.answers)).length
+    : 0;
+  const abandoned = !!session && !session.submitted && expired && answeredCount === 0;
+
+  const submitted = !!session && !abandoned && (session.submitted || expired);
+  const autoSubmitted = !!session && !session.submitted && expired && !abandoned;
 
   const stage: Stage = loading
     ? 'loading'
-    : !session
+    : !session || abandoned
       ? 'intro'
       : submitted
         ? 'submitted'
         : 'in-progress';
+
+  // Throw the abandoned paper away, so the intro screen isn't shadowed by a dead
+  // snapshot that re-evaluates as "expired" on every mount.
+  const [discarded, setDiscarded] = useState(false);
+  useEffect(() => {
+    if (!abandoned) return;
+    clearExamSnapshot();
+    setLocal({ session: null });
+    setDiscarded(true);
+  }, [abandoned]);
 
   useEffect(() => {
     if (stage !== 'in-progress') return;
@@ -244,6 +282,7 @@ export default function ExamPage() {
     if (!session) return;
     const id = setTimeout(() => {
       saveExamSnapshot({
+        uid,
         examLang: session.examLang,
         questions: session.questions,
         shortfalls: session.shortfalls,
@@ -259,7 +298,7 @@ export default function ExamPage() {
       });
     }, 400);
     return () => clearTimeout(id);
-  }, [session, submitted, autoSubmitted]);
+  }, [session, submitted, autoSubmitted, uid]);
 
   // ── Per-question stopwatch ───────────────────────────────────────────
   // A ref, not state: it ticks on every render otherwise. `flushTime` banks the
@@ -366,22 +405,37 @@ export default function ExamPage() {
   const examLang = session?.examLang ?? pendingLang;
   const current = session?.current ?? 0;
 
-  /** Blank / whitespace-only text does not count as an answer. */
-  const hasAnswer = useCallback(
-    (questionId: string) => (answers[questionId] ?? '').trim() !== '',
+  // Teacher questions are authored uz-only (`tri(uz)` leaves ru/en empty), so a
+  // student who picked Russian or English at the intro would otherwise see blank
+  // stems/questions. Fall back to whatever language the doc actually has, so the
+  // content always shows — the same fallback the option/part text already uses.
+  const pickLang = useCallback(
+    (tx?: { uz?: string; ru?: string; en?: string } | null) =>
+      (tx?.[examLang] || tx?.uz || tx?.ru || tx?.en || '') as string,
+    [examLang],
+  );
+
+  /** Blank / whitespace-only counts as unanswered — block-aware (any part). */
+  const answered = useCallback(
+    (q: ExamQuestion) => hasExamAnswer(q, answers),
     [answers],
   );
 
-  // O questions are graded on the typed text; Y-1 / Y-2 on the chosen option.
+  // The one grading entry point: closed / typed / block, bank or teacher.
   const isCorrect = useCallback(
-    (q: ExamQuestion) =>
-      q.testType === 'O' ? isOpenAnswerCorrect(answers[q.id], q) : answers[q.id] === q.answer,
+    (q: ExamQuestion) => isExamItemCorrect(q, answers),
     [answers],
   );
 
+  // A shared_options card is several questions, so both the score and the
+  // denominator count SLOTS (examSlotCount / examScore), not cards.
   const score = useMemo(
-    () => questions.reduce((total, q) => total + (isCorrect(q) ? 1 : 0), 0),
-    [questions, isCorrect],
+    () => questions.reduce((total, q) => total + examScore(q, answers), 0),
+    [questions, answers],
+  );
+  const totalQuestions = useMemo(
+    () => questions.reduce((total, q) => total + examSlotCount(q), 0),
+    [questions],
   );
 
   const bySection = useMemo(() => {
@@ -393,12 +447,12 @@ export default function ExamPage() {
         correct: 0,
         total: 0,
       };
-      entry.total += 1;
-      if (isCorrect(q)) entry.correct += 1;
+      entry.total += examSlotCount(q);
+      entry.correct += examScore(q, answers);
       map.set(q.sectionId, entry);
     }
     return Array.from(map.entries());
-  }, [questions, isCorrect, appLang]);
+  }, [questions, answers, appLang]);
 
   // Arm the stopwatch for whichever question is on screen. Only touches a ref,
   // so this is not a setState-in-effect.
@@ -413,6 +467,10 @@ export default function ExamPage() {
     }
   }, [currentId]);
 
+  // Point the local solved-questions archive at the signed-in student, so the
+  // review it feeds is never mixed with another account on the same browser.
+  useEffect(() => { setSolvedUser(uid); }, [uid]);
+
   // ── Archive the solved questions locally ─────────────────────────────
   // Feeds the per-topic review page. Purely localStorage — no reads, no writes,
   // and it works for a signed-out student too, unlike the account save below.
@@ -426,7 +484,7 @@ export default function ExamPage() {
       answers: session.answers,
       isCorrect,
       expectedFor: (q) =>
-        q.testType === 'O' ? expectedAnswerText(q, session.examLang) : undefined,
+        examMode(q) === 'open' ? examExpectedText(q, session.examLang) : undefined,
       lang: session.examLang,
       at: Date.now(),
     });
@@ -437,8 +495,21 @@ export default function ExamPage() {
   // persisted `saved` flag, so reloading the results screen never writes again.
   // Every setState here happens after an await — never synchronously in the
   // effect body, which the React Compiler rejects.
+  //
+  // `saved` is set only AFTER the write returns, so anything that re-fires this
+  // effect while the transaction is still open (a language switch — `t.saveFailed`
+  // is a dependency — or any re-render that hands us a new `session` object) used
+  // to start a SECOND save of the same paper. `cancelled` does not help: it stops
+  // the setState, not the transaction, which commits regardless and puts the exam
+  // on the chart twice. `savingRef` closes that window on the client;
+  // `saveExamResult`'s id check closes it on the server, for the tabs and reloads
+  // no ref can see.
+  const savingRef = useRef<number | null>(null);
   useEffect(() => {
     if (!submitted || !session || session.saved || !user) return;
+    if (savingRef.current === session.endsAt) return;
+    savingRef.current = session.endsAt;
+
     let cancelled = false;
 
     (async () => {
@@ -460,12 +531,17 @@ export default function ExamPage() {
           examLang: session.examLang,
           durationSec: Math.max(0, Math.round((endedAt - startedAt) / 1000)),
           items,
+          // The paper's deadline is fixed when it is drawn, so it identifies this
+          // paper and no other — the account can refuse a duplicate on sight.
+          examId: session.endsAt,
         });
         if (cancelled) return;
         setLevels(next);
         setLocal({ session: { ...session, submitted: true, saved: true } });
       } catch (err) {
         console.error(err);
+        // Let a genuine failure be retried.
+        savingRef.current = null;
         if (!cancelled) setSaveError(err instanceof Error ? err.message : t.saveFailed);
       }
     })();
@@ -518,6 +594,16 @@ export default function ExamPage() {
               ))}
             </div>
 
+            {/* A paper was drawn, its time ran out, and not one question was
+                answered. It is thrown away rather than recorded as a 0% exam —
+                say so, so the student isn't left wondering where it went. */}
+            {discarded && (
+              <div className="flex items-start gap-2 mb-4 bg-amber-50 border-2 border-amber-200 text-amber-700 rounded-xl px-4 py-3 text-[13px] font-bold">
+                <AlertTriangle size={16} strokeWidth={3} className="shrink-0 mt-0.5" />
+                <span>{t.discarded}</span>
+              </div>
+            )}
+
             {loadError && (
               <div className="flex items-start gap-2 mb-4 bg-rose-50 border-2 border-rose-200 text-rose-700 rounded-xl px-4 py-3 text-[13px] font-bold">
                 <AlertTriangle size={16} strokeWidth={3} className="shrink-0 mt-0.5" />
@@ -551,7 +637,7 @@ export default function ExamPage() {
 
           <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-6 md:p-8 text-center">
             <p className="text-[13px] font-black text-zinc-400 uppercase tracking-wider mb-1">{t.results}</p>
-            <p className="text-5xl font-black text-violet-600 tracking-tight">{score}<span className="text-zinc-300 text-3xl">/{questions.length}</span></p>
+            <p className="text-5xl font-black text-violet-600 tracking-tight">{score}<span className="text-zinc-300 text-3xl">/{totalQuestions}</span></p>
           </div>
 
           {shortfalls.length > 0 && (
@@ -632,32 +718,67 @@ export default function ExamPage() {
 
           <div className="flex flex-col gap-3">
             {questions.map((q) => {
-              const answered = hasAnswer(q.id);
+              const isAnswered = answered(q);
               const correct = isCorrect(q);
+              const mode = examMode(q);
               const given = answers[q.id];
-              // An O question has no option letter to point at — show the
-              // plain-text answer the typed input was graded against.
-              const expected = q.testType === 'O' ? expectedAnswerText(q, examLang) : q.answer;
+              // A closed item points at the chosen option key; an open one shows
+              // the plain-text answer the typed input was graded against.
+              const expected = mode === 'open' ? examExpectedText(q, examLang) : q.answer;
               return (
-                <div key={q.id} className={`bg-white rounded-2xl border-2 p-4 ${correct ? 'border-emerald-200' : answered ? 'border-rose-200' : 'border-zinc-200'}`}>
+                <div key={q.id} className={`bg-white rounded-2xl border-2 p-4 ${correct ? 'border-emerald-200' : isAnswered ? 'border-rose-200' : 'border-zinc-200'}`}>
                   <div className="flex items-start gap-2 mb-2">
                     <span className="w-6 h-6 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[11px] font-black text-zinc-500 shrink-0">{q.slotNumber}</span>
-                    <MathText text={q.question[examLang]} className="text-[13px] font-bold text-zinc-800" />
+                    <span className="min-w-0">
+                      {pickLang(q.stem) && (
+                        <MathText text={pickLang(q.stem)} className="text-[12px] font-semibold text-zinc-500 block mb-1" />
+                      )}
+                      <MathText text={pickLang(q.question)} className="text-[13px] font-bold text-zinc-800" />
+                    </span>
                     {correct ? <CheckCircle2 size={18} className="text-emerald-500 ml-auto shrink-0" /> : <XCircle size={18} className="text-rose-400 ml-auto shrink-0" />}
                   </div>
+                  {q.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={q.imageUrl} alt="" className="ml-8 mb-2 max-h-48 w-auto rounded-xl border-2 border-zinc-200 bg-white object-contain" />
+                  )}
+                  <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="ml-8 mb-2 text-zinc-400" iconSize={9} />
+                  {mode === 'block' ? (
+                    <div className="pl-8 flex flex-col gap-1.5">
+                      {(q.parts ?? []).map((p) => {
+                        const pg = answers[partKey(q.id, p.id)];
+                        const pCorrect = isExamPartCorrect(p, pg);
+                        return (
+                          <div key={p.id} className="text-[12px] font-bold text-zinc-500 flex flex-wrap items-center gap-x-1">
+                            {pCorrect
+                              ? <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                              : <XCircle size={13} className="text-rose-400 shrink-0" />}
+                            <MathText text={pickLang(p.prompt)} className="text-zinc-700" />
+                            <span className="text-zinc-400">—</span>
+                            {pg ? <MathText text={pg} /> : <span>—</span>}
+                            {!pCorrect && (
+                              <span className="text-emerald-600 flex items-center gap-1">
+                                · <MathText text={examPartExpected(p, examLang)} />
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
                   <div className="text-[12px] font-bold text-zinc-500 pl-8 flex flex-wrap items-center gap-x-1">
                     <span>{t.yourAnswer}:</span>
-                    {answered ? <MathText text={given!} /> : <span>—</span>}
+                    {isAnswered ? <MathText text={given!} /> : <span>—</span>}
                     {!correct && (
                       <span className="text-emerald-600 flex items-center gap-1">
                         · {t.correctAnswer}: <MathText text={expected} />
                       </span>
                     )}
                   </div>
+                  )}
                   {/* The explanation ships with the question — it is a field on
                       the doc we already read — so this button costs nothing.
                       Collapsed by default: 45 open explanations is a wall of text. */}
-                  {q.explanation?.[examLang] && (
+                  {pickLang(q.explanation) && (
                     <div className="pl-8 mt-2">
                       <button
                         onClick={() => toggleExplanation(q.id)}
@@ -682,7 +803,7 @@ export default function ExamPage() {
                           transition={{ duration: 0.15 }}
                           className="mt-2 text-[12px] font-medium text-zinc-500 border-t border-zinc-100 pt-2"
                         >
-                          <MathText text={q.explanation[examLang]} />
+                          <MathText text={pickLang(q.explanation)} />
                         </motion.div>
                       )}
                     </div>
@@ -723,13 +844,20 @@ export default function ExamPage() {
   if (!session || !q) return null;
   const isFlagged = flaggedIds.has(q.id);
   const lowTime = secondsLeft <= 5 * 60;
+  // A teacher item renders by its real type (block / typed / options); a
+  // questions1 item by its section (O = typed, otherwise A–D options).
+  const mode = examMode(q);
+  const optionKeys = examOptionKeys(q);
+  const qOptions = q.options as Record<string, LocalizedText>;
 
   return (
     <div className="min-h-screen bg-zinc-100 font-sans pb-10">
       {/* Sticky header: timer + progress */}
       <div className="sticky top-0 z-10 bg-white border-b-2 border-zinc-200 px-4 py-3">
         <div className="max-w-[900px] mx-auto flex items-center justify-between gap-4">
-          <span className="text-[13px] font-black text-zinc-700">{t.question} {current + 1}{t.of}{questions.length}</span>
+          <span className="text-[13px] font-black text-zinc-700">
+            {t.question} {q.slotNumber}{examSlotCount(q) > 1 ? `–${q.slotNumber + examSlotCount(q) - 1}` : ''}{t.of}{totalQuestions}
+          </span>
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 font-black text-[13px] ${lowTime ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-violet-50 border-violet-200 text-violet-600'}`}>
             <Clock size={14} strokeWidth={3} />
             {formatTime(secondsLeft)}
@@ -749,7 +877,7 @@ export default function ExamPage() {
         <div className="bg-white rounded-2xl border-2 border-zinc-200 p-4">
           <div className="grid grid-cols-9 sm:grid-cols-[repeat(15,minmax(0,1fr))] gap-1.5">
             {questions.map((qq, i) => {
-              const answered = hasAnswer(qq.id);
+              const isDone = answered(qq);
               const isCurrent = i === current;
               const isFlag = flaggedIds.has(qq.id);
               return (
@@ -758,7 +886,7 @@ export default function ExamPage() {
                   onClick={() => goTo(i)}
                   className={`aspect-square rounded-lg text-[11px] font-black flex items-center justify-center border-2 transition-all relative ${isCurrent
                       ? 'bg-violet-500 border-violet-600 text-white'
-                      : answered
+                      : isDone
                         ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                         : 'bg-zinc-50 border-zinc-200 text-zinc-400'
                     }`}
@@ -792,11 +920,25 @@ export default function ExamPage() {
             </button>
           </div>
 
-          <MathText text={q.question[examLang]} className="text-[16px] font-bold text-zinc-900 leading-snug block mb-5" />
+          {/* Block stem — the statement several sub-questions share (a split-out
+              shared_options item carries it so it is never dropped). */}
+          {pickLang(q.stem) && (
+            <MathText text={pickLang(q.stem)} className="text-[15px] font-semibold text-zinc-600 leading-snug block mb-3" />
+          )}
 
-          {q.testType === 'O' ? (
-            // Open-ended: the options exist on the doc but are deliberately not
-            // shown — the student types the answer and Examanswers grades it.
+          <MathText text={pickLang(q.question)} className="text-[16px] font-bold text-zinc-900 leading-snug block mb-4" />
+
+          {/* Prompt image (teacher questions — e.g. a geometry diagram). */}
+          {q.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={q.imageUrl} alt="" className="mb-5 max-h-72 w-auto rounded-2xl border-2 border-zinc-200 bg-white object-contain" />
+          )}
+
+          <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="mb-4 text-zinc-400" />
+
+          {mode === 'open' ? (
+            // Typed answer: a questions1 O item (options hidden, graded by
+            // Examanswers) or a teacher open/numeric item (graded on its text).
             <div className="flex flex-col gap-2">
               <label htmlFor="open-answer" className="text-[12px] font-black text-zinc-500 uppercase tracking-wider">
                 {t.openLabel}
@@ -813,10 +955,109 @@ export default function ExamPage() {
               />
               <p className="text-[12px] font-bold text-zinc-400">{t.openHint}</p>
             </div>
+          ) : mode === 'block' ? (
+            // A block: one card, several sub-questions.
+            //   • shared_options — the A–F pool is printed ONCE below, then each
+            //     sub-question is a compact row of letter buttons, and every
+            //     sub-question counts as its own exam question (slots 33-35…).
+            //   • multi_part     — each part carries its own options/typed answer,
+            //     and the whole block counts as one question.
+            <div className="flex flex-col gap-4">
+              {q.qType === 'shared_options' && optionKeys.length > 0 && (
+                <div className="rounded-2xl border-2 border-zinc-200 bg-zinc-50 p-4">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-zinc-400 mb-3">{t.sharedPool}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {optionKeys.map((opt) => (
+                      <div key={opt} className="flex items-start gap-2">
+                        <span className="w-7 h-7 shrink-0 rounded-lg bg-white border-2 border-zinc-200 text-zinc-600 font-black text-[12px] flex items-center justify-center">{opt}</span>
+                        <span className="pt-1 min-w-0 text-zinc-700 font-bold text-[13px]">
+                          <MathText text={pickLang(qOptions[opt])} />
+                          {q.optionImages?.[opt] && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={q.optionImages[opt]!} alt={opt} className="mt-1 max-h-24 w-auto rounded-lg border border-zinc-200 bg-white object-contain" />
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(q.parts ?? []).map((p, pi) => {
+                const key = partKey(q.id, p.id);
+                const isTyped = p.optionKeys.length === 0;
+                const pooled = q.qType === 'shared_options';
+                // A shared_options sub-question is numbered by its exam slot
+                // (33, 34, 35); a multi_part part keeps its letter (a, b, c).
+                const badge = pooled ? String(q.slotNumber + pi) : (p.id || String(pi + 1));
+                return (
+                  <div key={p.id} className="rounded-2xl border-2 border-zinc-100 p-4">
+                    <div className="flex items-start gap-2 mb-3">
+                      <span className="min-w-6 h-6 px-1.5 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center text-[11px] font-black text-violet-600 shrink-0">{badge}</span>
+                      <MathText text={pickLang(p.prompt)} className="text-[14px] font-bold text-zinc-800" />
+                    </div>
+                    {isTyped ? (
+                      <input
+                        type="text"
+                        inputMode="text"
+                        autoComplete="off"
+                        value={answers[key] ?? ''}
+                        onChange={(e) => setAnswer(key, e.target.value)}
+                        placeholder={t.openPlaceholder}
+                        className="w-full px-4 py-3 rounded-2xl border-2 border-zinc-200 bg-zinc-50 text-[15px] font-bold text-zinc-900 placeholder:text-zinc-300 placeholder:font-medium focus:outline-none focus:border-violet-400 focus:bg-white transition-all"
+                      />
+                    ) : pooled ? (
+                      // Shared pool already printed above — just the letters here.
+                      <div className="flex flex-wrap gap-2">
+                        {p.optionKeys.map((opt) => {
+                          const selected = answers[key] === opt;
+                          return (
+                            <button
+                              key={opt}
+                              onClick={() => setAnswer(key, opt)}
+                              className={`w-11 h-11 rounded-xl border-2 font-black text-[14px] transition-all ${selected ? 'bg-violet-500 border-violet-600 text-white' : 'bg-white border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50/40'}`}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {p.optionKeys.map((opt) => {
+                          const selected = answers[key] === opt;
+                          const img = p.optionImages?.[opt];
+                          return (
+                            <button
+                              key={opt}
+                              onClick={() => setAnswer(key, opt)}
+                              className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all ${selected ? 'bg-violet-50 border-violet-300' : 'border-zinc-100 hover:border-violet-200 hover:bg-violet-50/40'}`}
+                            >
+                              <span className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center text-[12px] font-black shrink-0 ${selected ? 'bg-violet-500 border-violet-600 text-white' : 'bg-zinc-100 border-zinc-200 text-zinc-500'}`}>{opt}</span>
+                              <span className="min-w-0">
+                                <MathText text={pickLang(p.options[opt])} className="text-[14px] font-bold text-zinc-800" />
+                                {img && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={img} alt={opt} className="mt-1 max-h-28 w-auto rounded-lg border border-zinc-200 bg-white object-contain" />
+                                )}
+                              </span>
+                              {selected ? <Circle className="ml-auto shrink-0 text-violet-500 fill-violet-500" size={15} /> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
+            // Closed: option buttons over the item's own keys (A–D for a
+            // questions1 item, up to A–F for a teacher shared pool).
             <div className="flex flex-col gap-2.5">
-              {(['A', 'B', 'C', 'D'] as OptionKey[]).map((opt) => {
+              {optionKeys.map((opt) => {
                 const selected = answers[q.id] === opt;
+                const img = q.optionImages?.[opt];
                 return (
                   <button
                     key={opt}
@@ -828,7 +1069,13 @@ export default function ExamPage() {
                       }`}>
                       {opt}
                     </span>
-                    <MathText text={q.options[opt][examLang]} className="text-[14px] font-bold text-zinc-800" />
+                    <span className="min-w-0">
+                      <MathText text={pickLang(qOptions[opt])} className="text-[14px] font-bold text-zinc-800" />
+                      {img && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={img} alt={opt} className="mt-1 max-h-32 w-auto rounded-lg border border-zinc-200 bg-white object-contain" />
+                      )}
+                    </span>
                     {selected ? <Circle className="ml-auto shrink-0 text-violet-500 fill-violet-500" size={16} /> : null}
                   </button>
                 );

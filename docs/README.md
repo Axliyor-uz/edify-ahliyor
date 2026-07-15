@@ -13,6 +13,7 @@ This directory is the **source of truth** for how Edify works. The workflow cont
 |---|---|
 | Login, signup, roles, layout guards, SSO (`lib/sso.ts`), `firestore.rules` helpers, token verification | [AUTH.md](AUTH.md) |
 | Any Firestore read/write, collection shapes, indexes, timestamps | [DATA_MODEL.md](DATA_MODEL.md) + the domain doc |
+| **Anything that creates, stores, renders or grades a question** — `teacher_questions`, `questions1`, embedded `custom_tests.questions[]`, the v1 schema, the normalizer | [QUESTIONS.md](QUESTIONS.md) |
 | Student app `app/(student)/*` — dashboard, classes, test/exam runners, XP/streak/leaderboards, games, library, notifications, social, explore | [STUDENT.md](STUDENT.md) |
 | Teacher app `app/teacher/*` — test creation, question banks, classes/assignments/exams/grading/materials, analytics, print, subscription | [TEACHER.md](TEACHER.md) |
 | AI generation routes, credit/limit systems, `lib/ai/*`, `/api/analyze`, TTS | [AI.md](AI.md) |

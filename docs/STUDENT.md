@@ -29,7 +29,7 @@ The student route tree `app/(student)/` (route group, no URL segment): dashboard
 | Template | `custom_tests/{testId}` | `bsb_chsb_tests/{testId}` |
 | Attempt doc ID | `${uid}_${assignmentId}` (merge upsert — retakes overwrite; `attemptsTaken: increment`) | `${uid}_${examId}` |
 | Attempt shape | `{userId, userName, classId, assignmentId, type:'assignment', testId, testTitle, score, totalQuestions, answers:{qId:letter}, tabSwitches, submittedAt, attemptsTaken, xpEarned}` | `{userId, userName, classId, assignmentId: examId, type:'exam', testId, answers, autoScore, teacherScore:0, totalPoints, tabSwitches, submittedAt}` |
-| Grading | client-side `answers[q.id] === q.answer` | auto by type (mcq/TF exact, short_answer lowercase-trim, matching proportional); open_ended → teacher (`manualScores`, `status:'graded'`) |
+| Grading | client-side `isAnswerCorrect(q, answers[q.id])` ⚠️ (lib/questionSchema.ts — answers may be a letter, a letter[] for `multiple_select`, or typed text for `open`/`numeric`; see [QUESTIONS.md](QUESTIONS.md)) | auto by type (mcq/TF exact, short_answer lowercase-trim, matching proportional); open_ended → teacher (`manualScores`, `status:'graded'`) |
 | XP | yes (see below) | **none** |
 | Anti-cheat | visibilitychange + blur/focus, blocking modal, fullscreen, no contextmenu; any switch kills bonuses | visibilitychange toast + counter only (weaker) |
 | Completion marker | `assignments.completedBy: arrayUnion` | `exams.submittedStudentIds: arrayUnion` |

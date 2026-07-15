@@ -55,9 +55,12 @@ import type { Ability, ItemResponse } from '@/types/RASCH';
  * on medium, comfortable on easy (~73%), and struggling on hard (~23%).
  */
 export const DIFFICULTY_LOGIT: Record<DifficultyId, number> = {
+  0: -2.0, // beginner
   1: -1.0, // easy
   2: 0.0, // medium
   3: 1.2, // hard
+  4: 2.5, // olympiad
+  5: 1.9, // expert
 };
 
 /**
@@ -120,7 +123,9 @@ export function probCorrect(theta: number, b: number, c = 0): number {
 export const STANDARD_PAPER: PaperItem[] = EXAM_BLUEPRINT.flatMap((section) => {
   const band = section.difficulties ?? DIFFICULTY_BAND[section.testType];
   // A section's items are spread across its band; use the band's mean difficulty.
-  const b = band.reduce((sum, d) => sum + DIFFICULTY_LOGIT[d], 0) / band.length;
+  // reduce<number>: `0` is a valid DifficultyId now, so TS would otherwise infer
+  // the accumulator as DifficultyId and reject the running sum.
+  const b = band.reduce<number>((sum, d) => sum + DIFFICULTY_LOGIT[d], 0) / band.length;
   const c = guessFor(section.testType);
   return Array.from({ length: section.count }, () => ({ b, c }));
 });
