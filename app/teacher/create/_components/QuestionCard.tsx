@@ -7,6 +7,9 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc, arrayUnion, increment, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { normalizeQuestion } from '@/lib/questionSchema';
+import QuestionPartsPreview from '@/components/QuestionPartsPreview';
+import QuestionCreator from '@/components/QuestionCreator';
 
 import { Button, Dialog, Radio, uiToast, cn } from '@/components/ui';
 
@@ -96,10 +99,16 @@ export default function QuestionCard({ question, isAdded, onToggle, index, disab
     return obj?.uz || obj?.en || obj?.ru || "No text";
   };
 
-  const questionText = getText(question.question || question.text);
-  const options = question.options || {};
-  const correctAnswer = question.answer;
-  const difficulty = (question.difficulty || 'medium').toLowerCase();
+  // Normalized here rather than at each caller: this card is fed both freshly
+  // generated in-memory questions (legacy shape) and docs straight out of
+  // Firestore (v1 shape). normalizeQuestion is idempotent, so either is fine.
+  const q = normalizeQuestion(question);
+
+  const questionText = getText(q.question);
+  const options = q.options;
+  // multiple_select marks several letters correct; mcq just one.
+  const correctKeys = Array.isArray(q.correctAnswer.value) ? q.correctAnswer.value : [q.answer];
+  const difficulty = q.difficulty;
   const badgeClass = DIFFICULTY_BADGE[difficulty] || 'bg-surface-container-highest text-on-surface-variant';
 
   // Spam-proof report logic: question ID as the doc ID + merge prevents duplicates
@@ -160,6 +169,11 @@ export default function QuestionCard({ question, isAdded, onToggle, index, disab
               <span className={cn("px-2 py-0.5 rounded-m3-xs text-[10px] font-bold uppercase tracking-wide", badgeClass)}>
                 {difficulty}
               </span>
+              {q.isBlock && (
+                <span className="px-2 py-0.5 rounded-m3-xs text-[10px] font-bold uppercase tracking-wide bg-primary-container text-on-primary-container">
+                  Blok · {q.parts.length}
+                </span>
+              )}
             </div>
 
             {/* Question Text */}
@@ -167,9 +181,16 @@ export default function QuestionCard({ question, isAdded, onToggle, index, disab
               <LatexRenderer latex={questionText} />
             </div>
 
+            {q.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={q.imageUrl} alt="" className="mt-2 max-h-[140px] w-auto rounded-m3-sm border border-outline-variant object-contain bg-surface-container" />
+            )}
+
+            <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="mt-2 text-on-surface-variant" />
+
             {/* Actions Row */}
             <div className="mt-3 flex items-center gap-4">
-              {Object.keys(options).length > 0 && (
+              {(Object.keys(options).length > 0 || q.isBlock) && (
                 <button
                   onClick={() => setShowOptions(!showOptions)}
                   className="m3-interactive text-[11px] font-bold text-on-surface-variant hover:text-primary flex items-center gap-1 transition-colors px-2 py-1 rounded-m3-xs bg-surface-container-high"
@@ -216,11 +237,17 @@ export default function QuestionCard({ question, isAdded, onToggle, index, disab
         </div>
 
         {/* Options Panel */}
-        {showOptions && (
+        {showOptions && q.isBlock && (
+          <div className="bg-surface-container border-t border-outline-variant px-3 py-3 md:px-4 rounded-b-m3-lg animate-in slide-in-from-top-1 fade-in duration-200">
+            <QuestionPartsPreview question={q} compact />
+          </div>
+        )}
+
+        {showOptions && !q.isBlock && (
           <div className="bg-surface-container border-t border-outline-variant px-3 py-3 md:px-4 rounded-b-m3-lg animate-in slide-in-from-top-1 fade-in duration-200">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {Object.entries(options).map(([key, val]: any) => {
-                const isCorrect = key === correctAnswer;
+                const isCorrect = correctKeys.includes(key);
                 return (
                   <div key={key} className={cn(
                     "flex items-start gap-2 p-2 rounded-m3-sm text-xs",
@@ -230,7 +257,13 @@ export default function QuestionCard({ question, isAdded, onToggle, index, disab
                       "w-5 h-5 flex items-center justify-center rounded-m3-xs text-[10px] font-bold shrink-0 mt-0.5",
                       isCorrect ? "bg-success text-surface-container-lowest" : "bg-surface-container-high text-on-surface-variant",
                     )}>{key}</span>
-                    <div className="min-w-0 overflow-x-auto break-words flex-1"><LatexRenderer latex={getText(val)} /></div>
+                    <div className="min-w-0 overflow-x-auto break-words flex-1">
+                      <LatexRenderer latex={getText(val)} />
+                      {val?.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={val.imageUrl} alt="" className="mt-1 max-h-[70px] w-auto rounded-m3-xs border border-outline-variant object-contain bg-surface" />
+                      )}
+                    </div>
                     {isCorrect && <Check size={14} className="text-success shrink-0" />}
                   </div>
                 );

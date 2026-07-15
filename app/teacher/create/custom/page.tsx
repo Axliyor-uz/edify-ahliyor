@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, ArrowLeft, BookOpen, Settings2, ChevronUp, ChevronDown, CheckCircle2, PenTool, Layers, Database } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { collection, doc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
+import { toQuestionV1, InvalidTopicError } from "@/lib/questionSchema";
+import type { TopicPath } from "@/lib/questionTopics";
 import { useAuth } from "@/lib/AuthContext";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +15,7 @@ import { createPortal } from "react-dom";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import RichQuestionInput from "@/app/teacher/create/_components/RichQuestionInput";
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
+import TopicAssignModal from "@/app/teacher/create/_components/TopicAssignModal";
 
 import { Button, IconButton } from "@/components/ui";
 
@@ -23,6 +26,7 @@ const PAGE_TRANSLATIONS = {
     publishBtn: "Nashr Qilish",
     saveToBankBtn: "Bazaga Saqlash", // 🟢 NEW
     savedToBankSuccess: "Savollar bazangizga muvaffaqiyatli saqlandi!", // 🟢 NEW
+    topicRequired: "Iltimos, savollar uchun mavzu tanlang.",
     modalTitle: "Test nomini kiriting",
     modalDesc: "Yangi yaratilgan testni saqlash va sozlashdan oldin unga nom bering.",
     modalCancel: "Bekor qilish",
@@ -49,6 +53,7 @@ const PAGE_TRANSLATIONS = {
     publishBtn: "Publish Test",
     saveToBankBtn: "Save to Bank", // 🟢 NEW
     savedToBankSuccess: "Questions successfully saved to your bank!", // 🟢 NEW
+    topicRequired: "Please choose a topic for the questions.",
     modalTitle: "Name Your Test",
     modalDesc: "Give your newly created test a clear title before configuring the settings.",
     modalCancel: "Cancel",
@@ -75,6 +80,7 @@ const PAGE_TRANSLATIONS = {
     publishBtn: "Опубликовать",
     saveToBankBtn: "Сохранить в базу", // 🟢 NEW
     savedToBankSuccess: "Вопросы успешно сохранены в вашу базу!", // 🟢 NEW
+    topicRequired: "Пожалуйста, выберите тему для вопросов.",
     modalTitle: "Назовите свой тест",
     modalDesc: "Дайте вашему новому тесту понятное название перед настройкой.",
     modalCancel: "Отмена",
@@ -113,6 +119,40 @@ interface DraftQuestion {
 
 const DRAFT_STORAGE_KEY = "edify_custom_test_draft";
 
+const DIFFICULTY_ID: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
+
+/* ─── topic taxonomy ────────────────────────────────────────────────────────
+ * `toQuestionV1()` throws InvalidTopicError unless the subject/topic/subtopic exists
+ * in data/question_topics.json — the old `subject: "custom"` placeholder is gone. The
+ * teacher picks the path in TopicAssignModal before anything is written. */
+
+/** custom_tests header name: the shared value, or "Aralash" when the batch spans several. */
+const sharedName = (paths: TopicPath[], key: "subjectName" | "topicName" | "subtopicName") => {
+  const uniq = [...new Set(paths.map((p) => p[key]))];
+  return uniq.length === 1 ? uniq[0] : "Aralash";
+};
+
+/** A hand-written draft in the loose shape `toQuestionV1` consumes.
+ *  ⚠️ subject/topic/subtopic are OBJECTS — `normalizeQuestion` reads `.id`/`.name`. */
+const draftToSource = (draft: DraftQuestion, p: TopicPath) => ({
+  subject: { id: p.subjectId, name: p.subjectName },
+  topic: { id: p.topicId, name: p.topicName },
+  subtopic: { id: p.subtopicId, name: p.subtopicName },
+  chapter: { id: "", name: "" }, // the canvas has no chapter concept
+  difficulty: draft.difficulty,
+  difficultyId: DIFFICULTY_ID[draft.difficulty] || 2,
+  question: { uz: draft.text, ru: "", en: "" },
+  options: {
+    A: { uz: draft.optA, ru: "", en: "" },
+    B: { uz: draft.optB, ru: "", en: "" },
+    C: { uz: draft.optC, ru: "", en: "" },
+    D: { uz: draft.optD, ru: "", en: "" },
+  },
+  answer: draft.answer,
+  explanation: { uz: draft.explanation, ru: "", en: "" },
+  tags: ["teacher_custom"], language: ["uz"], solutions: [],
+});
+
 export default function CreateCustomTestPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -127,6 +167,9 @@ export default function CreateCustomTestPage() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingToBank, setIsSavingToBank] = useState(false); // 🟢 NEW
+  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+  const [topicIntent, setTopicIntent] = useState<"bank" | "publish">("bank");
+  const [topicPaths, setTopicPaths] = useState<TopicPath[]>([]);
   
   const generateSecureId = () => doc(collection(db, "teacher_questions")).id;
 
@@ -204,50 +247,64 @@ export default function CreateCustomTestPage() {
     setDraftQuestions(prev => prev.filter(q => q.id !== id));
   };
 
-  // --- 🟢 SAVE TO BANK LOGIC ---
-  const handleSaveToBank = async () => {
+  // --- 🟢 TOPIC GATE (runs before BOTH save paths) ---
+  const openTopicModal = (intent: "bank" | "publish") => {
     const hasEmptyFields = draftQuestions.some(q => !q.text || !q.optA || !q.optB || !q.optC || !q.optD);
     if (hasEmptyFields) return toast.error(t.emptyFieldsErr);
+    setTopicIntent(intent);
+    setIsTopicModalOpen(true);
+  };
+
+  const handleTopicConfirm = (paths: TopicPath[]) => {
+    setTopicPaths(paths);
+    if (topicIntent === "bank") {
+      void handleSaveToBank(paths);
+      return;
+    }
+    // publish: topic first, then title, then TestConfigurationModal.
+    setIsTopicModalOpen(false);
+    setIsTitleModalOpen(true);
+  };
+
+  /** Defensive: toQuestionV1 should never throw once the modal is wired. */
+  const onInvalidTopic = (intent: "bank" | "publish") => {
+    toast.error(t.topicRequired);
+    setTopicIntent(intent);
+    setIsTopicModalOpen(true);
+  };
+
+  // --- 🟢 SAVE TO BANK LOGIC ---
+  const handleSaveToBank = async (paths: TopicPath[]) => {
     if (!user) return;
 
     setIsSavingToBank(true);
     const batch = writeBatch(db);
-    const currentTimestampString = new Date().toISOString();
 
     try {
-      for (const draft of draftQuestions) {
-        const difficultyMap: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
-        const diffId = difficultyMap[draft.difficulty] || 2;
-        const secureFirebaseId = doc(collection(db, "teacher_questions")).id;
-
-        const finalQ = {
-          id: `tq_${secureFirebaseId}`,
+      draftQuestions.forEach((draft, i) => {
+        const id = `tq_${doc(collection(db, "teacher_questions")).id}`;
+        const v1 = toQuestionV1(draftToSource(draft, paths[i]), {
+          id,
           creatorId: user.uid,
-          number: "",
-          track: "custom", subject: "custom", topic: "custom", chapter: "custom", subtopic: "custom",
-          creationMethod: "custom", 
-          difficulty: draft.difficulty, difficultyId: diffId,
-          question: { uz: draft.text, ru: "", en: "" },
-          options: {
-            A: { uz: draft.optA, ru: "", en: "" },
-            B: { uz: draft.optB, ru: "", en: "" },
-            C: { uz: draft.optC, ru: "", en: "" },
-            D: { uz: draft.optD, ru: "", en: "" },
-          },
-          answer: draft.answer,
-          explanation: { uz: draft.explanation, ru: "", en: "" },
-          tags: ["teacher_custom"], language: ["uz"], solutions: [],
-          uploadedAt: currentTimestampString,
-        };
-        
-        batch.set(doc(db, "teacher_questions", finalQ.id), { ...finalQ, createdAt: serverTimestamp() });
-      }
+          creatorName: user.displayName || "Teacher",
+          creationMethod: "teacher_created",
+          status: "published",
+          timestamp: serverTimestamp(),
+        });
+
+        batch.set(doc(db, "teacher_questions", id), v1);
+      });
 
       await batch.commit();
+      setIsTopicModalOpen(false);
       toast.success(t.savedToBankSuccess);
-      localStorage.removeItem(DRAFT_STORAGE_KEY); 
-      router.push('/teacher/create/my_questions'); 
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      router.push('/teacher/create/my_questions');
     } catch (error) {
+      if (error instanceof InvalidTopicError) {
+        onInvalidTopic("bank");
+        return;
+      }
       console.error("Save to bank error:", error);
       toast.error("Bazaga saqlashda xatolik yuz berdi.");
     } finally {
@@ -257,12 +314,6 @@ export default function CreateCustomTestPage() {
 
 
   // --- PUBLISH FLOW ---
-  const handleInitiatePublish = () => {
-    const hasEmptyFields = draftQuestions.some(q => !q.text || !q.optA || !q.optB || !q.optC || !q.optD);
-    if (hasEmptyFields) return toast.error(t.emptyFieldsErr);
-    setIsTitleModalOpen(true);
-  };
-
   const handleTitleSubmit = () => {
     if (!testTitle.trim()) return toast.error("Please enter a test title.");
     setIsTitleModalOpen(false);
@@ -271,48 +322,53 @@ export default function CreateCustomTestPage() {
 
   const handleFinalPublish = async (testSettings: any) => {
     if (!user) return;
-    setIsPublishing(true);
-    
-    const batch = writeBatch(db);
-    const finalQuestionsToSave = [];
-
-    for (const draft of draftQuestions) {
-      const difficultyMap: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
-      const diffId = difficultyMap[draft.difficulty] || 2;
-      const secureFirebaseId = doc(collection(db, "teacher_questions")).id;
-
-      const finalQ = {
-        id: `tq_${secureFirebaseId}`, creatorId: user.uid, number: "",
-        track: "custom", subject: "custom", topic: "custom", chapter: "custom", subtopic: "custom", creationMethod: "custom",
-        difficulty: draft.difficulty, difficultyId: diffId,
-        question: { uz: draft.text, ru: "", en: "" },
-        options: {
-          A: { uz: draft.optA, ru: "", en: "" }, B: { uz: draft.optB, ru: "", en: "" },
-          C: { uz: draft.optC, ru: "", en: "" }, D: { uz: draft.optD, ru: "", en: "" },
-        },
-        answer: draft.answer, explanation: { uz: draft.explanation, ru: "", en: "" },
-        tags: ["teacher_custom"], language: ["uz"], solutions: [], uploadedAt: new Date().toISOString(),
-      };
-      
-      finalQuestionsToSave.push(finalQ);
-      batch.set(doc(db, "teacher_questions", finalQ.id), { ...finalQ, createdAt: serverTimestamp() });
+    if (topicPaths.length !== draftQuestions.length) {
+      setIsConfigModalOpen(false);
+      return onInvalidTopic("publish");
     }
+    setIsPublishing(true);
 
-    batch.set(doc(collection(db, "custom_tests")), {
-      teacherId: user.uid, teacherName: user.displayName || "Teacher", title: testTitle, 
-      track: "custom", subjectName: "custom", topicName: "custom", chapterName: "custom", subtopicName: "custom",
-      questions: finalQuestionsToSave, duration: testSettings.duration, shuffle: testSettings.shuffleQuestions, 
-      resultsVisibility: testSettings.resultsVisibility, accessCode: testSettings.accessCode, 
-      status: "active", createdAt: serverTimestamp(), questionCount: finalQuestionsToSave.length,
-    });
+    const batch = writeBatch(db);
+    const finalQuestionsToSave: ReturnType<typeof toQuestionV1>[] = [];
 
     try {
-      await batch.commit(); 
+      draftQuestions.forEach((draft, i) => {
+        const id = `tq_${doc(collection(db, "teacher_questions")).id}`;
+        const source = draftToSource(draft, topicPaths[i]);
+        const meta = {
+          id,
+          creatorId: user.uid,
+          creatorName: user.displayName || "Teacher",
+          creationMethod: "teacher_created" as const,
+          status: "published" as const,
+        };
+
+        batch.set(doc(db, "teacher_questions", id), toQuestionV1(source, { ...meta, timestamp: serverTimestamp() }));
+        // The embedded snapshot needs a CONCRETE time: Firestore rejects serverTimestamp() sentinels inside arrays.
+        finalQuestionsToSave.push(toQuestionV1(source, { ...meta, timestamp: Timestamp.now() }));
+      });
+
+      batch.set(doc(collection(db, "custom_tests")), {
+        teacherId: user.uid, teacherName: user.displayName || "Teacher", title: testTitle,
+        track: "custom",
+        subjectName: sharedName(topicPaths, "subjectName"), topicName: sharedName(topicPaths, "topicName"),
+        chapterName: "", subtopicName: sharedName(topicPaths, "subtopicName"),
+        questions: finalQuestionsToSave, duration: testSettings.duration, shuffle: testSettings.shuffleQuestions,
+        resultsVisibility: testSettings.resultsVisibility, accessCode: testSettings.accessCode,
+        status: "active", createdAt: serverTimestamp(), questionCount: finalQuestionsToSave.length,
+      });
+
+      await batch.commit();
       toast.success("Custom test published successfully!");
-      localStorage.removeItem(DRAFT_STORAGE_KEY); 
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
       setIsConfigModalOpen(false);
       router.push("/teacher/dashboard");
     } catch (error) {
+      if (error instanceof InvalidTopicError) {
+        setIsConfigModalOpen(false);
+        onInvalidTopic("publish");
+        return;
+      }
       toast.error("Failed to publish test.");
     } finally {
       setIsPublishing(false);
@@ -349,6 +405,14 @@ export default function CreateCustomTestPage() {
         )}
       </AnimatePresence>
 
+      <TopicAssignModal
+        open={isTopicModalOpen}
+        questions={draftQuestions.map(q => q.text.slice(0, 120))}
+        isSaving={isSavingToBank}
+        onClose={() => setIsTopicModalOpen(false)}
+        onConfirm={handleTopicConfirm}
+      />
+
       {mounted && createPortal(
         <TestConfigurationModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} onConfirm={handleFinalPublish} questionCount={draftQuestions.length} testTitle={testTitle} isSaving={isPublishing} />,
         document.body
@@ -377,7 +441,7 @@ export default function CreateCustomTestPage() {
             size="sm"
             icon={<Database />}
             loading={isSavingToBank}
-            onClick={handleSaveToBank}
+            onClick={() => openTopicModal("bank")}
             disabled={isPublishing || isSavingToBank}
           >
             <span>{t.saveToBankBtn}</span>
@@ -387,7 +451,7 @@ export default function CreateCustomTestPage() {
             size="sm"
             icon={<CheckCircle2 />}
             loading={isPublishing}
-            onClick={handleInitiatePublish}
+            onClick={() => openTopicModal("publish")}
             disabled={isPublishing || isSavingToBank}
           >
             <span className="hidden sm:inline">{t.publishBtn}</span>
@@ -499,7 +563,7 @@ export default function CreateCustomTestPage() {
             className="flex-1 shadow-elev-2"
             icon={<Database />}
             loading={isSavingToBank}
-            onClick={handleSaveToBank}
+            onClick={() => openTopicModal("bank")}
             disabled={isSavingToBank || isPublishing}
           >
             {t.saveToBankBtn}
@@ -511,7 +575,7 @@ export default function CreateCustomTestPage() {
             className="flex-1 shadow-elev-3"
             icon={<CheckCircle2 />}
             loading={isPublishing}
-            onClick={handleInitiatePublish}
+            onClick={() => openTopicModal("publish")}
             disabled={isPublishing || isSavingToBank}
           >
             {t.publishBtn}

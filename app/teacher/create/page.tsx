@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight, Bot, PenTool, Image as ImageIcon, School, Award, GraduationCap, Zap, FileText, Calculator, Database } from "lucide-react";
+import { ArrowRight, Bot, PenTool, Image as ImageIcon, School, Award, GraduationCap, Zap, FileText, Calculator, Database, HelpCircle, Blocks } from "lucide-react";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import { motion, Variants } from "framer-motion";
 
@@ -14,7 +14,7 @@ const HUB_TRANSLATIONS: Record<string, any> = {
   uz: {
     heroBadge: "Studiya 2.0 ✨", title: "Test Yaratish Markazi", subtitle: "Maqsadingizga qarab, eng tezkor usulni tanlang.",
     myBank: "Mening Savollarim",
-    sections: { cur: "Ta'lim Dasturlari", work: "Ishchi Varaqlar", ai: "AI va Maxsus Vositalar" },
+    sections: { cur: "Ta'lim Dasturlari", work: "Ishchi Varaqlar", ai: "AI va Maxsus Vositalar", single: "Savollar Bazasi" },
     bsb: { badge: "Rasmiy", title: "BSB va CHSB", desc: "Matritsa asosida rasmiy chorak imtihonlarini avtomatik yarating.", btn: "Boshlash" },
     maktab: { badge: "Kundalik", title: "Maktab Dasturi", desc: "Darsliklar asosida tezkor so'rovlar va uy vazifalarini tuzing.", btn: "Boshlash" },
     ixtisos: { badge: "Mantiq", title: "Ixtisoslashtirilgan", desc: "Iqtidorli o'quvchilar uchun qiyinlashtirilgan, mantiqiy masalalar.", btn: "Boshlash" },
@@ -23,11 +23,13 @@ const HUB_TRANSLATIONS: Record<string, any> = {
     aiImage: { badge: "Skaner 📸", title: "Rasm Orqali", desc: "Eski testni rasmga oling. AI uni o'qib, yangi variantlarini tuzadi.", btn: "Yuklash" },
     aiPrompt: { badge: "Avtomat", title: "AI Maxsus Buyruq", desc: "Test mavzusini so'z bilan yozing, AI qolganini o'zi bajaradi.", btn: "Yozish" },
     custom: { badge: "Qo'l Mehnati", title: "Oq Qog'oz", desc: "Matematik klaviatura yordamida o'z savollaringizni noldan yozing.", btn: "Ochish" },
+    question: { badge: "Bitta Savol", title: "Savol Yaratish", desc: "Rasm yoki matnli savol; javob ochiq yoki variantli bo'lishi mumkin.", btn: "Yaratish" },
+    block: { badge: "Blok", title: "Ko'p savolli test", desc: "Bitta shart ostida bir nechta savol — yopiq (umumiy variantli) yoki ochiq (yozma javob).", btn: "Yaratish" },
   },
   en: {
     heroBadge: "Studio 2.0 ✨", title: "Creation Hub", subtitle: "Select the fastest workflow for your teaching goals.",
     myBank: "My Question Bank",
-    sections: { cur: "Curriculum Exams", work: "Worksheets & Practice", ai: "AI & Manual Tools" },
+    sections: { cur: "Curriculum Exams", work: "Worksheets & Practice", ai: "AI & Manual Tools", single: "Question Bank" },
     bsb: { badge: "Official", title: "BSB & CHSB", desc: "Instantly generate matrix-based, official term exam papers.", btn: "Start" },
     maktab: { badge: "Daily", title: "Public School", desc: "Create quick quizzes and homework based on standard textbooks.", btn: "Start" },
     ixtisos: { badge: "Logic", title: "Specialized Track", desc: "Generate multi-step, Olympiad-level logic problems.", btn: "Start" },
@@ -36,11 +38,13 @@ const HUB_TRANSLATIONS: Record<string, any> = {
     aiImage: { badge: "Scanner 📸", title: "Create via Image", desc: "Snap a photo of an old test. AI will generate brand new variants.", btn: "Upload" },
     aiPrompt: { badge: "Auto", title: "AI Text Command", desc: "Just describe your topic. The AI builds the entire test for you.", btn: "Write" },
     custom: { badge: "Manual", title: "Blank Canvas", desc: "Write questions from scratch using our built-in math keyboard.", btn: "Open" },
+    question: { badge: "Single", title: "Create Question", desc: "One question from an image or text; open or multiple-choice answer.", btn: "Create" },
+    block: { badge: "Block", title: "Multi-question test", desc: "Several questions under one stem — closed (shared A–F variants) or open (written answers).", btn: "Create" },
   },
   ru: {
     heroBadge: "Студия 2.0 ✨", title: "Центр Создания", subtitle: "Выберите самый быстрый способ для ваших целей.",
     myBank: "Моя База Вопросов",
-    sections: { cur: "Учебные Программы", work: "Рабочие Листы", ai: "ИИ и Инструменты" },
+    sections: { cur: "Учебные Программы", work: "Рабочие Листы", ai: "ИИ и Инструменты", single: "База Вопросов" },
     bsb: { badge: "Официально", title: "Генератор BSB", desc: "Автоматическое создание четвертных экзаменов по матрице.", btn: "Начать" },
     maktab: { badge: "Ежедневно", title: "Школьная программа", desc: "Быстрые тесты и домашки на основе стандартных учебников.", btn: "Начать" },
     ixtisos: { badge: "Логика", title: "Спец. школы", desc: "Сложные, логические задачи для одаренных детей.", btn: "Начать" },
@@ -49,6 +53,8 @@ const HUB_TRANSLATIONS: Record<string, any> = {
     aiImage: { badge: "Сканер 📸", title: "Создать по фото", desc: "Сфотографируйте старый тест. ИИ создаст его новые аналоги.", btn: "Загрузить" },
     aiPrompt: { badge: "Автомат", title: "AI Свой Запрос", desc: "Просто опишите тему. ИИ сам составит готовый тест.", btn: "Написать" },
     custom: { badge: "Вручную", title: "Чистый Лист", desc: "Создавайте тесты с нуля, используя математическую клавиатуру.", btn: "Открыть" },
+    question: { badge: "Один вопрос", title: "Создать Вопрос", desc: "Вопрос из картинки или текста; открытый ответ или варианты.", btn: "Создать" },
+    block: { badge: "Блок", title: "Тест с несколькими вопросами", desc: "Несколько вопросов под одним условием — закрытый (общие варианты A–F) или открытый (письменные ответы).", btn: "Создать" },
   }
 };
 
@@ -100,6 +106,13 @@ export default function CreateHubPage() {
         { id: 'aiImage', icon: ImageIcon, tone: 'tertiary', href: '/teacher/create/by_image', data: t.aiImage },
         { id: 'aiPrompt', icon: Bot, tone: 'primary', href: '/teacher/create/by_user_input', data: t.aiPrompt },
         { id: 'custom', icon: PenTool, tone: 'secondary', href: '/teacher/create/custom', data: t.custom },
+      ]
+    },
+    {
+      title: t.sections.single,
+      items: [
+        { id: 'question', icon: HelpCircle, tone: 'tertiary', href: '/teacher/create/question', data: t.question },
+        { id: 'block', icon: Blocks, tone: 'primary', href: '/teacher/create/block', data: t.block },
       ]
     }
   ];

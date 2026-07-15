@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Database,BookMarked,BookOpen,ChevronRight, Layers, Calendar, Folder, Target, CheckCircle2, Trash2, Eye, Plus, Search, Sparkles, Filter, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, Database,BookMarked,BookOpen,ChevronRight, Layers, Calendar, Folder, Target, CheckCircle2, Trash2, Eye, Pencil, Image as ImageIcon, Plus, Search, Sparkles, Filter, X, AlertCircle, User } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, getDocs, startAfter, DocumentData, QueryDocumentSnapshot, deleteDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/lib/AuthContext";
@@ -14,8 +14,19 @@ import { createPortal } from "react-dom";
 
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
+import { normalizeQuestion } from "@/lib/questionSchema";
+import QuestionPartsPreview from "@/components/QuestionPartsPreview";
+import { cacheList, cacheQuestion, getCachedList, invalidateQuestionCache, listKey } from "@/lib/questionCache";
+import { DIFFICULTY_ID_BY_NAME } from "@/types/question";
 
 import { Button, IconButton, Spinner, Skeleton } from "@/components/ui";
+
+// The bank holds questions from every era. A filter chip must match BOTH the
+// legacy creationMethod values and the v1 enum (types/question.ts), so each chip
+// queries an `in` list. Firestore bills only the docs returned — no extra reads.
+const AI_METHODS = ["general_ai", "ai_generated", "ai_prompt", "by_prompt"];
+const IMAGE_METHODS = ["by_image", "imported"];
+const MANUAL_METHODS = ["custom", "teacher_created", "manual", "manual_builder"];
 
 // --- LATEX FORMATTER ---
 const FormattedText = ({ text }: { text: any }) => {
@@ -82,6 +93,17 @@ export default function MyQuestionsPage() {
   }, [user, activeFilter]);
 
   const fetchInitialQuestions = async () => {
+    // Coming back from the editor, or flipping a filter chip back and forth, used
+    // to re-read 15 documents every time. Within the 60s TTL that is now free.
+    // (No cursor is cached, so "load more" simply starts a fresh paged read.)
+    const cached = getCachedList(listKey(user!.uid, activeFilter));
+    if (cached) {
+      setQuestions(cached);
+      setLoading(false);
+      setHasMore(false);
+      return;
+    }
+
     setLoading(true);
     setQuestions([]);
     setLastVisible(null);
@@ -91,19 +113,25 @@ export default function MyQuestionsPage() {
       let q = query(collection(db, "teacher_questions"), where("creatorId", "==", user!.uid));
       
       // Apply filters
-      if (activeFilter === "easy") q = query(q, where("difficulty", "==", "easy"));
-      else if (activeFilter === "medium") q = query(q, where("difficulty", "==", "medium"));
-      else if (activeFilter === "hard") q = query(q, where("difficulty", "==", "hard"));
-      else if (activeFilter === "ai") q = query(q, where("creationMethod", "==", "general_ai"));
-      else if (activeFilter === "image") q = query(q, where("creationMethod", "==", "by_image"));
-      else if (activeFilter === "custom") q = query(q, where("creationMethod", "==", "custom"));
+      // Filter on difficultyId / a creationMethod `in` list, NOT on the legacy
+      // `difficulty` string: v1 docs store difficulty as an object, so a
+      // `where("difficulty","==","easy")` would silently return zero new
+      // questions. difficultyId is flat on BOTH shapes — one query, both eras.
+      if (activeFilter === "easy") q = query(q, where("difficultyId", "==", DIFFICULTY_ID_BY_NAME.easy));
+      else if (activeFilter === "medium") q = query(q, where("difficultyId", "==", DIFFICULTY_ID_BY_NAME.medium));
+      else if (activeFilter === "hard") q = query(q, where("difficultyId", "==", DIFFICULTY_ID_BY_NAME.hard));
+      else if (activeFilter === "ai") q = query(q, where("creationMethod", "in", AI_METHODS));
+      else if (activeFilter === "image") q = query(q, where("creationMethod", "in", IMAGE_METHODS));
+      else if (activeFilter === "custom") q = query(q, where("creationMethod", "in", MANUAL_METHODS));
       
       q = query(q, orderBy("createdAt", "desc"), limit(FETCH_LIMIT));
       
       const querySnapshot = await getDocs(q);
-      const fetchedQs = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      // Normalized at the boundary: v1 and legacy docs render identically below.
+      const fetchedQs = querySnapshot.docs.map(doc => normalizeQuestion({ ...doc.data(), id: doc.id }));
       setQuestions(fetchedQs);
-      
+      cacheList(listKey(user!.uid, activeFilter), fetchedQs);
+
       if (querySnapshot.docs.length < FETCH_LIMIT) setHasMore(false);
       else setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       
@@ -123,17 +151,21 @@ export default function MyQuestionsPage() {
     try {
       let q = query(collection(db, "teacher_questions"), where("creatorId", "==", user!.uid));
       
-      if (activeFilter === "easy") q = query(q, where("difficulty", "==", "easy"));
-      else if (activeFilter === "medium") q = query(q, where("difficulty", "==", "medium"));
-      else if (activeFilter === "hard") q = query(q, where("difficulty", "==", "hard"));
-      else if (activeFilter === "ai") q = query(q, where("creationMethod", "==", "general_ai"));
-      else if (activeFilter === "image") q = query(q, where("creationMethod", "==", "by_image"));
-      else if (activeFilter === "custom") q = query(q, where("creationMethod", "==", "custom"));
+      // Filter on difficultyId / a creationMethod `in` list, NOT on the legacy
+      // `difficulty` string: v1 docs store difficulty as an object, so a
+      // `where("difficulty","==","easy")` would silently return zero new
+      // questions. difficultyId is flat on BOTH shapes — one query, both eras.
+      if (activeFilter === "easy") q = query(q, where("difficultyId", "==", DIFFICULTY_ID_BY_NAME.easy));
+      else if (activeFilter === "medium") q = query(q, where("difficultyId", "==", DIFFICULTY_ID_BY_NAME.medium));
+      else if (activeFilter === "hard") q = query(q, where("difficultyId", "==", DIFFICULTY_ID_BY_NAME.hard));
+      else if (activeFilter === "ai") q = query(q, where("creationMethod", "in", AI_METHODS));
+      else if (activeFilter === "image") q = query(q, where("creationMethod", "in", IMAGE_METHODS));
+      else if (activeFilter === "custom") q = query(q, where("creationMethod", "in", MANUAL_METHODS));
 
       q = query(q, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(FETCH_LIMIT));
       
       const querySnapshot = await getDocs(q);
-      const newQs = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      const newQs = querySnapshot.docs.map(doc => normalizeQuestion({ ...doc.data(), id: doc.id }));
       setQuestions(prev => [...prev, ...newQs]);
       
       if (querySnapshot.docs.length < FETCH_LIMIT) setHasMore(false);
@@ -168,8 +200,11 @@ export default function MyQuestionsPage() {
     if (!deleteModalId) return;
     try {
       await deleteDoc(doc(db, "teacher_questions", deleteModalId));
+      // The cached bank list still holds this question — drop it, or it reappears
+      // for up to 60s after being deleted.
+      invalidateQuestionCache(deleteModalId);
       setQuestions(prev => prev.filter(q => q.id !== deleteModalId));
-      
+
       const newSet = new Set(selectedQuestions);
       newSet.delete(deleteModalId);
       setSelectedQuestions(newSet);
@@ -209,6 +244,11 @@ export default function MyQuestionsPage() {
       const uniqueSubjects = [...new Set(selectedQsData.map(q => q.subject || "Umumiy"))];
       const finalSubjectName = uniqueSubjects.length === 1 ? uniqueSubjects[0] : "Aralash fanlar";
 
+      // The embedded snapshot must be the STORED doc, not the normalized view
+      // model (which carries a `raw` back-reference and a flattened shape).
+      // Readers normalize on the way out — see lib/questionSchema.ts.
+      const embeddedQuestions = selectedQsData.map(q => q.raw);
+
       // ✅ THIS IS THE CORRECT V9 SYNTAX
       await addDoc(collection(db, "custom_tests"), {
         teacherId: user.uid,
@@ -218,7 +258,7 @@ export default function MyQuestionsPage() {
         topicName: "Aralash",
         chapterName: "Aralash",
         subtopicName: "Aralash",
-        questions: selectedQsData,
+        questions: embeddedQuestions,
         duration: testSettings.duration,
         shuffle: testSettings.shuffleQuestions,
         resultsVisibility: testSettings.resultsVisibility,
@@ -351,20 +391,80 @@ export default function MyQuestionsPage() {
                     <span className={`text-[9px] md:text-[10px] font-black px-2 py-1 rounded-m3-xs uppercase border border-transparent ${diff === 'hard' ? 'bg-error-container text-on-error-container' : diff === 'easy' ? 'bg-success-container text-on-success-container' : 'bg-warning-container text-on-warning-container'}`}>
                       {diff}
                     </span>
+                    {/* A block holds several sub-questions — say so, or it looks like a
+                        normal question whose answer is missing. */}
+                    {q.isBlock && (
+                      <span className="bg-primary-container text-on-primary-container text-[9px] md:text-[10px] font-black px-2 py-1 rounded-m3-xs uppercase flex items-center gap-1">
+                        <Layers size={10} /> Blok · {q.parts.length} savol
+                      </span>
+                    )}
                   </div>
 
-                  <div className="font-semibold text-[12px] md:text-[14px] text-on-surface leading-snug line-clamp-2 pr-2">
-                    <FormattedText text={questionText} />
+                  {/* Prompt + its image side by side. An image-only question used to
+                      render as an empty card — it now shows the picture and a label. */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0 font-semibold text-[12px] md:text-[14px] text-on-surface leading-snug line-clamp-2 pr-2">
+                      {questionText ? (
+                        <FormattedText text={questionText} />
+                      ) : (
+                        <span className="text-on-surface-variant italic flex items-center gap-1.5">
+                          <ImageIcon size={13} /> Rasmli savol
+                        </span>
+                      )}
+                    </div>
+
+                    {q.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={q.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        className="w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-m3-sm border border-outline-variant object-cover bg-surface-container"
+                      />
+                    )}
                   </div>
 
-                  <div className="mt-3 md:mt-4 pt-3 border-t border-outline-variant flex items-center justify-between">
-                    <span className="text-[9px] md:text-[10px] font-medium text-on-surface-variant flex items-center gap-1">
-                      <Calendar size={10} /> {q.createdAt?.toDate ? q.createdAt.toDate().toLocaleDateString('uz-UZ') : "Yaqinda"}
+                  {/* Options that are pictures — the whole point of the question. */}
+                  {q.optionList.some((o: any) => o.imageUrl) && (
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                      {q.optionList.filter((o: any) => o.imageUrl).map((o: any) => (
+                        <div key={o.id} className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={o.imageUrl} alt="" loading="lazy" className="w-11 h-11 rounded-m3-xs border border-outline-variant object-cover bg-surface-container" />
+                          <span className="absolute -top-1 -left-1 bg-inverse-surface text-inverse-on-surface text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">{o.id}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {q.correctedBy && (
+                    <p className="mt-2 text-[9px] md:text-[10px] font-medium text-on-surface-variant italic flex items-center gap-1">
+                      <Pencil size={9} /> Tuzatgan: {q.correctedBy}
+                    </p>
+                  )}
+
+                  <div className="mt-3 md:mt-4 pt-3 border-t border-outline-variant flex items-center justify-between gap-2">
+                    <span className="min-w-0 text-[9px] md:text-[10px] font-medium text-on-surface-variant flex items-center gap-2 flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={10} /> {q.createdAt?.toDate ? q.createdAt.toDate().toLocaleDateString('uz-UZ') : "Yaqinda"}
+                      </span>
+                      {q.creatorName && (
+                        <span className="flex items-center gap-1 min-w-0">
+                          <User size={10} /> <span className="truncate">{q.creatorName}</span>
+                        </span>
+                      )}
                     </span>
 
                     <div className="flex items-center gap-1.5">
                       <button onClick={(e) => { e.stopPropagation(); setInfoModalData(q); }} className="m3-interactive px-2.5 py-1 bg-surface-container hover:text-primary text-on-surface-variant border border-outline-variant rounded-m3-sm text-[10px] md:text-[11px] font-bold transition-colors flex items-center gap-1">
                         <Eye size={12}/> To'liq ko'rish
+                      </button>
+                      {/* Fix a broken question — opens it in the builder, writing back to the
+                          same doc. ⚠️ A BLOCK must open the BLOCK editor: the single-question
+                          builder has no concept of `parts` and would drop every sub-question.
+                          The question is handed over in memory, so the editor reads 0 docs. */}
+                      <button onClick={(e) => { e.stopPropagation(); cacheQuestion(q); router.push(`${q.isBlock ? '/teacher/create/block' : '/teacher/create/question'}?edit=${q.id}`); }} className="m3-interactive px-2.5 py-1 bg-surface-container hover:text-primary text-on-surface-variant border border-outline-variant rounded-m3-sm text-[10px] md:text-[11px] font-bold transition-colors flex items-center gap-1">
+                        <Pencil size={12}/> Tahrirlash
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); setDeleteModalId(q.id); }} className="p-1 md:p-1.5 bg-surface-container hover:bg-error-container text-on-surface-variant hover:text-error border border-outline-variant rounded-m3-sm transition-colors">
                         <Trash2 size={12} className="md:w-3.5 md:h-3.5" />
@@ -436,6 +536,11 @@ export default function MyQuestionsPage() {
                       <div>
                         <h3 className="text-[14px] md:text-[16px] font-black text-on-surface leading-tight">To'liq Ma'lumot</h3>
                         <p className="text-[9px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mt-0.5">{infoModalData.id}</p>
+                        {infoModalData.correctedBy && (
+                          <p className="text-[10px] md:text-[11px] font-medium text-on-surface-variant italic flex items-center gap-1 mt-1">
+                            <Pencil size={10} /> Tuzatgan: {infoModalData.correctedBy}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <IconButton aria-label="Yopish" size="sm" onClick={() => setInfoModalData(null)}><X /></IconButton>
@@ -455,26 +560,59 @@ export default function MyQuestionsPage() {
                     <div className="mb-6 md:mb-8">
                       <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2 border-b border-outline-variant pb-2">Savol Matni</h4>
                       <p className="font-semibold text-[14px] md:text-[16px] text-on-surface leading-relaxed"><FormattedText text={getText(infoModalData.question)} /></p>
+                      {infoModalData.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={infoModalData.imageUrl} alt="" className="mt-3 max-h-[220px] w-auto rounded-m3-md border border-outline-variant object-contain bg-surface-container" />
+                      )}
                     </div>
 
-                    {/* Options */}
-                    <div className="mb-6 md:mb-8">
-                      <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">Variantlar</h4>
-                      <div className="flex flex-col gap-2">
-                        {['A', 'B', 'C', 'D'].map(key => {
-                          const val = infoModalData.options?.[key];
-                          if (!val) return null;
-                          const isCorrect = infoModalData.answer === key;
-                          return (
-                            <div key={key} className={`flex items-start p-3 rounded-m3-md border transition-all ${isCorrect ? 'bg-success-container border-success' : 'bg-surface-container-lowest border-outline-variant'}`}>
-                              <div className={`w-6 h-6 rounded-m3-xs flex items-center justify-center text-[11px] font-black mr-3 shrink-0 mt-0.5 ${isCorrect ? 'bg-success text-surface-container-lowest shadow-elev-1' : 'bg-surface-container-high text-on-surface-variant'}`}>{key}</div>
-                              <div className={`text-[13px] md:text-[14px] font-medium pt-0.5 break-words ${isCorrect ? 'text-on-success-container' : 'text-on-surface'}`}><FormattedText text={getText(val)} /></div>
-                              {isCorrect && <div className="ml-auto bg-success text-surface-container-lowest text-[9px] font-black px-2 py-1 rounded-m3-xs border border-transparent uppercase tracking-widest mt-0.5">To'g'ri Javob</div>}
-                            </div>
-                          );
-                        })}
+                    {/* A BLOCK: the shared pool + every sub-question with its answer. */}
+                    {infoModalData.isBlock ? (
+                      <div className="mb-6 md:mb-8">
+                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">
+                          Savollar ({infoModalData.parts.length})
+                        </h4>
+                        <QuestionPartsPreview question={infoModalData} />
                       </div>
-                    </div>
+                    ) : infoModalData.optionList.length > 0 ? (
+                      <div className="mb-6 md:mb-8">
+                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">Variantlar</h4>
+                        <div className="flex flex-col gap-2">
+                          {infoModalData.optionList.map((opt: any) => {
+                            const correctLetters = Array.isArray(infoModalData.correctAnswer.value) ? infoModalData.correctAnswer.value : [infoModalData.answer];
+                            const isCorrect = correctLetters.includes(opt.id);
+                            return (
+                              <div key={opt.id} className={`flex items-start p-3 rounded-m3-md border transition-all ${isCorrect ? 'bg-success-container border-success' : 'bg-surface-container-lowest border-outline-variant'}`}>
+                                <div className={`w-6 h-6 rounded-m3-xs flex items-center justify-center text-[11px] font-black mr-3 shrink-0 mt-0.5 ${isCorrect ? 'bg-success text-surface-container-lowest shadow-elev-1' : 'bg-surface-container-high text-on-surface-variant'}`}>{opt.id}</div>
+                                <div className={`text-[13px] md:text-[14px] font-medium pt-0.5 break-words ${isCorrect ? 'text-on-success-container' : 'text-on-surface'}`}>
+                                  <FormattedText text={getText(opt.text)} />
+                                  {opt.imageUrl && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={opt.imageUrl} alt="" className="mt-1.5 max-h-[90px] w-auto rounded-m3-xs border border-outline-variant object-contain bg-surface" />
+                                  )}
+                                </div>
+                                {isCorrect && <div className="ml-auto bg-success text-surface-container-lowest text-[9px] font-black px-2 py-1 rounded-m3-xs border border-transparent uppercase tracking-widest mt-0.5">To'g'ri Javob</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Text-answer types (open / numeric) have no options — show the expected answer. */
+                      <div className="mb-6 md:mb-8">
+                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">To'g'ri Javob</h4>
+                        <div className="flex flex-wrap gap-2">
+                          <div className="bg-success-container border border-success text-on-success-container text-[13px] font-bold px-3 py-2 rounded-m3-md">
+                            <FormattedText text={String(infoModalData.correctAnswer.value || "")} />
+                          </div>
+                          {infoModalData.correctAnswer.acceptedAnswers.map((alt: string) => (
+                            <div key={alt} className="bg-surface-container-lowest border border-outline-variant text-on-surface-variant text-[13px] font-medium px-3 py-2 rounded-m3-md">
+                              <FormattedText text={alt} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Explanation */}
                     {getText(infoModalData.explanation).trim().length > 0 && (

@@ -152,31 +152,10 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     pools: [A('18')],
   },
 
-  // ── Y-2 — questions 33–40 ───────────────────────────────────────────────
-  {
-    id: 'equations-y2',
-    topic: 'equations',
-    label: {
-      uz: 'Tenglama va tengsizliklar',
-      ru: 'Уравнения и неравенства',
-      en: 'Equations and inequalities',
-    },
-    testType: 'Y-2',
-    count: 2,
-    pools: [A('05'), A('06'), A('07'), A('08')],
-  },
-  {
-    id: 'analysis-y2',
-    topic: 'analysis',
-    label: {
-      uz: 'Matematik analiz asoslari',
-      ru: 'Основы математического анализа',
-      en: 'Foundations of calculus',
-    },
-    testType: 'Y-2',
-    count: 2,
-    pools: [A('15'), A('16')],
-  },
+  // ── Y-2 + O — questions 33–45, drawn from teacher_questions ─────────────
+  // These slots come from the teacher bank (images + blocks), matched to each
+  // section's chapters via the question_topics taxonomy. The layout follows the
+  // DTM protocol sheet: Y-2 is geometry 33–35, everything from 36 on is O.
   {
     id: 'geometry-y2',
     topic: 'geometry',
@@ -188,17 +167,43 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     testType: 'Y-2',
     count: 3,
     pools: GEOMETRY_MULTISTEP,
+    source: 'teacher',
   },
   {
-    id: 'functions-y2',
+    id: 'equations-o',
+    topic: 'equations',
+    label: {
+      uz: 'Tenglama va tengsizliklar',
+      ru: 'Уравнения и неравенства',
+      en: 'Equations and inequalities',
+    },
+    testType: 'O',
+    count: 2,
+    pools: [A('05'), A('06'), A('07'), A('08')],
+    source: 'teacher',
+  },
+  {
+    id: 'functions-o',
     topic: 'functions',
     label: { uz: 'Funksiyalar', ru: 'Функции', en: 'Functions' },
-    testType: 'Y-2',
+    testType: 'O',
     count: 1,
     pools: [A('11'), A('12')],
+    source: 'teacher',
   },
-
-  // ── O — questions 41–45 ─────────────────────────────────────────────────
+  {
+    id: 'analysis-o',
+    topic: 'analysis',
+    label: {
+      uz: 'Matematik analiz asoslari',
+      ru: 'Основы математического анализа',
+      en: 'Foundations of calculus',
+    },
+    testType: 'O',
+    count: 2,
+    pools: [A('09'), A('15'), A('16')],
+    source: 'teacher',
+  },
   {
     id: 'geometry-o',
     topic: 'geometry',
@@ -206,6 +211,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     testType: 'O',
     count: 4,
     pools: GEOMETRY_MULTISTEP,
+    source: 'teacher',
   },
   {
     id: 'probability-o',
@@ -218,6 +224,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     testType: 'O',
     count: 1,
     pools: [A('18')],
+    source: 'teacher',
   },
 ];
 

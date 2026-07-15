@@ -11,6 +11,9 @@ import {
   ShieldAlert, ShieldCheck, Target, UserCircle
 } from 'lucide-react';
 import LatexRenderer from '@/components/LatexRenderer';
+import QuestionCreator from '@/components/QuestionCreator';
+import { normalizeQuestions, getText, isAnswerCorrect, isPartCorrect, gradeQuestion, isBlockAnswer } from '@/lib/questionSchema';
+import type { NormalizedQuestion } from '@/types/question';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { Button, ProgressBar, Spinner, StatusChip } from '@/components/ui';
 
@@ -45,11 +48,9 @@ const STUDENT_MODAL_TRANSLATIONS = {
   }
 };
 
-const getContentText = (content: any) => {
-  if (!content) return "";
-  if (typeof content === 'string') return content;
-  return content.uz || content.en || content.ru || content.text || JSON.stringify(content) || "";
-};
+// Trilingual text → a display string. Uses the schema helper so an image-only
+// option (empty {uz,ru,en}) yields "" instead of a JSON dump.
+const getContentText = (content: any) => getText(content);
 
 interface Props {
   isOpen: boolean;
@@ -79,8 +80,9 @@ export default function StudentDetailsModal({ isOpen, onClose, student, assignme
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Drill-down State
-  const [viewingAttempt, setViewingAttempt] = useState<any>(null); 
-  const [fullTestData, setFullTestData] = useState<any>(null);     
+  const [viewingAttempt, setViewingAttempt] = useState<any>(null);
+  // `questions` here is ALWAYS the normalized view model — this modal is read-only.
+  const [fullTestData, setFullTestData] = useState<{ questions: NormalizedQuestion[] } | null>(null);
   const [loadingTest, setLoadingTest] = useState(false);
 
   // Filter assignments relevant to this student
@@ -145,9 +147,14 @@ export default function StudentDetailsModal({ isOpen, onClose, student, assignme
       const testRef = doc(db, 'custom_tests', attempt.testId);
       const testSnap = await getDoc(testRef);
       if (testSnap.exists()) {
-        setFullTestData(testSnap.data());
+        // Normalization boundary: the frozen snapshots in custom_tests.questions[]
+        // may be legacy-shaped or canonical v1. The answer-analysis below compares
+        // `studentAnswer === q.answer` and reads `q.options[letter]`, so normalize
+        // once here and the compare/render logic keeps working untouched.
+        const data = testSnap.data() as any;
+        setFullTestData({ questions: normalizeQuestions(data?.questions, lang) });
       } else {
-        setFullTestData({ questions: [] }); 
+        setFullTestData({ questions: [] });
       }
     } catch (error) {
       setFullTestData({ questions: [] });
@@ -347,9 +354,15 @@ export default function StudentDetailsModal({ isOpen, onClose, student, assignme
                   <div className="space-y-3 md:space-y-4">
                     <h3 className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest ml-1">{t.analysis}</h3>
 
-                    {Array.isArray(fullTestData?.questions) && fullTestData.questions.map((q: any, idx: number) => {
-                       const studentAnswer = viewingAttempt.answers?.[q.id] || null;
-                       const isCorrect = studentAnswer === q.answer;
+                    {Array.isArray(fullTestData?.questions) && fullTestData.questions.map((q: NormalizedQuestion, idx: number) => {
+                       const studentAnswer = viewingAttempt.answers?.[q.id] ?? null;
+                       // The same comparator the student runner grades with — an
+                       // answer can now be a letter, a letter[] (multiple_select)
+                       // or typed text (open/numeric). See lib/questionSchema.ts.
+                       const isCorrect = isAnswerCorrect(q, studentAnswer);
+                       const answerLabel = Array.isArray(studentAnswer) ? studentAnswer.join(", ") : studentAnswer;
+                       const studentOptionImage = typeof studentAnswer === "string" ? q.options?.[studentAnswer]?.imageUrl : null;
+                       const correctOptionImage = q.options?.[q.answer]?.imageUrl;
 
                        return (
                          <div key={q.id || idx} className={`bg-surface-container-low border rounded-m3-lg p-4 md:p-6 shadow-elev-1 ${isCorrect ? 'border-success-container' : 'border-error-container'}`}>
@@ -360,22 +373,81 @@ export default function StudentDetailsModal({ isOpen, onClose, student, assignme
                                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-m3-md flex items-center justify-center shrink-0 font-black text-[14px] md:text-[16px] shadow-elev-1 mt-0.5 ${isCorrect ? 'bg-success text-surface-container-lowest' : 'bg-error text-on-error'}`}>
                                  {idx + 1}
                                </div>
-                               <div className="font-bold text-on-surface text-[13px] md:text-[15px] leading-relaxed pt-1 overflow-hidden break-words">
+                               <div className="font-bold text-on-surface text-[13px] md:text-[15px] leading-relaxed pt-1 overflow-hidden break-words min-w-0">
                                  <LatexRenderer latex={getContentText(q.question)} />
+                                 {q.imageUrl && (
+                                   // eslint-disable-next-line @next/next/no-img-element
+                                   <img
+                                     src={q.imageUrl}
+                                     alt=""
+                                     className="mt-2 max-h-32 md:max-h-40 max-w-full object-contain rounded-m3-sm border border-outline-variant"
+                                   />
+                                 )}
+                                 <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="mt-2 text-on-surface-variant" />
                                </div>
                              </div>
 
-                             {/* Answers Grid (Stacks on mobile) */}
+                             {/* A BLOCK is answered part by part — one row each, or the
+                                 student's whole answer would render as a raw object. */}
+                             {q.isBlock ? (
+                               <div className="w-full border-t border-outline-variant pt-3 md:pt-4 space-y-2">
+                                 {(() => {
+                                   const { earned, total } = gradeQuestion(q, studentAnswer);
+                                   const given: Record<string, any> = isBlockAnswer(studentAnswer) ? studentAnswer : {};
+                                   return (
+                                     <>
+                                       <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
+                                         {earned} / {total} ball
+                                       </p>
+                                       {q.parts.map((part) => {
+                                         const partAnswer = given[part.id];
+                                         const partOk = isPartCorrect(part, partAnswer ?? null);
+                                         const label = Array.isArray(partAnswer) ? partAnswer.join(", ") : (partAnswer ?? "");
+                                         const correct = Array.isArray(part.correctAnswer.value)
+                                           ? part.correctAnswer.value.join(", ")
+                                           : String(part.correctAnswer.value ?? "");
+                                         return (
+                                           <div
+                                             key={part.id}
+                                             className={`flex items-start gap-2 rounded-m3-sm border p-2.5 text-[12px] md:text-[13px] ${partOk ? 'border-success bg-success-container text-on-success-container' : 'border-error bg-error-container text-on-error-container'}`}
+                                           >
+                                             <span className="font-black shrink-0">{part.id})</span>
+                                             <div className="min-w-0 flex-1 break-words">
+                                               <LatexRenderer latex={getContentText(part.prompt)} />
+                                               <p className="mt-1 font-bold flex flex-wrap gap-x-3">
+                                                 <span>{t.studentAns}: {label || t.skipped}</span>
+                                                 {!partOk && <span>{t.correctAns}: {correct || '-'}</span>}
+                                               </p>
+                                             </div>
+                                             {partOk ? <CheckCircle size={14} className="shrink-0 mt-0.5" /> : <XCircle size={14} className="shrink-0 mt-0.5" />}
+                                           </div>
+                                         );
+                                       })}
+                                     </>
+                                   );
+                                 })()}
+                               </div>
+                             ) : (
+
+                             /* Answers Grid (Stacks on mobile) */
                              <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full shrink-0 border-t border-outline-variant pt-3 md:pt-4">
                                <div className={`flex-1 p-3 md:p-4 rounded-m3-md border border-transparent flex flex-col justify-center min-w-0 ${isCorrect ? 'bg-success-container text-on-success-container' : 'bg-error-container text-on-error-container'}`}>
                                   <p className="font-black text-[9px] md:text-[10px] opacity-60 uppercase tracking-widest mb-1 md:mb-1.5 flex items-center gap-1.5">
                                     {isCorrect ? <CheckCircle size={12}/> : <XCircle size={12}/>} {t.studentAns}
                                   </p>
                                   <div className="font-bold text-[12px] md:text-[14px] flex items-center gap-2 overflow-hidden">
-                                    <span className="bg-surface-container-lowest text-on-surface px-2 py-0.5 rounded-m3-sm border border-transparent shadow-elev-1 shrink-0">{studentAnswer || '-'}</span>
+                                    <span className="bg-surface-container-lowest text-on-surface px-2 py-0.5 rounded-m3-sm border border-transparent shadow-elev-1 shrink-0">{answerLabel || '-'}</span>
                                     <span className="opacity-80 truncate">
-                                      <LatexRenderer latex={getContentText(q.options?.[studentAnswer]) || t.skipped} />
+                                      <LatexRenderer latex={getContentText(typeof studentAnswer === 'string' ? q.options?.[studentAnswer] : null) || (q.optionList.length === 0 ? (answerLabel || t.skipped) : (studentOptionImage ? '' : t.skipped))} />
                                     </span>
+                                    {studentOptionImage && (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={studentOptionImage}
+                                        alt=""
+                                        className="h-10 md:h-12 w-auto max-w-[40%] object-contain rounded-m3-sm border border-outline-variant bg-surface-container-lowest shrink-0"
+                                      />
+                                    )}
                                   </div>
                                </div>
 
@@ -387,12 +459,21 @@ export default function StudentDetailsModal({ isOpen, onClose, student, assignme
                                     <div className="font-bold text-[12px] md:text-[14px] flex items-center gap-2 overflow-hidden">
                                       <span className="bg-surface-container-lowest px-2 py-0.5 rounded-m3-sm border border-transparent shadow-elev-1 text-success shrink-0">{q.answer || '-'}</span>
                                       <span className="opacity-80 truncate">
-                                        <LatexRenderer latex={getContentText(q.options?.[q.answer]) || '-'} />
+                                        <LatexRenderer latex={getContentText(q.options?.[q.answer]) || (correctOptionImage ? '' : '-')} />
                                       </span>
+                                      {correctOptionImage && (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                          src={correctOptionImage}
+                                          alt=""
+                                          className="h-10 md:h-12 w-auto max-w-[40%] object-contain rounded-m3-sm border border-outline-variant bg-surface-container-lowest shrink-0"
+                                        />
+                                      )}
                                     </div>
                                  </div>
                                )}
                              </div>
+                             )}
 
                            </div>
                          </div>

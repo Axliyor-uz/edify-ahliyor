@@ -34,9 +34,12 @@ import type { Behavior, Diagnostics, ItemResponse, SpotStat } from '@/types/RASC
  * that budget than easy ones.
  */
 export const EXPECTED_SEC: Record<DifficultyId, number> = {
-  1: 90,
-  2: 160,
-  3: 260,
+  0: 50,  // beginner
+  1: 90,  // easy
+  2: 160, // medium
+  3: 260, // hard
+  4: 400, // olympiad
+  5: 320, // expert
 };
 
 /** Under this share of the expected time, an answer was not seriously attempted. */

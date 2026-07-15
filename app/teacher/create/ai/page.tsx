@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowLeft, CheckCircle2, BookOpen, Minus, Wand2, Trash2, Layers, EyeOff, Eye, Menu, X, ChevronRight, Calculator, Atom, BookA, Globe, FlaskConical, Leaf, Landmark, Bot, Zap, Plus, Database, Gavel, Crown } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { collection, doc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
+import { toQuestionV1, InvalidTopicError } from "@/lib/questionSchema";
+import type { TopicPath } from "@/lib/questionTopics";
 import { useAuth } from "@/lib/AuthContext";
 import toast from "react-hot-toast";
 import katex from 'katex';
@@ -12,6 +14,7 @@ import 'katex/dist/katex.min.css';
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
+import TopicAssignModal from "@/app/teacher/create/_components/TopicAssignModal";
 
 import { Button, Skeleton } from "@/components/ui";
 
@@ -39,12 +42,40 @@ interface AIQuestion {
   options: { A: { uz: string; ru: string; en: string }; B: { uz: string; ru: string; en: string }; C: { uz: string; ru: string; en: string }; D: { uz: string; ru: string; en: string }; };
   answer: string;
   explanation: { uz: string; ru: string; en: string };
-  subject: string;
-  topic: string;
-  chapter: string;
-  subtopic: string;
   difficultyId: number;
+  /** The free text the teacher typed into the generator — a display chip only,
+   *  NOT taxonomy. The bank topic is chosen in TopicAssignModal at save time. */
+  topicLabel: string;
 }
+
+/* ─── topic taxonomy ────────────────────────────────────────────────────────
+ * The subject/topic the teacher typed into the generator is free text — it is NOT
+ * the question-bank taxonomy (data/question_topics.json). `toQuestionV1()` throws
+ * InvalidTopicError on anything else, so the teacher files the batch through
+ * TopicAssignModal before a single doc is written. */
+
+/** Short plain-text label for one topic-picker row. */
+const getPlainText = (value: unknown): string => {
+  if (!value) return "";
+  if (typeof value === "string") return value.slice(0, 120);
+  const v = value as Record<string, unknown>;
+  const raw = v.uz ?? v.ru ?? v.en ?? "";
+  return typeof raw === "string" ? raw.slice(0, 120) : getPlainText(raw);
+};
+
+/** ⚠️ objects, not bare strings — `normalizeQuestion` reads `.id`/`.name`. */
+const topicFields = (p: TopicPath) => ({
+  subject: { id: p.subjectId, name: p.subjectName },
+  topic: { id: p.topicId, name: p.topicName },
+  subtopic: { id: p.subtopicId, name: p.subtopicName },
+  chapter: { id: "", name: "" },
+});
+
+/** custom_tests header name: the shared value, or "Aralash" when the batch spans several. */
+const sharedName = (paths: TopicPath[], key: "subjectName" | "topicName" | "subtopicName") => {
+  const uniq = [...new Set(paths.map((p) => p[key]))];
+  return uniq.length === 1 ? uniq[0] : "Aralash";
+};
 
 const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
   const phrases = [
@@ -152,7 +183,7 @@ const AIQuestionCard = ({ q, idx, onRemove }: { q: AIQuestion, idx: number, onRe
       <div className="flex flex-wrap items-center gap-1.5 mb-4">
         <span className="bg-surface-container text-on-surface-variant text-[9px] md:text-[10px] font-bold px-2.5 py-1.5 rounded-m3-sm md:rounded-m3-md uppercase tracking-widest flex items-center border border-outline-variant max-w-full min-w-0">
             <Layers size={10} className="shrink-0 mr-1.5 md:w-3 md:h-3" />
-            <span className="truncate max-w-[200px] md:max-w-[300px]">{q.subtopic}</span>
+            <span className="truncate max-w-[200px] md:max-w-[300px]">{q.topicLabel}</span>
         </span>
       </div>
 
@@ -224,6 +255,9 @@ export default function GeneralAIGeneratorPage() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingToBank, setIsSavingToBank] = useState(false);
+  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+  const [topicIntent, setTopicIntent] = useState<"bank" | "publish">("bank");
+  const [topicPaths, setTopicPaths] = useState<TopicPath[]>([]);
   const [testTitle, setTestTitle] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -285,13 +319,12 @@ export default function GeneralAIGeneratorPage() {
       else if (difficulty === "hard") diffVal = 3;
       else if (difficulty === "olympiad") diffVal = 4;
 
+      // The generator's subject/topic are free text — the bank taxonomy is chosen
+      // by the teacher in TopicAssignModal at save time.
       const enrichedQuestions: AIQuestion[] = data.questions.map((q: any) => ({
         ...q,
         id: `tq_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        subject: selectedSubject,
-        topic: "Abiturient",
-        chapter: "Umumiy",
-        subtopic: topicInput,
+        topicLabel: topicInput,
         difficultyId: diffVal,
         uiDifficulty: difficulty
       }));
@@ -307,52 +340,80 @@ export default function GeneralAIGeneratorPage() {
 
   const removeQuestion = (idToDelete: string) => setGeneratedQuestions(prev => prev.filter(q => q.id !== idToDelete));
 
-  const handleSaveToBank = async () => {
+  // --- TOPIC GATE (runs before BOTH save paths) ---
+  const openTopicModal = (intent: "bank" | "publish") => {
+    if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
+    setIsSidebarOpen(false); // the mobile sidebar overlay would sit on top of the dialog
+    setTopicIntent(intent);
+    setIsTopicModalOpen(true);
+  };
+
+  const handleTopicConfirm = (paths: TopicPath[]) => {
+    setTopicPaths(paths);
+    if (topicIntent === "bank") {
+      void handleSaveToBank(paths);
+      return;
+    }
+    // publish: topic first, then title, then TestConfigurationModal.
+    setIsTopicModalOpen(false);
+    setIsTitleModalOpen(true);
+  };
+
+  /** Defensive: toQuestionV1 should never throw once the modal is wired. */
+  const onInvalidTopic = (intent: "bank" | "publish") => {
+    toast.error("Iltimos, savollar uchun mavzu tanlang.");
+    setTopicIntent(intent);
+    setIsTopicModalOpen(true);
+  };
+
+  const handleSaveToBank = async (paths: TopicPath[]) => {
     if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
     if (!user) return;
 
     setIsSavingToBank(true);
     const batch = writeBatch(db);
-    const currentTimestampString = new Date().toISOString();
 
     try {
-      for (const q of generatedQuestions) {
-        const questionRef = doc(collection(db, "teacher_questions"));
-        const finalQ = {
-          ...q,
-          id: `tq_${questionRef.id}`,
-          creatorId: user.uid,
-          number: "",
-          subject: q.subject,
-          topic: q.topic,
-          chapter: q.chapter,
-          subtopic: q.subtopic,
-          creationMethod: "general_ai",
-          difficulty: q.uiDifficulty.toLowerCase(),
-          difficultyId: q.difficultyId,
-          tags: ["general_ai", "smart"],
-          language: ["uz"],
-          solutions: [],
-          uploadedAt: currentTimestampString,
-        };
-        batch.set(questionRef, { ...finalQ, createdAt: serverTimestamp() });
-      }
+      generatedQuestions.forEach((q, i) => {
+        const id = `tq_${doc(collection(db, "teacher_questions")).id}`;
+        const v1 = toQuestionV1(
+          {
+            ...q,
+            ...topicFields(paths[i]),
+            difficulty: q.uiDifficulty?.toLowerCase() || "medium",
+            difficultyId: q.difficultyId,
+            tags: ["general_ai", "smart"],
+            language: ["uz"],
+            solutions: [],
+          },
+          {
+            id,
+            creatorId: user.uid,
+            creatorName: user.displayName || "Teacher",
+            creationMethod: "ai_generated",
+            status: "published",
+            aiModel: "gemini-2.5-flash",
+            timestamp: serverTimestamp(),
+          },
+        );
+        batch.set(doc(db, "teacher_questions", id), v1);
+      });
 
       await batch.commit();
+      setIsTopicModalOpen(false);
       toast.success("Savollar bazangizga muvaffaqiyatli saqlandi!");
       setGeneratedQuestions([]);
       router.push('/teacher/create/my_questions');
     } catch (error) {
+      if (error instanceof InvalidTopicError) {
+        onInvalidTopic("bank");
+        return;
+      }
       console.error("Save to bank error:", error);
       toast.error("Bazaga saqlashda xatolik yuz berdi.");
     } finally {
       setIsSavingToBank(false);
     }
-  };
-
-  const handleInitiatePublish = () => {
-    if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
-    setIsTitleModalOpen(true);
   };
 
   const handleTitleSubmit = () => {
@@ -363,66 +424,67 @@ export default function GeneralAIGeneratorPage() {
 
   const handleFinalPublish = async (testSettings: any) => {
     if (!user) return;
+    if (topicPaths.length !== generatedQuestions.length) {
+      setIsConfigModalOpen(false);
+      return onInvalidTopic("publish");
+    }
     setIsPublishing(true);
     const batch = writeBatch(db);
-    const finalQuestionsToSave = [];
-
-    const uniqueSubjects = [...new Set(generatedQuestions.map(q => q.subject))];
-    const uniqueSubtopics = [...new Set(generatedQuestions.map(q => q.subtopic))];
-
-    const finalSubjectName = uniqueSubjects.length === 1 ? uniqueSubjects[0] : "Aralash fanlar";
-    const finalSubtopicName = uniqueSubtopics.length === 1 ? uniqueSubtopics[0] : "Aralash mavzular";
-
-    const currentTimestampString = new Date().toISOString();
-
-    for (const q of generatedQuestions) {
-      const secureFirebaseId = doc(collection(db, "teacher_questions")).id;
-      const finalQ = {
-        ...q,
-        id: `tq_${secureFirebaseId}`,
-        creatorId: user.uid,
-        number: "",
-        track: "general_ai",
-        subject: q.subject,
-        topic: q.topic,
-        chapter: q.chapter,
-        subtopic: q.subtopic,
-        creationMethod: "general_ai",
-        difficulty: q.uiDifficulty.toLowerCase(),
-        difficultyId: q.difficultyId,
-        tags: ["general_ai", "smart"],
-        language: ["uz"],
-        solutions: [],
-        uploadedAt: currentTimestampString,
-      };
-
-      finalQuestionsToSave.push(finalQ);
-      batch.set(doc(db, "teacher_questions", finalQ.id), { ...finalQ, createdAt: serverTimestamp() });
-    }
-
-    batch.set(doc(collection(db, "custom_tests")), {
-      teacherId: user.uid,
-      title: testTitle,
-      track: "general_ai",
-      subjectName: finalSubjectName,
-      topicName: "Erkin Mavzu",
-      chapterName: "Umumiy",
-      subtopicName: finalSubtopicName,
-      questions: finalQuestionsToSave,
-      duration: testSettings.duration,
-      shuffle: testSettings.shuffleQuestions,
-      resultsVisibility: testSettings.resultsVisibility,
-      accessCode: testSettings.accessCode,
-      status: "active",
-      createdAt: serverTimestamp(),
-      questionCount: finalQuestionsToSave.length,
-    });
+    const finalQuestionsToSave: ReturnType<typeof toQuestionV1>[] = [];
 
     try {
+      generatedQuestions.forEach((q, i) => {
+        const id = `tq_${doc(collection(db, "teacher_questions")).id}`;
+        const source = {
+          ...q,
+          ...topicFields(topicPaths[i]),
+          difficulty: q.uiDifficulty?.toLowerCase() || "medium",
+          difficultyId: q.difficultyId,
+          tags: ["general_ai", "smart"],
+          language: ["uz"],
+          solutions: [],
+        };
+        const meta = {
+          id,
+          creatorId: user.uid,
+          creatorName: user.displayName || "Teacher",
+          creationMethod: "ai_generated" as const,
+          status: "published" as const,
+          aiModel: "gemini-2.5-flash",
+        };
+
+        batch.set(doc(db, "teacher_questions", id), toQuestionV1(source, { ...meta, timestamp: serverTimestamp() }));
+        // The embedded snapshot needs a CONCRETE time: Firestore rejects serverTimestamp() sentinels inside arrays.
+        finalQuestionsToSave.push(toQuestionV1(source, { ...meta, timestamp: Timestamp.now() }));
+      });
+
+      batch.set(doc(collection(db, "custom_tests")), {
+        teacherId: user.uid,
+        title: testTitle,
+        track: "general_ai",
+        subjectName: sharedName(topicPaths, "subjectName"),
+        topicName: sharedName(topicPaths, "topicName"),
+        chapterName: "",
+        subtopicName: sharedName(topicPaths, "subtopicName"),
+        questions: finalQuestionsToSave,
+        duration: testSettings.duration,
+        shuffle: testSettings.shuffleQuestions,
+        resultsVisibility: testSettings.resultsVisibility,
+        accessCode: testSettings.accessCode,
+        status: "active",
+        createdAt: serverTimestamp(),
+        questionCount: finalQuestionsToSave.length,
+      });
+
       await batch.commit();
       toast.success("Test muvaffaqiyatli nashr qilindi!");
       router.push("/teacher/dashboard");
     } catch (error) {
+      if (error instanceof InvalidTopicError) {
+        setIsConfigModalOpen(false);
+        onInvalidTopic("publish");
+        return;
+      }
       toast.error("Nashr qilishda xatolik.");
     } finally {
       setIsPublishing(false);
@@ -529,6 +591,14 @@ export default function GeneralAIGeneratorPage() {
         </AnimatePresence>,
         document.body
       )}
+
+      <TopicAssignModal
+        open={isTopicModalOpen}
+        questions={generatedQuestions.map(q => getPlainText(q.question))}
+        isSaving={isSavingToBank}
+        onClose={() => setIsTopicModalOpen(false)}
+        onConfirm={handleTopicConfirm}
+      />
 
       {mounted && createPortal(
         <TestConfigurationModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} onConfirm={handleFinalPublish} questionCount={generatedQuestions.length} testTitle={testTitle} isSaving={isPublishing} />,
@@ -697,7 +767,7 @@ export default function GeneralAIGeneratorPage() {
               size="sm"
               icon={<Database />}
               loading={isSavingToBank}
-              onClick={handleSaveToBank}
+              onClick={() => openTopicModal("bank")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
               Bazaga Saqlash
@@ -707,7 +777,7 @@ export default function GeneralAIGeneratorPage() {
               variant="filled"
               size="sm"
               icon={<CheckCircle2 />}
-              onClick={handleInitiatePublish}
+              onClick={() => openTopicModal("publish")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
               Nashr qilish
@@ -774,7 +844,7 @@ export default function GeneralAIGeneratorPage() {
               variant="tonal"
               icon={<Database />}
               loading={isSavingToBank}
-              onClick={handleSaveToBank}
+              onClick={() => openTopicModal("bank")}
               disabled={isSavingToBank || isPublishing || isGenerating}
               className="flex-1 h-[52px] rounded-m3-lg"
             >
@@ -785,7 +855,7 @@ export default function GeneralAIGeneratorPage() {
               variant="filled"
               icon={<CheckCircle2 />}
               loading={isPublishing}
-              onClick={handleInitiatePublish}
+              onClick={() => openTopicModal("publish")}
               disabled={isPublishing || isSavingToBank || isGenerating}
               className="flex-1 h-[52px] rounded-m3-lg shadow-elev-2"
             >

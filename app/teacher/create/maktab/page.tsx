@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowLeft, CheckCircle2, BookOpen, Trash2, Layers, EyeOff, Eye, Menu, X, ChevronRight, BookMarked, Search, Bot, Zap, Plus, GraduationCap, Database, Crown } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { collection, doc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
+import { toQuestionV1, InvalidTopicError } from "@/lib/questionSchema";
+import type { TopicPath } from "@/lib/questionTopics";
 import { useAuth } from "@/lib/AuthContext";
 import toast from "react-hot-toast";
 import katex from 'katex';
@@ -12,6 +14,7 @@ import 'katex/dist/katex.min.css';
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
+import TopicAssignModal from "@/app/teacher/create/_components/TopicAssignModal";
 
 import { Button, IconButton, Skeleton } from "@/components/ui";
 
@@ -29,6 +32,36 @@ interface AIQuestion {
   answer: string; explanation: { uz: string; ru: string; en: string };
   subject: string; topic: string; chapter: string; subtopic: string; difficultyId: number;
 }
+
+/* ─── topic taxonomy ────────────────────────────────────────────────────────
+ * The syllabus (data/syllabus.json, via /api/structure) that drives this generator
+ * is a DIFFERENT taxonomy from the question bank's (data/question_topics.json) and
+ * the two are not mappable. `toQuestionV1()` throws InvalidTopicError on a path it
+ * does not know, so the teacher picks the bank topic in TopicAssignModal before any
+ * doc is written. The syllabus chapter/subtopic survive as `tags`. */
+
+/** Short plain-text label for one topic-picker row. */
+const getPlainText = (value: unknown): string => {
+  if (!value) return "";
+  if (typeof value === "string") return value.slice(0, 120);
+  const v = value as Record<string, unknown>;
+  const raw = v.uz ?? v.ru ?? v.en ?? "";
+  return typeof raw === "string" ? raw.slice(0, 120) : getPlainText(raw);
+};
+
+/** ⚠️ objects, not bare strings — `normalizeQuestion` reads `.id`/`.name`. */
+const topicFields = (p: TopicPath) => ({
+  subject: { id: p.subjectId, name: p.subjectName },
+  topic: { id: p.topicId, name: p.topicName },
+  subtopic: { id: p.subtopicId, name: p.subtopicName },
+  chapter: { id: "", name: "" },
+});
+
+/** custom_tests header name: the shared value, or "Aralash" when the batch spans several. */
+const sharedName = (paths: TopicPath[], key: "subjectName" | "topicName" | "subtopicName") => {
+  const uniq = [...new Set(paths.map((p) => p[key]))];
+  return uniq.length === 1 ? uniq[0] : "Aralash";
+};
 
 const formatSubjectName = (rawSubject: string) => {
   if (!rawSubject) return "";
@@ -195,6 +228,9 @@ export default function MaktabGeneratorPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isTitleModalOpen, setIsTitleModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+  const [topicIntent, setTopicIntent] = useState<"bank" | "publish">("bank");
+  const [topicPaths, setTopicPaths] = useState<TopicPath[]>([]);
 
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [limitModalMessage, setLimitModalMessage] = useState(""); // 🟢 NEW STATE
@@ -303,60 +339,90 @@ export default function MaktabGeneratorPage() {
 
   const removeQuestion = (idToDelete: string) => setGeneratedQuestions(prev => prev.filter(q => q.id !== idToDelete));
 
-  const handleSaveToBank = async () => {
+  // --- TOPIC GATE (runs before BOTH save paths) ---
+  const openTopicModal = (intent: "bank" | "publish") => {
+    if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
+    setIsSidebarOpen(false); // the mobile sidebar overlay would sit on top of the dialog
+    setTopicIntent(intent);
+    setIsTopicModalOpen(true);
+  };
+
+  const handleTopicConfirm = (paths: TopicPath[]) => {
+    setTopicPaths(paths);
+    if (topicIntent === "bank") {
+      void handleSaveToBank(paths);
+      return;
+    }
+    // publish: topic first, then title, then TestConfigurationModal.
+    setIsTopicModalOpen(false);
+    setIsTitleModalOpen(true);
+  };
+
+  /** Defensive: toQuestionV1 should never throw once the modal is wired. */
+  const onInvalidTopic = (intent: "bank" | "publish") => {
+    toast.error("Iltimos, savollar uchun mavzu tanlang.");
+    setTopicIntent(intent);
+    setIsTopicModalOpen(true);
+  };
+
+  /** The syllabus provenance the bank taxonomy has no slot for — kept as tags. */
+  const syllabusTags = (q: AIQuestion) => [
+    "maktab_ai",
+    (q.subtopic || "aralash").toLowerCase(),
+    (q.chapter || "aralash").toLowerCase(),
+  ];
+
+  const handleSaveToBank = async (paths: TopicPath[]) => {
     if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
     if (!user) return;
 
     setIsSavingToBank(true);
     const batch = writeBatch(db);
-    const currentTimestampString = new Date().toISOString();
-    const formattedTopic = syllabusData?.category || "Maktab Dasturi";
-    const formattedSubject = formatSubjectName(selectedSubject) || "Umumiy";
 
     try {
-      for (const q of generatedQuestions) {
-        const questionRef = doc(collection(db, "teacher_questions"));
-        const finalQ = {
-          ...q,
-          id: `tq_${questionRef.id}`,
-          creatorId: user.uid,
-          number: "",
-          subject: formattedSubject,
-          topic: formattedTopic,
-          chapter: q.chapter || "Aralash",
-          subtopic: q.subtopic || "Aralash",
+      generatedQuestions.forEach((q, i) => {
+        const id = `tq_${doc(collection(db, "teacher_questions")).id}`;
+        const v1 = toQuestionV1(
+          {
+            ...q,
+            ...topicFields(paths[i]),
 
-          // 🟢 FIX: Safely call toLowerCase()
-          difficulty: q.uiDifficulty?.toLowerCase() || "medium",
-          difficultyId: q.difficultyId || 2,
-          tags: [
-            "maktab_ai",
-            (q.subtopic || "aralash").toLowerCase(),
-            (q.chapter || "aralash").toLowerCase()
-          ],
+            // 🟢 FIX: Safely call toLowerCase()
+            difficulty: q.uiDifficulty?.toLowerCase() || "medium",
+            difficultyId: q.difficultyId || 2,
+            tags: syllabusTags(q),
 
-          language: ["uz"],
-          solutions: [],
-          uploadedAt: currentTimestampString,
-        };
-        batch.set(questionRef, { ...finalQ, createdAt: serverTimestamp() });
-      }
+            language: ["uz"],
+            solutions: [],
+          },
+          {
+            id,
+            creatorId: user.uid,
+            creatorName: user.displayName || "Teacher",
+            creationMethod: "ai_generated",
+            status: "published",
+            aiModel: "gemini-2.5-flash",
+            timestamp: serverTimestamp(),
+          },
+        );
+        batch.set(doc(db, "teacher_questions", id), v1);
+      });
 
       await batch.commit();
+      setIsTopicModalOpen(false);
       toast.success("Savollar bazangizga muvaffaqiyatli saqlandi!");
       setGeneratedQuestions([]);
       router.push('/teacher/create/my_questions');
     } catch (error) {
+      if (error instanceof InvalidTopicError) {
+        onInvalidTopic("bank");
+        return;
+      }
       console.error("Save to bank error:", error);
       toast.error("Bazaga saqlashda xatolik yuz berdi.");
     } finally {
       setIsSavingToBank(false);
     }
-  };
-
-  const handleInitiatePublish = () => {
-    if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
-    setIsTitleModalOpen(true);
   };
 
   const handleTitleSubmit = () => {
@@ -367,53 +433,59 @@ export default function MaktabGeneratorPage() {
 
   const handleFinalPublish = async (testSettings: any) => {
     if (!user) return;
+    if (topicPaths.length !== generatedQuestions.length) {
+      setIsConfigModalOpen(false);
+      return onInvalidTopic("publish");
+    }
     setIsPublishing(true);
     const batch = writeBatch(db);
-    const finalQuestionsToSave = [];
-
-    const formattedTopic = syllabusData?.category || "Maktab Dasturi";
-const formattedSubject = formatSubjectName(selectedSubject) || "Umumiy";
-    const currentTimestampString = new Date().toISOString();
-
-    for (const q of generatedQuestions) {
-      const secureFirebaseId = doc(collection(db, "teacher_questions")).id;
-      const finalQ = {
-        ...q,
-        id: `tq_${secureFirebaseId}`,
-        creatorId: user.uid,
-        number: "",
-        subject: formattedSubject,
-        topic: formattedTopic,
-        chapter: q.chapter || "Aralash",
-        subtopic: q.subtopic || "Aralash",
-
-        // 🟢 FIX: Safely call toLowerCase()
-        difficulty: q.uiDifficulty?.toLowerCase() || "medium",
-        difficultyId: q.difficultyId || 2,
-        tags: [
-          "maktab_ai",
-          (q.subtopic || "aralash").toLowerCase(),
-          (q.chapter || "aralash").toLowerCase()
-        ],
-
-        language: ["uz"],
-        solutions: [],
-        uploadedAt: currentTimestampString,
-      };
-      finalQuestionsToSave.push(finalQ);
-      batch.set(doc(db, "teacher_questions", finalQ.id), { ...finalQ, createdAt: serverTimestamp() });
-    }
-
-    batch.set(doc(collection(db, "custom_tests")), {
-      teacherId: user.uid, title: testTitle, subjectName: formattedSubject, topicName: formattedTopic, chapterName: generatedQuestions[0]?.chapter || "Aralash", subtopicName: generatedQuestions[0]?.subtopic || "Aralash",
-      questions: finalQuestionsToSave, duration: testSettings.duration, shuffle: testSettings.shuffleQuestions, resultsVisibility: testSettings.resultsVisibility, accessCode: testSettings.accessCode, status: "active", createdAt: serverTimestamp(), questionCount: finalQuestionsToSave.length,
-    });
+    const finalQuestionsToSave: ReturnType<typeof toQuestionV1>[] = [];
 
     try {
+      generatedQuestions.forEach((q, i) => {
+        const id = `tq_${doc(collection(db, "teacher_questions")).id}`;
+        const source = {
+          ...q,
+          ...topicFields(topicPaths[i]),
+
+          // 🟢 FIX: Safely call toLowerCase()
+          difficulty: q.uiDifficulty?.toLowerCase() || "medium",
+          difficultyId: q.difficultyId || 2,
+          tags: syllabusTags(q),
+
+          language: ["uz"],
+          solutions: [],
+        };
+        const meta = {
+          id,
+          creatorId: user.uid,
+          creatorName: user.displayName || "Teacher",
+          creationMethod: "ai_generated" as const,
+          status: "published" as const,
+          aiModel: "gemini-2.5-flash",
+        };
+
+        batch.set(doc(db, "teacher_questions", id), toQuestionV1(source, { ...meta, timestamp: serverTimestamp() }));
+        // The embedded snapshot needs a CONCRETE time: Firestore rejects serverTimestamp() sentinels inside arrays.
+        finalQuestionsToSave.push(toQuestionV1(source, { ...meta, timestamp: Timestamp.now() }));
+      });
+
+      batch.set(doc(collection(db, "custom_tests")), {
+        teacherId: user.uid, title: testTitle,
+        subjectName: sharedName(topicPaths, "subjectName"), topicName: sharedName(topicPaths, "topicName"),
+        chapterName: "", subtopicName: sharedName(topicPaths, "subtopicName"),
+        questions: finalQuestionsToSave, duration: testSettings.duration, shuffle: testSettings.shuffleQuestions, resultsVisibility: testSettings.resultsVisibility, accessCode: testSettings.accessCode, status: "active", createdAt: serverTimestamp(), questionCount: finalQuestionsToSave.length,
+      });
+
       await batch.commit();
       toast.success("Test muvaffaqiyatli nashr qilindi!");
       router.push("/teacher/library/tests");
     } catch (error) {
+      if (error instanceof InvalidTopicError) {
+        setIsConfigModalOpen(false);
+        onInvalidTopic("publish");
+        return;
+      }
       toast.error("Nashr qilishda xatolik.");
     } finally {
       setIsPublishing(false);
@@ -424,6 +496,14 @@ const formattedSubject = formatSubjectName(selectedSubject) || "Umumiy";
     <div className="flex h-[100dvh] bg-surface overflow-hidden font-sans selection:bg-primary-container selection:text-on-primary-container">
 
       <AiThinkingModal isVisible={isGenerating} />
+
+      <TopicAssignModal
+        open={isTopicModalOpen}
+        questions={generatedQuestions.map(q => getPlainText(q.question))}
+        isSaving={isSavingToBank}
+        onClose={() => setIsTopicModalOpen(false)}
+        onConfirm={handleTopicConfirm}
+      />
 
       <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant z-[100000] flex items-center justify-between px-3 shadow-elev-1">
         <button onClick={() => router.push('/teacher/create')} className="p-2 -ml-1 text-on-surface-variant rounded-m3-sm"><ArrowLeft size={18} /></button>
@@ -496,7 +576,7 @@ const formattedSubject = formatSubjectName(selectedSubject) || "Umumiy";
               size="sm"
               icon={<Database />}
               loading={isSavingToBank}
-              onClick={handleSaveToBank}
+              onClick={() => openTopicModal("bank")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
               Bazaga Saqlash
@@ -506,7 +586,7 @@ const formattedSubject = formatSubjectName(selectedSubject) || "Umumiy";
               variant="filled"
               size="sm"
               icon={<CheckCircle2 />}
-              onClick={handleInitiatePublish}
+              onClick={() => openTopicModal("publish")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
               Nashr Qilish
@@ -574,7 +654,7 @@ const formattedSubject = formatSubjectName(selectedSubject) || "Umumiy";
             size="sm"
             icon={<Database />}
             loading={isSavingToBank}
-            onClick={handleSaveToBank}
+            onClick={() => openTopicModal("bank")}
             disabled={isSavingToBank || isPublishing || isGenerating}
             className="flex-1 h-[46px] rounded-m3-md shadow-elev-2 text-[11px]"
           >
@@ -586,7 +666,7 @@ const formattedSubject = formatSubjectName(selectedSubject) || "Umumiy";
             size="sm"
             icon={<CheckCircle2 />}
             loading={isPublishing}
-            onClick={handleInitiatePublish}
+            onClick={() => openTopicModal("publish")}
             disabled={isPublishing || isSavingToBank || isGenerating}
             className="flex-1 h-[46px] rounded-m3-md shadow-elev-2 text-[11px]"
           >

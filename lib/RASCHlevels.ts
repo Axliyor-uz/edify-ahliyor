@@ -75,6 +75,9 @@ export function applyExam(
     topicScores: Record<TopicKey, TopicScore>;
     overallPercent: number;
     at: number;
+    /** The paper's id (its `endsAt`), carried onto the chart row so the same
+     *  paper can never be appended twice. */
+    examId?: number;
   },
 ): RASCHLevels {
   const base = previous ?? emptyLevels(params.userId, null);
@@ -96,10 +99,11 @@ export function applyExam(
     topics[key] = { level, delta: level - prior.level, scores };
   }
 
-  const exams: ExamPoint[] = [
-    ...(base.exams ?? []),
-    { at: params.at, score: params.overallPercent },
-  ].slice(-HISTORY_CAP);
+  const row: ExamPoint = { at: params.at, score: params.overallPercent };
+  // Never write `undefined` to Firestore — only carry the id when there is one.
+  if (params.examId !== undefined) row.id = params.examId;
+
+  const exams: ExamPoint[] = [...(base.exams ?? []), row].slice(-HISTORY_CAP);
 
   return {
     userId: params.userId,

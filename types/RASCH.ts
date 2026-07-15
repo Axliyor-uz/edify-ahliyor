@@ -134,6 +134,16 @@ export interface TopicLevel {
 
 /** One row of the progress chart. */
 export interface ExamPoint {
+  /**
+   * Stable id of the paper this row came from — its deadline (`endsAt`, epoch
+   * ms), fixed the moment the paper was drawn.
+   *
+   * This is what makes the write idempotent: `saveExamResult` refuses to append
+   * a row whose id is already in `exams`, so a re-fired effect, a second tab or
+   * a retry after a write that actually committed can no longer inflate the exam
+   * history. Absent on rows written before the id existed.
+   */
+  id?: number;
   /** Epoch ms of submission. */
   at: number;
   /** Overall exam percent, 0–100. */

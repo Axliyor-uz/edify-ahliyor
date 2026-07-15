@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import {
@@ -8,6 +8,7 @@ import {
   Clock, CheckCircle, Shield, Eye, EyeOff, CalendarClock, AlertTriangle, PenLine
 } from 'lucide-react';
 import CartItem from '../../create/_components/CartItem'; // Adjust path if needed
+import { normalizeQuestions } from '@/lib/questionSchema';
 import toast from 'react-hot-toast';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -47,26 +48,44 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
   const [settings, setSettings] = useState({
     title: '', duration: 0, shuffle: false, resultsVisibility: 'never' as 'always' | 'never' | 'after_due', status: 'active'
   });
-  const [questions, setQuestions] = useState<any[]>([]);
+
+  // ⚠️ THIS ARRAY IS WHAT GETS WRITTEN BACK TO FIRESTORE.
+  // It holds the ORIGINAL, untouched question docs (legacy-shaped or canonical v1)
+  // exactly as they were stored in custom_tests.questions[]. It is never a
+  // NormalizedQuestion — those carry a `raw` field and a rewritten shape, and
+  // persisting them would corrupt the saved test.
+  const [rawQuestions, setRawQuestions] = useState<any[]>([]);
 
   useEffect(() => {
     if (test) {
       let visibility = test.resultsVisibility;
       if (!visibility) visibility = test.showResults ? 'always' : 'never';
       setSettings({ title: test.title || '', duration: test.duration || 0, shuffle: test.shuffle || false, resultsVisibility: visibility, status: test.status || 'active' });
-      setQuestions(test.questions || []);
+
+      // The library page hands us questions that have already been normalized for
+      // display, so unwrap `.raw` back to the original doc. If a caller passes raw
+      // questions straight from Firestore (no `.raw`), they are kept as-is.
+      const source: any[] = Array.isArray(test.questions) ? test.questions : [];
+      setRawQuestions(source.map((q: any) => (q && typeof q === 'object' && q.raw ? q.raw : q)));
     }
   }, [test]);
 
+  // Display-only view model. Never written anywhere.
+  const displayQuestions = useMemo(() => normalizeQuestions(rawQuestions, lang), [rawQuestions, lang]);
+
   if (!isOpen) return null;
 
-  const handleRemoveQuestion = (qId: string) => setQuestions(questions.filter(q => q.id !== qId));
+  // Remove by INDEX, not by id: legacy snapshots are not guaranteed to carry a
+  // unique `id`, and an empty id would otherwise delete every id-less question.
+  const handleRemoveQuestion = (index: number) =>
+    setRawQuestions(prev => prev.filter((_, i) => i !== index));
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const docRef = doc(db, 'custom_tests', test.id);
-      await updateDoc(docRef, { ...settings, showResults: settings.resultsVisibility === 'always', questions: questions, questionCount: questions.length });
+      // `rawQuestions` — the original docs, minus any the teacher removed.
+      await updateDoc(docRef, { ...settings, showResults: settings.resultsVisibility === 'always', questions: rawQuestions, questionCount: rawQuestions.length });
       toast.success(t.toasts.saved);
       onClose();
     } catch (error) { toast.error(t.toasts.failSave); } finally { setIsSaving(false); }
@@ -132,7 +151,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
               </button>
               <button onClick={() => setActiveTab('questions')} className={`py-3 px-2 text-[13px] md:text-[14px] font-black flex items-center gap-2 border-b-2 transition-all ${activeTab === 'questions' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
                 <FileText size={16} strokeWidth={2.5} /> {t.tabs.questions}
-                <span className={`px-2 py-0.5 rounded-m3-xs text-[10px] ${activeTab === 'questions' ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-highest text-on-surface-variant'}`}>{questions.length}</span>
+                <span className={`px-2 py-0.5 rounded-m3-xs text-[10px] ${activeTab === 'questions' ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-highest text-on-surface-variant'}`}>{rawQuestions.length}</span>
               </button>
             </div>
 
@@ -208,10 +227,13 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
 
               {activeTab === 'questions' && (
                 <div className="space-y-4 max-w-3xl mx-auto">
-                  {questions.map((q, idx) => (
-                    <div key={q.id} className="bg-surface-container-low p-1 rounded-m3-lg shadow-elev-1"><CartItem question={q} index={idx + 1} onRemove={() => handleRemoveQuestion(q.id)} /></div>
+                  {/* CartItem renders the NORMALIZED question (legacy-shaped: options map,
+                      answer letter, difficulty string) — display only. Removal acts on the
+                      raw array by index, so the write path stays untouched. */}
+                  {displayQuestions.map((q, idx) => (
+                    <div key={q.id || idx} className="bg-surface-container-low p-1 rounded-m3-lg shadow-elev-1"><CartItem question={q} index={idx + 1} onRemove={() => handleRemoveQuestion(idx)} /></div>
                   ))}
-                  {questions.length === 0 && (
+                  {displayQuestions.length === 0 && (
                     <div className="text-center py-16 bg-surface-container-low rounded-m3-lg border-2 border-dashed border-outline-variant flex flex-col items-center">
                       <div className="w-12 h-12 bg-surface-container rounded-m3-md flex items-center justify-center mb-3 shadow-elev-1"><AlertTriangle size={24} className="text-on-surface-variant"/></div>
                       <span className="text-[14px] font-bold text-on-surface-variant">{t.questions.empty}</span>
