@@ -1,6 +1,7 @@
 // types/Exam.ts
 import type { TopicKey } from '@/lib/RASCHtopics';
-import type { DifficultyId, Lang, QuestionDoc } from './Math';
+import type { DifficultyId, Lang, LocalizedText, QuestionDoc } from './Math';
+import type { QuestionType } from './question';
 
 /**
  * Milliy sertifikat question formats.
@@ -13,6 +14,9 @@ import type { DifficultyId, Lang, QuestionDoc } from './Math';
  * difficulty band instead (see DIFFICULTY_BAND in lib/Examblueprint.ts).
  */
 export type TestType = 'Y-1' | 'Y-2' | 'O';
+
+/** Which collection a blueprint section is filled from. */
+export type ExamSource = 'bank' | 'teacher';
 
 /** One chapter of the question bank, addressed the way questions1 stores it. */
 export interface ChapterRef {
@@ -36,14 +40,79 @@ export interface BlueprintSection {
   pools: ChapterRef[];
   /** Overrides DIFFICULTY_BAND[testType] for sections that need their own band. */
   difficulties?: DifficultyId[];
+  /**
+   * `'bank'` (default) fills from questions1 via the `rand` sampler.
+   * `'teacher'` fills from teacher_questions (v1), matched to the section's
+   * chapters via the question_topics taxonomy — with images and blocks.
+   */
+  source?: ExamSource;
 }
 
-/** A question bound to its position in the exam. */
+/**
+ * One sub-question of a `multi_part` teacher block, shown on the same card as
+ * the block stem. The whole block counts as ONE exam question (unlike a
+ * `shared_options` block, whose parts are expanded into one exam slot each).
+ */
+export interface ExamPart {
+  /** Also the suffix of the answer key: `answers[`${q.id}::${id}`]`. */
+  id: string;
+  prompt: LocalizedText;
+  /** `mcq` | `true_false` → option buttons; `open` | `numeric` → typed input. */
+  qType: QuestionType;
+  /** Option ids to render for a closed part (empty for a typed part). */
+  optionKeys: string[];
+  options: Record<string, LocalizedText>;
+  optionImages?: Record<string, string | null>;
+  /** Correct option id (closed) or the literal text (typed). */
+  answer: string;
+  acceptedAnswers?: string[];
+  caseSensitive?: boolean;
+  explanation?: LocalizedText;
+}
+
+/**
+ * A question bound to its position in the exam.
+ *
+ * The base fields are the legacy `questions1` shape the whole RASCH pipeline
+ * reads (options letter-map, `answer` letter, `solutions[].final_answer`). The
+ * optional fields below carry what a v1 `teacher_questions` doc adds — images,
+ * a real question type, and blocks — and are absent on a questions1 item.
+ */
 export interface ExamQuestion extends QuestionDoc {
   slotNumber: number;
   sectionId: string;
   sectionLabel: Record<Lang, string>;
   testType: TestType;
+
+  // ── teacher_questions extras (undefined on a questions1 item) ─────────────
+  /** Which collection this came from. Absent ⇒ `'bank'`. */
+  source?: ExamSource;
+  /** The doc's real type — drives render/grade for a teacher item instead of
+   *  `testType`. A bank item has none and falls back to the testType rules. */
+  qType?: QuestionType;
+  /** The block's shared statement, carried onto each expanded `shared_options`
+   *  sub-question so the stem ("Parallelepiped… hajmi 72 cm²") is never dropped.
+   *  Rendered above `question`. Absent unless it differs from `question`. */
+  stem?: LocalizedText | null;
+  /** Prompt image (v1 `image.downloadUrl`). */
+  imageUrl?: string | null;
+  /** Option id → image url, for image-bearing options. */
+  optionImages?: Record<string, string | null>;
+  /** Option ids to render for a closed teacher item (e.g. A–F for a shared
+   *  pool). Absent ⇒ render the questions1 default A–D. */
+  optionKeys?: string[];
+  /** Accepted spellings for a typed teacher item (open/numeric). */
+  acceptedAnswers?: string[];
+  caseSensitive?: boolean;
+  /** Who authored this teacher item, shown even mid-exam so a wrong question can
+   *  be traced to a person. Absent on a questions1 bank item (no author). */
+  creatorId?: string;
+  creatorName?: string;
+  /** The corrector's display name, if the question was ever edited. */
+  correctedBy?: string;
+  /** Non-empty ⇒ this is a `multi_part` block: render the stem then each part,
+   *  and grade it as one question (all parts must be correct). */
+  parts?: ExamPart[];
 }
 
 export interface Shortfall {
@@ -68,6 +137,11 @@ export interface BuildExamResult {
  */
 export interface ExamSnapshot {
   version: number;
+  /** The account this paper belongs to ('' = signed-out). localStorage is shared
+   *  by every account on one browser, so the runner ignores a snapshot whose uid
+   *  isn't the current student's — otherwise student B resumes student A's paper
+   *  and sees A's results. */
+  uid: string;
   /** Chosen on the intro screen — NOT the app UI language. */
   examLang: Lang;
   questions: ExamQuestion[];

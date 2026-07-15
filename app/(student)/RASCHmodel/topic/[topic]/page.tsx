@@ -1,7 +1,7 @@
 // app/(student)/RASCHmodel/topic/[topic]/page.tsx
 'use client';
 
-import { use, useMemo, useState, useSyncExternalStore } from 'react';
+import { use, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -10,10 +10,13 @@ import {
 } from 'lucide-react';
 
 import LatexRenderer from '@/components/LatexRenderer';
+import QuestionCreator from '@/components/QuestionCreator';
+import { useAuth } from '@/lib/AuthContext';
 import { useStudentLanguage } from '../../../layout';
 import {
   getServerSolvedArchive,
   getSolvedArchive,
+  setSolvedUser,
   subscribeSolved,
   type SolvedQuestion,
 } from '@/lib/RASCHsolved';
@@ -80,6 +83,10 @@ function formatDate(at: number, lang: Lang): string {
 function SolvedCard({ item, lang, t, index }: { item: SolvedQuestion; lang: Lang; t: Record<string, string>; index: number }) {
   const [showExplanation, setShowExplanation] = useState(false);
   const expected = item.expected ?? item.answer;
+  // Teacher questions are authored uz-only, so fall back to any filled language
+  // rather than showing blank when the paper was sat in ru/en.
+  const pick = (tx?: { uz?: string; ru?: string; en?: string } | null) =>
+    (tx?.[item.lang] || tx?.uz || tx?.ru || tx?.en || '') as string;
 
   return (
     <motion.div
@@ -99,7 +106,18 @@ function SolvedCard({ item, lang, t, index }: { item: SolvedQuestion; lang: Lang
           : <XCircle size={18} className="text-rose-400 shrink-0" />}
       </div>
 
-      <MathText text={item.question[item.lang] ?? item.question[lang]} className="text-[14px] font-bold text-zinc-900 leading-snug block mb-3" />
+      {pick(item.stem) && (
+        <MathText text={pick(item.stem)} className="text-[12px] font-semibold text-zinc-500 leading-snug block mb-2" />
+      )}
+
+      <MathText text={pick(item.question) || item.question[lang]} className="text-[14px] font-bold text-zinc-900 leading-snug block mb-3" />
+
+      {item.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={item.imageUrl} alt="" className="mb-3 max-h-56 w-auto rounded-2xl border-2 border-zinc-200 bg-white object-contain" />
+      )}
+
+      <QuestionCreator creatorName={item.creatorName} correctedBy={item.correctedBy} className="mb-3 text-zinc-400" />
 
       <div className="text-[12px] font-bold text-zinc-500 flex flex-wrap items-center gap-x-1.5">
         <span>{t.yourAnswer}:</span>
@@ -145,10 +163,13 @@ function SolvedCard({ item, lang, t, index }: { item: SolvedQuestion; lang: Lang
 export default function TopicPage({ params }: { params: Promise<{ topic: string }> }) {
   const { topic } = use(params);
   const { lang } = useStudentLanguage();
+  const { user } = useAuth();
   const t = UI[lang];
 
   // The archive is a localStorage store, read the same way the exam snapshot is:
-  // null on the server, real data in the browser. Zero Firestore reads.
+  // null on the server, real data in the browser. Zero Firestore reads. Scoped to
+  // this account so a shared browser never surfaces another student's history.
+  useEffect(() => { setSolvedUser(user?.uid ?? ''); }, [user?.uid]);
   const archive = useSyncExternalStore(subscribeSolved, getSolvedArchive, getServerSolvedArchive);
 
   const key = TOPIC_KEYS.includes(topic as TopicKey) ? (topic as TopicKey) : null;

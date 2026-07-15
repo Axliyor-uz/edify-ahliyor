@@ -1,15 +1,20 @@
 /**
  * scripts/backfillrandfield.ts
  *
- * Adds a `rand` field (uniform in [0, 1)) to every questions1 doc that lacks
- * one. lib/Examquestions.ts samples the exam through that field, so a doc with
- * no `rand` is invisible to the exam builder — it is absent from the index.
+ * Adds a `rand` field (uniform in [0, 1)) to every questions1 AND teacher_questions
+ * doc that lacks one. The Milliy sertifikat exam samples through that field
+ * (lib/Examquestions.ts for questions1 slots 1–32, lib/ExamTeacher.ts for the
+ * teacher slots 33–45), so a doc with no `rand` is invisible to the random
+ * per-student sampler — for teacher_questions it means the exam draws the SAME
+ * fixed page for every student until this runs.
  *
  *   npm run backfill:rand           # only docs missing `rand`
  *   npm run backfill:rand -- --force  # re-randomise every doc
  *
- * Run it again whenever new questions are bulk-imported. Credentials come from
- * .env.local (FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY),
+ * Run it again whenever new questions are bulk-imported. (New teacher_questions
+ * written through the builder already get `rand` from toQuestionV1 — this is only
+ * for the pre-existing bank.) Credentials come from .env.local
+ * (FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY),
  * the same ones lib/firebaseAdmin.ts uses.
  */
 import { readFileSync } from 'node:fs';
@@ -39,10 +44,10 @@ const db = getFirestore();
 const PAGE_SIZE = 2000;
 const FORCE = process.argv.includes('--force');
 
-async function main() {
-  const col = db.collection('questions1');
+async function backfill(collection: string): Promise<number> {
+  const col = db.collection(collection);
   const total = (await col.count().get()).data().count;
-  console.log(`questions1: ${total} documents. force=${FORCE}`);
+  console.log(`${collection}: ${total} documents. force=${FORCE}`);
 
   const writer = db.bulkWriter();
   let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
@@ -65,12 +70,21 @@ async function main() {
     }
 
     cursor = snap.docs[snap.docs.length - 1];
-    console.log(`scanned ${scanned}/${total} · queued ${updated} updates`);
+    console.log(`  scanned ${scanned}/${total} · queued ${updated} updates`);
     if (snap.size < PAGE_SIZE) break;
   }
 
   await writer.close();
-  console.log(`Done. Wrote rand to ${updated} documents.`);
+  console.log(`${collection}: wrote rand to ${updated} documents.`);
+  return updated;
+}
+
+async function main() {
+  // Both banks the exam samples from. teacher_questions is the one that makes
+  // the exam per-student instead of identical for everyone.
+  await backfill('questions1');
+  await backfill('teacher_questions');
+  console.log('Done.');
 }
 
 main().catch((err) => {

@@ -16,7 +16,7 @@ import ChartFrame from '@/components/ChartFrame';
 import { getRASCHLevels, saveBaseline } from '@/services/RASCHProgressService';
 import { DEFAULT_BASELINE, LEVEL_WINDOW, overallLevel } from '@/lib/RASCHlevels';
 import { RASCH_TOPICS, TOPIC_KEYS, type TopicKey } from '@/lib/RASCHtopics';
-import { getServerSolvedArchive, getSolvedArchive, subscribeSolved } from '@/lib/RASCHsolved';
+import { getServerSolvedArchive, getSolvedArchive, setSolvedUser, subscribeSolved } from '@/lib/RASCHsolved';
 import { forecastByTopic, forecastOverall, type Forecast } from '@/lib/RASCHforecast';
 import {
   learningPicture, dimensions, overallTheta, chapterLevels, mathLevel,
@@ -818,7 +818,9 @@ export default function ProgressPage() {
   const topicForecasts = useMemo(() => (levels ? forecastByTopic(levels) : null), [levels]);
 
   // How many questions of each topic the student has actually solved, from the
-  // localStorage archive — no Firestore involved.
+  // localStorage archive — no Firestore involved. Scoped to this account so a
+  // shared browser never shows another student's solved list.
+  useEffect(() => { setSolvedUser(user?.uid ?? ''); }, [user?.uid]);
   const archive = useSyncExternalStore(subscribeSolved, getSolvedArchive, getServerSolvedArchive);
   const solved_counts = useMemo(() => {
     const out = {} as Record<TopicKey, { solved: number; correct: number }>;

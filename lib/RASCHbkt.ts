@@ -58,9 +58,12 @@ const MC_GUESS = 0.25;
 const OPEN_GUESS = 0.05;
 
 const SLIP_BY_DIFFICULTY: Record<DifficultyId, number> = {
-  1: 0.06,
-  2: 0.10,
-  3: 0.16,
+  0: 0.04, // beginner
+  1: 0.06, // easy
+  2: 0.10, // medium
+  3: 0.16, // hard
+  4: 0.25, // olympiad
+  5: 0.20, // expert
 };
 
 export const DEFAULT_BKT: BktParams = {

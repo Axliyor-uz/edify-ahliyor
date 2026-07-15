@@ -1,6 +1,7 @@
 // lib/RASCHsolved.ts
 import { EXAM_BLUEPRINT } from './Examblueprint';
 import { TOPIC_KEYS, type TopicKey } from './RASCHtopics';
+import { examChosen } from './ExamTeacher';
 import type { ExamQuestion } from '@/types/Exam';
 import type { Lang, LocalizedText, OptionKey } from '@/types/Math';
 
@@ -36,8 +37,12 @@ export interface SolvedQuestion {
   subtopic: string;
   testType: string;
   question: LocalizedText;
+  /** Shared block statement, shown above the question (shared_options items). */
+  stem?: LocalizedText | null;
   options: Record<OptionKey, LocalizedText>;
   answer: OptionKey;
+  /** Prompt image (teacher_questions items only). */
+  imageUrl?: string | null;
   explanation: LocalizedText;
   /** Plain-text answer for open (O) questions; undefined for closed ones. */
   expected?: string;
@@ -46,6 +51,10 @@ export interface SolvedQuestion {
   correct: boolean;
   /** Question language at the time it was sat. */
   lang: Lang;
+  /** Author of the question (teacher_questions items) — shown in review too. */
+  creatorName?: string;
+  /** Corrector's display name, if it was ever edited. */
+  correctedBy?: string;
 }
 
 interface Archive {
@@ -60,8 +69,26 @@ let cachedValue: Archive | null = null;
 
 const EMPTY: Archive = { version: VERSION, byTopic: {} };
 
+// localStorage is shared by every account on one browser, so the archive is
+// namespaced per account — otherwise the "questions I solved" review shows
+// student A's history to student B. The active account is set by each consuming
+// page (setSolvedUser); '' is the signed-out bucket.
+let activeUid = '';
+const keyFor = (uid: string) => `${KEY}:${uid || 'anon'}`;
+
 function emit() {
   for (const listener of listeners) listener();
+}
+
+/** Point the archive at the signed-in student. Call before reading or writing.
+ *  Switching accounts drops the cache and notifies subscribers to re-read. */
+export function setSolvedUser(uid: string | null | undefined): void {
+  const u = uid || '';
+  if (u === activeUid) return;
+  activeUid = u;
+  cachedRaw = null;
+  cachedValue = null;
+  emit();
 }
 
 export function subscribeSolved(listener: () => void): () => void {
@@ -75,7 +102,7 @@ export function getSolvedArchive(): Archive {
 
   let raw: string | null = null;
   try {
-    raw = window.localStorage.getItem(KEY);
+    raw = window.localStorage.getItem(keyFor(activeUid));
   } catch {
     return EMPTY;
   }
@@ -144,13 +171,18 @@ export function archiveExam(params: {
       subtopic: q.subtopic,
       testType: q.testType,
       question: q.question,
+      ...(q.stem ? { stem: q.stem } : {}),
       options: q.options,
       answer: q.answer,
+      ...(q.imageUrl ? { imageUrl: q.imageUrl } : {}),
       explanation: q.explanation,
       expected: params.expectedFor(q),
-      given: params.answers[q.id] ?? '',
+      // A block's answer lives under per-part keys — examChosen collapses them.
+      given: examChosen(q, params.answers),
       correct: params.isCorrect(q),
       lang: params.lang,
+      ...(q.creatorName ? { creatorName: q.creatorName } : {}),
+      ...(q.correctedBy ? { correctedBy: q.correctedBy } : {}),
     };
 
     // Re-solving the same question replaces the old record rather than
@@ -162,7 +194,7 @@ export function archiveExam(params: {
   const next: Archive = { version: VERSION, byTopic };
   try {
     const raw = JSON.stringify(next);
-    window.localStorage.setItem(KEY, raw);
+    window.localStorage.setItem(keyFor(activeUid), raw);
     cachedRaw = raw;
     cachedValue = next;
     emit();
@@ -175,7 +207,7 @@ export function archiveExam(params: {
 export function clearSolvedArchive(): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.removeItem(KEY);
+    window.localStorage.removeItem(keyFor(activeUid));
   } catch {
     // ignore
   }

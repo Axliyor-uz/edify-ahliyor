@@ -14,9 +14,19 @@ import {
   ChevronRight, AlertCircle, Flag, Eye, Lock, ChevronLeft, Zap, Maximize2, Minimize2, ShieldAlert, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import LatexRenderer from '@/components/LatexRenderer'; 
+import LatexRenderer from '@/components/LatexRenderer';
+import QuestionCreator from '@/components/QuestionCreator';
 import { useStudentLanguage } from '@/app/(student)/layout';
 import { motion } from 'framer-motion';
+import { normalizeQuestions, isAnswerCorrect, hasAnswer, gradeQuestion, isBlockAnswer, type BlockAnswer } from '@/lib/questionSchema';
+import type { NormalizedPart, NormalizedQuestion } from '@/types/question';
+
+// XP per correct answer, by the 6 canonical difficulty levels (types/question.ts).
+// Anything unknown keeps the historical default of 2.
+const XP_BY_DIFFICULTY: Record<string, number> = {
+  beginner: 1, easy: 2, medium: 3, hard: 4, expert: 5, olympiad: 6,
+};
+const DEFAULT_XP = 2;
 
 // --- HELPERS ---
 const getPeriodIds = () => {
@@ -41,16 +51,36 @@ const getTodayAndYesterday = () => {
   return { todayStr, yesterdayStr: yesterday.toISOString().split('T')[0] };
 };
 
+// Questions are normalized (lib/questionSchema.ts), so every text field is a
+// {uz,ru,en} object — never dump the object itself into the UI: an image-only
+// option legitimately has empty text and must render as nothing, not as JSON.
 const getContentText = (content: any) => {
   if (!content) return "";
   if (typeof content === 'string') return content;
-  return content.uz || content.en || content.ru || content.text || JSON.stringify(content);
+  return content.uz || content.en || content.ru || content.text || "";
 };
 
 const isPastDeadline = (dueAt: any) => {
-  if (!dueAt) return true; 
+  if (!dueAt) return true;
   return new Date() > new Date(dueAt.seconds * 1000);
 };
+
+// "Has this question been answered?" — a BLOCK (multi_part / shared_options) stores
+// ONE entry in answers[q.id]: a `{ [partId]: value }` map. It counts as answered as
+// soon as ANY part is. Normal questions keep the exact `hasAnswer` check they had.
+const isQuestionAnswered = (q: NormalizedQuestion, given: unknown): boolean => {
+  if (q.isBlock) {
+    if (!isBlockAnswer(given)) return false;
+    return q.parts.some((p) => hasAnswer(given[p.id]));
+  }
+  return hasAnswer(given as string | string[] | undefined);
+};
+
+// A block whose parts all read the block's own option list is a `shared_options`
+// block: `normalizeQuestion()` hands every part the SAME array instance, so the pool
+// must be printed ONCE beside the block, not once per sub-question.
+const usesSharedPool = (q: NormalizedQuestion): boolean =>
+  q.isBlock && q.optionList.length > 0 && q.parts.every((p) => p.optionList === q.optionList);
 
 // --- TRANSLATIONS ---
 const TEST_TRANSLATIONS: any = {
@@ -59,6 +89,8 @@ const TEST_TRANSLATIONS: any = {
     lobby: { questions: "Savollar", minutes: "Daqiqa", instructions: "Ko'rsatmalar:", rule1: "Chiqib ketsangiz ham vaqt davom etadi.", rule2: "Sahifani keraksiz yangilamang.", rule3: "Tab almashtirish yozib boriladi va ballni pasaytiradi.", startBtn: "Testni Boshlash", cancel: "Bekor qilish" },
     header: { question: "Savol", focus: "Diqqat", locked: "Qulflangan" },
     actions: { flagged: "Belgilangan", flag: "Belgilash", prev: "Oldingi", next: "Keyingi", finish: "Yakunlash", submit: "Topshirish", viewResults: "Natijani Ko'rish", returnClass: "Sinfga Qaytish" },
+    input: { typeAnswer: "Javobingizni yozing...", selectAll: "Barcha to'g'ri javoblarni tanlang" },
+    block: { pool: "Umumiy variantlar", parts: "Savol qismlari", hint: "Har bir qismga alohida javob bering." },
     modal: { title: "Testni Yakunlaysizmi?", answered: "Javob berildi", unanswered: "Javobsiz Savollar", back: "Qaytish" },
     focusModal: { title: "Diqqat yo'qotildi!", desc: "Siz test oynasidan chiqdingiz yoki boshqa oynaga o'tdingiz. Bu holat yozib olindi va natijangizga ta'sir qilishi mumkin.", btn: "Tushundim, davom etish" },
     result: { submitted: "Topshirildi!", saved: "Javoblaringiz saqlandi.", score: "Ball", hidden: "Natijalar hozircha yashirin.", xpEarned: "XP Qo'lga kiritildi!", breakdown: "Ballar taqsimoti" },
@@ -69,6 +101,8 @@ const TEST_TRANSLATIONS: any = {
     lobby: { questions: "Questions", minutes: "Minutes", instructions: "Instructions:", rule1: "Timer continues if you leave.", rule2: "Do not refresh unnecessarily.", rule3: "Tab switching is recorded and may penalize your score.", startBtn: "Start Test Now", cancel: "Cancel" },
     header: { question: "Q", focus: "Focus", locked: "Locked" },
     actions: { flagged: "Flagged", flag: "Flag", prev: "Previous", next: "Next", finish: "Finish Test", submit: "Submit", viewResults: "View Results", returnClass: "Return to Class" },
+    input: { typeAnswer: "Type your answer...", selectAll: "Select all correct answers" },
+    block: { pool: "Shared Options", parts: "Sub-questions", hint: "Answer every part separately." },
     modal: { title: "Finish Test?", answered: "Answered", unanswered: "Unanswered Questions", back: "Back" },
     focusModal: { title: "Focus Lost!", desc: "You left the test window or switched tabs. This action has been recorded and may affect your final score.", btn: "I Understand, Resume" },
     result: { submitted: "Submitted!", saved: "Your answers are recorded.", score: "Score", hidden: "Results are currently hidden.", xpEarned: "XP Earned!", breakdown: "Point Breakdown" },
@@ -79,6 +113,8 @@ const TEST_TRANSLATIONS: any = {
     lobby: { questions: "Вопросов", minutes: "Минут", instructions: "Инструкции:", rule1: "Таймер продолжается при выходе.", rule2: "Не обновляйте без нужды.", rule3: "Переключение вкладок фиксируется и снижает балл.", startBtn: "Начать Тест", cancel: "Отмена" },
     header: { question: "Вопрос", focus: "Фокус", locked: "Заблокировано" },
     actions: { flagged: "Отмечено", flag: "Отметить", prev: "Назад", next: "Далее", finish: "Завершить", submit: "Сдать", viewResults: "Результаты", returnClass: "Вернуться в класс" },
+    input: { typeAnswer: "Введите ваш ответ...", selectAll: "Выберите все правильные ответы" },
+    block: { pool: "Общие варианты", parts: "Подвопросы", hint: "Ответьте на каждую часть отдельно." },
     modal: { title: "Завершить тест?", answered: "Отвечено", unanswered: "Есть пропущенные вопросы", back: "Назад" },
     focusModal: { title: "Фокус потерян!", desc: "Вы покинули окно теста или переключили вкладку. Это действие записано и может повлиять на ваш балл.", btn: "Понятно, продолжить" },
     result: { submitted: "Сдано!", saved: "Ваши ответы сохранены.", score: "Балл", hidden: "Результаты скрыты.", xpEarned: "Получено XP!", breakdown: "Детализация" },
@@ -88,9 +124,14 @@ const TEST_TRANSLATIONS: any = {
 
 interface TestState {
   status: 'loading' | 'lobby' | 'taking' | 'submitted' | 'error';
-  assignment: any; test: any; questions: any[];
-  currentQuestionIndex: number; answers: Record<string, string>; flagged: string[];
-  tabSwitchCount: number; score?: number; endTime?: number; startTime?: number;
+  assignment: any; test: any; questions: NormalizedQuestion[];
+  // A stored answer is: an option letter (mcq/true_false), an array of letters
+  // (multiple_select), the raw typed string (open/numeric), or — for a BLOCK —
+  // a `BlockAnswer` = `{ [partId]: letter | letter[] | typed }` holding the WHOLE
+  // block in ONE entry. This is exactly what is written to attempts.answers —
+  // never a normalized/graded value, and never a per-part top-level key.
+  currentQuestionIndex: number; answers: Record<string, string | string[] | BlockAnswer>; flagged: string[];
+  tabSwitchCount: number; score?: number; maxScore?: number; endTime?: number; startTime?: number;
   earnedXP?: number; xpBreakdown?: string[];
 }
 
@@ -148,6 +189,12 @@ export default function TestRunnerPage() {
         if (!testSnap.exists()) throw new Error("Test missing");
         const testData = testSnap.data();
 
+        // 🟢 THE ONLY PLACE questions enter this page. custom_tests.questions[] holds
+        // frozen snapshots in BOTH shapes (legacy letter-map + canonical v1 array), so
+        // normalize once here — every render/grade line below then reads the legacy
+        // shape it always did (`options.A.uz`, `answer` letter, `difficulty` string).
+        const questions = normalizeQuestions(testData.questions, lang);
+
         const savedSession = localStorage.getItem(STORAGE_KEY);
         if (savedSession) {
           const parsed = JSON.parse(savedSession);
@@ -158,7 +205,7 @@ export default function TestRunnerPage() {
             localStorage.removeItem(STORAGE_KEY);
           } else {
             setState({
-              status: 'taking', assignment: assignData, test: testData, questions: testData.questions || [],
+              status: 'taking', assignment: assignData, test: testData, questions,
               currentQuestionIndex: parsed.currentQuestionIndex || 0, answers: parsed.answers || {},
               flagged: parsed.flagged || [], tabSwitchCount: parsed.tabSwitchCount || 0,
               endTime: parsed.endTime, startTime: parsed.startTime || Date.now()
@@ -169,14 +216,14 @@ export default function TestRunnerPage() {
         }
 
         setState(prev => ({
-          ...prev, status: 'lobby', assignment: assignData, test: testData, questions: testData.questions || []
+          ...prev, status: 'lobby', assignment: assignData, test: testData, questions
         }));
         setDisplayTime((testData.duration || 60) * 60);
 
       } catch (e) { setState(prev => ({ ...prev, status: 'error' })); }
     }
     loadData();
-  }, [classId, assignmentId, user, router, STORAGE_KEY, t]);
+  }, [classId, assignmentId, user, router, STORAGE_KEY, t, lang]);
 
   // --- 2. AUTO-SAVE ---
   useEffect(() => {
@@ -255,8 +302,11 @@ export default function TestRunnerPage() {
       const currentQ = state.questions[state.currentQuestionIndex];
       const optionsKeys = Object.keys(currentQ?.options || {});
       const num = parseInt(e.key);
-      
-      if (!isNaN(num) && num > 0 && num <= optionsKeys.length) {
+
+      // On a block the digit shortcut is ambiguous (which sub-question?), and
+      // `currentQ.options` is the SHARED pool — firing selectAnswer would overwrite
+      // the whole block map with a bare letter. Blocks are answered by clicking.
+      if (!currentQ?.isBlock && !isNaN(num) && num > 0 && num <= optionsKeys.length) {
         selectAnswer(optionsKeys[num - 1]);
       }
 
@@ -285,9 +335,67 @@ export default function TestRunnerPage() {
     setDisplayTime(durationSec);
   };
 
+  // mcq/true_false → replace the letter. multiple_select → toggle it in a letter array.
   const selectAnswer = (optionKey: string) => {
     const currentQ = state.questions[state.currentQuestionIndex];
-    setState(prev => ({ ...prev, answers: { ...prev.answers, [currentQ.id]: optionKey } }));
+    if (!currentQ || currentQ.isBlock) return; // blocks answer through their parts
+
+    setState(prev => {
+      if (currentQ.type === 'multiple_select') {
+        const prevSel = prev.answers[currentQ.id] as string | string[] | undefined;
+        const selected = Array.isArray(prevSel) ? prevSel : prevSel ? [prevSel] : [];
+        const next = selected.includes(optionKey)
+          ? selected.filter(k => k !== optionKey)
+          : [...selected, optionKey];
+        return { ...prev, answers: { ...prev.answers, [currentQ.id]: next } };
+      }
+      return { ...prev, answers: { ...prev.answers, [currentQ.id]: optionKey } };
+    });
+  };
+
+  // open/numeric — the typed string is stored verbatim; grading normalizes, not the store.
+  const setTypedAnswer = (text: string) => {
+    const currentQ = state.questions[state.currentQuestionIndex];
+    if (!currentQ || currentQ.isBlock) return;
+    setState(prev => ({ ...prev, answers: { ...prev.answers, [currentQ.id]: text } }));
+  };
+
+  // ── BLOCKS ────────────────────────────────────────────────────────────────
+  // The whole block lives in ONE entry — `answers[q.id] = { [partId]: value }`.
+  // Every writer below MERGES into that map: changing part b) must never drop a).
+  const patchBlockAnswer = (questionId: string, partId: string, value: string | string[]) => {
+    setState(prev => {
+      const existing = prev.answers[questionId];
+      const block: BlockAnswer = isBlockAnswer(existing) ? { ...existing } : {};
+      block[partId] = value;
+      return { ...prev, answers: { ...prev.answers, [questionId]: block } };
+    });
+  };
+
+  // A part is a question in miniature: single-pick replaces, multiple_select toggles.
+  const selectPartOption = (part: NormalizedPart, optionKey: string) => {
+    const currentQ = state.questions[state.currentQuestionIndex];
+    if (!currentQ) return;
+
+    const existing = state.answers[currentQ.id];
+    const prevSel = isBlockAnswer(existing) ? existing[part.id] : undefined;
+
+    if (part.type === 'multiple_select') {
+      const selected = Array.isArray(prevSel) ? prevSel : prevSel ? [prevSel] : [];
+      patchBlockAnswer(
+        currentQ.id,
+        part.id,
+        selected.includes(optionKey) ? selected.filter(k => k !== optionKey) : [...selected, optionKey],
+      );
+      return;
+    }
+    patchBlockAnswer(currentQ.id, part.id, optionKey);
+  };
+
+  const setPartTypedAnswer = (part: NormalizedPart, text: string) => {
+    const currentQ = state.questions[state.currentQuestionIndex];
+    if (!currentQ) return;
+    patchBlockAnswer(currentQ.id, part.id, text);
   };
 
   const toggleFlag = () => {
@@ -302,7 +410,7 @@ export default function TestRunnerPage() {
     if (state.currentQuestionIndex < state.questions.length - 1) {
       setState(p => ({ ...p, currentQuestionIndex: p.currentQuestionIndex + 1 }));
     } else {
-      const firstSkipped = state.questions.findIndex(q => !state.answers[q.id]);
+      const firstSkipped = state.questions.findIndex(q => !isQuestionAnswered(q, state.answers[q.id]));
       if (firstSkipped !== -1) {
         toast(t.toasts.missedQ, { icon: '📝' });
         setState(p => ({ ...p, currentQuestionIndex: firstSkipped }));
@@ -327,20 +435,31 @@ export default function TestRunnerPage() {
     const userId = user.uid;
     localStorage.removeItem(STORAGE_KEY); 
 
-    let correctCount = 0;
+    let correctCount = 0;   // POINTS earned  (blocks: partial credit, per-part points)
+    let totalPoints = 0;    // POINTS available
     let earnedBaseXP = 0;
 
+    // Grading goes through the shared scorer (lib/questionSchema.ts) so mcq letters,
+    // multiple_select sets, typed open/numeric answers AND blocks are all judged the
+    // same way here and on the results page.
+    //   • normal question → 0 or q.points (which normalizes to 1 when the doc has none,
+    //     so the historical "1 point per correct question" is unchanged)
+    //   • block           → the sum of the parts the student got right (partial credit)
     state.questions.forEach(q => {
-      if (state.answers[q.id] === q.answer) {
-        correctCount++;
-        const diff = (q.difficulty || 'easy').toLowerCase();
-        if (diff === 'hard') earnedBaseXP += 4;
-        else if (diff === 'medium') earnedBaseXP += 3;
-        else earnedBaseXP += 2; 
+      const { earned, total } = gradeQuestion(q, state.answers[q.id]);
+      correctCount += earned;
+      totalPoints += total;
+
+      // XP ladder is PER QUESTION and unchanged: a block pays the same XP as a normal
+      // question of the same difficulty (and only when fully correct — `isAnswerCorrect`
+      // already requires every part). Never multiplied by the number of parts.
+      if (isAnswerCorrect(q, state.answers[q.id])) {
+        const diff = String(q.difficulty || 'easy').toLowerCase();
+        earnedBaseXP += XP_BY_DIFFICULTY[diff] ?? DEFAULT_XP;
       }
     });
 
-    const scorePercentage = state.questions.length > 0 ? (correctCount / state.questions.length) * 100 : 0;
+    const scorePercentage = totalPoints > 0 ? (correctCount / totalPoints) * 100 : 0;
     const durationSeconds = state.startTime ? (Date.now() - state.startTime) / 1000 : 0;
     const timeLimitSeconds = (state.test.duration || 60) * 60;
     const attemptDocId = `${userId}_${assignmentId}`; 
@@ -399,7 +518,7 @@ export default function TestRunnerPage() {
           dailyHistory = newHistory;
         }
 
-        const updatedHistory = [{ id: attemptDocId, testTitle: state.test.title, score: correctCount, totalQuestions: state.questions.length, submittedAt: Date.now() }, ...existingHistory].slice(0, 5);
+        const updatedHistory = [{ id: attemptDocId, testTitle: state.test.title, score: correctCount, totalQuestions: totalPoints, submittedAt: Date.now() }, ...existingHistory].slice(0, 5);
 
         // ⚠️ Do NOT write `email` here. Contact details live in the owner-only
         // users/{uid}/private/contact subcollection (docs/AUTH.md); re-mirroring the
@@ -410,11 +529,14 @@ export default function TestRunnerPage() {
           displayName: user.displayName, lastActiveTimestamp: serverTimestamp(), recentActivity: updatedHistory
         }, { merge: true });
 
+        // `score` / `totalQuestions` are POINTS. For a test without blocks every
+        // question is worth 1, so these are byte-for-byte the old "correct / count"
+        // numbers; a block contributes its parts' points and can land in between.
         transaction.set(doc(db, 'attempts', attemptDocId), {
           userId, userName: user.displayName, classId, assignmentId,type: 'assignment', testId: state.assignment.testId,
-          testTitle: state.test.title, score: correctCount, totalQuestions: state.questions.length,
+          testTitle: state.test.title, score: correctCount, totalQuestions: totalPoints,
           answers: state.answers, tabSwitches: state.tabSwitchCount, submittedAt: serverTimestamp(),
-          attemptsTaken: isRetake ? increment(1) : 1, xpEarned: xpToAward 
+          attemptsTaken: isRetake ? increment(1) : 1, xpEarned: xpToAward
         }, { merge: true });
 
         return { xpToAward, breakdown, currentStreak, latestName: userData?.displayName || user.displayName || 'Student', latestAvatar: userData?.photoURL || user.photoURL || null };
@@ -431,7 +553,7 @@ export default function TestRunnerPage() {
 
       await updateDoc(doc(db, 'classes', classId, 'assignments', assignmentId), { completedBy: arrayUnion(userId) }).catch(() => {});
 
-      setState(prev => ({ ...prev, status: 'submitted', score: correctCount, earnedXP: result.xpToAward, xpBreakdown: result.breakdown }));
+      setState(prev => ({ ...prev, status: 'submitted', score: correctCount, maxScore: totalPoints, earnedXP: result.xpToAward, xpBreakdown: result.breakdown }));
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       if (result.currentStreak > 1) toast.success(`${result.currentStreak} Day Streak! 🔥`, { icon: '🔥', duration: 3000 });
       else toast.success(t.toasts.success);
@@ -462,7 +584,9 @@ export default function TestRunnerPage() {
   if (state.status === 'submitted') {
     const visibility = state.test.resultsVisibility || (state.test.showResults ? 'always' : 'never');
     const canShow = visibility === 'always' || (visibility === 'after_due' && isPastDeadline(state.assignment.dueAt));
-    const accuracy = Math.round((state.score! / state.questions.length) * 100);
+    // Points, not questions — identical to the old count when nothing is worth >1 point.
+    const maxScore = state.maxScore ?? state.questions.length;
+    const accuracy = maxScore > 0 ? Math.round((state.score! / maxScore) * 100) : 0;
 
     // 🟢 HELPER: Animated Counter for XP and Scores
     const AnimatedNumber = ({ value, suffix = "" }: { value: number, suffix?: string }) => {
@@ -561,7 +685,7 @@ export default function TestRunnerPage() {
              <motion.div variants={item} className="bg-white border-2 border-zinc-200 border-b-[6px] rounded-[1.5rem] p-5 flex flex-col items-center justify-center">
                 <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t.result.score}</span>
                 <span className="text-3xl font-black text-indigo-600">
-                  <AnimatedNumber value={state.score!} /> <span className="text-lg text-zinc-300">/ {state.questions.length}</span>
+                  <AnimatedNumber value={state.score!} /> <span className="text-lg text-zinc-300">/ {maxScore}</span>
                 </span>
              </motion.div>
 
@@ -602,7 +726,20 @@ export default function TestRunnerPage() {
 
   const currentQ = state.questions[state.currentQuestionIndex];
   const isFlagged = state.flagged.includes(currentQ.id);
-  const answeredCount = Object.keys(state.answers).length;
+  const answeredCount = state.questions.filter(q => isQuestionAnswered(q, state.answers[q.id])).length;
+
+  const currentAnswer = state.answers[currentQ.id];
+
+  // A BLOCK is answered part by part — its whole response is one `{ [partId]: value }` map.
+  const isBlock = currentQ.isBlock;
+  const blockAnswer: BlockAnswer = isBlockAnswer(currentAnswer) ? currentAnswer : {};
+  const sharedPool = isBlock && usesSharedPool(currentQ) ? currentQ.optionList : [];
+
+  // No options at all ⇒ a text-answer type (open / numeric / fill_blank …).
+  const isTyped = !isBlock && currentQ.optionList.length === 0;
+  const isMultiSelect = currentQ.type === 'multiple_select';
+  const scalarAnswer = isBlockAnswer(currentAnswer) ? undefined : currentAnswer;
+  const selectedKeys = Array.isArray(scalarAnswer) ? scalarAnswer : scalarAnswer ? [scalarAnswer] : [];
 
   return (
     // 🟢 OPTION 1 IMPLEMETED: "Immersive Mode" (Fixed, inset-0, z-high) 
@@ -676,7 +813,7 @@ export default function TestRunnerPage() {
          <div ref={scrollNavRef} className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2 px-1">
             {state.questions.map((q, idx) => {
                 const isActive = idx === state.currentQuestionIndex;
-                const isAnswered = !!state.answers[q.id];
+                const isAnswered = isQuestionAnswered(q, state.answers[q.id]);
                 const isQFlagged = state.flagged.includes(q.id);
                 return (
                     <button 
@@ -695,20 +832,153 @@ export default function TestRunnerPage() {
         <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl mx-auto w-full pb-24">
           <div className="mb-8">
              <div className="text-[18px] md:text-[22px] font-bold text-zinc-900 leading-relaxed"><LatexRenderer latex={getContentText(currentQ.question)} /></div>
+             {currentQ.imageUrl && (
+               <img src={currentQ.imageUrl} alt="" className="mt-5 max-h-60 w-auto rounded-[1.5rem] border-2 border-zinc-200 bg-white object-contain" />
+             )}
+             {isMultiSelect && (
+               <p className="mt-4 text-[11px] font-black uppercase tracking-widest text-indigo-500">{t.input.selectAll}</p>
+             )}
+             {isBlock && (
+               <p className="mt-4 text-[11px] font-black uppercase tracking-widest text-indigo-500">{t.block.hint}</p>
+             )}
+             <QuestionCreator creatorName={currentQ.creatorName} correctedBy={currentQ.correctedBy} className="mt-3 text-zinc-400" />
           </div>
+
+          {isBlock ? (
+            // ── BLOCK (multi_part / shared_options) ───────────────────────────
+            // Stem + image are already above. `shared_options` prints its A–F pool
+            // ONCE here (every part points at the same array), then each sub-question
+            // is a compact row of letter buttons. A `multi_part` part carries its own
+            // options (or a typed answer), so it renders them itself.
+            <div className="space-y-4">
+              {sharedPool.length > 0 && (
+                <div className="rounded-[1.5rem] border-2 border-zinc-200 bg-zinc-50 p-4 md:p-5">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-zinc-400 mb-3">{t.block.pool}</p>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    {sharedPool.map((o) => (
+                      <div key={o.id} className="flex items-start gap-2.5">
+                        <span className="w-8 h-8 shrink-0 rounded-[0.8rem] bg-white border-2 border-zinc-200 text-zinc-600 font-black text-[13px] flex items-center justify-center">{o.id}</span>
+                        <div className="pt-1 min-w-0 text-zinc-700 font-bold text-[14px] md:text-[15px] leading-relaxed break-words">
+                          <LatexRenderer latex={getContentText(o.text)} />
+                          {o.imageUrl && (
+                            <img src={o.imageUrl} alt={o.id} className="mt-2 max-h-28 w-auto rounded-[1rem] border-2 border-zinc-200 bg-white object-contain" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {currentQ.parts.map((part) => {
+                const given = blockAnswer[part.id];
+                const partKeys = Array.isArray(given) ? given : given ? [given] : [];
+                const partIsMulti = part.type === 'multiple_select';
+                const partIsTyped = part.optionList.length === 0;
+                const compact = sharedPool.length > 0; // pool already printed above
+
+                return (
+                  <div key={part.id} className="rounded-[1.5rem] border-2 border-b-[6px] border-zinc-200 bg-white p-4 md:p-5">
+                    <div className="flex items-start gap-3">
+                      <span className="w-8 h-8 shrink-0 rounded-[0.8rem] bg-indigo-50 border-2 border-indigo-100 text-indigo-600 font-black text-[13px] flex items-center justify-center">{part.id}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-zinc-800 font-bold text-[15px] md:text-[17px] leading-relaxed break-words">
+                          <LatexRenderer latex={getContentText(part.prompt)} />
+                        </div>
+                        {partIsMulti && (
+                          <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-indigo-400">{t.input.selectAll}</p>
+                        )}
+
+                        {partIsTyped ? (
+                          <input
+                            type="text"
+                            inputMode={part.type === 'numeric' ? 'decimal' : 'text'}
+                            autoComplete="off"
+                            value={typeof given === 'string' ? given : ''}
+                            onChange={(e) => setPartTypedAnswer(part, e.target.value)}
+                            placeholder={t.input.typeAnswer}
+                            className="mt-3 w-full p-3 md:p-4 rounded-[1.2rem] border-2 border-b-[6px] border-zinc-200 bg-white text-zinc-800 font-bold text-[15px] placeholder:text-zinc-300 placeholder:font-bold focus:border-indigo-600 focus:outline-none transition-colors"
+                          />
+                        ) : compact ? (
+                          // shared pool → a compact row of letter buttons.
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {part.optionList.map((o) => {
+                              const sel = partKeys.includes(o.id);
+                              return (
+                                <button
+                                  key={o.id}
+                                  onClick={() => selectPartOption(part, o.id)}
+                                  className={`w-12 h-12 rounded-[1rem] border-2 border-b-4 font-black text-[15px] transition-all active:translate-y-[2px] active:border-b-2 ${sel ? 'bg-indigo-600 text-white border-indigo-800' : 'bg-white text-zinc-500 border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50'}`}
+                                >
+                                  {o.id}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          // the part owns its options → letter + text, like a normal question.
+                          <div className="mt-3 grid gap-2">
+                            {part.optionList.map((o) => {
+                              const sel = partKeys.includes(o.id);
+                              return (
+                                <button
+                                  key={o.id}
+                                  onClick={() => selectPartOption(part, o.id)}
+                                  className={`w-full text-left p-3 md:p-4 rounded-[1.2rem] border-2 border-b-4 transition-all flex items-center gap-3 active:translate-y-[2px] active:border-b-2 ${sel ? 'border-indigo-600 bg-indigo-50' : 'border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50 bg-white'}`}
+                                >
+                                  <span className={`w-9 h-9 shrink-0 flex items-center justify-center text-[14px] font-black border-2 transition-colors ${partIsMulti ? 'rounded-[0.6rem]' : 'rounded-[0.9rem]'} ${sel ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
+                                    {partIsMulti && sel ? <CheckCircle size={18} strokeWidth={3} /> : o.id}
+                                  </span>
+                                  <div className="w-full min-w-0">
+                                    <div className="text-zinc-800 font-bold text-[14px] md:text-[16px] leading-relaxed break-words">
+                                      <LatexRenderer latex={getContentText(o.text)} />
+                                    </div>
+                                    {o.imageUrl && (
+                                      <img src={o.imageUrl} alt={o.id} className="mt-2 max-h-28 w-auto rounded-[1rem] border-2 border-zinc-200 bg-white object-contain" />
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : isTyped ? (
+            // open / numeric / fill_blank — nothing to pick, the student types the answer.
+            <input
+              type="text"
+              inputMode={currentQ.type === 'numeric' ? 'decimal' : 'text'}
+              autoComplete="off"
+              value={typeof currentAnswer === 'string' ? currentAnswer : ''}
+              onChange={(e) => setTypedAnswer(e.target.value)}
+              placeholder={t.input.typeAnswer}
+              className="w-full p-4 md:p-5 rounded-[1.5rem] border-2 border-b-[6px] border-zinc-200 bg-white text-zinc-800 font-bold text-[15px] md:text-[17px] placeholder:text-zinc-300 placeholder:font-bold focus:border-indigo-600 focus:outline-none transition-colors"
+            />
+          ) : (
           <div className="grid gap-3">
              {Object.entries(currentQ.options || {}).map(([key, val]: any) => {
-               const isSelected = state.answers[currentQ.id] === key;
+               const isSelected = selectedKeys.includes(key);
                return (
                  <button key={key} onClick={() => selectAnswer(key)} className={`w-full text-left p-4 md:p-5 rounded-[1.5rem] border-2 border-b-[6px] transition-all flex items-center gap-4 group active:translate-y-[4px] active:border-b-2 ${isSelected ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50 bg-white'}`}>
-                   <span className={`w-10 h-10 rounded-[1rem] flex items-center justify-center text-[15px] font-black transition-colors shrink-0 border-2 ${isSelected ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
-                     {key} 
+                   <span className={`w-10 h-10 flex items-center justify-center text-[15px] font-black transition-colors shrink-0 border-2 ${isMultiSelect ? 'rounded-[0.6rem]' : 'rounded-[1rem]'} ${isSelected ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
+                     {isMultiSelect && isSelected ? <CheckCircle size={20} strokeWidth={3} /> : key}
                    </span>
-                   <div className="text-zinc-800 font-bold text-[15px] md:text-[17px] leading-relaxed break-words w-full"><LatexRenderer latex={getContentText(val)} /></div>
+                   <div className="w-full">
+                     <div className="text-zinc-800 font-bold text-[15px] md:text-[17px] leading-relaxed break-words"><LatexRenderer latex={getContentText(val)} /></div>
+                     {val?.imageUrl && (
+                       <img src={val.imageUrl} alt={`${key}`} className="mt-2 max-h-32 md:max-h-40 w-auto rounded-[1rem] border-2 border-zinc-200 bg-white object-contain" />
+                     )}
+                   </div>
                  </button>
                )
              })}
           </div>
+          )}
         </div>
       </main>
 

@@ -15,6 +15,7 @@ import { filterTheta, learningRate, predictScore } from '@/lib/RASCHdynamic';
 import { applyItems, mergeDiagnostics } from '@/lib/RASCHdiagnosis';
 import { TOPIC_KEYS, type TopicKey } from '@/lib/RASCHtopics';
 import { EXAM_BLUEPRINT } from '@/lib/Examblueprint';
+import { examChosen, isExamPartCorrect, partKey } from '@/lib/ExamTeacher';
 import type { ExamQuestion } from '@/types/Exam';
 import type { Lang } from '@/types/Math';
 import type { Ability, Diagnostics, ItemResponse, RASCHAttempt, RASCHLevels, SpotStat, TopicScore } from '@/types/RASCH';
@@ -210,24 +211,55 @@ export function toItemResponses(params: {
   kind: 'exam' | 'practice';
 }): ItemResponse[] {
   const sectionTopic = new Map(EXAM_BLUEPRINT.map((s) => [s.id, s.topic]));
+  const bField = (q: ExamQuestion) => (typeof q.b === 'number' ? { b: q.b } : {});
 
-  return params.questions.map((q) => ({
-    kind: params.kind,
-    id: q.id,
-    topic: sectionTopic.get(q.sectionId) ?? 'numbers',
-    topicId: q.topicId,
-    chapterId: q.chapterId,
-    subtopicId: q.subtopicId,
-    difficultyId: q.difficultyId,
-    testType: q.testType,
-    chosen: params.answers[q.id] ?? '',
-    answer: q.answer,
-    correct: params.isCorrect(q),
-    sec: Math.round(params.seconds[q.id] ?? 0),
-    // Calibrated difficulty, if this item has one. It came down with the
-    // question — no extra read to use it.
-    ...(typeof q.b === 'number' ? { b: q.b } : {}),
-  }));
+  return params.questions.flatMap((q): ItemResponse[] => {
+    const topic = sectionTopic.get(q.sectionId) ?? 'numbers';
+
+    // A shared_options block is ONE card but SEVERAL exam questions, so it must
+    // yield one item response per sub-question — each has its own chosen letter,
+    // correctness and difficulty. The block's time is split evenly across them.
+    if (q.qType === 'shared_options' && q.parts && q.parts.length > 0) {
+      const secEach = Math.round((params.seconds[q.id] ?? 0) / q.parts.length);
+      return q.parts.map((p): ItemResponse => {
+        const chosen = params.answers[partKey(q.id, p.id)] ?? '';
+        return {
+          kind: params.kind,
+          id: `${q.id}#${p.id}`,
+          topic,
+          topicId: q.topicId,
+          chapterId: q.chapterId,
+          subtopicId: q.subtopicId,
+          difficultyId: q.difficultyId,
+          testType: q.testType,
+          chosen,
+          answer: p.answer as ItemResponse['answer'],
+          correct: isExamPartCorrect(p, chosen),
+          sec: secEach,
+          ...bField(q),
+        };
+      });
+    }
+
+    return [{
+      kind: params.kind,
+      id: q.id,
+      topic,
+      topicId: q.topicId,
+      chapterId: q.chapterId,
+      subtopicId: q.subtopicId,
+      difficultyId: q.difficultyId,
+      testType: q.testType,
+      // A multi_part block's answers live under per-part keys, so `answers[q.id]`
+      // is empty — examChosen collapses the parts (and returns '' only when none
+      // were touched, which the abandoned-paper guard and the diagnosis key off).
+      chosen: examChosen(q, params.answers),
+      answer: q.answer,
+      correct: params.isCorrect(q),
+      sec: Math.round(params.seconds[q.id] ?? 0),
+      ...bField(q),
+    }];
+  });
 }
 
 /** Tallies per-topic scores from the item records. */
@@ -339,15 +371,33 @@ function withAbility(
  * diagnosis), write it back, and append an immutable attempt record carrying the
  * per-question detail. Still 1 read and 2 writes per exam — the item array makes
  * the write bigger, not more numerous.
+ *
+ * Two things it refuses to record, because both used to grow the exam history
+ * for a student who never sat an exam:
+ *
+ *  1. **A paper with nothing answered.** The exam page auto-submits on the
+ *     deadline, so a paper that was drawn and abandoned came back "submitted"
+ *     the next time the page mounted and landed on the chart as a 0% exam.
+ *  2. **A paper already on the chart.** `examId` is the paper's `endsAt`; if a
+ *     row with that id is already in `exams` the whole save is a no-op. The
+ *     client's `saved` flag lives in localStorage and cannot see a second tab,
+ *     a re-fired effect, or a retry after a write that in fact committed.
  */
 export async function saveExamResult(params: {
   uid: string;
   examLang: Lang;
   durationSec: number;
   items: ItemResponse[];
+  /** The paper's `endsAt` — stable from the moment it was drawn. */
+  examId: number;
 }): Promise<RASCHLevels> {
-  const { uid, examLang, durationSec, items } = params;
+  const { uid, examLang, durationSec, items, examId } = params;
   const at = Date.now();
+
+  // An untouched paper is not a result. Nothing is written — not the levels, not
+  // the attempt — and the caller gets the account exactly as it stands.
+  const answered = items.filter((i) => i.chosen.trim() !== '').length;
+  if (answered === 0) return getRASCHLevels(uid);
 
   const topicScores = scoreByTopic(items);
   const correct = items.filter((i) => i.correct).length;
@@ -362,7 +412,10 @@ export async function saveExamResult(params: {
     const snap = await tx.get(levelsRef);
     const previous = snap.exists() ? migrateModel(snap.data() as RASCHLevels) : null;
 
-    let updated = applyExam(previous, { userId: uid, topicScores, overallPercent, at });
+    // Already recorded — return what is stored rather than appending a twin.
+    if (previous?.exams?.some((e) => e.id === examId)) return previous;
+
+    let updated = applyExam(previous, { userId: uid, topicScores, overallPercent, at, examId });
     updated.modelVersion = MODEL_VERSION;
     updated = withAbility(updated, items, at, 'exam');
     updated.thetaTrace = withThetaTrace(updated, sittingAbility, at, 'exam');

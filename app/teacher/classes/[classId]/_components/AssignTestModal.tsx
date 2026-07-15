@@ -12,6 +12,7 @@ import {
   Plus, BookOpen, CheckCircle2, Minus, Calendar, AlertTriangle,FileText
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { normalizeQuestions } from '@/lib/questionSchema';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { Button, IconButton, EmptyState } from '@/components/ui';
 
@@ -110,7 +111,7 @@ export default function AssignTestModal({ classId, isOpen, onClose, roster, edit
     if (isOpen && user) {
       if (editData) {
         setStep(2);
-        setSelectedTest({ id: editData.testId, title: editData.testTitle, questionCount: editData.questionCount });
+        setSelectedTest({ id: editData.testId, title: editData.testTitle, questionCount: editData.questionCount ?? 0 });
         setDescription(editData.description || '');
         setAllowedAttempts(editData.allowedAttempts ?? 1);
 
@@ -143,13 +144,28 @@ export default function AssignTestModal({ classId, isOpen, onClose, roster, edit
   }, [isOpen, user, editData]);
 
   // --- FETCHING LOGIC (Matches Android Pagination) ---
+  // Normalization boundary: custom_tests.questions[] may be legacy-shaped or
+  // canonical v1. This modal never writes questions back (its payload is metadata
+  // only), so the normalized list is safe to keep on the test object, and it gives
+  // us a reliable questionCount for tests whose top-level counter is missing.
+  const mapTestDoc = (d: DocumentSnapshot) => {
+    const data = (d.data() || {}) as any;
+    const rawQuestions: any[] = Array.isArray(data.questions) ? data.questions : [];
+    return {
+      id: d.id,
+      ...data,
+      questions: normalizeQuestions(rawQuestions, lang),
+      questionCount: typeof data.questionCount === 'number' ? data.questionCount : rawQuestions.length,
+    };
+  };
+
   const fetchInitialTests = async () => {
     if (!user) return;
     setIsLoadingMore(true);
     try {
       const q = query(collection(db, 'custom_tests'), where('teacherId', '==', user.uid), orderBy('createdAt', 'desc'), limit(10));
       const snap = await getDocs(q);
-      const tests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const tests = snap.docs.map(mapTestDoc);
       setMyTests(tests);
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
       setHasMore(tests.length >= 10);
@@ -162,7 +178,7 @@ export default function AssignTestModal({ classId, isOpen, onClose, roster, edit
     try {
       const q = query(collection(db, 'custom_tests'), where('teacherId', '==', user.uid), orderBy('createdAt', 'desc'), startAfter(lastDoc), limit(10));
       const snap = await getDocs(q);
-      const newTests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const newTests = snap.docs.map(mapTestDoc);
       setMyTests(prev => [...prev, ...newTests]);
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
       setHasMore(newTests.length >= 10);
@@ -209,7 +225,8 @@ export default function AssignTestModal({ classId, isOpen, onClose, roster, edit
       const payload = {
         testId: selectedTest.id,
         testTitle: selectedTest.title,
-        questionCount: selectedTest.questionCount,
+        // never `undefined` — Firestore rejects it (see CLAUDE.md cross-cutting traps)
+        questionCount: selectedTest.questionCount ?? 0,
         description: description.trim(),
         openAt: openDate,
         dueAt: dueDate,

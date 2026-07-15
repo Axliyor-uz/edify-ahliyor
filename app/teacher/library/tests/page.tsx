@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { FolderOpen, Archive, Library, Sparkles, ChevronDown, Plus } from 'lucide-react';
 import TestCard from '../_components/TestCard';
 import EditTestModal from '../_components/EditTestModal';
+import { normalizeQuestions } from '@/lib/questionSchema';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import toast from 'react-hot-toast';
 import { motion, Variants } from 'framer-motion';
@@ -93,7 +94,23 @@ export default function LibraryPage() {
         setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
         setHasMore(snapshot.docs.length === PAGE_SIZE);
 
-        const fetchedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // ── Normalization boundary ────────────────────────────────────────────
+        // custom_tests.questions[] holds FROZEN question snapshots that may be
+        // legacy-shaped (options map / answer letter / difficulty string) OR
+        // canonical v1 (options array / correctAnswer.value / difficulty object).
+        // Normalize once here so every consumer below (TestCard → PrintLauncher,
+        // EditTestModal → CartItem) reads one shape. Each NormalizedQuestion still
+        // carries `raw` = the untouched doc, which is what EditTestModal writes back.
+        const fetchedData = snapshot.docs.map(doc => {
+          const data = doc.data() as any;
+          const rawQuestions: any[] = Array.isArray(data.questions) ? data.questions : [];
+          return {
+            id: doc.id,
+            ...data,
+            questions: normalizeQuestions(rawQuestions, lang),
+            questionCount: typeof data.questionCount === 'number' ? data.questionCount : rawQuestions.length,
+          };
+        });
         setTests(prev => isLoadMore ? [...prev, ...fetchedData] : fetchedData);
       } else {
         setHasMore(false);
@@ -106,7 +123,7 @@ export default function LibraryPage() {
       setIsLoadingData(false);
       setIsLoadingMore(false);
     }
-  }, [user, filterStatus, lastDoc]);
+  }, [user, filterStatus, lastDoc, lang]);
 
   useEffect(() => {
     setLastDoc(null);

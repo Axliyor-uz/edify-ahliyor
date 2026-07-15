@@ -3,8 +3,14 @@
 export type Lang = 'uz' | 'ru' | 'en';
 
 export type DifficultyKey = 'easy' | 'medium' | 'hard';
-export type DifficultyId = 1 | 2 | 3;
 
+/** The full ladder is in types/question.ts (`DIFFICULTY_LEVELS`): beginner=0,
+ *  easy=1, medium=2, hard=3, olympiad=4, expert=5. The ids are NOT in difficulty
+ *  order — 1/2/3/4 were already burned into the bank and the indexes, so the two
+ *  new levels took the free slots. `questions1` only ever uses 1|2|3. */
+export type DifficultyId = 0 | 1 | 2 | 3 | 4 | 5;
+
+/** The three levels `questions1` / the exam sampler are keyed by. */
 export const DIFFICULTY_KEYS: DifficultyKey[] = ['easy', 'medium', 'hard'];
 export const DIFFICULTY_IDS: Record<DifficultyKey, DifficultyId> = { easy: 1, medium: 2, hard: 3 };
 

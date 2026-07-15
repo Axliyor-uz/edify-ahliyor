@@ -15,6 +15,7 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 |---|---|
 | Auth, signup/login, roles, layout guards, SSO, rules helpers | [docs/AUTH.md](docs/AUTH.md) |
 | Any Firestore collection/field/index | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) |
+| Creating/storing/rendering/grading a **question** (v1 schema, normalizer, banks) | [docs/QUESTIONS.md](docs/QUESTIONS.md) |
 | `app/(student)/*` — runners, XP/leaderboards, games, library, social | [docs/STUDENT.md](docs/STUDENT.md) |
 | `app/teacher/*` — test creation, classes, grading, analytics, subscription | [docs/TEACHER.md](docs/TEACHER.md) |
 | AI routes, credit limits, `lib/ai/*`, `/api/analyze`, TTS | [docs/AI.md](docs/AI.md) |
