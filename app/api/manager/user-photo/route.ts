@@ -13,9 +13,8 @@ const MAX_BYTES = 3 * 1024 * 1024;
 /**
  * The manager may only touch photos of users in THEIR center:
  *  - teacher → center_teachers/{uid} link (doc ID = teacher uid)
- *  - student → enrolled in a class taught by one of the center's teachers
- *    (classes carry no centerId; membership is derived via center_teachers,
- *    same as useCenterClasses does on the client)
+ *  - student → enrolled in a class of the center (classes.centerId — the
+ *    membership anchor since 2026-07-15, same as useCenterClasses)
  */
 async function assertTargetInCenter(targetUid: string, centerId: string): Promise<void> {
   const targetSnap = await adminDb.collection('users').doc(targetUid).get();
@@ -31,15 +30,9 @@ async function assertTargetInCenter(targetUid: string, centerId: string): Promis
     const classSnap = await adminDb
       .collection('classes')
       .where('studentIds', 'array-contains', targetUid)
-      .select('teacherId')
+      .select('centerId')
       .get();
-    const teacherIds = [...new Set(classSnap.docs.map((d) => d.get('teacherId')).filter(Boolean))] as string[];
-    if (teacherIds.length > 0) {
-      const ctSnaps = await adminDb.getAll(
-        ...teacherIds.map((id) => adminDb.collection('center_teachers').doc(id))
-      );
-      if (ctSnaps.some((s) => s.exists && s.get('centerId') === centerId)) return;
-    }
+    if (classSnap.docs.some((d) => d.get('centerId') === centerId)) return;
   }
 
   throw new ManagerApiError('Bu foydalanuvchi sizning markazingizga tegishli emas.', 403);

@@ -17,10 +17,11 @@ import {
     Users, FileText, Layout, BarChart2, Sparkles,
     School, ImageIcon, Bot, Library, Calendar, ChevronRight,
     ClipboardList, Settings, Crown, ArrowRight, Zap, Target, BookOpen,
-    Award, GraduationCap, Calculator, PenTool, Gift, HelpCircle,
+    Award, GraduationCap, Calculator, PenTool, Gift, HelpCircle, Building2,
 } from 'lucide-react';
 import { useTeacherLanguage, LangType } from '@/app/teacher/layout';
 import { useRouter } from 'next/navigation';
+import { useTeacherCenter } from '@/hooks/useTeacherCenter';
 
 import { Button, ProgressBar, Skeleton, cn } from '@/components/ui';
 
@@ -126,6 +127,7 @@ function TeacherDashboardInner() {
 
     // Auto-starts on first visit; exposes startTour() for the button
     const { startTour } = useDashboardTour(lang);
+    const teacherCenter = useTeacherCenter();
 
     const [greeting, setGreeting] = useState('');
     const [currentDate, setCurrentDate] = useState('');
@@ -206,6 +208,12 @@ function TeacherDashboardInner() {
                                 {greeting}, <span className="text-primary">{user?.displayName?.split(' ')[0] || "O'qituvchi"}</span>!
                             </h1>
                             <p className="text-[13px] text-on-surface-variant font-medium">{t.welcome.subtitle}</p>
+                            {teacherCenter.centerId && (
+                                <span className="mt-1.5 inline-flex items-center gap-1.5 self-start px-2.5 py-1 bg-tertiary-container rounded-m3-sm text-[11px] font-black text-on-tertiary-container max-w-[280px]">
+                                    <Building2 size={13} strokeWidth={2.5} className="shrink-0" />
+                                    <span className="truncate">{teacherCenter.centerName || 'Markaz'}</span>
+                                </span>
+                            )}
                         </div>
 
                         <div className="relative z-10 flex items-center gap-2.5">

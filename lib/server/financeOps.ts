@@ -155,8 +155,9 @@ export async function upsertSettings(centerId: string, patch: Record<string, unk
 }
 
 // ─── Center roster resolution ─────────────────────────────────────────────────
-// `classes` docs have no centerId (FINANCE.md iron rule #9): resolve via
-// center_teachers → classes(teacherId in …), same as the client useCenterClasses.
+// centerId-anchored membership (2026-07-15): a class belongs to the center iff
+// classes.centerId == centerId — same as the client useCenterClasses. A linked
+// teacher's personal groups are NOT the center's and must never be billed.
 
 export interface CenterClass {
   id: string;
@@ -168,29 +169,18 @@ export interface CenterClass {
 }
 
 export async function resolveCenterClasses(centerId: string): Promise<CenterClass[]> {
-  const ctSnap = await adminDb.collection('center_teachers').where('centerId', '==', centerId).get();
-  const teacherIds = [...new Set(ctSnap.docs.map((d) => (d.data().teacherId as string) || d.id))];
-  if (teacherIds.length === 0) return [];
-
-  const seen = new Set<string>();
-  const classes: CenterClass[] = [];
-  for (const part of chunk(teacherIds, 10)) {
-    const snap = await adminDb.collection('classes').where('teacherId', 'in', part).get();
-    for (const doc of snap.docs) {
-      if (seen.has(doc.id)) continue;
-      seen.add(doc.id);
-      const data = doc.data();
-      classes.push({
-        id: doc.id,
-        title: (data.title as string) || 'Guruh',
-        teacherId: data.teacherId,
-        studentIds: (data.studentIds as string[]) || [],
-        schedule: data.schedule,
-        monthlyFee: typeof data.monthlyFee === 'number' ? data.monthlyFee : undefined,
-      });
-    }
-  }
-  return classes;
+  const snap = await adminDb.collection('classes').where('centerId', '==', centerId).get();
+  return snap.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      title: (data.title as string) || 'Guruh',
+      teacherId: data.teacherId,
+      studentIds: (data.studentIds as string[]) || [],
+      schedule: data.schedule,
+      monthlyFee: typeof data.monthlyFee === 'number' ? data.monthlyFee : undefined,
+    };
+  });
 }
 
 async function fetchDisplayNames(uids: string[]): Promise<Map<string, string>> {

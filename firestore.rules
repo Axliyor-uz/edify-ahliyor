@@ -176,20 +176,50 @@ service cloud.firestore {
 
     // --- 5. CLASSES ---
     match /classes/{classId} {
-      allow read, create: if isAuth();
+      allow read: if isAuth();
 
-      // 🟢 YANGILANGAN RUXSATLAR (OPTION 2 MANTIG'I)
+      // 🟢 CENTER MEMBERSHIP IS NOW centerId-ANCHORED (2026-07-15).
+      // A class belongs to a center iff classes.centerId == that center — a
+      // linked teacher's personal / other groups NEVER enter the center.
+      // Stamping a centerId at create therefore requires belonging to that
+      // center (its active manager, or one of its linked teachers); a class
+      // without centerId ('' / missing) is a personal teacher class anyone
+      // may create (unchanged).
+      allow create: if isAuth() && (
+         request.resource.data.get('centerId', '') == '' ||
+         isActiveCenterManager(request.resource.data.centerId) ||
+         isTeacherOfCenter(request.resource.data.centerId)
+      );
+
+      // ⚠️ centerId is IMMUTABLE from the client on every update branch below —
+      // a teacher must not push their personal group into a center, and a
+      // manager must not move a group between centers. God mode / Admin SDK
+      // only. (The `get('centerId','') != ''` guards keep the empty-string
+      // legacy value from building an invalid /centers/ path.)
       allow update: if isAuth() && (
-         // 1. O'qituvchi o'z guruhini tahrirlayapti
-         resource.data.teacherId == request.auth.uid ||
-
-         // 2. Menejer o'ziga tegishli o'qituvchining guruhini tahrirlayapti
-         isTeacherInMyCenter(resource.data.teacherId) ||
-
-         // 3. Agar menejer o'qituvchini o'zgartirsa (A o'qituvchidan B o'qituvchiga), B o'qituvchi ham uning markazidan bo'lishi shart
+         // 1. O'qituvchi O'ZINING SHAXSIY guruhini tahrirlayapti. Markaz
+         //    guruhida (centerId != '') o'qituvchi guruh HUJJATIGA umuman
+         //    yoza olmaydi — ro'yxat (studentIds), nom, kod, qulf faqat
+         //    menejer tomonidan boshqariladi (2026-07-19). Subkolleksiyalar
+         //    (assignments/exams/materials) bunga kirmaydi.
          (
-           request.resource.data.diff(resource.data).affectedKeys().hasAny(['teacherId', 'teacherName']) &&
-           isTeacherInMyCenter(request.resource.data.teacherId)
+           resource.data.teacherId == request.auth.uid &&
+           resource.data.get('centerId', '') == '' &&
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['centerId'])
+         ) ||
+
+         // 2. Menejer O'Z MARKAZINING guruhini tahrirlayapti (centerId bo'yicha).
+         //    Agar o'qituvchi o'zgartirilsa (A → B), YANGI o'qituvchi shu
+         //    markazdan bo'lishi shart. O'qituvchi markazdan chiqarilgan bo'lsa
+         //    ham guruh markazniki bo'lib qoladi va menejer uni boshqara oladi.
+         (
+           resource.data.get('centerId', '') != '' &&
+           isActiveCenterManager(resource.data.centerId) &&
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['centerId']) &&
+           (
+             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['teacherId', 'teacherName']) ||
+             isTeacherInMyCenter(request.resource.data.teacherId)
+           )
          ) ||
 
          // 4. O'quvchi o'zini qo'shmoqda yoki chiqarmoqda (self-join / self-leave).
@@ -197,6 +227,10 @@ service cloud.firestore {
          //    shart `hasOnly(['studentIds'])` edi — ya'ni istalgan foydalanuvchi
          //    istalgan guruhga o'zgalarni qo'shishi YOKI butun ro'yxatni o'chirib
          //    tashlashi mumkin edi.
+         //    Markaz guruhiga (centerId != '') o'quvchi O'ZINI QO'SHA OLMAYDI —
+         //    faqat menejer yozadi. CHIQISH (self-leave) esa markaz guruhida ham
+         //    ruxsat etiladi: student settings'dagi akkauntni o'chirish oqimi
+         //    barcha guruhlardan arrayRemove qiladi va sinishi mumkin emas.
          (
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['studentIds']) &&
            request.resource.data.get('studentIds', []).toSet()
@@ -204,14 +238,26 @@ service cloud.firestore {
              .hasOnly([request.auth.uid]) &&
            resource.data.get('studentIds', []).toSet()
              .difference(request.resource.data.get('studentIds', []).toSet())
-             .hasOnly([request.auth.uid])
+             .hasOnly([request.auth.uid]) &&
+           (
+             resource.data.get('centerId', '') == '' ||
+             request.resource.data.get('studentIds', []).toSet()
+               .difference(resource.data.get('studentIds', []).toSet()).size() == 0
+           )
          )
       );
 
-      // Guruhni o'chirish: Yo o'qituvchining o'zi, yo uning menejeri
+      // Guruhni o'chirish: shaxsiy guruhni — o'qituvchining o'zi; markaz
+      // guruhini (centerId != '') — FAQAT menejer (o'qituvchi o'chira olmaydi).
       allow delete: if isAuth() && (
-         resource.data.teacherId == request.auth.uid ||
-         isTeacherInMyCenter(resource.data.teacherId)
+         (
+           resource.data.teacherId == request.auth.uid &&
+           resource.data.get('centerId', '') == ''
+         ) ||
+         (
+           resource.data.get('centerId', '') != '' &&
+           isActiveCenterManager(resource.data.centerId)
+         )
       );
 
       // 5a. ASSIGNMENTS
@@ -243,7 +289,11 @@ service cloud.firestore {
           get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid ||
           resource.data.studentId == request.auth.uid
         );
-        allow create: if isAuth();
+        // Markaz guruhiga (centerId != '') join-so'rov YARATIB BO'LMAYDI —
+        // ro'yxatga faqat menejer qo'shadi (JoinClassModal buni kod bilan
+        // topilgan sinf hujjatidan oldindan tekshirib, xabar ko'rsatadi).
+        allow create: if isAuth() &&
+          get(/databases/$(database)/documents/classes/$(classId)).data.get('centerId', '') == '';
         allow delete: if isAuth() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
       }
 
@@ -639,7 +689,22 @@ service cloud.firestore {
 
     // 🟢 YANGILANGAN: teacherId Document ID sifatida ishlatiladi!
     match /center_teachers/{teacherId} {
-      allow read: if isAuth() && (
+      // GET (single doc): the manager's add-teacher flow does a getDoc
+      // EXISTENCE CHECK before creating the link, so a missing doc must be
+      // readable (`resource == null`) — without it the whole add-teacher flow
+      // dies with permission-denied before the write is ever attempted.
+      // A denied get therefore means exactly "this teacher is linked to a
+      // center that isn't yours" — the teachers page maps that error to its
+      // "boshqa markazga biriktirilgan" message.
+      allow get: if isAuth() && (
+        resource == null ||
+        isCenterManager(resource.data.centerId) ||
+        teacherId == request.auth.uid
+      );
+
+      // LIST: every query filters `centerId ==` (useCenterClasses, teachers
+      // page), so isCenterManager runs ONE constant-path get() per query.
+      allow list: if isAuth() && (
         isCenterManager(resource.data.centerId) ||
         teacherId == request.auth.uid
       );
@@ -651,6 +716,54 @@ service cloud.firestore {
                     teacherId == request.resource.data.teacherId;
 
       allow update, delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
+    }
+
+    // 🟢 CENTER STUDENT ROSTER (2026-07-15). Doc id MUST be
+    // `${centerId}_${studentId}` (rules-enforced) — a student may belong to
+    // SEVERAL centers (unlike teachers), each center holding its own link.
+    // This is how a student can be in the center with no class yet. Created
+    // by: the manager (add-existing / lazy backfill), the create-student API
+    // (Admin SDK), and the group-enroll flow.
+    match /center_students/{linkId} {
+      // GET: the student themselves, center staff, or missing-doc probe.
+      allow get: if isAuth() && (
+        resource == null ||
+        resource.data.studentId == request.auth.uid ||
+        isCenterManager(resource.data.centerId) ||
+        isTeacherOfCenter(resource.data.centerId)
+      );
+      // LIST: manager queries filter `centerId ==`; a student's own "my
+      // centers" query filters `studentId ==` — both constant-path provable.
+      allow list: if isAuth() && (
+        isCenterManager(resource.data.centerId) ||
+        resource.data.studentId == request.auth.uid
+      );
+      allow create: if isAuth() &&
+        isActiveCenterManager(request.resource.data.centerId) &&
+        linkId == request.resource.data.centerId + '_' + request.resource.data.studentId;
+      allow update, delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
+    }
+
+    // 🟢 Manager-created STUDENT accounts: the manager-visible password.
+    // Doc id = student uid; exactly the center_teacher_credentials contract
+    // (API-only writes, owning-center manager reads, student can't read own).
+    match /center_student_credentials/{studentUid} {
+      allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+      allow list: if isAuth() && isCenterManager(resource.data.centerId);
+      allow write: if false;
+    }
+
+    // 🟢 Manager-created teacher accounts: the manager-visible password.
+    // Doc id = teacher uid. Written ONLY by /api/manager/teachers/* (Admin
+    // SDK); readable ONLY by the owning center's manager — not even the
+    // teacher themselves (they get the password from the manager). Same
+    // API-writes-only pattern as finance. `resource == null` on get so the
+    // info panel's read for a link-only teacher (no credentials doc) doesn't
+    // throw. See docs/MANAGER.md § "Manager-created teacher accounts".
+    match /center_teacher_credentials/{teacherUid} {
+      allow get: if isAuth() && (resource == null || isCenterManager(resource.data.centerId));
+      allow list: if isAuth() && isCenterManager(resource.data.centerId);
+      allow write: if false;
     }
 
     // ─── 🟢 FINANCE (docs/FINANCE_PLAN.md §6) ─────────────────────────────────

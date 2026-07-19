@@ -16,7 +16,7 @@ The student route tree `app/(student)/` (route group, no URL segment): dashboard
 
 ## Classes
 
-- **Join by code**: `JoinClassModal` — `classes where joinCode==` (6-char uppercased) → `addDoc(classes/{id}/requests, {studentId, studentName, studentUsername, photoURL, createdAt})`. ⚠️ The explore page uses a **different** request write: `setDoc(.../requests/{uid}, {..., status:'pending'})` (deterministic ID + `status` field). Teacher approval code must tolerate both shapes.
+- **Join by code**: `JoinClassModal` — `classes where joinCode==` (6-char uppercased) → `addDoc(classes/{id}/requests, {studentId, studentName, studentUsername, photoURL, createdAt})`. 🟢 **Center groups (`centerId != ''`) refuse the code** — the modal shows a "managed by the center" toast and the rules also deny the request create; only the manager enrolls ([MANAGER.md](MANAGER.md)). Self-LEAVE (own-uid `arrayRemove`, incl. account deletion) stays allowed on every class. ⚠️ The explore page uses a **different** request write: `setDoc(.../requests/{uid}, {..., status:'pending'})` (deterministic ID + `status` field). Teacher approval code must tolerate both shapes.
 - Class list: `classes where studentIds array-contains uid`. Leave = `arrayRemove` self.
 - **Assignments** (`AssignmentsTab`): reads `classes/{id}/assignments` (SWR `getDocs`, paged 10), client-filters `assignedTo`. `allowedAttempts ?? 1`; `0` = unlimited. Open/expired computed from the **device clock** (known weakness).
 - **Exams** (`ExamsTab`): live `onSnapshot` (inconsistent with assignments' SWR — intentional as-is).

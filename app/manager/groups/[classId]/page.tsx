@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter, notFound } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import { Users, Activity, Settings, ArrowLeft, DoorOpen, CalendarDays, Copy } from "lucide-react";
@@ -33,6 +33,8 @@ export interface ClassDocument {
   schedule?: ScheduleEntry[];
   /** Finance: integer so'm per month; missing/0 → group is not billed. */
   monthlyFee?: number;
+  /** Center membership anchor (2026-07-15). */
+  centerId?: string;
 }
 
 type TabKey = "roster" | "schedule" | "oversight" | "settings";
@@ -70,13 +72,11 @@ export default function GroupDetailPage() {
 
       const data = { id: classSnap.id, ...classSnap.data() } as ClassDocument;
 
-      const ctQuery = query(
-        collection(db, "center_teachers"),
-        where("centerId", "==", profile.centerId),
-        where("teacherId", "==", data.teacherId)
-      );
-      const ctSnap = await getDocs(ctQuery);
-      if (ctSnap.empty) throw new Error("Sizda bu guruhni ko'rish huquqi yo'q.");
+      // centerId-anchored membership (2026-07-15): the group must carry MY
+      // centerId — a linked teacher's personal groups are not the center's.
+      if (data.centerId !== profile.centerId) {
+        throw new Error("Sizda bu guruhni ko'rish huquqi yo'q.");
+      }
 
       setClassData(data);
     } catch (err: any) {

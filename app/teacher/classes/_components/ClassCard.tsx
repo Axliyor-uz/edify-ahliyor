@@ -1,15 +1,15 @@
 'use client';
 
-import { Users, Hash, ArrowRight, BookOpen } from 'lucide-react';
+import { Users, Hash, ArrowRight, BookOpen, Building2 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, Variants } from 'framer-motion';
 import { useTeacherLanguage } from '@/app/teacher/layout'; 
 
 // --- TRANSLATION DICTIONARY ---
 const CARD_TRANSLATIONS: Record<string, any> = {
-  uz: { noDesc: "Tavsif yo'q", students: "O'quvchi", manage: "Boshqarish" },
-  en: { noDesc: "No description", students: "Students", manage: "Manage Class" },
-  ru: { noDesc: "Нет описания", students: "Учеников", manage: "Управление" }
+  uz: { noDesc: "Tavsif yo'q", students: "O'quvchi", manage: "Boshqarish", centerGroup: "Markaz guruhi" },
+  en: { noDesc: "No description", students: "Students", manage: "Manage Class", centerGroup: "Center group" },
+  ru: { noDesc: "Нет описания", students: "Учеников", manage: "Управление", centerGroup: "Группа центра" }
 };
 
 // --- M3 three-tone rotation (no rainbow accents) ---
@@ -74,12 +74,15 @@ const cardVariants: Variants = {
 interface Props {
   cls: any;
   theme: string; // Passed from parent (e.g., 'primary', 'secondary', 'tertiary')
+  /** Resolved center name when cls.centerId is set (center groups show a badge instead of the join code). */
+  centerName?: string;
 }
 
-export default function ClassCard({ cls, theme }: Props) {
+export default function ClassCard({ cls, theme, centerName }: Props) {
   const { lang } = useTeacherLanguage();
   const t = CARD_TRANSLATIONS[lang] || CARD_TRANSLATIONS['uz'];
   const tone = TONE_STYLES[theme as Tone] ?? TONE_STYLES.primary;
+  const isCenterClass = !!cls.centerId;
 
   return (
     <motion.div variants={cardVariants} whileHover="hover" whileTap="tap" className="group bg-surface-container-low rounded-m3-xl border border-outline-variant p-5 md:p-6 shadow-elev-1 transition-all duration-300 relative overflow-hidden flex flex-col h-full hover:shadow-elev-3">
@@ -103,10 +106,18 @@ export default function ClassCard({ cls, theme }: Props) {
 
       {/* METRICS ROW: Badges */}
       <div className="flex flex-wrap items-center gap-2.5 mb-6 relative z-10">
-         <div className="flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1.5 bg-surface-container border border-outline-variant rounded-m3-sm group-hover:bg-surface-container-lowest transition-colors">
-            <Hash size={14} className="text-on-surface-variant"/>
-            <span className="font-mono text-[11px] md:text-[12px] font-black text-on-surface tracking-widest">{cls.joinCode}</span>
-         </div>
+         {isCenterClass ? (
+           // Markaz guruhi: kirish kodi yashirin (qo'shilish yopiq) — markaz badge'i.
+           <div className="flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1.5 bg-tertiary-container rounded-m3-sm transition-colors max-w-[170px]">
+              <Building2 size={14} className="text-on-tertiary-container shrink-0"/>
+              <span className="text-[11px] md:text-[12px] font-black text-on-tertiary-container truncate">{centerName || t.centerGroup}</span>
+           </div>
+         ) : (
+           <div className="flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1.5 bg-surface-container border border-outline-variant rounded-m3-sm group-hover:bg-surface-container-lowest transition-colors">
+              <Hash size={14} className="text-on-surface-variant"/>
+              <span className="font-mono text-[11px] md:text-[12px] font-black text-on-surface tracking-widest">{cls.joinCode}</span>
+           </div>
+         )}
 
          <div className="flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1.5 bg-surface-container-high border border-outline-variant rounded-m3-sm group-hover:bg-inverse-surface transition-colors group-hover:border-inverse-surface">
             <Users size={14} className="text-on-surface-variant group-hover:text-inverse-on-surface"/>

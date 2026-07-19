@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/firebase";
 import {
-  doc, getDoc, updateDoc, arrayUnion, collection, query, where, getDocs, limit, documentId,
+  doc, getDoc, updateDoc, arrayUnion, collection, query, where, getDocs, documentId,
+  setDoc, serverTimestamp,
 } from "firebase/firestore";
 import { X, Search, UserPlus, Loader2, ArrowRight, Users } from "lucide-react";
 import toast from "react-hot-toast";
@@ -165,6 +166,14 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
       const classRef = doc(db, "classes", classId);
       await updateDoc(classRef, { studentIds: arrayUnion(uid) });
 
+      // Center roster link (center_students is THE membership source — the
+      // students page lists from it). Merge-safe + best-effort.
+      setDoc(
+        doc(db, "center_students", `${centerId}_${uid}`),
+        { centerId, studentId: uid, studentName: displayName || "", source: "enrolled", addedAt: serverTimestamp() },
+        { merge: true },
+      ).catch(() => {});
+
       // Finance: stamp the join date (drives rolling billing cycles + first-month
       // proration). Best-effort — generation falls back to a full charge if missing.
       patchStudentFinanceApi(uid, { enrollmentDates: { [classId]: getTodayKey() } }).catch(() => {});
@@ -194,8 +203,8 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
             <UserPlus size={19} strokeWidth={2.5} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">O'quvchi qo'shish</h2>
-            <p className="text-xs text-slate-400 font-medium">Ro'yxatdan tanlang yoki qidiring</p>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">O&apos;quvchi qo&apos;shish</h2>
+            <p className="text-xs text-slate-400 font-medium">Ro&apos;yxatdan tanlang yoki qidiring</p>
           </div>
         </div>
         <button
@@ -250,7 +259,7 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
               className="h-10 px-4 bg-brand-600 hover:bg-brand-700 text-white text-[13px] font-bold rounded-full transition-all disabled:opacity-50 active:scale-95 flex items-center gap-1.5 shrink-0"
             >
               {addingUid === foundUser.uid ? <Loader2 className="animate-spin" size={16} /> : <UserPlus size={16} />}
-              Qo'shish
+              Qo&apos;shish
             </button>
           </div>
         )}
@@ -258,7 +267,7 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
         {/* Center students */}
         <div className="mt-5">
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <Users size={13} /> Markaz o'quvchilari
+            <Users size={13} /> Markaz o&apos;quvchilari
             {!loadingStudents && centerStudents.length > 0 && (
               <span className="text-slate-300 font-semibold normal-case tracking-normal">· {visibleCenterStudents.length}</span>
             )}
@@ -278,11 +287,11 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
             </div>
           ) : centerStudents.length === 0 ? (
             <p className="text-[13px] text-slate-400 py-4 text-center bg-slate-50 rounded-xl">
-              Boshqa guruhlarda qo'shilmagan o'quvchi yo'q. Yuqoridan qidirib qo'shing.
+              Boshqa guruhlarda qo&apos;shilmagan o&apos;quvchi yo&apos;q. Yuqoridan qidirib qo&apos;shing.
             </p>
           ) : visibleCenterStudents.length === 0 ? (
             <p className="text-[13px] text-slate-400 py-4 text-center bg-slate-50 rounded-xl">
-              Ro'yxatda topilmadi — aniq username/email bilan qidirib ko'ring.
+              Ro&apos;yxatda topilmadi — aniq username/email bilan qidirib ko&apos;ring.
             </p>
           ) : (
             <div className="max-h-[40dvh] overflow-y-auto overscroll-contain -mx-1 px-1 space-y-2">

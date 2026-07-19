@@ -1,6 +1,6 @@
 'use client';
 
-import { Lock, Trash2, Eye, EyeOff, AlertTriangle, Layout, BookOpen } from 'lucide-react';
+import { Lock, Trash2, Eye, EyeOff, AlertTriangle, Layout, BookOpen, Building2 } from 'lucide-react';
 
 import { Button, IconButton } from '@/components/ui';
 
@@ -36,7 +36,15 @@ export default function SecurityTab({
                                     <p className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mt-0.5">{cls.studentIds?.length || 0} {t.security.students}</p>
                                 </div>
                             </div>
-                            <IconButton aria-label="Sinfni o'chirish" onClick={() => setClassToDelete({ id: cls.id, title: cls.title })} className="hover:text-error hover:bg-error-container"><Trash2 size={18}/></IconButton>
+                            {cls.centerId ? (
+                                // Markaz guruhi: deleteClassAPI (Admin SDK, rules'ni chetlab o'tadi)
+                                // shu yerdan chaqirilmasligi shart — o'chirish menejerniki.
+                                <span title={t.security.centerManaged} className="w-9 h-9 flex items-center justify-center rounded-m3-sm bg-tertiary-container text-on-tertiary-container shrink-0">
+                                    <Building2 size={16} strokeWidth={2.5} />
+                                </span>
+                            ) : (
+                                <IconButton aria-label="Sinfni o'chirish" onClick={() => setClassToDelete({ id: cls.id, title: cls.title })} className="hover:text-error hover:bg-error-container"><Trash2 size={18}/></IconButton>
+                            )}
                         </div>
                     ))}
                 </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import { Users, Plus, BookOpen, Sparkles } from 'lucide-react';
 import { motion, Variants } from 'framer-motion';
@@ -35,6 +35,7 @@ export default function ClassesPage() {
   const t = CLASSES_TRANSLATIONS[lang] || CLASSES_TRANSLATIONS['uz'];
 
   const [classes, setClasses] = useState<any[]>([]);
+  const [centerNames, setCenterNames] = useState<Record<string, string>>({});
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -50,6 +51,25 @@ export default function ClassesPage() {
     });
     return () => unsubscribe();
   }, [user]);
+
+  // Markaz guruhlari uchun markaz nomlari (badge) — har bir distinct centerId
+  // bir marta o'qiladi (centers har qanday authed user uchun o'qiladi).
+  useEffect(() => {
+    const ids = Array.from(new Set(classes.map(c => c.centerId).filter(Boolean)))
+      .filter(id => !(id in centerNames));
+    if (ids.length === 0) return;
+    let mounted = true;
+    (async () => {
+      const entries = await Promise.all(ids.map(async (id) => {
+        try {
+          const snap = await getDoc(doc(db, 'centers', id));
+          return [id, snap.exists() ? (snap.data().name || '') : ''] as const;
+        } catch { return [id, ''] as const; }
+      }));
+      if (mounted) setCenterNames(prev => ({ ...prev, ...Object.fromEntries(entries) }));
+    })();
+    return () => { mounted = false; };
+  }, [classes, centerNames]);
 
   if (loading || isLoadingData) return <ClassesSkeleton />;
 
@@ -87,7 +107,7 @@ export default function ClassesPage() {
             {classes.map((cls, index) => {
               // Assign a color theme based on the index
               const themeColor = THEMES[index % THEMES.length];
-              return <ClassCard key={cls.id} cls={cls} theme={themeColor} />;
+              return <ClassCard key={cls.id} cls={cls} theme={themeColor} centerName={cls.centerId ? (centerNames[cls.centerId] || '') : ''} />;
             })}
           </motion.div>
         ) : (

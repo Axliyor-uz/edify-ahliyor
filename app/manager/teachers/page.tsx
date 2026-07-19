@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, Mail, User, Loader2, Phone, BadgeCheck, Layers, Users, BookOpen, ArrowRight } from "lucide-react";
-import { collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, onSnapshot, serverTimestamp, limit } from "firebase/firestore";
+import { Plus, Trash2, Mail, User, Loader2, Phone, BadgeCheck, Layers, Users, BookOpen, ArrowRight, UserPlus, Search, X } from "lucide-react";
+import { collection, query, where, getDoc, setDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
@@ -10,6 +10,7 @@ import { getContactOf, lookupByEmail } from "@/lib/directory";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import toast from "react-hot-toast";
 import ManagerTeacherInfoPanel from "./_components/ManagerTeacherInfoPanel";
+import CreateTeacherModal from "./_components/CreateTeacherModal";
 
 interface CenterTeacher {
   id?: string;
@@ -57,6 +58,8 @@ export default function TeachersPage() {
   const [centerId, setCenterId] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<CenterTeacher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isChooserOpen, setIsChooserOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Modal state
@@ -195,8 +198,18 @@ export default function TeachersPage() {
       
       // 3. Membership check (doc ID = teacher uid, so one center per teacher).
       // Never silently overwrite another center's membership.
+      // Rules allow this get only when the doc is missing or belongs to MY
+      // center — permission-denied here means "linked to another center".
       const ctDocRef = doc(db, "center_teachers", foundUserUid);
-      const existingMembership = await getDoc(ctDocRef);
+      let existingMembership;
+      try {
+        existingMembership = await getDoc(ctDocRef);
+      } catch (err: any) {
+        if (err?.code === "permission-denied") {
+          throw new Error("Bu o'qituvchi boshqa markazga biriktirilgan. Avval u markazdan chiqarilishi kerak.");
+        }
+        throw err;
+      }
 
       if (existingMembership.exists()) {
         if (existingMembership.data().centerId === centerId) {
@@ -250,9 +263,9 @@ export default function TeachersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-            O'qituvchilar
+            O&apos;qituvchilar
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">Markazdagi barcha o'qituvchilar</p>
+          <p className="text-sm text-slate-500 mt-0.5">Markazdagi barcha o&apos;qituvchilar</p>
         </div>
         <div className="flex items-center gap-2">
           {!loading && teachers.length > 0 && (
@@ -261,11 +274,11 @@ export default function TeachersPage() {
             </span>
           )}
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsChooserOpen(true)}
           className="flex items-center justify-center gap-2 pl-4 pr-5 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-full transition-all shadow-sm shadow-brand-600/25 active:scale-[0.98]"
         >
           <Plus size={18} strokeWidth={2.5} />
-          O'qituvchi qo'shish
+          O&apos;qituvchi qo&apos;shish
         </button>
         </div>
       </div>
@@ -390,6 +403,53 @@ export default function TeachersPage() {
         </div>
       )}
 
+      {/* Add-method chooser: create a new account vs link an existing one */}
+      {isChooserOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsChooserOpen(false)}></div>
+          <div className="relative bg-white w-full max-w-md rounded-[2rem] p-6 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-200">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight">O&apos;qituvchi qo&apos;shish</h2>
+              <button type="button" onClick={() => setIsChooserOpen(false)}
+                className="w-9 h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-full transition-colors">
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <button type="button"
+                onClick={() => { setIsChooserOpen(false); setIsCreateOpen(true); }}
+                className="w-full flex items-center gap-4 p-4 bg-brand-50/60 hover:bg-brand-50 border border-brand-100 rounded-2xl text-left transition-colors active:scale-[0.99]">
+                <div className="w-12 h-12 bg-brand-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm shadow-brand-600/25">
+                  <UserPlus size={22} strokeWidth={2.2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14.5px] font-bold text-slate-900">Yangi hisob yaratish</p>
+                  <p className="text-[12.5px] text-slate-500 mt-0.5">Login va parol bilan tayyor hisob tuziladi</p>
+                </div>
+                <ArrowRight size={18} className="text-brand-400 shrink-0" />
+              </button>
+              <button type="button"
+                onClick={() => { setIsChooserOpen(false); setIsModalOpen(true); }}
+                className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl text-left transition-colors active:scale-[0.99]">
+                <div className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-500 shrink-0">
+                  <Search size={22} strokeWidth={2.2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14.5px] font-bold text-slate-900">Mavjud hisobni qo&apos;shish</p>
+                  <p className="text-[12.5px] text-slate-500 mt-0.5">Ro&apos;yxatdan o&apos;tgan o&apos;qituvchini email orqali topish</p>
+                </div>
+                <ArrowRight size={18} className="text-slate-300 shrink-0" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create-account modal */}
+      {isCreateOpen && centerId && (
+        <CreateTeacherModal onClose={() => setIsCreateOpen(false)} />
+      )}
+
       {/* Add Teacher Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -401,15 +461,15 @@ export default function TeachersPage() {
                 <User size={24} strokeWidth={2.5} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight">O'qituvchi qo'shish</h2>
-                <p className="text-[13px] text-slate-500">Emailini kiriting — tizimdan topib qo'shamiz.</p>
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">O&apos;qituvchi qo&apos;shish</h2>
+                <p className="text-[13px] text-slate-500">Emailini kiriting — tizimdan topib qo&apos;shamiz.</p>
               </div>
             </div>
 
             <form onSubmit={handleAddTeacher} className="space-y-4">
               
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-[13px] font-bold text-slate-700 ml-1">O'qituvchi emaili</label>
+                <label htmlFor="email" className="text-[13px] font-bold text-slate-700 ml-1">O&apos;qituvchi emaili</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <Mail size={18} />
@@ -466,6 +526,7 @@ export default function TeachersPage() {
       {viewingTeacher && viewingTeacher.id && (
         <ManagerTeacherInfoPanel
           teacherUid={viewingTeacher.teacherId}
+          classes={classes.filter((c) => c.teacherId === viewingTeacher.teacherId)}
           onPhotoChange={(url) =>
             setProfiles((prev) => ({
               ...prev,
@@ -487,9 +548,9 @@ export default function TeachersPage() {
             <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mx-auto mb-4 border border-red-100">
               <Trash2 size={28} strokeWidth={2.5} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-2">O'chirishni tasdiqlang</h3>
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-2">O&apos;chirishni tasdiqlang</h3>
             <p className="text-sm text-slate-500 mb-8">
-              <span className="font-bold text-slate-800">{teacherToDelete.teacherName}</span> markazdan o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.
+              <span className="font-bold text-slate-800">{teacherToDelete.teacherName}</span> markazdan o&apos;chiriladi. Bu amalni ortga qaytarib bo&apos;lmaydi.
             </p>
             <div className="flex gap-3">
               <button 
@@ -507,7 +568,7 @@ export default function TeachersPage() {
                 {isDeleting ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    O'chirilmoqda...
+                    O&apos;chirilmoqda...
                   </>
                 ) : (
                   "O'chirish"

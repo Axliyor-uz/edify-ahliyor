@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, collection, query } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import {
   Users, UserPlus, Hash, ChevronLeft, Inbox,
   FileText, UploadCloud, FolderOpen,
-  Settings, Lock, Trophy, Plus, FileBadge, CalendarCheck
+  Settings, Lock, Trophy, Plus, FileBadge, CalendarCheck, Building2
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,18 +33,21 @@ import AttendanceTab from './_components/AttendanceTab';
 const DETAILS_TRANSLATIONS = {
   uz: {
     back: "Sinflarga", noDesc: "Tavsif berilmagan.", code: "Kod", studentsCount: "O'quvchi", locked: "Qulflangan",
+    centerGroup: "Markaz guruhi", centerManagedHint: "Bu guruh markaz tomonidan boshqariladi — o'quvchilarni menejer qo'shadi.",
     buttons: { add: "O'quvchi Qo'shish", assign: "Test Biriktirish", assignExam: "BSB/CHSB Biriktirish", upload: "Material Yuklash", settings: "Sozlamalar" },
     tabs: { students: "O'quvchilar", assignments: "Topshiriqlar", attendance: "Davomat", exams: "Imtihonlar", materials: "Materiallar", requests: "So'rovlar", leaderboard: "Reyting" },
     loading: "Sinf yuklanmoqda...", unknown: "Noma'lum Foydalanuvchi"
   },
   en: {
     back: "Classes", noDesc: "No description provided.", code: "Code", studentsCount: "Students", locked: "Locked",
+    centerGroup: "Center group", centerManagedHint: "This group is managed by the learning center — students are enrolled by the manager.",
     buttons: { add: "Add Student", assign: "Assign Test", assignExam: "Assign BSB/CHSB", upload: "Upload Material", settings: "Settings" },
     tabs: { students: "Students", assignments: "Assignments", attendance: "Attendance", exams: "Exams", requests: "Requests", materials: "Materials", leaderboard: "Leaderboard" },
     loading: "Loading Class...", unknown: "Unknown User"
   },
   ru: {
     back: "Классы", noDesc: "Описание отсутствует.", code: "Код", studentsCount: "Учеников", locked: "Закрыт",
+    centerGroup: "Группа центра", centerManagedHint: "Эта группа управляется учебным центром — учеников добавляет менеджер.",
     buttons: { add: "Добавить Ученика", assign: "Назначить Тест", assignExam: "Назначить БСБ/ЧСБ", upload: "Загрузить Материал", settings: "Настройки" },
     tabs: { students: "Ученики", assignments: "Задания", attendance: "Посещаемость", exams: "Экзамены", requests: "Запросы", materials: "Материалы", leaderboard: "Рейтинг" },
     loading: "Загрузка класса...", unknown: "Неизвестный пользователь"
@@ -62,7 +65,11 @@ export default function ClassDetailsPage() {
   const [classData, setClassData] = useState<any>(null);
   const [rosterData, setRosterData] = useState<any[]>([]);
   const [requestCount, setRequestCount] = useState(0);
-  const [centerId, setCenterId] = useState(""); // resolved from the teacher's center membership
+  const [centerName, setCenterName] = useState("");
+
+  // 🟢 Markaz guruhi (centerId != '') — roster/sozlamalar/kod menejer tomonidan
+  // boshqariladi; o'qituvchi uchun view-only (rules ham shuni majburlaydi).
+  const isCenterClass = !!classData?.centerId;
   
   const [activeTab, setActiveTab] = useState<TabType>('students');
   
@@ -85,30 +92,25 @@ export default function ClassDetailsPage() {
     return () => unsubscribe();
   }, [classId]);
 
+  // Join requests exist only on personal classes — center groups can't receive
+  // them (rules block the create), so skip the listener entirely.
   useEffect(() => {
-    if (!classId) return;
+    if (!classId || isCenterClass) { setRequestCount(0); return; }
     const q = query(collection(db, 'classes', classId, 'requests'));
     const unsubscribe = onSnapshot(q, (snapshot) => setRequestCount(snapshot.size));
     return () => unsubscribe();
-  }, [classId]);
+  }, [classId, isCenterClass]);
 
-  // Resolve the teacher's centerId (if they belong to a center) so attendance
-  // records carry the same centerId the manager view uses. Empty for standalone teachers.
+  // Center name for the header chip (centers are readable by any authed user).
   useEffect(() => {
-    if (!user) return;
+    const cId = classData?.centerId;
+    if (!cId) { setCenterName(""); return; }
     let mounted = true;
-    (async () => {
-      try {
-        const snap = await getDocs(
-          query(collection(db, 'center_teachers'), where('teacherId', '==', user.uid), limit(1))
-        );
-        if (mounted && !snap.empty) setCenterId(snap.docs[0].data().centerId || "");
-      } catch (err) {
-        console.error("centerId lookup error:", err);
-      }
-    })();
+    getDoc(doc(db, 'centers', cId))
+      .then(snap => { if (mounted) setCenterName(snap.exists() ? (snap.data().name || "") : ""); })
+      .catch(() => {});
     return () => { mounted = false; };
-  }, [user]);
+  }, [classData?.centerId]);
 
   useEffect(() => {
     const fetchRoster = async () => {
@@ -144,21 +146,23 @@ export default function ClassDetailsPage() {
     { id: 'students', label: t.tabs.students, icon: Users, badge: 0 },
     { id: 'assignments', label: t.tabs.assignments, icon: FileText, badge: 0 },
     { id: 'attendance', label: t.tabs.attendance, icon: CalendarCheck, badge: 0 },
-    { id: 'exams', label: t.tabs.exams, icon: FileBadge, badge: 0 }, 
+    { id: 'exams', label: t.tabs.exams, icon: FileBadge, badge: 0 },
     { id: 'materials', label: t.tabs.materials, icon: FolderOpen, badge: 0 },
-    { id: 'leaderboard', label: t.tabs.leaderboard, icon: Trophy, badge: 0 }, 
-    { id: 'requests', label: t.tabs.requests, icon: Inbox, badge: requestCount }
+    { id: 'leaderboard', label: t.tabs.leaderboard, icon: Trophy, badge: 0 },
+    // Center groups take no join requests — the tab disappears entirely.
+    ...(isCenterClass ? [] : [{ id: 'requests', label: t.tabs.requests, icon: Inbox, badge: requestCount }])
   ];
 
   return (
     <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container flex flex-col relative">
       
       {/* --- MODALS --- */}
-      <AddStudentModal classId={classId} isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      {/* Markaz guruhida qo'shish/sozlamalar menejerniki — modallar umuman mount qilinmaydi. */}
+      {!isCenterClass && <AddStudentModal classId={classId} isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />}
       <AssignTestModal classId={classId} isOpen={isAssignOpen} onClose={() => setIsAssignOpen(false)} roster={rosterData} editData={assignmentToEdit} />
       <AssignExamModal classId={classId} isOpen={isAssignExamOpen} onClose={() => setIsAssignExamOpen(false)} editData={examToEdit} />
       <UploadMaterialModal classId={classId} isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
-      <ClassSettingsModal classId={classId} classData={classData} isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} /> 
+      {!isCenterClass && <ClassSettingsModal classId={classId} classData={classData} isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
 
       {/* --- PLUS ACTION MENU OVERLAY --- */}
       <AnimatePresence>
@@ -189,12 +193,16 @@ export default function ClassDetailsPage() {
                 <span className="font-bold text-[13px]">{t.buttons.upload}</span>
               </button>
 
-              <div className="h-px bg-outline-variant my-1 mx-2"></div>
+              {!isCenterClass && (
+                <>
+                  <div className="h-px bg-outline-variant my-1 mx-2"></div>
 
-              <button onClick={() => { setIsAddOpen(true); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group">
-                <div className="w-8 h-8 rounded-m3-sm bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><UserPlus size={16} strokeWidth={2.5}/></div>
-                <span className="font-bold text-[13px]">{t.buttons.add}</span>
-              </button>
+                  <button onClick={() => { setIsAddOpen(true); setIsPlusMenuOpen(false); }} className="flex items-center gap-3 px-3 py-3 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group">
+                    <div className="w-8 h-8 rounded-m3-sm bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><UserPlus size={16} strokeWidth={2.5}/></div>
+                    <span className="font-bold text-[13px]">{t.buttons.add}</span>
+                  </button>
+                </>
+              )}
             </motion.div>
           </>
         )}
@@ -220,9 +228,18 @@ export default function ClassDetailsPage() {
                   <Lock size={10} strokeWidth={3}/> {t.locked}
                 </span>
               )}
-              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-surface-container-high border border-outline-variant rounded-m3-xs text-[9px] md:text-[10px] font-black text-on-surface-variant tracking-widest uppercase shadow-inner">
-                <Hash size={10} className="text-primary"/> {classData.joinCode}
-              </span>
+              {isCenterClass ? (
+                // Markaz guruhi: kirish kodi o'rniga markaz chipi (kod yashiriladi —
+                // o'quvchi qo'shilishi yopiq, faqat menejer qo'shadi).
+                <span title={t.centerManagedHint} className="flex items-center gap-1 px-1.5 py-0.5 bg-tertiary-container rounded-m3-xs text-[9px] md:text-[10px] font-black text-on-tertiary-container tracking-widest uppercase shadow-elev-1 max-w-[180px] md:max-w-[260px]">
+                  <Building2 size={10} strokeWidth={3} className="shrink-0"/>
+                  <span className="truncate">{centerName || t.centerGroup}</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-surface-container-high border border-outline-variant rounded-m3-xs text-[9px] md:text-[10px] font-black text-on-surface-variant tracking-widest uppercase shadow-inner">
+                  <Hash size={10} className="text-primary"/> {classData.joinCode}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -236,14 +253,16 @@ export default function ClassDetailsPage() {
           >
             <Plus strokeWidth={2.5} className={`transition-transform duration-300 ${isPlusMenuOpen ? 'rotate-45' : ''}`} />
           </IconButton>
-          <IconButton
-            onClick={() => setIsSettingsOpen(true)}
-            aria-label={t.buttons.settings}
-            title={t.buttons.settings}
-            className="shrink-0"
-          >
-            <Settings strokeWidth={2.5} />
-          </IconButton>
+          {!isCenterClass && (
+            <IconButton
+              onClick={() => setIsSettingsOpen(true)}
+              aria-label={t.buttons.settings}
+              title={t.buttons.settings}
+              className="shrink-0"
+            >
+              <Settings strokeWidth={2.5} />
+            </IconButton>
+          )}
         </div>
 
       </header>
@@ -298,12 +317,14 @@ export default function ClassDetailsPage() {
               transition={{ duration: 0.15 }}
               className="h-full"
             >
-              {activeTab === 'students' && <RosterTab classId={classId} studentIds={classData.studentIds || []} />}
+              {activeTab === 'students' && <RosterTab classId={classId} studentIds={classData.studentIds || []} readOnly={isCenterClass} readOnlyHint={isCenterClass ? t.centerManagedHint : undefined} />}
               {activeTab === 'assignments' && <AssignmentsTab classId={classId} roster={rosterData} totalRosterSize={classData.studentIds?.length || 0} onEdit={handleEditAssignment} onAdd={handleCreateAssignment} />}
               {activeTab === 'attendance' && (
                 <AttendanceTab
                   classId={classId}
-                  centerId={centerId}
+                  // Davomat yozuvi guruhning O'Z centerId'sini oladi: markaz guruhi →
+                  // menejer hisobotlariga tushadi; shaxsiy guruh → '' (markazga oqmaydi).
+                  centerId={classData.centerId || ''}
                   studentIds={classData.studentIds || []}
                   recordedBy={user?.uid || ''}
                   schedule={classData.schedule || []}

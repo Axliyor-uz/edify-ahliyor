@@ -465,14 +465,28 @@ describe("PHASE 2 — class roster vandalism", () => {
     );
   });
 
-  it("allows the center manager to manage their teacher's class roster", async () => {
+  it("allows the center manager to manage a CENTER group's roster (centerId-anchored)", async () => {
+    // Membership is classes.centerId (2026-07-15) — a linked teacher's
+    // personal class1 (no centerId) is deliberately NOT manageable.
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), "center_teachers/teacher1"), {
         centerId: "centerA",
         teacherId: "teacher1",
       });
+      await setDoc(doc(ctx.firestore(), "classes/centerClass"), {
+        teacherId: "teacher1",
+        title: "Center Group",
+        studentIds: ["student1"],
+        centerId: "centerA",
+      });
     });
     await assertSucceeds(
+      updateDoc(doc(as("manager1"), "classes/centerClass"), {
+        studentIds: ["student1", "attacker"],
+      }),
+    );
+    // The same teacher's personal class stays out of the manager's reach.
+    await assertFails(
       updateDoc(doc(as("manager1"), "classes/class1"), {
         studentIds: ["student1", "attacker"],
       }),

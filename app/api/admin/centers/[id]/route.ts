@@ -22,11 +22,45 @@ async function deleteByQuery(query: FirebaseFirestore.Query): Promise<number> {
   return total;
 }
 
+/** Fully remove one user: optionally their remaining classes (recursive), the
+ *  users doc (recursive — takes private/contact with it), username reservation,
+ *  and the Auth user. */
+async function deleteUserAccount(uid: string, includeClasses: boolean): Promise<void> {
+  if (includeClasses) {
+    const classSnap = await adminDb.collection('classes').where('teacherId', '==', uid).get();
+    for (const c of classSnap.docs) {
+      await adminDb.recursiveDelete(c.ref);
+    }
+  }
+  const userRef = adminDb.collection('users').doc(uid);
+  const userSnap = await userRef.get();
+  if (userSnap.exists) {
+    const username = userSnap.data()!.username;
+    if (username) {
+      await adminDb.collection('usernames').doc(String(username).toLowerCase()).delete().catch(() => {});
+    }
+    await adminDb.recursiveDelete(userRef);
+  }
+  await adminAuth.deleteUser(uid).catch((err: any) => {
+    if (err?.code !== 'auth/user-not-found') throw err;
+  });
+}
+
 /**
- * DELETE /api/admin/centers/[id] — cascade-delete a center.
- * Body: { deleteManagerAccount?: boolean, deleteClasses?: boolean }
- * Only manager-created groups (classes.centerId == center) are ever deleted;
- * teachers' personal classes and teacher accounts are never touched.
+ * DELETE /api/admin/centers/[id] — cascade-delete a center and EVERYTHING it
+ * owns (docs/ADMIN.md): attendance (student/staff/summaries), face
+ * enrollments, rooms, CRM leads, all six finance collections, center groups
+ * (classes.centerId — the membership anchor), teacher credentials + links,
+ * optionally the center-created teacher accounts and the manager account.
+ *
+ * Body: { deleteManagerAccount?: boolean, deleteClasses?: boolean,
+ *         deleteCreatedTeacherAccounts?: boolean }   (all default true)
+ *
+ * Linked SELF-SIGNUP teachers and their personal classes are never touched —
+ * only accounts the center itself provisioned (accountType 'center-managed')
+ * are deletable, because without their center they are unrecoverable (synthetic
+ * email, manager-held password). Idempotent: center doc goes last, so a re-run
+ * after a partial failure resumes cleanly.
  */
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -43,25 +77,32 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const body = await request.json().catch(() => ({}));
     const deleteManagerAccount = body?.deleteManagerAccount !== false; // default true
     const deleteClasses = body?.deleteClasses !== false; // default true
+    const deleteCreatedTeacherAccounts = body?.deleteCreatedTeacherAccounts !== false; // default true
 
     const deletedCounts: Record<string, number> = {};
+    const byCenter = (coll: string) => adminDb.collection(coll).where('centerId', '==', centerId);
 
-    // 1. Student attendance history (all day docs carry centerId).
-    deletedCounts['attendance days'] = await deleteByQuery(
-      adminDb.collection('center_attendance').where('centerId', '==', centerId)
-    );
+    // 1. Attendance: student day docs, staff day docs, monthly rollups.
+    deletedCounts['attendance days'] = await deleteByQuery(byCenter('center_attendance'));
+    deletedCounts['staff attendance days'] = await deleteByQuery(byCenter('center_staff_attendance'));
+    deletedCounts['attendance summaries'] = await deleteByQuery(byCenter('center_attendance_summary'));
 
-    // 2. Staff attendance history.
-    deletedCounts['staff attendance days'] = await deleteByQuery(
-      adminDb.collection('center_staff_attendance').where('centerId', '==', centerId)
-    );
+    // 2. Face enrollments (biometric data — must not outlive the center).
+    deletedCounts['face enrollments'] = await deleteByQuery(byCenter('face_enrollments'));
 
-    // 3. Rooms.
-    deletedCounts['rooms'] = await deleteByQuery(
-      adminDb.collection('rooms').where('centerId', '==', centerId)
-    );
+    // 3. Rooms + CRM leads.
+    deletedCounts['rooms'] = await deleteByQuery(byCenter('rooms'));
+    deletedCounts['crm leads'] = await deleteByQuery(byCenter('crm_leads'));
 
-    // 4. Manager-created groups (classes stamped with this centerId).
+    // 4. Finance — all six collections (append-only in life, deletable only here).
+    deletedCounts['finance profiles'] = await deleteByQuery(byCenter('center_student_finance'));
+    deletedCounts['charges'] = await deleteByQuery(byCenter('center_charges'));
+    deletedCounts['payments'] = await deleteByQuery(byCenter('center_payments'));
+    deletedCounts['expenses'] = await deleteByQuery(byCenter('center_expenses'));
+    deletedCounts['payouts'] = await deleteByQuery(byCenter('center_payouts'));
+    await adminDb.collection('center_finance_settings').doc(centerId).delete().catch(() => {});
+
+    // 5. Center groups (classes.centerId == center — the membership anchor).
     const classesSnap = await adminDb.collection('classes').where('centerId', '==', centerId).get();
     if (deleteClasses) {
       // recursiveDelete removes the class doc together with its subcollections
@@ -77,29 +118,37 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       deletedCounts['groups detached'] = classesSnap.size;
     }
 
-    // 5. Teacher links.
-    deletedCounts['teacher links'] = await deleteByQuery(
-      adminDb.collection('center_teachers').where('centerId', '==', centerId)
-    );
-
-    // 6. Manager account (optional).
-    if (deleteManagerAccount && center.ownerUid) {
-      const ownerRef = adminDb.collection('users').doc(center.ownerUid);
-      const ownerSnap = await ownerRef.get();
-      if (ownerSnap.exists) {
-        const username = ownerSnap.data()!.username;
-        if (username) {
-          await adminDb.collection('usernames').doc(String(username).toLowerCase()).delete().catch(() => {});
-        }
-        await ownerRef.delete();
+    // 6. Center-created teacher accounts (accountType 'center-managed').
+    // Unrecoverable without the center (synthetic email, manager-held
+    // password), so default is delete. Self-signup teachers are NEVER touched.
+    if (deleteCreatedTeacherAccounts) {
+      const createdSnap = await adminDb
+        .collection('users')
+        .where('accountType', '==', 'center-managed')
+        .where('centerId', '==', centerId)
+        .get();
+      for (const u of createdSnap.docs) {
+        if (u.id === center.ownerUid) continue; // manager handled below
+        // Their groups follow the deleteClasses choice (kept groups keep a
+        // dead teacherId — reassignable by whoever adopts them).
+        await deleteUserAccount(u.id, deleteClasses);
       }
-      await adminAuth.deleteUser(center.ownerUid).catch((err: any) => {
-        if (err?.code !== 'auth/user-not-found') throw err;
-      });
+      deletedCounts['created teacher accounts'] = createdSnap.size;
+    }
+
+    // 7. Teacher credentials + links (credentials of created accounts AND any
+    // leftovers; links of every teacher, created or self-signup).
+    deletedCounts['teacher credentials'] = await deleteByQuery(byCenter('center_teacher_credentials'));
+    deletedCounts['teacher links'] = await deleteByQuery(byCenter('center_teachers'));
+
+    // 8. Manager account (optional). recursiveDelete takes private/contact too.
+    // Classes they might personally teach are left alone (historic behavior).
+    if (deleteManagerAccount && center.ownerUid) {
+      await deleteUserAccount(center.ownerUid, false);
       deletedCounts['manager account'] = 1;
     }
 
-    // 7. The center doc itself, last — a re-run after partial failure still finds it.
+    // 9. The center doc itself, last — a re-run after partial failure still finds it.
     await centerRef.delete();
 
     return NextResponse.json({ ok: true, deletedCounts });

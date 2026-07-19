@@ -12,15 +12,15 @@ import { motion } from 'framer-motion';
 const JOIN_TRANSLATIONS: any = {
   uz: {
     title: "Sinfga Qo'shilish", subtitle: "O'qituvchingizdan olingan 6 xonali kodni kiriting.", placeholder: "M: A1B2C3", btnSend: "So'rov Yuborish", successTitle: "So'rov Yuborildi!", successDesc: "O'qituvchi tasdiqlashini kuting.",
-    toasts: { invalid: "Noto'g'ri Sinf Kodi", joined: "Siz allaqachon bu sinfdasiz!", pending: "So'rov allaqachon yuborilgan.", success: "So'rov muvaffaqiyatli yuborildi!", error: "Xatolik yuz berdi" }
+    toasts: { invalid: "Noto'g'ri Sinf Kodi", joined: "Siz allaqachon bu sinfdasiz!", pending: "So'rov allaqachon yuborilgan.", success: "So'rov muvaffaqiyatli yuborildi!", error: "Xatolik yuz berdi", centerManaged: "Bu guruh o'quv markazi tomonidan boshqariladi. Qo'shilish uchun markaz menejeriga murojaat qiling." }
   },
   en: {
     title: "Join a Class", subtitle: "Enter the 6-character code from your teacher.", placeholder: "Ex: A1B2C3", btnSend: "Send Request", successTitle: "Request Sent!", successDesc: "Please wait for teacher approval.",
-    toasts: { invalid: "Invalid Class Code", joined: "You are already in this class!", pending: "Request already pending.", success: "Request sent successfully!", error: "Something went wrong" }
+    toasts: { invalid: "Invalid Class Code", joined: "You are already in this class!", pending: "Request already pending.", success: "Request sent successfully!", error: "Something went wrong", centerManaged: "This group is managed by a learning center. Ask the center's manager to enroll you." }
   },
   ru: {
     title: "Вступить в Класс", subtitle: "Введите 6-значный код от учителя.", placeholder: "Напр: A1B2C3", btnSend: "Отправить Запрос", successTitle: "Запрос Отправлен!", successDesc: "Пожалуйста, ожидайте подтверждения учителя.",
-    toasts: { invalid: "Неверный код класса", joined: "Вы уже в этом классе!", pending: "Запрос уже отправлен.", success: "Запрос успешно отправлен!", error: "Что-то пошло не так" }
+    toasts: { invalid: "Неверный код класса", joined: "Вы уже в этом классе!", pending: "Запрос уже отправлен.", success: "Запрос успешно отправлен!", error: "Что-то пошло не так", centerManaged: "Эта группа управляется учебным центром. Для зачисления обратитесь к менеджеру центра." }
   }
 };
 
@@ -58,6 +58,13 @@ export default function JoinClassModal({ isOpen, onClose, lang }: Props) {
       const classDoc = snapshot.docs[0];
       const classId = classDoc.id;
       const classData = classDoc.data();
+
+      // 2a. Markaz guruhiga kod bilan qo'shilib bo'lmaydi — faqat menejer
+      // qo'shadi (rules ham so'rov yaratishni rad etadi).
+      if (classData.centerId) {
+        toast.error(t.toasts.centerManaged, { duration: 5000 });
+        setLoading(false); return;
+      }
 
       // 2. Check if already joined
       if (classData.studentIds?.includes(user.uid)) {

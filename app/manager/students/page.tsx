@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import { collection, query, where, getDocs, documentId } from "firebase/firestore";
+import { collection, query, where, getDocs, documentId, onSnapshot, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import { fetchCenterSessions } from "@/services/attendanceService";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import { getTodayKey, parseDateKey } from "@/lib/dateUtils";
-import { Users, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight } from "lucide-react";
+import { Users, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight, Plus, UserPlus, Search, X, ArrowRight } from "lucide-react";
 import ManagerStudentInfoPanel from "./_components/ManagerStudentInfoPanel";
+import CreateStudentModal from "./_components/CreateStudentModal";
+import AddExistingStudentModal from "./_components/AddExistingStudentModal";
 import SearchInput from "../_components/SearchInput";
 import FilterSelect from "../_components/FilterSelect";
 
@@ -64,7 +66,22 @@ export default function ManagerStudentsPage() {
     getUserProfile(user.uid).then((p) => { if (p?.centerId) setCenterId(p.centerId); });
   }, [user]);
 
-  const { classes, isLoading: loadingClasses } = useCenterClasses(centerId);
+  const { classes, isLoading: loadingClasses, refetch } = useCenterClasses(centerId);
+
+  // 🟢 Center roster links (center_students) — THE membership source. A linked
+  // student appears even with zero groups; live so create/link flows show
+  // up instantly.
+  const [links, setLinks] = useState<{ studentId: string; studentName?: string }[] | null>(null);
+  useEffect(() => {
+    if (!centerId) return;
+    const q = query(collection(db, "center_students"), where("centerId", "==", centerId));
+    const unsub = onSnapshot(
+      q,
+      (snap) => setLinks(snap.docs.map((d) => ({ studentId: d.data().studentId, studentName: d.data().studentName }))),
+      (err) => { console.error("center_students error:", err); setLinks([]); },
+    );
+    return () => unsub();
+  }, [centerId]);
 
   const [profiles, setProfiles] = useState<Record<string, { displayName: string; username?: string; photoURL?: string }>>({});
   // todaySessions[classId][studentId] = status
@@ -75,10 +92,11 @@ export default function ManagerStudentsPage() {
   const today = useMemo(() => getTodayKey(), []);
   const todayWeekday = useMemo(() => parseDateKey(getTodayKey()).getDay(), []);
 
-  // Fetch student profiles + today's attendance sessions once classes are known.
+  // Fetch student profiles + today's attendance sessions once classes + links are known.
   useEffect(() => {
-    if (loadingClasses) return;
-    if (classes.length === 0 || !centerId) {
+    if (loadingClasses || links === null) return;
+    const linkIds = links.map((l) => l.studentId);
+    if ((classes.length === 0 && linkIds.length === 0) || !centerId) {
       setProfiles({});
       setTodaySessions({});
       setLoadingExtra(false);
@@ -92,7 +110,7 @@ export default function ManagerStudentsPage() {
       // try/catch so an attendance failure can never blank the student list.
       const profileMap: Record<string, { displayName: string; username?: string; photoURL?: string }> = {};
       try {
-        const ids = [...new Set(classes.flatMap((c) => c.studentIds || []))];
+        const ids = [...new Set([...classes.flatMap((c) => c.studentIds || []), ...linkIds])];
         await Promise.all(
           chunk(ids, 10).map(async (part) => {
             if (part.length === 0) return;
@@ -132,18 +150,50 @@ export default function ManagerStudentsPage() {
       if (mounted) setLoadingExtra(false);
     })();
     return () => { mounted = false; };
-  }, [classes, loadingClasses, centerId, today]);
+  }, [classes, loadingClasses, centerId, today, links]);
 
-  // Build one row per student (A→Z), aggregating their groups + today's status.
+  // Lazy backfill: class-enrolled students who predate center_students get a
+  // link doc once (idempotent, fire-and-forget) so the roster converges to
+  // center_students as THE membership source.
+  const backfilled = useRef(new Set<string>());
+  useEffect(() => {
+    if (!centerId || links === null) return;
+    const linked = new Set(links.map((l) => l.studentId));
+    for (const sid of new Set(classes.flatMap((c) => c.studentIds || []))) {
+      if (linked.has(sid) || backfilled.current.has(sid)) continue;
+      backfilled.current.add(sid);
+      setDoc(doc(db, "center_students", `${centerId}_${sid}`), {
+        centerId,
+        studentId: sid,
+        studentName: profiles[sid]?.displayName || "",
+        source: "enrolled",
+        addedAt: serverTimestamp(),
+      }).catch(() => {});
+    }
+  }, [centerId, links, classes, profiles]);
+
+  // Build one row per student (A→Z): roster links first (class-free students
+  // included), then class rosters merged on top.
   const rows = useMemo<StudentRow[]>(() => {
     const byStudent = new Map<string, StudentRow>();
 
+    for (const l of links || []) {
+      const prof = profiles[l.studentId];
+      byStudent.set(l.studentId, {
+        id: l.studentId,
+        displayName: prof?.displayName || l.studentName || "Noma'lum",
+        username: prof?.username,
+        photoURL: prof?.photoURL,
+        groups: [], scheduleDays: [], uniformTime: null, todayStatus: "nolesson",
+      });
+    }
+
     for (const c of classes) {
       for (const sid of c.studentIds || []) {
-        const prof = profiles[sid];
-        if (!prof) continue;
         let row = byStudent.get(sid);
         if (!row) {
+          const prof = profiles[sid];
+          if (!prof) continue;
           row = { id: sid, displayName: prof.displayName, username: prof.username, photoURL: prof.photoURL, groups: [], scheduleDays: [], uniformTime: null, todayStatus: "nolesson" };
           byStudent.set(sid, row);
         }
@@ -183,10 +233,13 @@ export default function ManagerStudentsPage() {
     }
 
     return [...byStudent.values()].sort((a, b) => a.displayName.localeCompare(b.displayName, "uz", { sensitivity: "base" }));
-  }, [classes, profiles, todaySessions, todayWeekday]);
+  }, [classes, profiles, todaySessions, todayWeekday, links]);
 
-  // Student info slide-over ("dialog card" — same pattern as the teachers page).
+  // Student info dialog + add flows.
   const [viewingStudent, setViewingStudent] = useState<StudentRow | null>(null);
+  const [isChooserOpen, setIsChooserOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isLinkOpen, setIsLinkOpen] = useState(false);
 
   // ── Filters ──
   const [search, setSearch] = useState("");
@@ -224,8 +277,17 @@ export default function ManagerStudentsPage() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">O&apos;quvchilar</h1>
           <p className="text-sm text-slate-500 mt-0.5">Markazdagi barcha o&apos;quvchilar, guruhlari va bugungi davomat</p>
         </div>
-        <div className="capitalize text-[13px] font-medium text-slate-500">
-          {WEEKDAY_FULL[todayWeekday]}, {new Date().getDate()}-kun
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:block capitalize text-[13px] font-medium text-slate-500">
+            {WEEKDAY_FULL[todayWeekday]}, {new Date().getDate()}-kun
+          </span>
+          <button
+            onClick={() => setIsChooserOpen(true)}
+            className="flex items-center justify-center gap-2 pl-4 pr-5 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-full transition-all shadow-sm shadow-brand-600/25 active:scale-[0.98]"
+          >
+            <Plus size={18} strokeWidth={2.5} />
+            O&apos;quvchi qo&apos;shish
+          </button>
         </div>
       </div>
 
@@ -270,7 +332,7 @@ export default function ManagerStudentsPage() {
         {loading ? (
           <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-slate-400" size={28} /></div>
         ) : rows.length === 0 ? (
-          <EmptyState title="O'quvchilar yo'q" subtitle="Markaz guruhlariga hali o'quvchi qo'shilmagan." />
+          <EmptyState title="O'quvchilar yo'q" subtitle="«O'quvchi qo'shish» tugmasi orqali yangi hisob yarating yoki mavjudini qo'shing." />
         ) : filtered.length === 0 ? (
           <EmptyState title="Topilmadi" subtitle="Qidiruv yoki filtrlarga mos o'quvchi yo'q." />
         ) : (
@@ -317,6 +379,11 @@ export default function ManagerStudentsPage() {
                       {/* Groups */}
                       <td className="py-2.5 px-2">
                         <div className="flex flex-wrap items-center gap-1">
+                          {r.groups.length === 0 && (
+                            <span className="px-2.5 py-1 bg-slate-100 text-slate-400 rounded-full text-[11px] font-bold">
+                              Guruhsiz
+                            </span>
+                          )}
                           {r.groups.slice(0, 2).map((g) => (
                             <Link
                               key={g.id}
@@ -381,13 +448,70 @@ export default function ManagerStudentsPage() {
         )}
       </div>
 
-      {/* Student Info Slide-Over */}
+      {/* Add-method chooser: create a new account vs link an existing one */}
+      {isChooserOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsChooserOpen(false)}></div>
+          <div className="relative bg-white w-full max-w-md rounded-[2rem] p-6 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-200">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight">O&apos;quvchi qo&apos;shish</h2>
+              <button type="button" onClick={() => setIsChooserOpen(false)}
+                className="w-9 h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-full transition-colors">
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <button type="button"
+                onClick={() => { setIsChooserOpen(false); setIsCreateOpen(true); }}
+                className="w-full flex items-center gap-4 p-4 bg-brand-50/60 hover:bg-brand-50 border border-brand-100 rounded-2xl text-left transition-colors active:scale-[0.99]">
+                <div className="w-12 h-12 bg-brand-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm shadow-brand-600/25">
+                  <UserPlus size={22} strokeWidth={2.2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14.5px] font-bold text-slate-900">Yangi hisob yaratish</p>
+                  <p className="text-[12.5px] text-slate-500 mt-0.5">Login va parol bilan tayyor hisob tuziladi</p>
+                </div>
+                <ArrowRight size={18} className="text-brand-400 shrink-0" />
+              </button>
+              <button type="button"
+                onClick={() => { setIsChooserOpen(false); setIsLinkOpen(true); }}
+                className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl text-left transition-colors active:scale-[0.99]">
+                <div className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-500 shrink-0">
+                  <Search size={22} strokeWidth={2.2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14.5px] font-bold text-slate-900">Mavjud hisobni qo&apos;shish</p>
+                  <p className="text-[12.5px] text-slate-500 mt-0.5">Email yoki @username orqali topish — guruhsiz ham</p>
+                </div>
+                <ArrowRight size={18} className="text-slate-300 shrink-0" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCreateOpen && (
+        <CreateStudentModal
+          classes={classes}
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={refetch}
+        />
+      )}
+
+      {isLinkOpen && centerId && (
+        <AddExistingStudentModal
+          centerId={centerId}
+          onClose={() => setIsLinkOpen(false)}
+        />
+      )}
+
+      {/* Student Info Dialog */}
       {viewingStudent && (
         <ManagerStudentInfoPanel
           studentUid={viewingStudent.id}
           fallbackName={viewingStudent.displayName}
           centerId={centerId}
-          groups={viewingStudent.groups}
+          classes={classes.filter((c) => (c.studentIds || []).includes(viewingStudent.id))}
           todayBadge={STATUS_UI[viewingStudent.todayStatus]}
           onPhotoChange={(url) =>
             setProfiles((prev) => ({
@@ -395,6 +519,7 @@ export default function ManagerStudentsPage() {
               [viewingStudent.id]: { ...prev[viewingStudent.id], photoURL: url || undefined },
             }))
           }
+          onRemoved={refetch}
           onClose={() => setViewingStudent(null)}
         />
       )}

@@ -85,20 +85,17 @@ export async function canReadContact(caller: Caller, targetUid: string): Promise
     .collection('classes')
     .where('studentIds', 'array-contains', targetUid)
     .get();
-  const teacherIds = enrolledSnap.docs.map((d) => d.data().teacherId as string);
 
   if (caller.role === 'teacher') {
-    return teacherIds.includes(caller.uid);
+    return enrolledSnap.docs.some((d) => d.data().teacherId === caller.uid);
   }
 
   if (caller.ownedCenterId) {
     // A teacher of my center?
     if (await isTeacherOfCenter(targetUid, caller.ownedCenterId)) return true;
-    // A student of one of my center's teachers?
-    const checks = await Promise.all(
-      [...new Set(teacherIds)].map((tid) => isTeacherOfCenter(tid, caller.ownedCenterId!)),
-    );
-    return checks.some(Boolean);
+    // A student enrolled in one of my center's groups? (centerId-anchored
+    // membership, 2026-07-15 — a teacher's personal classes don't count.)
+    return enrolledSnap.docs.some((d) => d.data().centerId === caller.ownedCenterId);
   }
 
   return false;

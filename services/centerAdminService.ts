@@ -59,6 +59,8 @@ export interface ManagerInfo {
   photoURL?: string;
   isActive?: boolean;
   createdAt?: string;
+  /** 'center-managed' = account provisioned by a center (docs/MANAGER.md). */
+  accountType?: string;
 }
 
 export interface CenterSummary extends CenterDoc {
@@ -112,18 +114,20 @@ async function fetchUsersByIds(uids: string[]): Promise<Map<string, ManagerInfo>
         photoURL: data.photoURL,
         isActive: data.isActive,
         createdAt: data.createdAt,
+        accountType: data.accountType,
       });
     }
   }
   return result;
 }
 
-/** Fetch all classes belonging to a set of teachers (chunked `teacherId in`). */
-async function fetchClassesForTeachers(teacherIds: string[]): Promise<ClassData[]> {
-  if (teacherIds.length === 0) return [];
+/** Fetch all classes belonging to a set of centers (chunked `centerId in`) —
+ *  centerId-anchored membership (2026-07-15), same as useCenterClasses. */
+async function fetchClassesForCenters(centerIds: string[]): Promise<ClassData[]> {
+  if (centerIds.length === 0) return [];
   const snapshots = await Promise.all(
-    chunkArray(teacherIds, 10).map((chunk) =>
-      getDocs(query(collection(db, 'classes'), where('teacherId', 'in', chunk)))
+    chunkArray(centerIds, 10).map((chunk) =>
+      getDocs(query(collection(db, 'classes'), where('centerId', 'in', chunk)))
     )
   );
   const seen = new Set<string>();
@@ -165,14 +169,14 @@ export async function fetchAllCenters(): Promise<CenterSummary[]> {
   }
 
   const [classes, managers] = await Promise.all([
-    fetchClassesForTeachers(Array.from(teacherToCenter.keys())),
+    fetchClassesForCenters(centers.map((c) => c.id)),
     fetchUsersByIds(centers.map((c) => c.ownerUid).filter(Boolean)),
   ]);
 
   const groupsPerCenter = new Map<string, number>();
   const studentsPerCenter = new Map<string, Set<string>>();
   for (const cls of classes) {
-    const centerId = teacherToCenter.get(cls.teacherId);
+    const centerId = cls.centerId;
     if (!centerId) continue;
     groupsPerCenter.set(centerId, (groupsPerCenter.get(centerId) || 0) + 1);
     const set = studentsPerCenter.get(centerId) || new Set<string>();
@@ -210,7 +214,7 @@ export async function fetchCenterDetailData(centerId: string): Promise<CenterDet
   const teacherIds = centerTeachers.map((t) => t.teacherId);
 
   const [classes, teacherProfiles] = await Promise.all([
-    fetchClassesForTeachers(teacherIds),
+    fetchClassesForCenters([centerId]),
     fetchUsersByIds(teacherIds),
   ]);
 

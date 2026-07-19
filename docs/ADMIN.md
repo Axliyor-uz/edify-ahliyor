@@ -4,7 +4,7 @@
 >
 > This doc supersedes the historical plan in [ADMIN_CENTERS_PLAN.md](ADMIN_CENTERS_PLAN.md) wherever they disagree.
 
-**Last verified:** 2026-07-12 (commit `7c31a96`).
+**Last verified:** 2026-07-15.
 
 ## Auth
 
@@ -28,9 +28,9 @@
   - Overview: edit `name/slug/size/adminNotes` (slug regex `^[a-z0-9-]+$`); a **second copy** of the approve/suspend status write — keep both sites in sync. Subscription plan/validUntil shown read-only (nothing enforces it).
   - Teachers: add by email; if linked to another center → conflict banner with **"Move Anyway"** override (admin can steal across centers; the old center's manager gets no signal). Write `setDoc(center_teachers/{uid}, {...})`. Remove = `deleteDoc` (classes untouched).
   - Manager: client edits `displayName/phone/isActive`; API for reset-password + transfer-ownership.
-  - Danger: archive (client `adminStatus:'archived'` — admin-only bookkeeping) and Delete (API, type-"DELETE" gate).
+  - Danger: archive (client `adminStatus:'archived'` — admin-only bookkeeping) and Delete (API, type-"DELETE" gate, three option checkboxes: groups / center-created teacher accounts / manager account — all default on).
 - **Create** (`centers/new` → `POST /api/admin/centers`): validates (`USERNAME ^[a-zA-Z][a-zA-Z0-9_]{4,}$`, phone, `SLUG ^[a-z0-9]+(?:-[a-z0-9]+)*$`), `adminAuth.createUser`, Admin batch writing `centers` (**`status:'active'`** — unlike public signup's `pending`), `users` (manager), `usernames`. Rollback: `deleteUser` on batch failure.
-- **Cascade delete** (`DELETE /api/admin/centers/[id]`), idempotent, center doc last: `center_attendance` → `center_staff_attendance` → `rooms` → `classes` (**selected by `classes.centerId`**, not teacher linkage — see the duality warning in [MANAGER.md](MANAGER.md)); `deleteClasses:true` → `recursiveDelete` each, else strip `centerId` → `center_teachers` → optionally manager (`usernames` + `users` + Auth user) → `centers`. Both flags default **true**.
+- **Cascade delete** (`DELETE /api/admin/centers/[id]`), idempotent, center doc last (2026-07-15 full rewrite — covers EVERY center-owned store): attendance (`center_attendance` → `center_staff_attendance` → `center_attendance_summary`) → `face_enrollments` → `rooms` → `crm_leads` → **finance** (`center_student_finance`, `center_charges`, `center_payments`, `center_expenses`, `center_payouts`, `center_finance_settings/{id}`) → `classes` (**by `classes.centerId`**, the membership anchor; `deleteClasses:true` → `recursiveDelete` each incl. subcollections, else strip `centerId`) → **center-created teacher accounts** (`users where accountType=='center-managed' && centerId==` — classes-per-account follow `deleteClasses`; recursiveDelete of `users/{uid}` takes `private/contact`; + `usernames` + Auth user; **self-signup teachers never touched**) → `center_teacher_credentials` → `center_teachers` → optionally manager (same account teardown, personal classes untouched) → `centers`. Flags `{deleteManagerAccount, deleteClasses, deleteCreatedTeacherAccounts}` all default **true**; returns `deletedCounts` per bucket.
 - **Transfer ownership**: target found by email; blocked if they own or teach at another center. `oldOwnerAction` ∈ `demote-teacher` | `demote-student` | `keep`. ⚠️ `demote-teacher` sets `role:'teacher'` but does **NOT** create a `center_teachers` link — the ex-owner ends up as a teacher with no center.
 
 ### Membership (`app/admin/membership/`)
@@ -53,4 +53,4 @@ Server-paginated `classes orderBy(studentCount|createdAt)` — hard dependency o
 
 ## How to verify changes
 
-`npm run dev` with a super-admin account; exercise: approve a pending center (check `centers.status`), create a center via the API route, add/steal a teacher, run a cascade delete against a throwaway center and verify `deletedCounts`. Remember `deleteAccountAPI`/`deleteClassAPI` need the deployed Cloud Functions.
+`npm run dev` with a super-admin account; exercise: approve a pending center (check `centers.status`), create a center via the API route, add/steal a teacher, then build a throwaway center with real fixtures (group, walk-in attendance day, a finance charge, a **center-created teacher account** via the manager panel) and run cascade delete — verify `deletedCounts` covers each bucket, the created teacher can no longer log in, and a self-signup teacher's account + personal classes survive. Remember `deleteAccountAPI`/`deleteClassAPI` need the deployed Cloud Functions.

@@ -41,11 +41,14 @@ const getInitials = (name: string) => {
 interface Props {
   classId: string;
   studentIds: string[];
+  /** Center groups: roster is manager-run — hide the remove action (rules deny it anyway). */
+  readOnly?: boolean;
+  readOnlyHint?: string;
 }
 
 const PAGE_SIZE = 10;
 
-export default function RosterTab({ classId, studentIds }: Props) {
+export default function RosterTab({ classId, studentIds, readOnly = false, readOnlyHint }: Props) {
   const { lang } = useTeacherLanguage();
   const t = ROSTER_TRANSLATIONS[lang] || ROSTER_TRANSLATIONS['en'];
 
@@ -282,6 +285,12 @@ export default function RosterTab({ classId, studentIds }: Props) {
       />
 
       <div className="space-y-2">
+        {readOnly && readOnlyHint && (
+          <div className="flex items-center gap-2.5 p-3 bg-tertiary-container/40 border border-outline-variant rounded-m3-lg">
+            <Users size={16} className="text-on-surface-variant shrink-0" />
+            <p className="text-[12px] font-semibold text-on-surface-variant leading-snug">{readOnlyHint}</p>
+          </div>
+        )}
         {students.map((student, index) => {
           const isLastElement = index === students.length - 1;
           const photo = student.photoURL || student.photoUrl || student.avatar;
@@ -329,13 +338,15 @@ export default function RosterTab({ classId, studentIds }: Props) {
 
               {/* Actions */}
               <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={(e) => handleRemoveClick(e, student)}
-                  title={t.removeBtn}
-                  className="w-9 h-9 flex items-center justify-center rounded-m3-sm text-on-surface-variant hover:bg-error-container hover:text-error transition-colors active:scale-95"
-                >
-                  <Trash2 size={16} strokeWidth={2.25} />
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={(e) => handleRemoveClick(e, student)}
+                    title={t.removeBtn}
+                    className="w-9 h-9 flex items-center justify-center rounded-m3-sm text-on-surface-variant hover:bg-error-container hover:text-error transition-colors active:scale-95"
+                  >
+                    <Trash2 size={16} strokeWidth={2.25} />
+                  </button>
+                )}
                 {!student.isDeleted && (
                   <ChevronRight size={18} className="text-outline group-hover:text-on-surface-variant group-hover:translate-x-0.5 transition-all" />
                 )}

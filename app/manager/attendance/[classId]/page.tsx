@@ -60,10 +60,10 @@ export default function AttendanceClassPage() {
 
         const data = { id: snap.id, ...snap.data() } as AttendanceClassDocument;
 
-        // The class must belong to this center: its teacher has to be a member
-        // (same check as the group detail page — URLs must not leak other centers' classes).
-        const membershipSnap = await getDoc(doc(db, "center_teachers", data.teacherId));
-        if (!membershipSnap.exists() || membershipSnap.data().centerId !== profile.centerId) {
+        // The class must belong to this center: centerId-anchored membership
+        // (same check as the group detail page — URLs must not leak other
+        // centers' or a teacher's personal classes).
+        if ((data as { centerId?: string }).centerId !== profile.centerId) {
           setMissing(true);
           return;
         }

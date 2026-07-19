@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import {
   collection, query, where, orderBy, onSnapshot, doc,
-  writeBatch, limit, deleteDoc, updateDoc, arrayUnion, getDocs
+  writeBatch, limit, deleteDoc, updateDoc, arrayUnion, getDocs, getDoc
 } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import {
@@ -33,6 +33,7 @@ const NOTIFICATIONS_TRANSLATIONS = {
     // New Translations for requests
     accept: "{name} qabul qilindi",
     errAccept: "Qabul qilishda xatolik",
+    centerManaged: "Bu guruh markaz tomonidan boshqariladi — o'quvchini menejer qo'shadi. So'rov o'chirildi.",
     confirmReject: "Bu o'quvchini rad etasizmi?",
     rejected: "So'rov rad etildi",
     errReject: "Rad etishda xatolik",
@@ -52,6 +53,7 @@ const NOTIFICATIONS_TRANSLATIONS = {
     // New Translations for requests
     accept: "Accepted {name}",
     errAccept: "Error accepting student",
+    centerManaged: "This group is managed by the center — the manager enrolls students. Request removed.",
     confirmReject: "Reject this student?",
     rejected: "Request rejected",
     errReject: "Error rejecting",
@@ -71,6 +73,7 @@ const NOTIFICATIONS_TRANSLATIONS = {
     // New Translations for requests
     accept: "{name} принят(а)",
     errAccept: "Ошибка принятия",
+    centerManaged: "Эта группа управляется центром — учеников добавляет менеджер. Запрос удалён.",
     confirmReject: "Отклонить этого ученика?",
     rejected: "Запрос отклонен",
     errReject: "Ошибка отклонения",
@@ -149,6 +152,18 @@ export default function TeacherNotificationsPage() {
     e.stopPropagation();
     try {
       if (!n.classId || !n.studentId) throw new Error("Missing request data");
+
+      // 0. Markaz guruhiga (centerId != '') o'qituvchi qo'sha olmaydi (rules
+      // ham rad etadi) — eski/qolgan so'rovni tozalab, tushuntirish ko'rsatamiz.
+      const classSnap = await getDoc(doc(db, 'classes', n.classId));
+      if (classSnap.exists() && classSnap.data().centerId) {
+        if (n.requestId) {
+          await deleteDoc(doc(db, 'classes', n.classId, 'requests', n.requestId)).catch(() => {});
+        }
+        await deleteDoc(doc(db, 'notifications', n.id));
+        toast(t.centerManaged, { icon: '🏢' });
+        return;
+      }
 
       // 1. Add student to the class roster
       await updateDoc(doc(db, 'classes', n.classId), {

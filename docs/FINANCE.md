@@ -36,9 +36,10 @@
 7. **Dates**: `YYYY-MM-DD` keys in Asia/Tashkent via `lib/dateUtils.ts` (same as attendance).
    Timestamps for audit fields (`createdAt` etc.) are Firestore `Timestamp`s.
 8. **Never write `undefined`** (Firestore throws). Build optional fields conditionally.
-9. **`classes` docs have no `centerId`.** Resolve a center's classes server-side via
-   `center_teachers (centerId ==)` → `classes (teacherId in ...)` chunked by 10 — same as
-   `useCenterClasses`. Every finance doc stores `centerId` explicitly (snapshot at write time).
+9. **Center classes = `classes.centerId == centerId`** (centerId-anchored membership,
+   2026-07-15 — see [MANAGER.md](MANAGER.md)). `resolveCenterClasses` is ONE query; a linked
+   teacher's personal groups are NOT the center's and must never be billed. Every finance
+   doc still stores `centerId` explicitly (snapshot at write time).
 
 ## 2. Balance semantics (sign convention)
 

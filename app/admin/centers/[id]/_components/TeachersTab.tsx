@@ -159,7 +159,14 @@ export default function TeachersTab({ data, onUpdated }: { data: CenterDetailDat
                           </div>
                         )}
                         <div>
-                          <p className="text-slate-900 font-bold text-[13px]">{t.teacherName}</p>
+                          <p className="text-slate-900 font-bold text-[13px] flex items-center gap-1.5">
+                            {t.teacherName}
+                            {t.profile?.accountType === "center-managed" && (
+                              <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[9px] font-black uppercase tracking-wide" title="Account provisioned by this center — deleted with it by default">
+                                center
+                              </span>
+                            )}
+                          </p>
                           <p className="text-[11px] text-slate-400 font-bold font-mono">@{t.profile?.username || "—"}</p>
                         </div>
                       </div>

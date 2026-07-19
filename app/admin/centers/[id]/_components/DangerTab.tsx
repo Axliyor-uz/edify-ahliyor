@@ -11,13 +11,16 @@ import type { CenterDetailData } from "@/services/centerAdminService";
 
 export default function DangerTab({ data, onUpdated }: { data: CenterDetailData; onUpdated: () => void }) {
   const router = useRouter();
-  const { center, manager } = data;
+  const { center, manager, teachers } = data;
   const archived = center.adminStatus === "archived";
+  // Accounts THIS center provisioned (create-teacher flow) — deletable with it.
+  const createdTeacherCount = teachers.filter((t) => t.profile?.accountType === "center-managed").length;
 
   const [archiving, setArchiving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteManagerAccount, setDeleteManagerAccount] = useState(true);
   const [deleteClasses, setDeleteClasses] = useState(true);
+  const [deleteCreatedTeacherAccounts, setDeleteCreatedTeacherAccounts] = useState(true);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -43,13 +46,17 @@ export default function DangerTab({ data, onUpdated }: { data: CenterDetailData;
     try {
       const res = await adminApiFetch<{ deletedCounts: Record<string, number> }>(
         `/api/admin/centers/${center.id}`,
-        { method: "DELETE", body: { deleteManagerAccount, deleteClasses } }
+        { method: "DELETE", body: { deleteManagerAccount, deleteClasses, deleteCreatedTeacherAccounts } }
       );
-      const counts = res.deletedCounts || {};
-      toast.success(
-        `Center deleted. Removed: ${Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(", ") || "center doc"}`,
-        { id: loadingToast, duration: 6000 }
-      );
+      // Only report non-zero buckets — the full list is long and mostly empty.
+      const removed = Object.entries(res.deletedCounts || {})
+        .filter(([, v]) => v > 0)
+        .map(([k, v]) => `${v} ${k}`)
+        .join(", ");
+      toast.success(`Center deleted.${removed ? ` Removed: ${removed}` : ""}`, {
+        id: loadingToast,
+        duration: 8000,
+      });
       router.push("/admin/centers");
     } catch (error: any) {
       toast.error(error.message || "Failed to delete center.", { id: loadingToast });
@@ -86,7 +93,10 @@ export default function DangerTab({ data, onUpdated }: { data: CenterDetailData;
           <Trash2 size={20} /> Delete Center Permanently
         </h2>
         <p className="text-sm text-slate-500 font-medium mt-1 mb-4">
-          Removes the center, its teacher links, rooms, all attendance history, and (optionally) its groups and the manager account. This cannot be undone.
+          Removes the center and everything it owns — teacher links &amp; credentials, rooms, CRM leads,
+          all attendance history, face enrollments, the complete finance ledger (charges, payments,
+          expenses, payouts) — and, optionally, its groups, center-created teacher accounts, and the
+          manager account. This cannot be undone.
         </p>
         <button
           onClick={() => { setShowDeleteModal(true); setConfirmText(""); }}
@@ -111,8 +121,10 @@ export default function DangerTab({ data, onUpdated }: { data: CenterDetailData;
 
             <div className="space-y-3 mb-5">
               <p className="text-sm text-slate-600 font-medium leading-relaxed">
-                This permanently deletes the center document, all <strong>teacher links</strong>, all <strong>rooms</strong>,
-                and the complete <strong>student &amp; staff attendance history</strong>. Teacher accounts are never deleted.
+                This permanently deletes the center document, all <strong>teacher links &amp; stored credentials</strong>,
+                all <strong>rooms</strong> and <strong>CRM leads</strong>, the complete <strong>student &amp; staff
+                attendance history</strong> (incl. summaries and face enrollments), and the entire
+                <strong> finance ledger</strong>. Self-signup teacher accounts are never deleted.
               </p>
 
               <label className="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4 cursor-pointer">
@@ -123,8 +135,24 @@ export default function DangerTab({ data, onUpdated }: { data: CenterDetailData;
                   className="mt-0.5 w-5 h-5 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
                 />
                 <span className="text-sm font-medium text-slate-700 leading-relaxed">
-                  <strong>Delete center-created groups</strong> and their assignments, exams, and materials.
-                  Teachers&apos; personal classes are never touched. If unchecked, groups stay with their teachers.
+                  <strong>Delete center groups</strong> ({data.classes.length}) and their assignments, exams, and
+                  materials. Teachers&apos; personal classes are never touched. If unchecked, groups are detached
+                  and stay with their teachers.
+                </span>
+              </label>
+
+              <label className={`flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4 ${createdTeacherCount > 0 ? "cursor-pointer" : "opacity-50"}`}>
+                <input
+                  type="checkbox"
+                  checked={deleteCreatedTeacherAccounts}
+                  onChange={(e) => setDeleteCreatedTeacherAccounts(e.target.checked)}
+                  disabled={createdTeacherCount === 0}
+                  className="mt-0.5 w-5 h-5 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                />
+                <span className="text-sm font-medium text-slate-700 leading-relaxed">
+                  <strong>Delete center-created teacher accounts</strong> ({createdTeacherCount}) — accounts this
+                  center provisioned itself. Without the center they cannot log in or recover a password
+                  (synthetic email, manager-held credentials). Self-signup teachers are unaffected.
                 </span>
               </label>
 
@@ -138,7 +166,7 @@ export default function DangerTab({ data, onUpdated }: { data: CenterDetailData;
                 />
                 <span className="text-sm font-medium text-slate-700 leading-relaxed">
                   <strong>Delete the manager account</strong> ({manager?.email || "not found"}) — removes the login,
-                  profile, and username reservation.
+                  profile, contact details, and username reservation.
                 </span>
               </label>
 
