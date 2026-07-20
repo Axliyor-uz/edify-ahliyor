@@ -5,12 +5,16 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calculator, ChevronRight, ChevronDown,
+  Calculator, ChevronDown,
   Pi, Triangle, Sigma, Ruler, BarChart3,
   Star, Clock, BookOpen,
 } from 'lucide-react';
 
 import { getMathTopics } from '@/lib/Mathstructure';
+import {
+  Card, ListGroup, ListRow, StatTile, Tile, cn, MOTION_ON, springTransition,
+  type StatTileProps, type TileProps,
+} from '@/components/student-ui';
 import type { ChapterStructure, Lang, TopicStructure } from '@/types/Math';
 
 // ─── i18n (UI chrome strings only — question content is localized separately) ─
@@ -38,14 +42,14 @@ const UI_STRINGS: Record<Lang, Record<string, string>> = {
   },
 };
 
-// ─── Icon / color mapping by topic name (topic names come from syllabus.json) ─
-const TOPIC_VISUALS: Record<string, { icon: React.ElementType; color: string; bgColor: string; borderColor: string }> = {
-  Algebra: { icon: Sigma, color: 'text-blue-500', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
-  Geometriya: { icon: Triangle, color: 'text-emerald-500', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200' },
-  Trigonometriya: { icon: Pi, color: 'text-violet-500', bgColor: 'bg-violet-50', borderColor: 'border-violet-200' },
-  Statistika: { icon: BarChart3, color: 'text-amber-500', bgColor: 'bg-amber-50', borderColor: 'border-amber-200' },
+// ─── Icon / tone mapping by topic name (topic names come from syllabus.json) ──
+const TOPIC_VISUALS: Record<string, { icon: React.ElementType; tone: NonNullable<TileProps['tone']> }> = {
+  Algebra: { icon: Sigma, tone: 'secondary' },
+  Geometriya: { icon: Triangle, tone: 'success' },
+  Trigonometriya: { icon: Pi, tone: 'primary' },
+  Statistika: { icon: BarChart3, tone: 'gold' },
 };
-const DEFAULT_VISUAL = { icon: Calculator, color: 'text-zinc-500', bgColor: 'bg-zinc-50', borderColor: 'border-zinc-200' };
+const DEFAULT_VISUAL = { icon: Calculator, tone: 'neutral' } as const;
 
 // ─── Chapter row ──────────────────────────────────────────────────────────
 // Just the chapter name. It used to carry per-difficulty question counts, which
@@ -62,30 +66,30 @@ function ChapterRow({
 }) {
   const router = useRouter();
 
+  const open = () =>
+    router.push(
+      `/RASCHmodel/practice?${new URLSearchParams({ topicId, chapterId: chapter.chapterId, lang }).toString()}`,
+    );
+
   return (
-    <motion.button
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.2, delay: Math.min(index, 8) * 0.04 }}
-      onClick={() =>
-        router.push(
-          `/RASCHmodel/practice?${new URLSearchParams({ topicId, chapterId: chapter.chapterId, lang }).toString()}`,
-        )
+    <ListRow
+      role="button"
+      tabIndex={0}
+      clickable
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open();
+        }
+      }}
+      leading={
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-m3-sm bg-surface-container-high text-[12px] font-black text-on-surface-variant">
+          {index + 1}
+        </span>
       }
-      className="w-full group/topic flex items-center gap-3 p-3.5 rounded-2xl border-2 border-zinc-100 hover:border-violet-200 hover:bg-violet-50/40 active:translate-y-[2px] active:border-b-2 transition-all text-left"
-    >
-      <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[12px] font-black text-zinc-400 shrink-0 group-hover/topic:bg-violet-100 group-hover/topic:text-violet-600 group-hover/topic:border-violet-200 transition-colors">
-        {index + 1}
-      </div>
-
-      <span className="flex-1 min-w-0 text-[14px] font-bold text-zinc-800 truncate group-hover/topic:text-violet-800 transition-colors">
-        {chapter.name}
-      </span>
-
-      <div className="w-7 h-7 rounded-lg bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-300 shrink-0 group-hover/topic:bg-violet-500 group-hover/topic:text-white group-hover/topic:border-violet-500 transition-all">
-        <ChevronRight size={14} strokeWidth={3} />
-      </div>
-    </motion.button>
+      title={chapter.name}
+    />
   );
 }
 
@@ -109,34 +113,39 @@ function SectionAccordion({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={MOTION_ON ? { opacity: 0, y: 16 } : false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.08 }}
+      transition={{ ...springTransition, delay: MOTION_ON ? index * 0.08 : 0 }}
     >
-      <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] overflow-hidden hover:border-zinc-300 transition-colors">
+      <Card flush className="overflow-hidden">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center gap-4 p-5 text-left group"
+          aria-expanded={isOpen}
+          className="flex w-full items-center gap-4 p-s-card text-left"
         >
-          <div className={`w-12 h-12 rounded-[1rem] border-2 flex items-center justify-center shrink-0 ${visual.bgColor} ${visual.borderColor} ${visual.color}`}>
+          <Tile tone={visual.tone}>
             <Icon size={22} strokeWidth={2.5} />
-          </div>
+          </Tile>
 
-          <div className="flex-1 min-w-0">
-            <h3 className="text-[17px] font-black text-zinc-900 tracking-tight group-hover:text-violet-700 transition-colors">
-              {topic.name}
-            </h3>
-            <p className="text-[12px] font-bold text-zinc-400 mt-0.5">
+          <div className="min-w-0 flex-1">
+            <h3 className="s-display text-[17px] font-bold tracking-tight">{topic.name}</h3>
+            <p className="mt-0.5 text-[12px] font-bold text-on-surface-variant">
               {topic.chapters.length} {t.topicsLabel} · {lessonCount} {t.lessonsLabel.toLowerCase()}
             </p>
           </div>
 
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border-2 transition-all shrink-0 ${isOpen
-              ? 'bg-violet-500 border-violet-600 text-white'
-              : 'bg-zinc-50 border-zinc-200 text-zinc-400 group-hover:bg-violet-50 group-hover:border-violet-200 group-hover:text-violet-500'
-            }`}>
-            <ChevronDown size={18} strokeWidth={3} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
-          </div>
+          <span
+            className={cn(
+              'grid h-9 w-9 shrink-0 place-items-center rounded-m3-sm transition-colors duration-m3-fast',
+              isOpen ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant',
+            )}
+          >
+            <ChevronDown
+              size={18}
+              strokeWidth={3}
+              className={cn('transition-transform duration-300', isOpen && 'rotate-180')}
+            />
+          </span>
         </button>
 
         <AnimatePresence initial={false}>
@@ -148,21 +157,23 @@ function SectionAccordion({
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
-              <div className="px-5 pb-5 space-y-2 border-t-2 border-zinc-100 pt-4">
-                {topic.chapters.map((chapter, cIndex) => (
-                  <ChapterRow
-                    key={chapter.chapterId}
-                    chapter={chapter}
-                    topicId={topic.topicId}
-                    index={cIndex}
-                    lang={lang}
-                  />
-                ))}
+              <div className="border-t border-outline-variant px-s-card pb-s-card pt-s-gap">
+                <ListGroup>
+                  {topic.chapters.map((chapter, cIndex) => (
+                    <ChapterRow
+                      key={chapter.chapterId}
+                      chapter={chapter}
+                      topicId={topic.topicId}
+                      index={cIndex}
+                      lang={lang}
+                    />
+                  ))}
+                </ListGroup>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </Card>
     </motion.div>
   );
 }
@@ -177,30 +188,33 @@ function StatsRow({ topics, t }: { topics: TopicStructure[]; t: Record<string, s
     };
   }, [topics]);
 
-  const stats = [
-    { icon: BookOpen, label: t.topicsLabel, value: chapterCount, color: 'bg-blue-50 border-blue-200 text-blue-500' },
-    { icon: Star, label: t.lessonsLabel, value: lessonCount, color: 'bg-amber-50 border-amber-200 text-amber-500' },
-    { icon: Ruler, label: t.sectionsLabel, value: topics.length, color: 'bg-emerald-50 border-emerald-200 text-emerald-500' },
-    { icon: Clock, label: t.avgLabel, value: t.avgValue, color: 'bg-violet-50 border-violet-200 text-violet-500' },
+  const stats: Array<{
+    icon: React.ElementType;
+    label: string;
+    value: number | string;
+    tone: NonNullable<StatTileProps['tone']>;
+  }> = [
+    { icon: BookOpen, label: t.topicsLabel, value: chapterCount, tone: 'secondary' },
+    { icon: Star, label: t.lessonsLabel, value: lessonCount, tone: 'gold' },
+    { icon: Ruler, label: t.sectionsLabel, value: topics.length, tone: 'primary' },
+    { icon: Clock, label: t.avgLabel, value: t.avgValue, tone: 'surface' },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {stats.map(({ icon: SIcon, label, value, color }, i) => (
+    <div className="grid grid-cols-2 gap-s-gap sm:grid-cols-4">
+      {stats.map(({ icon: SIcon, label, value, tone }, i) => (
         <motion.div
           key={label}
-          initial={{ opacity: 0, y: 12 }}
+          initial={MOTION_ON ? { opacity: 0, y: 12 } : false}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, delay: i * 0.06 }}
-          className="bg-white rounded-2xl border-2 border-zinc-200 border-b-[6px] p-4 flex items-center gap-3 hover:-translate-y-0.5 transition-transform"
+          transition={{ ...springTransition, delay: MOTION_ON ? i * 0.06 : 0 }}
         >
-          <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 ${color}`}>
-            <SIcon size={18} strokeWidth={2.5} />
-          </div>
-          <div>
-            <p className="text-[18px] font-black text-zinc-900 leading-none">{value}</p>
-            <p className="text-[11px] font-bold text-zinc-400 mt-0.5 uppercase tracking-wider">{label}</p>
-          </div>
+          <StatTile
+            label={label}
+            value={value}
+            tone={tone}
+            icon={<SIcon size={16} strokeWidth={2.8} />}
+          />
         </motion.div>
       ))}
     </div>
@@ -215,26 +229,26 @@ export default function MathematicsCard({ lang = 'uz' }: { lang?: Lang }) {
   const t = UI_STRINGS[lang];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-s-section">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        initial={MOTION_ON ? { opacity: 0, y: -10 } : false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={springTransition}
         className="flex items-center gap-4"
       >
-        <div className="w-14 h-14 bg-blue-50 border-2 border-blue-200 rounded-[1.2rem] text-blue-500 flex items-center justify-center">
+        <Tile tone="secondary" size="lg">
           <Calculator size={28} strokeWidth={2.5} />
-        </div>
-        <div>
-          <h2 className="text-2xl md:text-3xl font-black text-zinc-900 tracking-tight">{t.title}</h2>
-          <p className="text-[14px] font-bold text-zinc-500 mt-0.5">{t.subtitle}</p>
+        </Tile>
+        <div className="min-w-0">
+          <h2 className="s-display text-2xl font-bold tracking-tight md:text-3xl">{t.title}</h2>
+          <p className="mt-0.5 text-[14px] font-bold text-on-surface-variant">{t.subtitle}</p>
         </div>
       </motion.div>
 
       <StatsRow topics={topics} t={t} />
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-s-gap">
         {topics.map((topic, index) => (
           <SectionAccordion
             key={topic.topicId}
@@ -246,7 +260,7 @@ export default function MathematicsCard({ lang = 'uz' }: { lang?: Lang }) {
         ))}
       </div>
 
-      <p className="text-[12px] font-bold text-zinc-400 px-1">{t.tip}</p>
+      <p className="px-1 text-[12px] font-bold text-on-surface-variant">{t.tip}</p>
     </div>
   );
 }

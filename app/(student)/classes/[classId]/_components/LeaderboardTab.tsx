@@ -3,12 +3,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
-import { Trophy, Medal, Award, Loader2, Star, ChevronRight, User as UserIcon } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import {
+  ListGroup, RankRow, EmptyState, LoadingState, Spinner, cn,
+} from '@/components/student-ui';
 import { useStudentLanguage } from '@/app/(student)/layout';
 
 const globalStudentLeaderboardCache: Record<string, { leaderboard: any[], lastDoc: any, hasMore: boolean, timestamp: number }> = {};
-const CACHE_LIFESPAN = 60 * 1000; 
+const CACHE_LIFESPAN = 60 * 1000;
 const PAGE_SIZE = 10;
 
 const LEADERBOARD_TRANSLATIONS: any = {
@@ -53,7 +56,7 @@ export default function LeaderboardTab({ classId }: { classId: string }) {
   const fetchLeaderboard = async (isNextPage: boolean = false) => {
     if (!classId) return;
     if (isNextPage && !lastDoc) return;
-    
+
     isNextPage ? setLoadingMore(true) : setLoadingInitial(true);
 
     try {
@@ -97,76 +100,54 @@ export default function LeaderboardTab({ classId }: { classId: string }) {
     if (node) observerRef.current.observe(node);
   }, [loadingInitial, loadingMore, hasMore]);
 
-  if (loadingInitial && leaderboard.length === 0) return <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-indigo-500" size={28}/></div>;
+  if (loadingInitial && leaderboard.length === 0) return <LoadingState rows={4} />;
 
   if (leaderboard.length === 0) return (
-    <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-zinc-200 flex flex-col items-center">
-      <div className="w-20 h-20 bg-amber-50 rounded-[2rem] flex items-center justify-center mb-4 shadow-sm text-amber-500 border-2 border-amber-100 rotate-12 hover:rotate-0 transition-transform"><Trophy size={40} strokeWidth={2.5} /></div>
-      <h3 className="text-zinc-900 font-black text-[18px] mb-2">{t.emptyTitle}</h3>
-      <p className="text-[14px] font-bold text-zinc-500 max-w-sm leading-relaxed">{t.emptyDesc}</p>
-    </div>
+    <EmptyState
+      icon={<Trophy size={30} strokeWidth={2.5} />}
+      title={t.emptyTitle}
+      description={t.emptyDesc}
+    />
   );
 
   return (
-    <div className="space-y-3">
-      {leaderboard.map((student, index) => {
-        const isLastElement = index === leaderboard.length - 1;
-        const rank = index + 1; 
-        const avatarUrl = student.photoURL || student.photoUrl || student.avatar || null;
-        
-        let cardStyle = "bg-white border-zinc-200 hover:border-indigo-300 hover:border-b-indigo-400 active:border-b-2 active:translate-y-[2px]";
-        let rankColor = "bg-zinc-800 text-white";
-        let avatarBorder = "border-zinc-200 bg-zinc-100 text-zinc-400";
+    <div className="space-y-s-gap">
+      <ListGroup>
+        {leaderboard.map((student, index) => {
+          const isLastElement = index === leaderboard.length - 1;
+          const rank = index + 1;
+          const avatarUrl = student.photoURL || student.photoUrl || student.avatar || null;
 
-        if (rank === 1) {
-          cardStyle = "bg-amber-50/30 border-amber-300 shadow-[0_8px_30px_rgba(251,191,36,0.15)] hover:border-amber-400 hover:border-b-amber-500 active:border-b-2 active:translate-y-[2px] z-10";
-          rankColor = "bg-amber-500 text-white border-amber-400";
-          avatarBorder = "border-amber-400 bg-amber-100 text-amber-500";
-        } else if (rank === 2) {
-          cardStyle = "bg-slate-50/50 border-slate-300 hover:border-slate-400 hover:border-b-slate-500 active:border-b-2 active:translate-y-[2px]";
-          rankColor = "bg-slate-400 text-white border-slate-300";
-          avatarBorder = "border-slate-300 bg-slate-100 text-slate-400";
-        } else if (rank === 3) {
-          cardStyle = "bg-orange-50/30 border-orange-300 hover:border-orange-400 hover:border-b-orange-500 active:border-b-2 active:translate-y-[2px]";
-          rankColor = "bg-orange-500 text-white border-orange-400";
-          avatarBorder = "border-orange-300 bg-orange-100 text-orange-500";
-        }
+          // Medal tint for the podium places; everyone else keeps the plain row.
+          const medalTint =
+            rank === 1 ? 'bg-gold-container text-on-gold-container'
+            : rank === 2 || rank === 3 ? 'bg-surface-container-high'
+            : undefined;
 
-        return (
-          <div 
-            key={student.id} ref={isLastElement ? lastElementRef : null}
-            // 🟢 CLICK TO VIEW PUBLIC PROFILE
-            onClick={() => router.push(`/profile/${student.uid}`)}
-            className={`flex items-center justify-between p-3 md:p-4 rounded-[1.5rem] border-2 border-b-4 transition-all duration-200 cursor-pointer group ${cardStyle}`}
-          >
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <div className="relative shrink-0">
-                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 overflow-hidden flex items-center justify-center font-black text-xl shadow-sm ${avatarBorder}`}>
-                  {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : (student.displayName?.[0]?.toUpperCase() || <UserIcon size={20} strokeWidth={3}/>)}
-                </div>
-                <div className={`absolute -bottom-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-black text-[11px] sm:text-[12px] border-2 border-white shadow-sm z-10 ${rankColor}`}>
-                  {rank === 1 ? <Trophy size={12} strokeWidth={3}/> : rank === 2 ? <Medal size={12} strokeWidth={3}/> : rank === 3 ? <Award size={12} strokeWidth={3}/> : rank}
-                </div>
-              </div>
-              <div className="min-w-0 pr-2 ml-1">
-                <p className="font-black text-[15px] sm:text-[17px] text-zinc-900 truncate tracking-tight group-hover:text-indigo-600 transition-colors">{student.displayName || "Anonymous Student"}</p>
-                <p className="text-[12px] font-bold text-zinc-400 truncate">{rank === 1 ? '🥇 1st Place' : rank === 2 ? '🥈 2nd Place' : rank === 3 ? '🥉 3rd Place' : `@${student.username || 'student'}`}</p>
-              </div>
+          return (
+            <div key={student.id} ref={isLastElement ? lastElementRef : null}>
+              {/* 🟢 CLICK TO VIEW PUBLIC PROFILE */}
+              <button
+                type="button"
+                onClick={() => router.push(`/profile/${student.uid}`)}
+                className="w-full text-left transition-colors hover:bg-state-hover active:bg-state-press"
+              >
+                <RankRow
+                  entry={{
+                    id: student.id,
+                    name: student.displayName || 'Anonymous Student',
+                    xp: student.xp || 0,
+                    avatar: avatarUrl,
+                  }}
+                  rank={rank}
+                  className={cn(medalTint)}
+                />
+              </button>
             </div>
-
-            <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-              <div className={`border-2 rounded-xl px-3 py-1.5 flex items-center gap-1.5 ${rank === 1 ? 'bg-white border-amber-200' : 'bg-zinc-50 border-zinc-200'}`}>
-                <span className={`font-black text-[15px] sm:text-[18px] leading-none ${rank === 1 ? 'text-amber-600' : 'text-indigo-600'}`}>{(student.xp || 0).toLocaleString()}</span>
-                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-0.5">{t.points}</span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-white border-2 border-zinc-200 flex items-center justify-center text-zinc-400 group-hover:bg-indigo-500 group-hover:border-indigo-500 group-hover:text-white transition-all hidden sm:flex">
-                <ChevronRight size={18} strokeWidth={3} />
-              </div>
-            </div>
-          </div>
-        );
-      })}
-      {loadingMore && <div className="py-6 flex justify-center"><Loader2 className="animate-spin text-indigo-500" size={24}/></div>}
+          );
+        })}
+      </ListGroup>
+      {loadingMore && <div className="flex justify-center py-6"><Spinner size={24} /></div>}
     </div>
   );
 }

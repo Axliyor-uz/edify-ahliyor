@@ -26,6 +26,7 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | `app/admin/*`, `/api/admin/*`, god-mode | [docs/ADMIN.md](docs/ADMIN.md) |
 | IELTS | [docs/IELTS.md](docs/IELTS.md) |
 | Teacher UI kit — `components/ui/*`, M3 tokens, restyling `app/teacher/*` | [docs/UI_KIT.md](docs/UI_KIT.md) |
+| **Student design system** — [design.config.ts](design.config.ts) switchboard, `components/student-ui/*`, restyling `app/(student)/*` | [docs/STUDENT_UI.md](docs/STUDENT_UI.md) |
 
 ## Commands
 
@@ -68,6 +69,8 @@ Multi-role SaaS ("Edify") with four role trees, each with a `'use client'` role-
 
 ## Cross-cutting traps (the ones that bite regardless of domain)
 
+- **Two UI kits exist — never mix them.** `@/components/ui` = teacher, `@/components/student-ui` = student. The student tree re-skins entirely from [design.config.ts](design.config.ts) ([docs/STUDENT_UI.md](docs/STUDENT_UI.md)).
+- **M3 token colors are plain hex in `var()`, so Tailwind opacity modifiers silently render them opaque** (`bg-surface/85`). Use the prebuilt translucent tokens (`bg-surface-blur`, `bg-scrim-bg`, `bg-state-hover`…) or add a `color-mix()` var.
 - **Never write `undefined` to Firestore** — build optional fields conditionally.
 - **Timestamps are inconsistent by collection** (serverTimestamp vs ISO string vs `YYYY-MM-DD` key vs number) — check the writer before comparing/ordering. Table in [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
 - **`attempts` is polymorphic** — always branch on `type` ('assignment'|'exam'); exam docs overload `assignmentId` with the examId.
@@ -90,3 +93,7 @@ Multi-role SaaS ("Edify") with four role trees, each with a `'use client'` role-
 ## Android manager app sync (required)
 
 A native Android port of the **manager panel** lives at `/home/matimatik/AndroidStudioProjects/EdifyManager` and mirrors this repo's manager logic 1:1. Whenever a change touches manager-facing behavior, any Firestore document shape/query, `firestore.rules`, or a `/api/manager|directory|auth` contract: **append one line to [ANDROID_IMPACT.md](ANDROID_IMPACT.md)** in the same change (date, files, one-line summary of what the Android app must mirror). The Android repo's `/sync-web` command consumes that ledger plus the git diff.
+
+## Android student app sync (required)
+
+A native Android port of the **student part** lives at `/home/matimatik/AndroidStudioProjects/EdifyStudent` and mirrors `app/(student)` logic 1:1 (all pages, `lib/xp|xpDays|questionSchema|Exam*|RASCH*|Mathstructure|social|dateUtils`, student services, checkers). Whenever a change touches student-facing behavior, any Firestore document shape/query, `firestore.rules`, or a `/api/account|student|directory|auth` contract: **append one line to [ANDROID_STUDENT_IMPACT.md](ANDROID_STUDENT_IMPACT.md)** in the same change (date, files, one-line summary of what the Android student app must mirror). That repo's `/sync-web` command consumes this ledger plus the git diff. Keep Firestore shapes additive-only — APK rollouts lag web deploys, so old Android clients keep writing the old shape.

@@ -5,15 +5,18 @@ import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
-import { 
-  CheckCircle, XCircle, ChevronLeft, AlertTriangle, 
-  BookOpen, Trophy, Lightbulb, List, Eye, Lock, Clock, Grid, Filter
+import {
+  CheckCircle, XCircle, AlertTriangle,
+  Trophy, Lightbulb, List, Eye, Lock, Clock, Grid
 } from 'lucide-react';
 import LatexRenderer from '@/components/LatexRenderer';
 import QuestionCreator from '@/components/QuestionCreator';
-import { Loader2 } from 'lucide-react';
 import { useStudentLanguage } from '@/app/(student)/layout';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Banner, Button, Card, Chip, EmptyState, Page, PageHeader, SegmentedControl,
+  Spinner, StatBand, Tile, cn,
+} from '@/components/student-ui';
 import { normalizeQuestions, isAnswerCorrect, hasAnswer, gradeQuestion, isPartCorrect, isBlockAnswer, type BlockAnswer } from '@/lib/questionSchema';
 import type { NormalizedPart, NormalizedQuestion } from '@/types/question';
 
@@ -57,16 +60,19 @@ const getContentText = (content: any) => {
 // An option can carry an image (normalized: `options[letter].imageUrl`), with or
 // without text.
 const OptionImage = ({ url, alt }: { url?: string | null; alt?: string }) =>
-  url ? <img src={url} alt={alt || 'Option'} className="mt-1.5 max-h-24 w-auto rounded-lg border border-zinc-200 bg-white object-contain" /> : null;
+  url ? <img src={url} alt={alt || 'Option'} className="mt-1.5 max-h-24 w-auto rounded-m3-xs border border-outline-variant bg-surface object-contain" /> : null;
 
 // One picked/correct option: letter badge + its text + its image. Used for mcq
 // (one line) and multiple_select (one line per letter).
 const OptionLine = ({ question, optionKey, tone }: { question: any; optionKey: string; tone: 'ok' | 'bad' }) => (
-  <div className="flex gap-2 items-start">
-    <span className={`w-6 h-6 rounded flex items-center justify-center font-black text-[12px] shrink-0 border ${tone === 'ok' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-rose-100 text-rose-700 border-rose-200'}`}>
+  <div className="flex items-start gap-2">
+    <span className={cn(
+      'grid h-6 w-6 shrink-0 place-items-center rounded-m3-xs text-[12px] font-black',
+      tone === 'ok' ? 'bg-success-container text-on-success-container' : 'bg-error-container text-on-error-container',
+    )}>
       {optionKey?.toUpperCase()}
     </span>
-    <div className="text-zinc-800 font-bold text-[13px] pt-0.5">
+    <div className="pt-0.5 text-[13px] font-bold text-on-surface">
       <LatexRenderer latex={getContentText(question.options?.[optionKey])} />
       <OptionImage url={question.options?.[optionKey]?.imageUrl} alt={optionKey} />
     </div>
@@ -102,34 +108,42 @@ const PartReviewRow = ({ part, given, t }: {
   const optionText = (key: string) => getContentText(part.optionList.find((o) => o.id === key)?.text);
 
   return (
-    <div className={`rounded-xl border p-3 flex items-start gap-2.5 ${ok ? 'bg-emerald-50/30 border-emerald-100' : answered ? 'bg-rose-50/30 border-rose-100' : 'bg-zinc-50 border-zinc-100'}`}>
-      <span className={`w-6 h-6 shrink-0 rounded flex items-center justify-center font-black text-[12px] border ${ok ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : answered ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-zinc-200 text-zinc-600 border-zinc-200'}`}>
+    <div className={cn(
+      'flex items-start gap-2.5 rounded-m3-sm border bg-surface-container p-3 text-on-surface',
+      ok ? 'border-success' : answered ? 'border-error' : 'border-outline-variant',
+    )}>
+      <span className={cn(
+        'grid h-6 w-6 shrink-0 place-items-center rounded-m3-xs text-[12px] font-black',
+        ok ? 'bg-success-container text-on-success-container'
+           : answered ? 'bg-error-container text-on-error-container'
+           : 'bg-surface-container-high text-on-surface-variant',
+      )}>
         {part.id}
       </span>
 
-      <div className="flex-1 min-w-0 space-y-1.5">
-        <div className="text-zinc-800 font-bold text-[13px] leading-relaxed break-words">
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="break-words text-[13px] font-bold leading-relaxed">
           <LatexRenderer latex={getContentText(part.prompt)} />
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] font-bold">
           <span className="flex items-center gap-1.5">
-            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+            <span className="text-[9px] font-black uppercase tracking-[0.12em] text-on-surface-variant">
               {answered ? t.question.yourAns : t.question.skipped}
             </span>
             {answered ? (
-              <span className={`font-black break-words ${ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+              <span className={cn('break-words font-black', ok ? 'text-success' : 'text-error')}>
                 {isTyped ? toText(given) : chosen.map((k) => `${k}${optionText(k) ? `. ${optionText(k)}` : ''}`).join(', ')}
               </span>
             ) : (
-              <span className="text-zinc-400 italic">{t.question.noSel}</span>
+              <span className="italic text-on-surface-variant">{t.question.noSel}</span>
             )}
           </span>
 
           {!ok && (
             <span className="flex items-center gap-1.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">{t.question.correctAns}</span>
-              <span className="font-black text-emerald-700 break-words">
+              <span className="text-[9px] font-black uppercase tracking-[0.12em] text-success">{t.question.correctAns}</span>
+              <span className="break-words font-black text-success">
                 {isTyped
                   ? toText(part.correctAnswer?.value)
                   : correct.map((k) => `${k}${optionText(k) ? `. ${optionText(k)}` : ''}`).join(', ')}
@@ -139,14 +153,14 @@ const PartReviewRow = ({ part, given, t }: {
         </div>
 
         {getContentText(part.explanation) && (
-          <div className="text-zinc-500 font-bold text-[12px] leading-relaxed pt-0.5 break-words">
+          <div className="break-words pt-0.5 text-[12px] font-bold leading-relaxed text-on-surface-variant">
             <LatexRenderer latex={getContentText(part.explanation)} />
           </div>
         )}
       </div>
 
       <div className="shrink-0 pt-0.5">
-        {ok ? <CheckCircle className="text-emerald-500" strokeWidth={2.5} size={16} /> : <XCircle className="text-rose-500" strokeWidth={2.5} size={16} />}
+        {ok ? <CheckCircle className="text-success" strokeWidth={2.5} size={16} /> : <XCircle className="text-error" strokeWidth={2.5} size={16} />}
       </div>
     </div>
   );
@@ -185,35 +199,41 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
   const typedCorrect = Array.isArray(correctValue) ? correctValue.join(', ') : String(correctValue ?? question.answer ?? '');
   const acceptedAnswers: string[] = question.correctAnswer?.acceptedAnswers || [];
 
-  const borderColor = isCorrect ? 'border-emerald-200' : isSkipped ? 'border-zinc-200' : 'border-rose-200';
-  const headerBg = isCorrect ? 'bg-emerald-50/50' : isSkipped ? 'bg-zinc-50' : 'bg-rose-50/50';
-  const badgeColor = isCorrect ? 'bg-emerald-500 text-white' : isSkipped ? 'bg-zinc-200 text-zinc-600' : 'bg-rose-500 text-white';
+  const borderColor = isCorrect ? 'border-success' : isSkipped ? 'border-outline-variant' : 'border-error';
+  const headerBg = isCorrect ? 'bg-success-container text-on-success-container'
+    : isSkipped ? 'bg-surface-container text-on-surface'
+    : 'bg-error-container text-on-error-container';
 
   return (
-    <div id={`question-${index}`} className={`bg-white rounded-2xl border ${borderColor} shadow-sm overflow-hidden scroll-mt-24`}>
+    <Card
+      id={`question-${index}`}
+      variant="outlined"
+      flush
+      className={cn('overflow-hidden rounded-m3-md scroll-mt-24', borderColor)}
+    >
       {/* HEADER */}
-      <div className={`px-4 py-3 flex items-start gap-3 border-b ${borderColor} ${headerBg}`}>
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-black text-[13px] shadow-sm ${badgeColor}`}>
+      <div className={cn('flex items-start gap-3 border-b px-4 py-3', borderColor, headerBg)}>
+        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-m3-xs bg-surface text-[13px] font-black text-on-surface">
           {index + 1}
         </div>
         <div className="flex-1 pt-0.5">
-          <div className="font-bold text-zinc-800 text-[14px] leading-relaxed">
+          <div className="text-[14px] font-bold leading-relaxed">
             <LatexRenderer latex={questionText} />
           </div>
           {question.imageUrl && (
-            <img src={question.imageUrl} alt="" className="mt-2.5 max-h-60 w-auto rounded-xl border border-zinc-200 bg-white object-contain" />
+            <img src={question.imageUrl} alt="" className="mt-2.5 max-h-60 w-auto rounded-m3-sm border border-outline-variant bg-surface object-contain" />
           )}
-          <QuestionCreator creatorName={question.creatorName} correctedBy={question.correctedBy} className="mt-2 text-zinc-400" />
+          <QuestionCreator creatorName={question.creatorName} correctedBy={question.correctedBy} className="mt-2 opacity-70" />
         </div>
-        <div className="shrink-0 pt-0.5 flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 pt-0.5">
           {isBlock && (
-            <span className={`px-2 py-1 rounded-lg text-[11px] font-black border ${isCorrect ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : earned > 0 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
-              {earned}/{total} {t.block.points}
-            </span>
+            <Chip status={isCorrect ? 'success' : earned > 0 ? 'warning' : 'neutral'}>
+              <span className="s-num">{earned}/{total}</span> {t.block.points}
+            </Chip>
           )}
-          {isCorrect ? <CheckCircle className="text-emerald-500" strokeWidth={2.5} size={20} /> :
-           isSkipped ? <AlertTriangle className="text-zinc-400" strokeWidth={2.5} size={20} /> :
-           <XCircle className="text-rose-500" strokeWidth={2.5} size={20} />}
+          {isCorrect ? <CheckCircle strokeWidth={2.5} size={20} /> :
+           isSkipped ? <AlertTriangle strokeWidth={2.5} size={20} /> :
+           <XCircle strokeWidth={2.5} size={20} />}
         </div>
       </div>
 
@@ -222,7 +242,7 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
         {/* A BLOCK reviews part by part: prompt, what the student put, what was right, ✓/✗. */}
         {isBlock && (
           <div className="mb-3 space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t.block.parts}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.block.parts}</p>
             {question.parts.map((part: NormalizedPart) => (
               <PartReviewRow key={part.id} part={part} given={blockAnswer[part.id]} t={t} />
             ))}
@@ -232,17 +252,23 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
         {!isBlock && (
         <div className="grid md:grid-cols-2 gap-3 mb-3">
           {/* Student Answer */}
-          <div className={`rounded-xl p-3 border flex flex-col gap-1.5 ${isCorrect ? 'bg-emerald-50/30 border-emerald-100' : isSkipped ? 'bg-zinc-50 border-zinc-100' : 'bg-rose-50/30 border-rose-100'}`}>
-             <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${isCorrect ? 'text-emerald-600' : isSkipped ? 'text-zinc-500' : 'text-rose-600'}`}>
+          <div className={cn(
+            'flex flex-col gap-1.5 rounded-m3-sm border bg-surface-container p-3',
+            isCorrect ? 'border-success' : isSkipped ? 'border-outline-variant' : 'border-error',
+          )}>
+             <span className={cn(
+               'flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em]',
+               isCorrect ? 'text-success' : isSkipped ? 'text-on-surface-variant' : 'text-error',
+             )}>
                {isCorrect ? <CheckCircle size={12} strokeWidth={3}/> : isSkipped ? <AlertTriangle size={12} strokeWidth={3}/> : <XCircle size={12} strokeWidth={3}/>}
                {isSkipped ? t.question.skipped : t.question.yourAns}
              </span>
              <div className="mt-0.5">
                 {isSkipped ? (
-                   <span className="text-zinc-400 italic text-[13px] font-bold">{t.question.noSel}</span>
+                   <span className="text-[13px] font-bold italic text-on-surface-variant">{t.question.noSel}</span>
                 ) : isTyped ? (
                    // open / numeric — the student typed this, there is no letter to show.
-                   <p className={`text-[13px] font-black break-words ${isCorrect ? 'text-emerald-800' : 'text-rose-800'}`}>{typedAnswer}</p>
+                   <p className={cn('break-words text-[13px] font-black', isCorrect ? 'text-success' : 'text-error')}>{typedAnswer}</p>
                 ) : (
                    <div className="flex flex-col gap-1.5">
                      {chosenKeys.map((k) => <OptionLine key={k} question={question} optionKey={k} tone={isCorrect ? 'ok' : 'bad'} />)}
@@ -253,16 +279,16 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
 
           {/* Correct Answer (If wrong) */}
           {!isCorrect && (
-            <div className="bg-emerald-50/30 border border-emerald-100 rounded-xl p-3 flex flex-col gap-1.5">
-               <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+            <div className="flex flex-col gap-1.5 rounded-m3-sm border border-success bg-surface-container p-3">
+               <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-success">
                  <CheckCircle size={12} strokeWidth={3} /> {t.question.correctAns}
                </span>
                <div className="mt-0.5">
                   {isTyped ? (
                     <>
-                      <p className="text-[13px] font-black text-emerald-800 break-words">{typedCorrect}</p>
+                      <p className="break-words text-[13px] font-black text-success">{typedCorrect}</p>
                       {acceptedAnswers.length > 0 && (
-                        <p className="text-[11px] font-bold text-emerald-600/70 mt-1 break-words">≈ {acceptedAnswers.join(' · ')}</p>
+                        <p className="mt-1 break-words text-[11px] font-bold text-on-surface-variant">≈ {acceptedAnswers.join(' · ')}</p>
                       )}
                     </>
                   ) : (
@@ -277,17 +303,29 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
         )}
 
         {/* Buttons */}
-        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-100">
+        <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant pt-3">
           {!isTyped && !isBlock && (
-            <button onClick={() => setShowAllOptions(!showAllOptions)} className="flex items-center gap-1.5 text-zinc-500 text-[11px] font-black uppercase tracking-widest bg-white border border-zinc-200 hover:bg-zinc-50 px-3 py-1.5 rounded-lg transition-colors">
-              {showAllOptions ? <Eye size={14} strokeWidth={2.5}/> : <List size={14} strokeWidth={2.5}/>} {showAllOptions ? t.question.hideOpts : t.question.showOpts}
-            </button>
+            <Button
+              variant="outlined"
+              size="sm"
+              onClick={() => setShowAllOptions(!showAllOptions)}
+              icon={showAllOptions ? <Eye size={14} strokeWidth={2.5}/> : <List size={14} strokeWidth={2.5}/>}
+              className="text-[11px] uppercase tracking-[0.1em]"
+            >
+              {showAllOptions ? t.question.hideOpts : t.question.showOpts}
+            </Button>
           )}
 
           {explanationText && (
-            <button onClick={() => setShowExplanation(!showExplanation)} className={`flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-colors ${showExplanation ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'}`}>
-              <Lightbulb size={14} strokeWidth={2.5} className="text-indigo-500" /> {showExplanation ? t.question.hideExp : t.question.viewExp}
-            </button>
+            <Button
+              variant={showExplanation ? 'tonal' : 'outlined'}
+              size="sm"
+              onClick={() => setShowExplanation(!showExplanation)}
+              icon={<Lightbulb size={14} strokeWidth={2.5} />}
+              className="text-[11px] uppercase tracking-[0.1em]"
+            >
+              {showExplanation ? t.question.hideExp : t.question.viewExp}
+            </Button>
           )}
         </div>
 
@@ -295,17 +333,23 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
         <AnimatePresence>
           {showAllOptions && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              <div className="mt-3 p-3 bg-zinc-50 rounded-xl border border-zinc-200">
+              <div className="mt-3 rounded-m3-sm border border-outline-variant bg-surface-container p-3">
                 <div className="space-y-1.5">
                   {Object.entries(question.options || {}).map(([key, val]: any) => (
                     // multiple_select has several correct letters — highlight them all.
-                    <div key={key} className={`flex items-start gap-2 p-2 rounded-lg border ${correctKeySet.has(key) ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-zinc-200'}`}>
-                      <span className={`w-6 h-6 flex items-center justify-center font-black text-[11px] rounded shrink-0 ${correctKeySet.has(key) ? 'bg-emerald-200 text-emerald-800' : 'bg-zinc-200 text-zinc-600'}`}>{key}</span>
-                      <div className="text-[13px] font-bold text-zinc-700 pt-0.5">
+                    <div key={key} className={cn(
+                      'flex items-start gap-2 rounded-m3-xs border p-2',
+                      correctKeySet.has(key) ? 'border-success bg-surface' : 'border-outline-variant bg-surface',
+                    )}>
+                      <span className={cn(
+                        'grid h-6 w-6 shrink-0 place-items-center rounded-m3-xs text-[11px] font-black',
+                        correctKeySet.has(key) ? 'bg-success-container text-on-success-container' : 'bg-surface-container-high text-on-surface-variant',
+                      )}>{key}</span>
+                      <div className="pt-0.5 text-[13px] font-bold text-on-surface">
                         <LatexRenderer latex={getContentText(val)} />
                         <OptionImage url={val?.imageUrl} alt={key} />
                       </div>
-                      {correctKeySet.has(key) && <CheckCircle size={14} strokeWidth={3} className="text-emerald-500 ml-auto shrink-0 mt-0.5"/>}
+                      {correctKeySet.has(key) && <CheckCircle size={14} strokeWidth={3} className="ml-auto mt-0.5 shrink-0 text-success"/>}
                     </div>
                   ))}
                 </div>
@@ -314,11 +358,11 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
           )}
           {showExplanation && explanationText && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              <div className="mt-3 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 flex gap-3">
-                 <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0"><Lightbulb size={14} strokeWidth={3}/></div>
-                 <div className="space-y-1 w-full pt-1">
-                    <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">{t.question.solution}</p>
-                    <div className="text-zinc-800 font-bold text-[13px] leading-relaxed"><LatexRenderer latex={explanationText} /></div>
+              <div className="mt-3 flex gap-3 rounded-m3-sm bg-primary-container p-4 text-on-primary-container">
+                 <Tile tone="primary" size="sm" className="h-7 w-7 bg-surface text-primary"><Lightbulb size={14} strokeWidth={3}/></Tile>
+                 <div className="w-full space-y-1 pt-1">
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] opacity-75">{t.question.solution}</p>
+                    <div className="text-[13px] font-bold leading-relaxed"><LatexRenderer latex={explanationText} /></div>
                  </div>
               </div>
             </motion.div>
@@ -326,7 +370,7 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
         </AnimatePresence>
 
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -389,7 +433,9 @@ export default function TestResultsPage() {
     if (visibility === 'always') setCanViewDetails(true);
     else if (visibility === 'never') { setCanViewDetails(false); setBlockReason(t.blocked.reason1); }
     else if (visibility === 'after_due') {
-      if (!assignment.dueAt) setCanViewDetails(true); 
+      // No due date + 'after_due' means "hold results" (matches the runner) —
+      // revealing immediately here would defeat the teacher's setting.
+      if (!assignment.dueAt) { setCanViewDetails(false); setBlockReason(t.blocked.reason1); }
       else {
         const now = new Date();
         const dueDate = new Date(assignment.dueAt.seconds * 1000);
@@ -419,32 +465,45 @@ export default function TestResultsPage() {
     }
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center bg-zinc-50 text-indigo-600 gap-3 font-black text-xl"><Loader2 className="animate-spin" size={32}/> {t.loading}</div>;
+  if (loading) return (
+    <Page className="grid min-h-[70vh] place-items-center">
+      <div className="flex flex-col items-center gap-4">
+        <Spinner size={34} label={t.loading} />
+        <p className="text-[14px] font-bold text-on-surface-variant">{t.loading}</p>
+      </div>
+    </Page>
+  );
   if (!attempt || !testData) return null;
 
   if (!canViewDetails) {
     return (
-      <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4 font-sans">
-        <div className="max-w-md w-full p-8 bg-white rounded-[2rem] shadow-xl border border-zinc-200 text-center">
-          <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6"><Lock size={28} strokeWidth={2.5}/></div>
-          <h1 className="text-2xl font-black text-zinc-900 mb-2">{t.blocked.title}</h1>
-          <div className="mt-6 p-6 bg-zinc-50 rounded-2xl border border-zinc-200">
-             <p className="text-[11px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t.blocked.result}</p>
-             <p className="text-5xl font-black text-indigo-600 tracking-tight">{attempt.score}<span className="text-2xl text-zinc-300">/{attempt.totalQuestions}</span></p>
+      <Page className="flex min-h-[80vh] items-center justify-center">
+        <Card variant="outlined" className="w-full max-w-md text-center">
+          <Tile tone="primary" size="lg" className="mx-auto mb-6 h-16 w-16"><Lock size={28} strokeWidth={2.5}/></Tile>
+          <h1 className="s-display text-[24px] font-bold text-on-surface">{t.blocked.title}</h1>
+          <div className="mt-6 rounded-m3-md border border-outline-variant bg-surface-container p-6">
+             <p className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.blocked.result}</p>
+             <p className="s-display s-num text-[44px] font-bold leading-none text-primary">
+               {attempt.score}<span className="text-[24px] text-on-surface-variant">/{attempt.totalQuestions}</span>
+             </p>
           </div>
-          <div className="mt-6 bg-amber-50 border border-amber-200 p-4 rounded-xl text-amber-700 text-[13px] font-bold flex items-start gap-3 text-left">
-             <Clock size={18} strokeWidth={2.5} className="shrink-0 mt-0.5 text-amber-500" />
-             <p>{blockReason}</p>
-          </div>
-          <button onClick={() => router.push(`/classes/${classId}`)} className="mt-8 w-full py-4 bg-zinc-800 hover:bg-zinc-700 text-white font-black text-[14px] uppercase tracking-widest rounded-xl transition-all">{t.blocked.btn}</button>
-        </div>
-      </div>
+          <Banner
+            status="warning"
+            className="mt-6 text-left"
+            icon={<Clock size={18} strokeWidth={2.5} />}
+            title={blockReason}
+          />
+          <Button fullWidth size="lg" className="mt-8" onClick={() => router.push(`/classes/${classId}`)}>
+            {t.blocked.btn}
+          </Button>
+        </Card>
+      </Page>
     );
   }
 
   const percentage = Math.round((attempt.score / attempt.totalQuestions) * 100);
-  const gradeColor = percentage >= 80 ? 'text-emerald-600' : percentage >= 50 ? 'text-amber-600' : 'text-rose-600';
-  
+  const gradeStatus = percentage >= 80 ? 'success' : percentage >= 50 ? 'warning' : 'error';
+
   // Apply Filter. A block is filtered as ONE question and counts as correct only when
   // fully correct (`isAnswerCorrect`), so the chips below count QUESTIONS — while
   // attempt.score / attempt.totalQuestions are POINTS (identical numbers unless a block
@@ -454,39 +513,35 @@ export default function TestResultsPage() {
   const wrongCount = questions.filter((q) => !isAnswerCorrect(q, attempt.answers?.[q.id])).length;
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-20 font-sans">
-      
-      {/* 🟢 MINIMAL STICKY HEADER */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-zinc-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-          <button onClick={() => router.push(`/classes/${classId}`)} className="flex items-center gap-1.5 text-[13px] font-black uppercase tracking-widest text-zinc-500 hover:text-indigo-600 transition-colors">
-            <ChevronLeft size={16} strokeWidth={3} /> <span className="hidden sm:inline">{t.back}</span>
-          </button>
-          <h1 className="font-black text-zinc-900 text-[15px] md:text-[16px] truncate max-w-xs md:max-w-md mx-4">{testData.title}</h1>
-          <div className={`font-black text-[15px] flex items-center gap-1.5 ${gradeColor}`}>
-            <Trophy size={16} strokeWidth={3} /> {percentage}%
-          </div>
-        </div>
-      </div>
+    <Page width="wide">
+
+      <PageHeader
+        title={testData.title}
+        onBack={() => router.push(`/classes/${classId}`)}
+        actions={
+          <Chip status={gradeStatus} size="md" icon={<Trophy size={14} strokeWidth={3} />}>
+            <span className="s-num">{percentage}%</span>
+          </Chip>
+        }
+      />
 
       {/* 🟢 TWO-COLUMN DASHBOARD LAYOUT */}
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col-reverse lg:flex-row gap-6 md:gap-8">
-        
+      <div className="flex flex-col-reverse gap-6 lg:flex-row md:gap-8">
+
         {/* LEFT COLUMN: Questions (flex-1) */}
-        <div className="flex-1 space-y-4">
-          
+        <div className="min-w-0 flex-1 space-y-4">
+
           {/* Quick Filters */}
-          <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-zinc-200 shadow-sm">
-            <div className="flex gap-1">
-              <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-lg text-[12px] font-black uppercase tracking-widest transition-all ${filter === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:bg-zinc-100'}`}>
-                {t.cards.all} ({questionCount})
-              </button>
-              <button onClick={() => setFilter('incorrect')} className={`px-4 py-2 rounded-lg text-[12px] font-black uppercase tracking-widest transition-all ${filter === 'incorrect' ? 'bg-rose-500 text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100'}`}>
-                {t.cards.incorrectOnly} ({wrongCount})
-              </button>
-            </div>
-            <Filter size={16} className="text-zinc-400 mr-2" strokeWidth={2.5}/>
-          </div>
+          <SegmentedControl
+            label={t.cards.filters}
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: 'all', label: `${t.cards.all} (${questionCount})` },
+              { value: 'incorrect', label: `${t.cards.incorrectOnly} (${wrongCount})` },
+            ]}
+            className="max-w-full flex-wrap"
+          />
 
           <div className="space-y-4">
             {filteredQuestions.map((q) => {
@@ -496,77 +551,69 @@ export default function TestResultsPage() {
                 <QuestionReviewCard key={q.id} question={q} index={originalIndex} studentAnswerKey={attempt.answers?.[q.id]} t={t} />
               );
             })}
-            
+
             {filteredQuestions.length === 0 && (
-              <div className="text-center py-12 bg-white rounded-2xl border border-zinc-200">
-                 <CheckCircle size={32} className="mx-auto text-emerald-400 mb-3" strokeWidth={2.5}/>
-                 <p className="text-zinc-500 font-bold text-[14px]">Perfect score! No incorrect questions.</p>
-              </div>
+              <Card variant="outlined">
+                <EmptyState icon="🎯" title="Perfect score! No incorrect questions." />
+              </Card>
             )}
           </div>
         </div>
 
         {/* RIGHT COLUMN: Sticky Sidebar (Stats + Map) */}
-        <div className="w-full lg:w-[320px] shrink-0">
-          <div className="lg:sticky lg:top-24 flex flex-col sm:flex-row lg:flex-col gap-4 md:gap-6">
-            
-            {/* COMPACT STATS CARD */}
-            <div className="flex-1 lg:flex-none bg-white p-5 md:p-6 rounded-2xl border border-zinc-200 shadow-sm flex flex-col justify-center">
-               <h3 className="font-black text-zinc-800 text-[14px] uppercase tracking-widest mb-4 flex items-center gap-2">
-                 <Trophy size={16} strokeWidth={3} className="text-indigo-500"/> {t.cards.score}
-               </h3>
-               <div className="flex items-end gap-2 mb-4">
-                 <span className="text-5xl font-black text-zinc-900 tracking-tighter leading-none">{attempt.score}</span>
-                 <span className="text-lg font-bold text-zinc-400 mb-1">/ {attempt.totalQuestions}</span>
-               </div>
-               
-               <div className="flex gap-2">
-                 <div className="flex-1 bg-emerald-50 rounded-xl border border-emerald-100 p-2.5 text-center">
-                   <p className="text-[10px] font-black text-emerald-600/70 uppercase tracking-widest">{t.cards.right}</p>
-                   <p className="font-black text-emerald-700 text-lg">{attempt.score}</p>
-                 </div>
-                 <div className="flex-1 bg-rose-50 rounded-xl border border-rose-100 p-2.5 text-center">
-                   <p className="text-[10px] font-black text-rose-600/70 uppercase tracking-widest">{t.cards.wrong}</p>
-                   <p className="font-black text-rose-700 text-lg">{attempt.totalQuestions - attempt.score}</p>
-                 </div>
-               </div>
-            </div>
+        <div className="w-full shrink-0 lg:w-[320px]">
+          <div className="flex flex-col gap-4 sm:flex-row lg:sticky lg:top-24 lg:flex-col md:gap-6">
+
+            {/* SCORE HERO */}
+            <StatBand
+              className="flex-1 lg:flex-none"
+              stats={[
+                { label: t.cards.score, value: `${attempt.score}/${attempt.totalQuestions}` },
+                { label: t.cards.right, value: attempt.score },
+                { label: t.cards.wrong, value: attempt.totalQuestions - attempt.score },
+              ]}
+            />
 
             {/* OVERVIEW MATRIX (MAP) */}
-            <div className="flex-1 lg:flex-none bg-white p-5 md:p-6 rounded-2xl border border-zinc-200 shadow-sm">
-               <h3 className="font-black text-zinc-800 text-[14px] uppercase tracking-widest mb-4 flex items-center gap-2">
-                 <Grid size={16} strokeWidth={3} className="text-indigo-500"/> {t.cards.overview}
+            <Card variant="outlined" className="flex-1 lg:flex-none">
+               <h3 className="mb-4 flex items-center gap-2 text-[14px] font-black uppercase tracking-[0.12em] text-on-surface">
+                 <Grid size={16} strokeWidth={3} className="text-primary"/> {t.cards.overview}
                </h3>
                <div className="flex flex-wrap gap-1.5 md:gap-2">
                   {questions.map((q, idx: number) => {
                      // A block is "correct" only when every part is — `isAnswerCorrect` already does that.
                      const isCorrect = isAnswerCorrect(q, attempt.answers?.[q.id]);
                      const isSkipped = !isQuestionAnswered(q, attempt.answers?.[q.id]);
-                     
-                     let style = "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200";
-                     if (isCorrect) style = "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200";
-                     else if (isSkipped) style = "bg-zinc-100 text-zinc-500 border-zinc-200 hover:bg-zinc-200";
+
+                     let style = "bg-error-container text-on-error-container border-error";
+                     if (isCorrect) style = "bg-success-container text-on-success-container border-success";
+                     else if (isSkipped) style = "bg-surface-container-high text-on-surface-variant border-outline-variant";
 
                      // Dim the correct ones if filter is active, but keep them clickable
                      const isDimmed = filter === 'incorrect' && isCorrect;
 
                      return (
-                       <button 
-                         key={idx} 
+                       <button
+                         key={idx}
                          onClick={() => handleMapClick(idx, q.id)}
-                         className={`w-8 h-8 md:w-[38px] md:h-[38px] rounded-[10px] font-black text-[12px] md:text-[13px] border transition-all flex items-center justify-center shadow-sm hover:-translate-y-0.5 active:scale-95 ${style} ${isDimmed ? 'opacity-30 hover:opacity-100' : ''}`}
+                         aria-label={`${t.cards.questions} ${idx + 1}`}
+                         className={cn(
+                           's-num s-press grid h-8 w-8 place-items-center rounded-m3-xs border text-[12px] font-black md:h-[38px] md:w-[38px] md:text-[13px]',
+                           style,
+                           isDimmed && 'opacity-30 hover:opacity-100',
+                         )}
                        >
                          {idx + 1}
                        </button>
                      )
                   })}
                </div>
-            </div>
+            </Card>
 
           </div>
         </div>
 
       </div>
-    </div>
+    </Page>
   );
 }

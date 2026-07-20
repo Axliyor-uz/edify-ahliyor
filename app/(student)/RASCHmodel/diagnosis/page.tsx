@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  AlertCircle, ArrowLeft, Brain, Clock, Gauge, Home, Rocket, Target, Zap,
+  ArrowLeft, Brain, Clock, Gauge, Home, Rocket, Target, Zap, AlertCircle,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/AuthContext';
@@ -13,6 +13,10 @@ import { useStudentLanguage } from '../../layout';
 import { abilityFor, diagnosticsFor, getRASCHLevels, type AnalysisSource } from '@/services/RASCHProgressService';
 import { behaviorTotals, weakestSpots, EXPECTED_SEC } from '@/lib/RASCHdiagnosis';
 import { expectedRange } from '@/lib/RASCHtheta';
+import {
+  Banner, Card, Chip, EmptyState, ErrorState, FilterChip, ListGroup, ListRow,
+  LoadingState, Page, PageHeader, Stack, cn, type Status,
+} from '@/components/student-ui';
 import type { Behavior, RASCHLevels } from '@/types/RASCH';
 import type { Lang } from '@/types/Math';
 
@@ -133,13 +137,41 @@ const UI: Record<Lang, Record<string, string>> = {
   },
 };
 
-const BEHAVIOR_STYLE: Record<Behavior, { color: string; hex: string; icon: React.ElementType }> = {
-  solid: { color: 'bg-emerald-50 border-emerald-200 text-emerald-700', hex: '#059669', icon: Target },
-  fragile: { color: 'bg-amber-50 border-amber-200 text-amber-700', hex: '#d97706', icon: Clock },
-  guess: { color: 'bg-sky-50 border-sky-200 text-sky-700', hex: '#0284c7', icon: Zap },
-  gap: { color: 'bg-rose-50 border-rose-200 text-rose-700', hex: '#e11d48', icon: Brain },
-  skipped: { color: 'bg-zinc-50 border-zinc-200 text-zinc-400', hex: '#a1a1aa', icon: AlertCircle },
+/** Each behaviour's semantic role. `bar` is the token the stacked bar paints
+ *  with, so the split follows the palette in both light and dark mode. */
+const BEHAVIOR_STYLE: Record<Behavior, { status: Status; tile: string; bar: string; icon: React.ElementType }> = {
+  solid: { status: 'success', tile: 'bg-success-container text-on-success-container', bar: 'var(--m3-success)', icon: Target },
+  fragile: { status: 'warning', tile: 'bg-warning-container text-on-warning-container', bar: 'var(--m3-warning)', icon: Clock },
+  guess: { status: 'info', tile: 'bg-secondary-container text-on-secondary-container', bar: 'var(--m3-secondary)', icon: Zap },
+  gap: { status: 'error', tile: 'bg-error-container text-on-error-container', bar: 'var(--m3-error)', icon: Brain },
+  skipped: { status: 'neutral', tile: 'bg-surface-container-high text-on-surface-variant', bar: 'var(--m3-outline)', icon: AlertCircle },
 };
+
+/** Link that carries a Button's shape without nesting a <button> in an <a>. */
+function NavLink({
+  href, tone = 'outlined', className, children,
+}: {
+  href: string;
+  tone?: 'outlined' | 'filled';
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-m3-btn px-4',
+        'text-[13px] font-extrabold leading-none s-press',
+        tone === 'filled'
+          ? 'bg-primary text-on-primary'
+          : 'border-[1.5px] border-outline text-on-surface-variant hover:bg-state-hover',
+        className,
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default function DiagnosisPage() {
   const { user, loading: authLoading } = useAuth();
@@ -181,18 +213,24 @@ export default function DiagnosisPage() {
   const hasPractice = (levels?.abilityPractice?.items ?? 0) > 0;
 
   if (authLoading || status === 'loading') {
-    return <div className="p-10 text-center text-[14px] font-black text-zinc-400">{t.loading}</div>;
+    return (
+      <Page>
+        <LoadingState label={t.loading} />
+      </Page>
+    );
   }
   if (!user) {
-    return <div className="p-10 text-center text-[14px] font-black text-zinc-400">{t.signIn}</div>;
+    return (
+      <Page>
+        <EmptyState icon="🔐" title={t.signIn} />
+      </Page>
+    );
   }
   if (status === 'error' || !levels) {
     return (
-      <div className="max-w-[900px] mx-auto p-6">
-        <div className="flex items-center gap-3 bg-rose-50 border-2 border-rose-200 text-rose-700 rounded-2xl px-4 py-3 text-[13px] font-bold">
-          <AlertCircle size={18} strokeWidth={3} /> {t.error}
-        </div>
-      </div>
+      <Page>
+        <ErrorState title={t.error} />
+      </Page>
     );
   }
 
@@ -201,133 +239,128 @@ export default function DiagnosisPage() {
   const verdict = totals.guess > totals.gap ? 'pacing' : totals.gap > 0 ? 'knowledge' : null;
 
   return (
-    <div className="min-h-screen bg-zinc-100 font-sans pb-28 md:pb-12">
-      <div className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-8 pt-8 flex flex-col gap-5">
-
+    <Page>
+      <Stack>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/RASCHmodel/progress" className="flex items-center gap-1.5 px-3.5 py-2 bg-white border-2 border-zinc-200 border-b-4 rounded-2xl text-[12px] font-black text-zinc-600 active:border-b-2 active:translate-y-[2px] transition-all">
+          <NavLink href="/RASCHmodel/progress">
             <ArrowLeft size={14} strokeWidth={3} /> {t.back}
-          </Link>
-          <Link href="/RASCHmodel" className="flex items-center gap-1.5 px-3.5 py-2 bg-white border-2 border-zinc-200 border-b-4 rounded-2xl text-[12px] font-black text-zinc-600 active:border-b-2 active:translate-y-[2px] transition-all">
+          </NavLink>
+          <NavLink href="/RASCHmodel">
             <Home size={14} strokeWidth={3} /> {t.home}
-          </Link>
-          <Link href="/RASCHmodel/practice" className="flex items-center gap-1.5 px-3.5 py-2 bg-violet-500 text-white border-b-4 border-violet-700 rounded-2xl text-[12px] font-black active:border-b-0 active:translate-y-1 transition-all ml-auto">
+          </NavLink>
+          <NavLink href="/RASCHmodel/practice" tone="filled" className="ml-auto">
             <Rocket size={14} strokeWidth={3} /> {t.practice}
-          </Link>
+          </NavLink>
         </div>
 
-        <div>
-          <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight">{t.title}</h1>
-          <p className="text-[14px] font-bold text-zinc-500 mt-1 max-w-2xl">{t.subtitle}</p>
-        </div>
+        <PageHeader title={t.title} subtitle={t.subtitle} className="pb-0" />
 
         {/* Source: exams and practice are different evidence, so they are
             measured separately — and merged only here, on demand. */}
         <div>
-          <div className="inline-flex items-center gap-1 bg-white border-2 border-zinc-200 border-b-4 rounded-2xl p-1">
+          <div className="flex flex-wrap items-center gap-2">
             {([
               ['all', t.srcAll],
               ['exam', t.srcExam],
               ['practice', t.srcPractice],
             ] as [AnalysisSource, string][]).map(([key, label]) => (
-              <button
+              <FilterChip
                 key={key}
+                selected={source === key}
                 onClick={() => setSource(key)}
                 disabled={key === 'practice' && !hasPractice}
-                className={`px-3.5 py-2 rounded-xl text-[12px] font-black uppercase tracking-wider transition-all disabled:opacity-30 ${
-                  source === key ? 'bg-violet-500 text-white' : 'text-zinc-400 hover:text-zinc-600'
-                }`}
+                className="disabled:pointer-events-none disabled:border-transparent disabled:bg-disabled-bg disabled:text-disabled-fg"
               >
                 {label}
-              </button>
+              </FilterChip>
             ))}
           </div>
-          <p className="text-[11px] font-bold text-zinc-400 mt-1.5">{t.srcHint}</p>
+          <p className="mt-1.5 text-[11px] font-bold text-on-surface-variant">{t.srcHint}</p>
         </div>
 
         {answered === 0 ? (
-          <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-8 flex flex-col items-center gap-4 text-center">
-            <p className="text-[13px] font-bold text-zinc-400 max-w-md">
-              {source === 'all' ? t.noData : t.noSource}
-            </p>
-            <Link href="/RASCHmodel/exam" className="flex items-center gap-2 px-5 py-3 bg-violet-500 text-white font-black text-[13px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider">
-              <Rocket size={16} strokeWidth={3} /> {t.startExam}
-            </Link>
-          </div>
+          <Card>
+            <EmptyState
+              icon="📊"
+              title={source === 'all' ? t.noData : t.noSource}
+              action={
+                <NavLink href="/RASCHmodel/exam" tone="filled">
+                  <Rocket size={16} strokeWidth={3} /> {t.startExam}
+                </NavLink>
+              }
+            />
+          </Card>
         ) : (
           <>
             {/* Rasch ability — the draw-independent number */}
             {ability && ability.items > 0 && (
-              <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <Gauge size={16} strokeWidth={3} className="text-violet-500" />
-                  <h2 className="text-[15px] font-black text-zinc-900">{t.ability}</h2>
-                  <span className="ml-auto text-[11px] font-bold text-zinc-400">
+              <Card>
+                <div className="mb-3 flex items-center gap-2">
+                  <Gauge size={16} strokeWidth={3} className="text-primary" />
+                  <h2 className="s-display text-[15px] font-bold">{t.ability}</h2>
+                  <span className="ml-auto text-[11px] font-bold text-on-surface-variant">
                     {ability.items} {t.items}
                   </span>
                 </div>
-                <div className="flex items-end gap-5 flex-wrap">
+                <div className="flex flex-wrap items-end gap-5">
                   <div>
-                    <p className="text-5xl font-black text-violet-600 tracking-tight leading-none">
+                    <p className="s-display s-num text-5xl font-bold leading-none tracking-tight text-primary">
                       {ability.expected}%
                     </p>
                     {range && (
-                      <p className="text-[12px] font-black text-zinc-400 mt-2">
+                      <p className="s-num mt-2 text-[12px] font-black text-on-surface-variant">
                         {range.low}% – {range.high}%
                       </p>
                     )}
                   </div>
-                  <div className="flex-1 min-w-[200px]">
-                    <p className="text-[12px] font-bold text-zinc-400 leading-relaxed">{t.abilityHint}</p>
-                    <p className="text-[11px] font-black text-zinc-300 mt-1">
+                  <div className="min-w-[200px] flex-1">
+                    <p className="text-[12px] font-bold leading-relaxed text-on-surface-variant">{t.abilityHint}</p>
+                    <p className="s-num mt-1 text-[11px] font-black text-outline">
                       θ = {ability.theta.toFixed(2)} ± {ability.se.toFixed(2)} logit
                     </p>
                   </div>
                 </div>
-              </div>
+              </Card>
             )}
 
             {/* The verdict: pacing vs knowledge */}
             {verdict && (
-              <div className={`rounded-[1.5rem] border-2 border-b-[6px] p-5 ${verdict === 'pacing' ? 'bg-sky-50 border-sky-200' : 'bg-rose-50 border-rose-200'}`}>
-                <p className={`text-[15px] font-black ${verdict === 'pacing' ? 'text-sky-800' : 'text-rose-800'}`}>
-                  {verdict === 'pacing' ? t.pacing : t.knowledge}
-                </p>
-                <p className={`text-[13px] font-bold mt-1 ${verdict === 'pacing' ? 'text-sky-700' : 'text-rose-700'}`}>
-                  {verdict === 'pacing' ? t.pacingHint : t.knowledgeHint}
-                </p>
-              </div>
+              <Banner
+                status={verdict === 'pacing' ? 'info' : 'error'}
+                title={verdict === 'pacing' ? t.pacing : t.knowledge}
+                description={verdict === 'pacing' ? t.pacingHint : t.knowledgeHint}
+              />
             )}
 
             {/* Behaviour split */}
-            <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-6">
-              <h2 className="text-[15px] font-black text-zinc-900 mb-4">{t.behavior}</h2>
+            <Card>
+              <h2 className="s-display mb-4 text-[15px] font-bold">{t.behavior}</h2>
 
               {/* One bar, to scale — the shape of the problem at a glance */}
-              <div className="flex h-3 rounded-full overflow-hidden bg-zinc-100 mb-4">
+              <div className="mb-4 flex h-3 overflow-hidden rounded-full bg-surface-container-highest">
                 {(['solid', 'fragile', 'guess', 'gap'] as Behavior[]).map((b) =>
                   totals[b] > 0 ? (
                     <div
                       key={b}
-                      style={{ width: `${(totals[b] / answered) * 100}%`, backgroundColor: BEHAVIOR_STYLE[b].hex }}
+                      style={{ width: `${(totals[b] / answered) * 100}%`, backgroundColor: BEHAVIOR_STYLE[b].bar }}
                       title={`${t[b]}: ${totals[b]}`}
                     />
                   ) : null,
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {(['gap', 'guess', 'fragile', 'solid'] as Behavior[]).map((b) => {
                   const style = BEHAVIOR_STYLE[b];
                   const Icon = style.icon;
                   return (
-                    <div key={b} className={`flex items-start gap-2.5 p-3 rounded-2xl border-2 ${style.color}`}>
-                      <Icon size={16} strokeWidth={3} className="shrink-0 mt-0.5" />
+                    <div key={b} className={cn('flex items-start gap-2.5 rounded-m3-md p-3', style.tile)}>
+                      <Icon size={16} strokeWidth={3} className="mt-0.5 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-[13px] font-black flex items-center gap-2">
-                          {t[b]} <span className="text-[15px]">{totals[b]}</span>
+                        <p className="flex items-center gap-2 text-[13px] font-black">
+                          {t[b]} <span className="s-num text-[15px]">{totals[b]}</span>
                         </p>
-                        <p className="text-[11px] font-bold opacity-80 leading-snug mt-0.5">
+                        <p className="mt-0.5 text-[11px] font-bold leading-snug opacity-80">
                           {t[`${b}Hint`]}
                         </p>
                       </div>
@@ -335,76 +368,78 @@ export default function DiagnosisPage() {
                   );
                 })}
               </div>
-            </div>
+            </Card>
 
             {/* Weakest subtopics */}
-            <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-6">
-              <div className="flex items-center justify-between gap-3 mb-1">
-                <h2 className="text-[15px] font-black text-zinc-900">{t.weakest}</h2>
-                <span className="text-[11px] font-bold text-zinc-400">{t.weakestHint}</span>
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="s-display text-[15px] font-bold">{t.weakest}</h2>
+                <span className="text-[11px] font-bold text-on-surface-variant">{t.weakestHint}</span>
               </div>
 
               {weak.length === 0 ? (
-                <p className="text-[13px] font-bold text-zinc-400 mt-3">{t.noData}</p>
+                <Card>
+                  <p className="text-[13px] font-bold text-on-surface-variant">{t.noData}</p>
+                </Card>
               ) : (
-                <div className="flex flex-col gap-2 mt-3">
+                <ListGroup>
                   {weak.map((spot, i) => {
-                    const style = BEHAVIOR_STYLE[spot.dominant];
                     const budget = EXPECTED_SEC[2];
+                    const masteryPct = Math.round(spot.mastery * 100);
                     return (
                       <motion.div
                         key={spot.key}
                         initial={{ opacity: 0, x: -6 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.2, delay: Math.min(i, 8) * 0.04 }}
-                        className="flex items-center gap-3 p-3 rounded-2xl border-2 border-zinc-100"
                       >
-                        <span className="w-7 h-7 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[11px] font-black text-zinc-400 shrink-0">
-                          {i + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-bold text-zinc-800 truncate">
-                            {spot.subtopicName || spot.chapterName}
-                          </p>
-                          <p className="text-[11px] font-bold text-zinc-400 truncate">
-                            {spot.chapterName} · {t.avgTime} {spot.avgSec}s ({t.budget} {budget}s)
-                          </p>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-black shrink-0 ${style.color}`}>
-                          {t[spot.dominant]}
-                        </span>
-
-                        {/* BKT mastery — what they KNOW, as opposed to what they scored */}
-                        <div className="shrink-0 w-16" title={t.masteryHint}>
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[9px] font-black text-zinc-300 uppercase">{t.mastery}</span>
-                            <span className="text-[11px] font-black text-zinc-600">
-                              {Math.round(spot.mastery * 100)}%
+                        <ListRow
+                          leading={
+                            <span className="s-num grid h-7 w-7 shrink-0 place-items-center rounded-m3-xs bg-surface-container-high text-[11px] font-black text-on-surface-variant">
+                              {i + 1}
                             </span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden mt-0.5">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${Math.round(spot.mastery * 100)}%`,
-                                backgroundColor: spot.mastery >= 0.7 ? '#059669' : spot.mastery >= 0.4 ? '#d97706' : '#e11d48',
-                              }}
-                            />
-                          </div>
-                        </div>
+                          }
+                          title={spot.subtopicName || spot.chapterName}
+                          subtitle={`${spot.chapterName} · ${t.avgTime} ${spot.avgSec}s (${t.budget} ${budget}s)`}
+                          trailing={
+                            <div className="flex shrink-0 items-center gap-3">
+                              <Chip status={BEHAVIOR_STYLE[spot.dominant].status}>{t[spot.dominant]}</Chip>
 
-                        <span className="text-[14px] font-black text-zinc-900 shrink-0 w-12 text-right">
-                          {spot.correct}/{spot.seen}
-                        </span>
+                              {/* BKT mastery — what they KNOW, as opposed to what they scored */}
+                              <div className="hidden w-16 sm:block" title={t.masteryHint}>
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-[9px] font-black uppercase text-on-surface-variant">{t.mastery}</span>
+                                  <span className="s-num text-[11px] font-black">{masteryPct}%</span>
+                                </div>
+                                <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-surface-container-highest">
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{
+                                      width: `${masteryPct}%`,
+                                      backgroundColor:
+                                        spot.mastery >= 0.7 ? 'var(--m3-success)'
+                                        : spot.mastery >= 0.4 ? 'var(--m3-warning)'
+                                        : 'var(--m3-error)',
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              <span className="s-num w-12 text-right text-[14px] font-black">
+                                {spot.correct}/{spot.seen}
+                              </span>
+                            </div>
+                          }
+                        />
                       </motion.div>
                     );
                   })}
-                </div>
+                </ListGroup>
               )}
             </div>
           </>
         )}
-      </div>
-    </div>
+      </Stack>
+    </Page>
   );
 }

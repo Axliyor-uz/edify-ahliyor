@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, startAfter, getDocs, where } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
-import { 
-  FileText, CheckCircle, Clock, ArrowRight, Lock, 
-  AlertCircle, RotateCcw, Calendar, ShieldCheck, Trophy, Loader2, Info
+import {
+  FileText, CheckCircle, Clock, ArrowRight, Lock,
+  AlertCircle, RotateCcw, Calendar, ShieldCheck, Trophy, Info
 } from 'lucide-react';
-import { useStudentLanguage } from '@/app/(student)/layout'; 
+import {
+  ListGroup, Tile, Chip, Button, EmptyState, LoadingState, Spinner,
+} from '@/components/student-ui';
+import { useStudentLanguage } from '@/app/(student)/layout';
 
 // ============================================================================
 // 🟢 1. GLOBAL CACHE (0 Reads on Tab Switch, Survives Navigation)
@@ -45,7 +48,7 @@ export default function AssignmentsTab({ classId }: { classId: string }) {
   // --- STATE ---
   const [assignments, setAssignments] = useState<any[]>([]);
   const [myAttempts, setMyAttempts] = useState<any[]>([]);
-  
+
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastDoc, setLastDoc] = useState<any>(null);
@@ -83,14 +86,14 @@ export default function AssignmentsTab({ classId }: { classId: string }) {
   const fetchAssignments = async (isNextPage: boolean = false, silent: boolean = false) => {
     if (!user || !classId) return;
     if (isNextPage && !lastDoc) return;
-    
+
     if (!silent) isNextPage ? setLoadingMore(true) : setLoadingInitial(true);
 
     try {
       // 1. Fetch exactly 10 assignments
       let q = query(
-        collection(db, 'classes', classId, 'assignments'), 
-        orderBy('createdAt', 'desc'), 
+        collection(db, 'classes', classId, 'assignments'),
+        orderBy('createdAt', 'desc'),
         limit(PAGE_SIZE)
       );
 
@@ -109,8 +112,8 @@ export default function AssignmentsTab({ classId }: { classId: string }) {
       if (newAssignDocs.length > 0) {
         const assignmentIds = newAssignDocs.map(a => a.id);
         const attQ = query(
-          collection(db, 'attempts'), 
-          where('userId', '==', user.uid), 
+          collection(db, 'attempts'),
+          where('userId', '==', user.uid),
           where('assignmentId', 'in', assignmentIds)
         );
         const attSnap = await getDocs(attQ);
@@ -125,20 +128,20 @@ export default function AssignmentsTab({ classId }: { classId: string }) {
 
         setMyAttempts(prevAtt => {
           const updatedAttempts = isNextPage ? [...prevAtt, ...newAttempts] : newAttempts;
-          
-          globalStudentAssignmentsCache[classId] = { 
-            assignments: updatedAssigns, 
-            attempts: updatedAttempts, 
-            lastDoc: newLastDoc, 
-            hasMore: newHasMore, 
-            timestamp: Date.now() 
+
+          globalStudentAssignmentsCache[classId] = {
+            assignments: updatedAssigns,
+            attempts: updatedAttempts,
+            lastDoc: newLastDoc,
+            hasMore: newHasMore,
+            timestamp: Date.now()
           };
           return updatedAttempts;
         });
 
-        if (!silent || !isNextPage) { 
-          setLastDoc(newLastDoc); 
-          setHasMore(newHasMore); 
+        if (!silent || !isNextPage) {
+          setLastDoc(newLastDoc);
+          setHasMore(newHasMore);
         }
         return updatedAssigns;
       });
@@ -146,7 +149,7 @@ export default function AssignmentsTab({ classId }: { classId: string }) {
     } catch (e) {
       console.error("Assignment fetch error", e);
     } finally {
-      setLoadingInitial(false); 
+      setLoadingInitial(false);
       setLoadingMore(false);
     }
   };
@@ -166,168 +169,173 @@ export default function AssignmentsTab({ classId }: { classId: string }) {
   // 🟢 RENDER UI
   // ============================================================================
   if (loadingInitial && assignments.length === 0) {
-    return <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-indigo-500" size={28}/></div>;
+    return <LoadingState rows={3} />;
   }
 
   if (assignments.length === 0) {
     return (
-      <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-zinc-300 flex flex-col items-center shadow-sm">
-        <div className="w-16 h-16 bg-zinc-100 text-zinc-400 rounded-[1.2rem] flex items-center justify-center mb-4 rotate-6 border-2 border-zinc-200">
-          <FileText size={32} strokeWidth={2.5} />
-        </div>
-        <h3 className="text-[16px] font-black text-zinc-900 tracking-tight">{t.empty.title}</h3>
-        <p className="text-[14px] font-bold text-zinc-500 mt-1 max-w-xs leading-relaxed">{t.empty.desc}</p>
-      </div>
+      <EmptyState
+        icon={<FileText size={30} strokeWidth={2.5} />}
+        title={t.empty.title}
+        description={t.empty.desc}
+      />
     );
   }
 
   return (
-    <div className="grid gap-4">
-      {assignments.map((assign: any, index: number) => {
-        const isLastElement = index === assignments.length - 1;
-        
-        // --- CALCULATE STATUS ---
-        const attemptDoc = myAttempts.find((a: any) => a.assignmentId === assign.id);
-        const attemptCount = attemptDoc ? (attemptDoc.attemptsTaken || 1) : 0;
-        const maxAttempts = assign.allowedAttempts ?? 1; 
-        
-        const scorePercent = attemptDoc 
-          ? Math.round((attemptDoc.score / attemptDoc.totalQuestions) * 100) 
-          : null;
+    <div className="space-y-s-gap">
+      <ListGroup>
+        {assignments.map((assign: any, index: number) => {
+          const isLastElement = index === assignments.length - 1;
 
-        const isCompleted = maxAttempts !== 0 && attemptCount >= maxAttempts;
-        
-        // ⚠️ SECURITY WARNING: This uses local device time for UI rendering.
-        // For strict security, use Firestore Security rules (which we already implemented in firestore.rules)
-        // to block writes if the student tampers with their device clock.
-        const now = new Date();
-        const openDate = assign.openAt ? new Date(assign.openAt.seconds * 1000) : null;
-        const dueDate = assign.dueAt ? new Date(assign.dueAt.seconds * 1000) : null;
-        
-        const isLocked = openDate && now < openDate;
-        const isExpired = dueDate && now > dueDate;
-        
-        const formatDate = (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        const formatTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          // --- CALCULATE STATUS ---
+          const attemptDoc = myAttempts.find((a: any) => a.assignmentId === assign.id);
+          const attemptCount = attemptDoc ? (attemptDoc.attemptsTaken || 1) : 0;
+          const maxAttempts = assign.allowedAttempts ?? 1;
 
-        return (
-          <div 
-            key={assign.id} 
-            ref={isLastElement ? lastElementRef : null}
-            className="group bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5 hover:border-indigo-300 hover:border-b-indigo-400 active:border-b-2 active:translate-y-[4px] transition-all duration-200"
-          >
-            {/* LEFT: INFO */}
-            <div className="flex-1 space-y-3 min-w-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border-2 border-indigo-100 shrink-0">
-                  <FileText size={20} strokeWidth={2.5} />
+          const scorePercent = attemptDoc
+            ? Math.round((attemptDoc.score / attemptDoc.totalQuestions) * 100)
+            : null;
+
+          const isCompleted = maxAttempts !== 0 && attemptCount >= maxAttempts;
+
+          // ⚠️ SECURITY WARNING: This uses local device time for UI rendering.
+          // For strict security, use Firestore Security rules (which we already implemented in firestore.rules)
+          // to block writes if the student tampers with their device clock.
+          const now = new Date();
+          const openDate = assign.openAt ? new Date(assign.openAt.seconds * 1000) : null;
+          const dueDate = assign.dueAt ? new Date(assign.dueAt.seconds * 1000) : null;
+
+          const isLocked = openDate && now < openDate;
+          const isExpired = dueDate && now > dueDate;
+
+          const formatDate = (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          const formatTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+          return (
+            <div
+              key={assign.id}
+              ref={isLastElement ? lastElementRef : null}
+              className="flex flex-col gap-4 px-s-row-x py-4 md:flex-row md:items-center md:justify-between"
+            >
+              {/* LEFT: INFO */}
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Tile tone="primary"><FileText size={20} strokeWidth={2.5} /></Tile>
+                  <h3 className="s-display truncate text-[16px] font-bold leading-tight text-on-surface md:text-[17px]">
+                    {assign.testTitle || 'Untitled Assignment'}
+                  </h3>
+
+                  {/* duration/resultsVisibility are denormalized onto NEW assignment
+                      docs by AssignTestModal; legacy docs lack them → no badge. */}
+                  {(assign.duration > 0 || assign.resultsVisibility === 'never') && (
+                    <span title="Proctored" className="flex shrink-0 items-center text-success">
+                      <ShieldCheck size={16} strokeWidth={3} />
+                    </span>
+                  )}
                 </div>
-                <h3 className="font-black text-zinc-900 text-[16px] md:text-[18px] group-hover:text-indigo-600 transition-colors truncate tracking-tight">
-                  {assign.testTitle || 'Untitled Assignment'}
-                </h3>
-                
-                {(assign.duration > 0 || !assign.showResults) && (
-                  <span title="Proctored" className="flex items-center shrink-0">
-                    <ShieldCheck size={16} strokeWidth={3} className="text-emerald-500" />
-                  </span>
-                )}
-              </div>
 
-              {/* 🟢 NEW: TEACHER INSTRUCTIONS */}
-              {assign.description && (
-                <div className="pl-1 md:pl-12 mt-1">
-                  <div className="bg-indigo-50/50 border-2 border-indigo-100 rounded-xl p-3 inline-block w-full">
-                    <p className="text-[13px] font-bold text-indigo-900 leading-relaxed flex items-start gap-2">
-                      <Info size={14} className="text-indigo-500 shrink-0 mt-0.5" strokeWidth={3} />
+                {/* 🟢 NEW: TEACHER INSTRUCTIONS */}
+                {assign.description && (
+                  <div className="rounded-m3-sm bg-primary-container p-3 text-on-primary-container md:ml-14">
+                    <p className="flex items-start gap-2 text-[13px] font-bold leading-relaxed">
+                      <Info size={14} className="mt-0.5 shrink-0" strokeWidth={3} />
                       <span>
-                        <span className="text-indigo-600 font-black mr-1 uppercase tracking-widest text-[10px]">{t.meta.teacherNote}</span> 
+                        <span className="mr-1 text-[10px] font-black uppercase tracking-widest">{t.meta.teacherNote}</span>
                         {assign.description}
                       </span>
                     </p>
                   </div>
+                )}
+
+                {/* Metadata Row */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant md:pl-14">
+
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-on-surface">{assign.questionCount}</span> {t.meta.questions}
+                  </span>
+
+                  {/* Only new assignments carry `duration` (null = explicitly no
+                      limit). Old docs never had the field — showing "No Limit" for
+                      them was a lie (the real limit lives on custom_tests). */}
+                  {assign.duration !== undefined && (
+                    <span className="flex items-center gap-1.5">
+                      <Clock size={14} strokeWidth={2.5} className="text-outline" />
+                      {assign.duration ? `${assign.duration} ${t.meta.mins}` : t.meta.noLimit}
+                    </span>
+                  )}
+
+                  {dueDate && (
+                    <Chip
+                      status={isExpired ? 'error' : 'neutral'}
+                      icon={<Calendar size={12} strokeWidth={2.5} />}
+                      className="uppercase tracking-widest"
+                    >
+                      {isExpired ? `${t.meta.closed} ` : `${t.meta.due} `}
+                      {formatDate(dueDate)} - {formatTime(dueDate)}
+                    </Chip>
+                  )}
+
+                  {maxAttempts !== 1 && (
+                    <Chip status="neutral" icon={<RotateCcw size={12} strokeWidth={3} />} className="uppercase tracking-widest">
+                      <span className="text-on-surface">{attemptCount}</span> / {maxAttempts === 0 ? t.meta.infinite : maxAttempts} {t.meta.attempts}
+                    </Chip>
+                  )}
+
+                  {scorePercent !== null && (
+                    <Chip
+                      status={scorePercent >= 60 ? 'success' : 'error'}
+                      icon={<Trophy size={12} strokeWidth={3} />}
+                    >
+                      {scorePercent}%
+                    </Chip>
+                  )}
                 </div>
-              )}
+              </div>
 
-              {/* Metadata Row */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-bold text-zinc-500 uppercase tracking-widest pl-1 md:pl-12 pt-1">
-                
-                <span className="flex items-center gap-1.5">
-                  <span className="text-zinc-800">{assign.questionCount}</span> {t.meta.questions}
-                </span>
+              {/* RIGHT: ACTION BUTTON */}
+              <div className="flex shrink-0 justify-end md:min-w-[160px]">
 
-                <span className="flex items-center gap-1.5">
-                  <Clock size={14} strokeWidth={2.5} className="text-zinc-400" />
-                  {assign.duration ? `${assign.duration} ${t.meta.mins}` : t.meta.noLimit}
-                </span>
-
-                {dueDate && (
-                  <span className={`flex items-center gap-1.5 ${isExpired ? 'text-red-500' : ''}`}>
-                    <Calendar size={14} strokeWidth={2.5} className={isExpired ? 'text-red-500' : 'text-zinc-400'} />
-                    {isExpired ? `${t.meta.closed} ` : `${t.meta.due} `} 
-                    {formatDate(dueDate)} - {formatTime(dueDate)}
-                  </span>
-                )}
-
-                {maxAttempts !== 1 && (
-                  <span className="flex items-center gap-1 bg-zinc-100 border-2 border-zinc-200 px-2 py-0.5 rounded-lg text-zinc-600">
-                    <RotateCcw size={12} strokeWidth={3}/>
-                    <span className="text-zinc-900">{attemptCount}</span> / {maxAttempts === 0 ? t.meta.infinite : maxAttempts} {t.meta.attempts}
-                  </span>
-                )}
-
-                {scorePercent !== null && (
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border-2 ${
-                    scorePercent >= 60 ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'
-                  }`}>
-                    <Trophy size={12} strokeWidth={3} />
-                    <span>{scorePercent}%</span>
-                  </span>
+                {isLocked ? (
+                  <Button variant="tonal" disabled fullWidth icon={<Lock size={16} strokeWidth={3} />} className="md:w-auto">
+                    {t.status.locked}
+                  </Button>
+                )
+                : (isCompleted || (isExpired && attemptCount > 0)) ? (
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    onClick={() => router.push(`/classes/${classId}/test/${assign.id}/results`)}
+                    trailingIcon={<ArrowRight size={16} strokeWidth={3} />}
+                    className="md:w-auto"
+                  >
+                    {t.status.view}
+                  </Button>
+                )
+                : isExpired ? (
+                  <Chip status="error" size="md" icon={<AlertCircle size={16} strokeWidth={3} />} className="uppercase tracking-widest">
+                    {t.status.missed}
+                  </Chip>
+                )
+                : (
+                  <Button
+                    tone={attemptCount > 0 ? 'tertiary' : 'primary'}
+                    fullWidth
+                    onClick={() => router.push(`/classes/${classId}/test/${assign.id}`)}
+                    icon={attemptCount > 0 ? <RotateCcw size={18} strokeWidth={3} /> : <CheckCircle size={18} strokeWidth={3} />}
+                    className="md:w-auto"
+                  >
+                    {attemptCount > 0 ? t.status.retake : t.status.start}
+                  </Button>
                 )}
               </div>
             </div>
+          );
+        })}
+      </ListGroup>
 
-            {/* RIGHT: ACTION BUTTON */}
-            <div className="md:min-w-[160px] flex justify-end">
-              
-              {isLocked ? (
-                <button disabled className="w-full md:w-auto px-5 py-3 bg-zinc-100 text-zinc-400 font-black rounded-xl border-2 border-zinc-200 flex items-center justify-center gap-2 text-[14px] cursor-not-allowed uppercase tracking-widest">
-                  <Lock size={16} strokeWidth={3} /> 
-                  <span>{t.status.locked}</span>
-                </button>
-              ) 
-              : (isCompleted || (isExpired && attemptCount > 0)) ? (
-                <button 
-                  onClick={() => router.push(`/classes/${classId}/test/${assign.id}/results`)}
-                  className="w-full md:w-auto px-5 py-3 bg-white border-2 border-zinc-200 border-b-4 text-zinc-700 font-black rounded-xl hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center gap-2 text-[14px] uppercase tracking-widest"
-                >
-                  {t.status.view} <ArrowRight size={16} strokeWidth={3} />
-                </button>
-              )
-              : isExpired ? (
-                <div className="w-full md:w-auto px-5 py-3 bg-red-50 text-red-500 font-black rounded-xl border-2 border-red-200 flex items-center justify-center gap-2 text-[14px] uppercase tracking-widest">
-                  <AlertCircle size={16} strokeWidth={3} /> {t.status.missed}
-                </div>
-              )
-              : (
-                <button 
-                  onClick={() => router.push(`/classes/${classId}/test/${assign.id}`)}
-                  className={`w-full md:w-auto px-6 py-3 font-black rounded-xl border-b-4 active:border-b-0 active:translate-y-[4px] transition-all flex items-center justify-center gap-2 text-[15px] uppercase tracking-widest ${
-                    attemptCount > 0 
-                    ? 'bg-orange-500 text-white border-orange-700 hover:bg-orange-400' 
-                    : 'bg-indigo-600 text-white border-indigo-800 hover:bg-indigo-500' 
-                  }`}
-                >
-                  {attemptCount > 0 ? <RotateCcw size={18} strokeWidth={3}/> : <CheckCircle size={18} strokeWidth={3}/>}
-                  {attemptCount > 0 ? t.status.retake : t.status.start}
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
-      
       {/* Invisible loading indicator at bottom to trigger observer */}
-      {loadingMore && <div className="py-6 flex justify-center"><Loader2 className="animate-spin text-indigo-500" size={24}/></div>}
+      {loadingMore && <div className="flex justify-center py-6"><Spinner size={24} /></div>}
     </div>
   );
 }

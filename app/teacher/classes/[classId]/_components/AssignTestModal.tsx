@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom'; // 🟢 ADDED PORTAL
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, serverTimestamp, orderBy, limit, startAfter, DocumentSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, addDoc, doc, updateDoc, serverTimestamp, orderBy, limit, startAfter, DocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import {
   X, Clock, Users, Search, AlignLeft, RotateCcw,
@@ -32,7 +32,7 @@ const ASSIGN_MODAL_TRANSLATIONS = {
       assignTo: "Kimga Biriktirish", all: "Barcha O'quvchilar", individual: "Ayrim O'quvchilar", noStudents: "Sinfda o'quvchilar yo'q."
     },
     buttons: { back: "Ortga", next: "Keyingi qadam", publish: "Topshiriqni Nashr Qilish", save: "O'zgarishlarni Saqlash", select: "Testni tanlang" },
-    toasts: { updated: "Topshiriq Yangilandi!", published: "Topshiriq Nashr Qilindi!", fail: "Xatolik yuz berdi" }
+    toasts: { updated: "Topshiriq Yangilandi!", published: "Topshiriq Nashr Qilindi!", fail: "Xatolik yuz berdi", needDue: "Bu test natijalarni muddatdan keyin ko'rsatadi — muddat (deadline) belgilang" }
   },
   en: {
     titleCreate: "Assign a Test", titleEdit: "Edit Assignment", titleConfig: "Configure Rules",
@@ -48,7 +48,7 @@ const ASSIGN_MODAL_TRANSLATIONS = {
       assignTo: "Assign To", all: "All Students", individual: "Select Individuals", noStudents: "No students in class yet."
     },
     buttons: { back: "Back", next: "Next Step", publish: "Publish Assignment", save: "Save Changes", select: "Select a test" },
-    toasts: { updated: "Assignment Updated!", published: "Assignment Published!", fail: "Failed to save" }
+    toasts: { updated: "Assignment Updated!", published: "Assignment Published!", fail: "Failed to save", needDue: "This test reveals results after the due date — set a deadline first" }
   },
   ru: {
     titleCreate: "Назначить Тест", titleEdit: "Редактировать Задание", titleConfig: "Настройка Правил",
@@ -64,7 +64,7 @@ const ASSIGN_MODAL_TRANSLATIONS = {
       assignTo: "Кому Назначить", all: "Всем Ученикам", individual: "Выбрать Индивидуально", noStudents: "В классе нет учеников."
     },
     buttons: { back: "Назад", next: "Далее", publish: "Опубликовать", save: "Сохранить Изменения", select: "Выберите тест" },
-    toasts: { updated: "Задание Обновлено!", published: "Опубликовано!", fail: "Ошибка сохранения" }
+    toasts: { updated: "Задание Обновлено!", published: "Опубликовано!", fail: "Ошибка сохранения", needDue: "Этот тест показывает результаты после дедлайна — укажите срок сдачи" }
   }
 };
 
@@ -222,11 +222,32 @@ export default function AssignTestModal({ classId, isOpen, onClose, roster, edit
       const openDate = openAt ? new Date(openAt) : new Date();
       const dueDate = dueAt ? new Date(dueAt) : null;
 
+      // Denormalize `duration` / `resultsVisibility` from the test template onto
+      // the assignment so the student assignment cards can show the real time
+      // limit and result policy without an N+1 read of custom_tests. In edit mode
+      // selectedTest is a stub ({id,title,questionCount}), so fetch the template.
+      let testMeta: any = selectedTest;
+      if (testMeta.duration === undefined && testMeta.resultsVisibility === undefined && testMeta.showResults === undefined) {
+        const tSnap = await getDoc(doc(db, 'custom_tests', selectedTest.id));
+        if (tSnap.exists()) testMeta = tSnap.data();
+      }
+      const resultsVisibility = testMeta.resultsVisibility || (testMeta.showResults ? 'always' : 'never');
+
+      // 'after_due' without a due date would either hide results forever (student
+      // side holds them) or leak them instantly (old behavior) — force a deadline.
+      if (resultsVisibility === 'after_due' && !dueDate) {
+        toast.error(t.toasts.needDue);
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         testId: selectedTest.id,
         testTitle: selectedTest.title,
         // never `undefined` — Firestore rejects it (see CLAUDE.md cross-cutting traps)
         questionCount: selectedTest.questionCount ?? 0,
+        duration: testMeta.duration ?? null,
+        resultsVisibility,
         description: description.trim(),
         openAt: openDate,
         dueAt: dueDate,

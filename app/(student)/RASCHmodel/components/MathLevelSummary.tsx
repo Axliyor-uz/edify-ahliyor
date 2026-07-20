@@ -8,8 +8,12 @@ import { ChevronRight, Gauge } from 'lucide-react';
 
 import { useAuth } from '@/lib/AuthContext';
 import { dimensions, getRASCHLevels, mathLevel } from '@/services/RASCHProgressService';
-import { BAND_COLOR, MASTER_LEVEL, formatLevel, levelBand } from '@/lib/RASCHscale';
+import { MASTER_LEVEL, formatLevel, levelBand, type LevelBand } from '@/lib/RASCHscale';
 import { RASCH_TOPICS } from '@/lib/RASCHtopics';
+import {
+  Card, Chip, ProgressBar, Tile, cn, MOTION_ON, springTransition,
+  type ChipProps, type ProgressBarProps, type TileProps,
+} from '@/components/student-ui';
 import type { RASCHLevels } from '@/types/RASCH';
 import type { Lang } from '@/types/Math';
 
@@ -44,6 +48,23 @@ const UI: Record<Lang, Record<string, string>> = {
     band_beginner: 'Beginner', band_basic: 'Basic', band_confident: 'Confident',
     band_advanced: 'Advanced', band_master: 'Master',
   },
+};
+
+/**
+ * Band → design tokens. The band's name is always printed beside the color, so
+ * the level never depends on hue alone to be readable.
+ */
+const BAND_TONE: Record<LevelBand, {
+  tile: NonNullable<TileProps['tone']>;
+  chip: NonNullable<ChipProps['status']>;
+  bar: NonNullable<ProgressBarProps['tone']>;
+  text: string;
+}> = {
+  beginner: { tile: 'neutral', chip: 'neutral', bar: 'primary', text: 'text-on-surface-variant' },
+  basic: { tile: 'secondary', chip: 'info', bar: 'primary', text: 'text-secondary' },
+  confident: { tile: 'primary', chip: 'primary', bar: 'primary', text: 'text-primary' },
+  advanced: { tile: 'success', chip: 'success', bar: 'success', text: 'text-success' },
+  master: { tile: 'gold', chip: 'gold', bar: 'gold', text: 'text-gold' },
 };
 
 /**
@@ -93,85 +114,86 @@ export default function MathLevelSummary({
   if (!user || !ready) return null;
 
   const band = levelBand(math.level);
-  const colors = BAND_COLOR[band];
+  const tone = BAND_TONE[band];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={MOTION_ON ? { opacity: 0, y: 12 } : false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={springTransition}
       className={className}
     >
-      <Link
-        href="/RASCHmodel/progress"
-        className="group block bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 hover:border-zinc-300 active:border-b-2 active:translate-y-[4px] transition-all"
-      >
-        <div className="flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-[1rem] border-2 flex items-center justify-center shrink-0"
-            style={{ backgroundColor: colors.hex + '14', borderColor: colors.hex + '40', color: colors.hex }}
-          >
-            <Gauge size={22} strokeWidth={2.5} />
+      <Link href="/RASCHmodel/progress" className="group block">
+        <Card interactive>
+          <div className="flex items-center gap-4">
+            <Tile tone={tone.tile}>
+              <Gauge size={22} strokeWidth={2.5} />
+            </Tile>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-black uppercase tracking-wider text-on-surface-variant">{t.title}</p>
+
+              {measured ? (
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
+                  <span className={cn('s-num text-3xl font-black leading-none tracking-tight', tone.text)}>
+                    {formatLevel(math.level)}
+                  </span>
+                  <span className="s-num text-[15px] font-black leading-none text-on-surface-variant">
+                    / {MASTER_LEVEL}
+                  </span>
+                  <Chip status={tone.chip} className="ml-1">{t[`band_${band}`]}</Chip>
+                </div>
+              ) : (
+                <p className="mt-1 text-[13px] font-bold text-on-surface-variant">{t.empty}</p>
+              )}
+            </div>
+
+            <ChevronRight
+              size={18}
+              strokeWidth={3}
+              className="shrink-0 text-outline transition-colors group-hover:text-primary"
+            />
           </div>
 
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-black text-zinc-400 uppercase tracking-wider">{t.title}</p>
-
-            {measured ? (
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-3xl font-black leading-none tracking-tight" style={{ color: colors.hex }}>
-                  {formatLevel(math.level)}
-                </span>
-                <span className="text-[15px] font-black text-zinc-300 leading-none">/ {MASTER_LEVEL}</span>
-                <span className="text-[12px] font-black ml-1" style={{ color: colors.hex }}>
-                  {t[`band_${band}`]}
-                </span>
-              </div>
-            ) : (
-              <p className="text-[13px] font-bold text-zinc-400 mt-1">{t.empty}</p>
-            )}
-          </div>
-
-          <ChevronRight
-            size={18}
-            strokeWidth={3}
-            className="text-zinc-300 shrink-0 group-hover:text-violet-500 transition-colors"
-          />
-        </div>
-
-        {measured && (
-          <>
-            {/* The 0–3 track */}
-            <div className="mt-4 h-2.5 rounded-full bg-zinc-100 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${(math.level / MASTER_LEVEL) * 100}%`, backgroundColor: colors.hex }}
+          {measured && (
+            <>
+              {/* The 0–3 track */}
+              <ProgressBar
+                value={(math.level / MASTER_LEVEL) * 100}
+                tone={tone.bar}
+                label={t.title}
+                className="mt-4"
               />
-            </div>
 
-            {/* The seven dimensions, in miniature — the heptagon's data as a strip */}
-            <div className="flex items-end gap-1 mt-3 h-8">
-              {dims.map((d) => {
-                const topic = RASCH_TOPICS.find((tp) => tp.key === d.key)!;
-                const unmeasured = d.measured === 0;
-                return (
-                  <div
-                    key={d.key}
-                    title={`${topic.label[lang]} — ${unmeasured ? '—' : formatLevel(d.level)}`}
-                    className="flex-1 rounded-t-md transition-all"
-                    style={{
-                      height: unmeasured ? '4px' : `${Math.max(10, (d.level / MASTER_LEVEL) * 100)}%`,
-                      backgroundColor: unmeasured ? '#e4e4e7' : topic.hex,
-                    }}
-                  />
-                );
-              })}
-            </div>
-            <p className="text-[10px] font-bold text-zinc-300 mt-1.5">
-              {math.measuredDimensions}/7 {t.dims} · θ {math.theta.toFixed(2)}
-            </p>
-          </>
-        )}
+              {/* The seven dimensions, in miniature — the heptagon's data as a strip.
+                  Each bar carries its topic's identity color, the same one the
+                  progress chart uses; unmeasured bars fall back to a surface token. */}
+              <div className="mt-3 flex h-8 items-end gap-1">
+                {dims.map((d) => {
+                  const topic = RASCH_TOPICS.find((tp) => tp.key === d.key)!;
+                  const unmeasured = d.measured === 0;
+                  return (
+                    <div
+                      key={d.key}
+                      title={`${topic.label[lang]} — ${unmeasured ? '—' : formatLevel(d.level)}`}
+                      className={cn(
+                        'flex-1 rounded-t-md transition-all',
+                        unmeasured && 'bg-surface-container-highest',
+                      )}
+                      style={{
+                        height: unmeasured ? '4px' : `${Math.max(10, (d.level / MASTER_LEVEL) * 100)}%`,
+                        ...(unmeasured ? {} : { backgroundColor: topic.hex }),
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              <p className="s-num mt-1.5 text-[10px] font-bold text-on-surface-variant">
+                {math.measuredDimensions}/7 {t.dims} · θ {math.theta.toFixed(2)}
+              </p>
+            </>
+          )}
+        </Card>
       </Link>
     </motion.div>
   );

@@ -2,39 +2,40 @@
 
 import { Clock, AlertCircle, Zap, Eye, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Banner, Button, Card, Page, Tile, cn } from '@/components/student-ui';
 
 export function TestLobby({ state, startTest, router, t }: any) {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="max-w-lg w-full bg-white rounded-3xl shadow-xl border border-slate-200 p-8 text-center space-y-6">
-        <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce">
+    <Page width="full" className="flex min-h-[80vh] items-center justify-center">
+      <Card variant="outlined" className="w-full max-w-lg space-y-6 text-center">
+        <Tile tone="primary" size="lg" className="mx-auto h-20 w-20 rounded-full">
           <Clock size={40} />
-        </div>
+        </Tile>
         <div>
-          <h1 className="text-3xl font-black text-slate-900 mb-2">{state.test.title}</h1>
-          <p className="text-slate-500 font-medium">
+          <h1 className="s-display text-[28px] font-bold leading-tight text-on-surface">{state.test.title}</h1>
+          <p className="mt-1.5 text-[13px] font-bold text-on-surface-variant">
             {state.questions.length} {t.lobby.questions} • {state.test.duration || 60} {t.lobby.minutes}
           </p>
         </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-left flex gap-3">
-          <AlertCircle className="text-yellow-600 shrink-0" size={24} />
-          <div className="text-sm text-yellow-800">
-            <p className="font-bold mb-1">{t.lobby.instructions}</p>
-            <ul className="list-disc list-inside space-y-1 opacity-90">
+        <Banner
+          status="warning"
+          className="text-left"
+          icon={<AlertCircle size={22} />}
+          title={t.lobby.instructions}
+          description={
+            <ul className="list-inside list-disc space-y-1">
               <li>{t.lobby.rule1}</li>
               <li>{t.lobby.rule2}</li>
               <li>{t.lobby.rule3}</li>
             </ul>
-          </div>
+          }
+        />
+        <div className="space-y-2">
+          <Button fullWidth size="lg" onClick={startTest}>{t.lobby.startBtn}</Button>
+          <Button fullWidth variant="text" onClick={() => router.back()}>{t.lobby.cancel}</Button>
         </div>
-        <button onClick={startTest} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-2xl shadow-lg shadow-indigo-200 hover:scale-[1.02] transition-all">
-          {t.lobby.startBtn}
-        </button>
-        <button onClick={() => router.back()} className="text-slate-400 font-bold text-sm hover:text-slate-600">
-          {t.lobby.cancel}
-        </button>
-      </div>
-    </div>
+      </Card>
+    </Page>
   );
 }
 
@@ -44,54 +45,50 @@ export function TestResults({ state, classId, assignmentId, isPastDeadline, rout
   const accuracy = Math.round((state.score! / state.questions.length) * 100);
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
-         <div className="absolute top-10 left-10 text-9xl">🎉</div>
+    <Page width="full" className="relative flex min-h-[80vh] items-center justify-center overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-10">
+         <div className="absolute left-10 top-10 text-9xl">🎉</div>
          <div className="absolute bottom-10 right-10 text-9xl">✨</div>
       </div>
 
-      <div className="max-w-md w-full bg-white rounded-[2rem] shadow-2xl border-b-8 border-slate-200 p-8 text-center space-y-6 relative z-10 animate-in zoom-in duration-300">
-        <div className="relative">
-           <div className="w-28 h-28 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce border-4 border-yellow-300 shadow-inner">
+      <Card variant="outlined" className="relative z-10 w-full max-w-md space-y-6 text-center">
+        <div>
+           <div className="mx-auto mb-4 grid h-28 w-28 place-items-center rounded-full bg-gold-container text-on-gold-container">
               <div className="text-6xl">🏆</div>
            </div>
-           <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-1">{t.result.submitted}</h1>
-           <p className="text-slate-400 font-bold text-sm uppercase tracking-wide">{t.result.saved}</p>
+           <h1 className="s-display text-[28px] font-bold leading-tight text-on-surface">{t.result.submitted}</h1>
+           <p className="mt-1.5 text-[12px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.result.saved}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
            {state.earnedXP !== undefined && state.earnedXP > 0 && (
-             <div className="col-span-2 bg-gradient-to-b from-amber-400 to-amber-500 rounded-2xl p-1 shadow-[0_6px_0_#b45309] active:translate-y-1 active:shadow-none transition-all relative overflow-hidden group">
-                <div className="bg-white/10 absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity"></div>
-                <div className="bg-white/20 h-1/2 w-full absolute top-0 left-0 rounded-t-xl"></div>
-                <div className="relative p-5 flex flex-col items-center">
-                  <div className="flex items-center gap-2 text-amber-900/60 font-black text-xs uppercase tracking-widest mb-1">
-                    <Zap size={16} fill="currentColor" /> {t.result.xpEarned}
-                  </div>
-                  <span className="text-5xl font-black text-white drop-shadow-md tracking-tighter">+{state.earnedXP}</span>
-                  {state.xpBreakdown && state.xpBreakdown.length > 0 && (
-                    <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-                      {state.xpBreakdown.map((item: string, idx: number) => (
-                        <span key={idx} className="px-2 py-0.5 bg-amber-600/30 rounded-lg text-[10px] font-bold text-white border border-white/20">
-                          {item.split(':')[0]}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+             <div className="col-span-2 flex flex-col items-center overflow-hidden rounded-m3-lg bg-gold p-5 text-on-gold">
+                <div className="mb-1 flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.12em] opacity-80">
+                  <Zap size={16} fill="currentColor" /> {t.result.xpEarned}
                 </div>
+                <span className="s-display s-num text-[46px] font-bold leading-none tracking-tight">+{state.earnedXP}</span>
+                {state.xpBreakdown && state.xpBreakdown.length > 0 && (
+                  <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                    {state.xpBreakdown.map((item: string, idx: number) => (
+                      <span key={idx} className="rounded-full bg-gold-container px-2 py-0.5 text-[10px] font-black text-on-gold-container">
+                        {item.split(':')[0]}
+                      </span>
+                    ))}
+                  </div>
+                )}
              </div>
            )}
 
-           <div className="bg-white border-2 border-slate-100 rounded-2xl p-4 shadow-[0_4px_0_#e2e8f0] flex flex-col items-center justify-center">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t.result.score}</span>
-              <span className="text-2xl font-black text-indigo-600">
-                {state.score} <span className="text-sm text-slate-300">/ {state.questions.length}</span>
+           <div className="flex flex-col items-center justify-center rounded-m3-lg border border-outline-variant bg-surface p-4">
+              <span className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.result.score}</span>
+              <span className="s-display s-num text-[24px] font-bold text-primary">
+                {state.score} <span className="text-[14px] text-on-surface-variant">/ {state.questions.length}</span>
               </span>
            </div>
 
-           <div className="bg-white border-2 border-slate-100 rounded-2xl p-4 shadow-[0_4px_0_#e2e8f0] flex flex-col items-center justify-center">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Accuracy</span>
-              <span className={`text-2xl font-black ${accuracy >= 80 ? 'text-green-500' : accuracy >= 60 ? 'text-amber-500' : 'text-red-500'}`}>
+           <div className="flex flex-col items-center justify-center rounded-m3-lg border border-outline-variant bg-surface p-4">
+              <span className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">Accuracy</span>
+              <span className={cn('s-display s-num text-[24px] font-bold', accuracy >= 80 ? 'text-success' : accuracy >= 60 ? 'text-gold' : 'text-error')}>
                 {accuracy}%
               </span>
            </div>
@@ -99,19 +96,24 @@ export function TestResults({ state, classId, assignmentId, isPastDeadline, rout
 
         <div className="space-y-3 pt-2">
           {canShow ? (
-            <button onClick={() => router.push(`/classes/${classId}/test/${assignmentId}/results`)} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-[0_4px_0_#3730a3] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-3 text-lg">
-              <Eye size={22} /> {t.actions.viewResults}
-            </button>
+            <Button
+              fullWidth
+              size="lg"
+              icon={<Eye size={22} />}
+              onClick={() => router.push(`/classes/${classId}/test/${assignmentId}/results`)}
+            >
+              {t.actions.viewResults}
+            </Button>
           ) : (
-            <div className="bg-slate-50 p-4 rounded-xl text-slate-500 text-sm font-bold flex items-center justify-center gap-2 border-2 border-slate-100 border-dashed">
+            <div className="flex items-center justify-center gap-2 rounded-m3-md border border-dashed border-outline-variant bg-surface-container p-4 text-[13px] font-bold text-on-surface-variant">
               <Lock size={16} /> {t.result.hidden}
             </div>
           )}
-          <button onClick={() => router.push(`/classes/${classId}`)} className="w-full py-4 bg-white border-2 border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-black rounded-xl transition-all active:scale-[0.98]">
+          <Button fullWidth variant="outlined" onClick={() => router.push(`/classes/${classId}`)}>
             {t.actions.returnClass}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </Card>
+    </Page>
   );
 }

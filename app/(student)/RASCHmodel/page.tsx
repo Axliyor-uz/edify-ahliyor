@@ -1,7 +1,7 @@
 // app/(student)/RASCHmodel/page.tsx
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sparkles, Rocket, Target, TrendingUp, Brain, Dumbbell } from 'lucide-react';
 
@@ -9,6 +9,7 @@ import { Sparkles, Rocket, Target, TrendingUp, Brain, Dumbbell } from 'lucide-re
 import MathematicsCard from './components/MathematicsCard';
 import MathLevelSummary from './components/MathLevelSummary';
 import { useStudentLanguage } from '../layout';
+import { Button, Card, Page, PageHeader, Tile, MOTION_ON, springTransition } from '@/components/student-ui';
 import type { Lang } from '@/types/Math';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
@@ -50,111 +51,83 @@ const UI: Record<Lang, Record<string, string>> = {
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export default function RASCHModelPage() {
-  const router = useRouter();
   // One language switcher for the whole student app — it lives in the top navbar
   // (app/(student)/layout.tsx) and reaches every page through this context.
   const { lang } = useStudentLanguage();
   const t = UI[lang];
 
+  // The secondary destinations share one row and wrap freely, so a long label
+  // ("Тренировка" is twice the width of "Mashq") can never push the primary
+  // action off a phone screen.
+  const actions = (
+    <>
+      {[
+        { icon: TrendingUp, label: t.progress, href: '/RASCHmodel/progress' },
+        { icon: Brain, label: t.diagnosis, href: '/RASCHmodel/diagnosis' },
+        { icon: Dumbbell, label: t.practice, href: '/RASCHmodel/practice' },
+      ].map(({ icon: Icon, label, href }) => (
+        <Link key={href} href={href}>
+          <Button variant="outlined" size="sm" icon={<Icon size={16} strokeWidth={3} />}>
+            {label}
+          </Button>
+        </Link>
+      ))}
+
+      <Link href="/RASCHmodel/exam">
+        <Button size="sm" icon={<Rocket size={16} strokeWidth={3} />}>
+          {t.quickStart}
+        </Button>
+      </Link>
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-zinc-100 font-sans pb-28 md:pb-12">
-      <div className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-8">
+    <Page>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            <Tile tone="primary" size="sm">
+              <Target size={20} strokeWidth={2.5} />
+            </Tile>
+            RA<span className="text-primary">SCH</span>
+          </span>
+        }
+        subtitle={t.subtitle}
+        actions={actions}
+      />
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        {/* The action row used to be a single flex line of four `shrink-0`
-            buttons: on a phone they could not shrink and could not wrap, so the
-            row ran off the screen and the primary action was unreachable. The
-            three secondary actions now share a 3-up grid and the primary action
-            takes the full width beneath them; from `sm` up it is one row again.
-            The labels are translated, so they must also be free to truncate —
-            "Тренировка" is twice the width of "Mashq". */}
-        <div className="pt-8 pb-6 flex flex-col lg:flex-row lg:items-end justify-between gap-5">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="min-w-0"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-[1.2rem] text-white flex items-center justify-center border-b-4 border-indigo-700 shadow-lg shrink-0">
-                <Target size={24} strokeWidth={2.5} />
-              </div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight truncate">
-                RA<span className="text-violet-600">SCH</span>
-              </h1>
-            </div>
-            <p className="text-[14px] sm:text-[15px] font-bold text-zinc-500 pl-1">
-              {t.subtitle}
-            </p>
-          </motion.div>
+      {/* ── Where the student actually stands ───────────────────────────── */}
+      <MathLevelSummary lang={lang} />
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 lg:shrink-0">
-            <div className="grid grid-cols-3 sm:flex gap-2.5">
-              {[
-                { icon: TrendingUp, label: t.progress, href: '/RASCHmodel/progress', delay: 0.05 },
-                { icon: Brain, label: t.diagnosis, href: '/RASCHmodel/diagnosis', delay: 0.07 },
-                { icon: Dumbbell, label: t.practice, href: '/RASCHmodel/practice', delay: 0.09 },
-              ].map(({ icon: Icon, label, href, delay }) => (
-                <motion.button
-                  key={href}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay }}
-                  onClick={() => router.push(href)}
-                  className="min-w-0 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-3.5 bg-white text-zinc-600 font-black text-[11px] sm:text-[14px] rounded-2xl border-2 border-zinc-200 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all uppercase tracking-wider hover:border-violet-200 hover:text-violet-600"
-                >
-                  <Icon size={18} strokeWidth={3} className="shrink-0" />
-                  <span className="truncate max-w-full">{label}</span>
-                </motion.button>
-              ))}
-            </div>
-
-            {/* Primary action — full width on a phone, inline from `sm` up */}
-            <motion.button
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-              onClick={() => router.push('/RASCHmodel/exam')}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3.5 bg-violet-500 text-white font-black text-[13px] sm:text-[14px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider hover:bg-violet-600 shadow-lg shadow-violet-200"
-            >
-              <Rocket size={18} strokeWidth={3} className="shrink-0" />
-              {t.quickStart}
-            </motion.button>
-          </div>
-        </div>
-
-        {/* ── Where the student actually stands ───────────────────────────── */}
-        <MathLevelSummary lang={lang} />
-
-        {/* ── Info Banner ─────────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.05 }}
-          className="mb-6 bg-gradient-to-r from-violet-500 to-indigo-600 rounded-[1.5rem] p-5 md:p-6 border-b-4 border-indigo-700 text-white relative overflow-hidden"
-        >
+      {/* ── Info Banner ─────────────────────────────────────────────────── */}
+      <motion.div
+        initial={MOTION_ON ? { opacity: 0, y: 12 } : false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={springTransition}
+        className="mb-6"
+      >
+        <Card variant="gradient" className="relative overflow-hidden">
           {/* Background pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-2 right-8 w-20 h-20 border-4 border-white rounded-full" />
-            <div className="absolute bottom-2 right-28 w-12 h-12 border-4 border-white rounded-full" />
-            <div className="absolute top-4 right-48 w-8 h-8 border-4 border-white rounded-full" />
+          <div className="pointer-events-none absolute inset-0 opacity-10" aria-hidden>
+            <div className="absolute right-8 top-2 h-20 w-20 rounded-full border-4 border-current" />
+            <div className="absolute bottom-2 right-28 h-12 w-12 rounded-full border-4 border-current" />
+            <div className="absolute right-48 top-4 h-8 w-8 rounded-full border-4 border-current" />
           </div>
 
           <div className="relative flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-[1rem] flex items-center justify-center shrink-0 backdrop-blur-sm border border-white/20">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-m3-sm border-2 border-current">
               <Sparkles size={22} strokeWidth={2.5} />
             </div>
-            <div>
-              <h3 className="text-[17px] font-black tracking-tight">{t.bannerTitle}</h3>
-              <p className="text-[13px] font-bold text-white/80 mt-1 leading-snug">{t.bannerDesc}</p>
+            <div className="min-w-0">
+              <h3 className="s-display text-[17px] font-bold tracking-tight">{t.bannerTitle}</h3>
+              <p className="mt-1 text-[13px] font-bold leading-snug opacity-85">{t.bannerDesc}</p>
             </div>
           </div>
-        </motion.div>
+        </Card>
+      </motion.div>
 
-        {/* ── Mathematics Section ─────────────────────────────────────────── */}
-        <MathematicsCard lang={lang} />
-
-      </div>
-    </div>
+      {/* ── Mathematics Section ─────────────────────────────────────────── */}
+      <MathematicsCard lang={lang} />
+    </Page>
   );
 }

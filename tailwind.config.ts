@@ -97,6 +97,36 @@ const config: Config = {
         "state-hover": "var(--m3-state-hover)",
         "disabled-bg": "var(--m3-state-disabled-bg)",
         "disabled-fg": "var(--m3-state-disabled-fg)",
+        // 🎓 Student design system additions (app/(student)/**).
+        // Values live in components/student-ui/theme.css and are switched from
+        // design.config.ts. Additive only — nothing above is modified.
+        background: "var(--m3-background)",
+        "on-background": "var(--m3-on-background)",
+        // Translucent variants. Token colors are plain hex in var(), so the
+        // `/opacity` modifier does NOT work on them — use these instead of
+        // writing bg-surface/85 (which silently renders opaque).
+        "surface-blur": "var(--m3-surface-blur)",
+        "surface-glass": "var(--m3-surface-glass)",
+        "background-blur": "var(--m3-background-blur)",
+        "scrim-bg": "var(--m3-scrim-bg)",
+        "state-press": "var(--m3-state-press)",
+        "surface-variant": "var(--m3-surface-variant)",
+        "surface-bright": "var(--m3-surface-bright)",
+        gold: {
+          DEFAULT: "var(--m3-gold)",
+          container: "var(--m3-gold-container)",
+        },
+        "on-gold": {
+          DEFAULT: "var(--m3-on-gold)",
+          container: "var(--m3-on-gold-container)",
+        },
+        "on-success": "var(--m3-on-success)",
+        "on-warning": "var(--m3-on-warning)",
+        flame: "var(--s-flame)",
+        "medal-gold": "var(--s-medal-gold)",
+        "medal-silver": "var(--s-medal-silver)",
+        "medal-bronze": "var(--s-medal-bronze)",
+        "medal-ink": "var(--s-medal-ink)",
       },
       // M3 shape scale (new names only — default rounded-* stays untouched).
       borderRadius: {
@@ -106,6 +136,27 @@ const config: Config = {
         "m3-lg": "var(--m3-shape-lg)",
         "m3-xl": "var(--m3-shape-xl)",
         "m3-btn": "var(--m3-shape-button)",
+        "m3-fab": "var(--m3-shape-fab)",
+      },
+      // 🎓 Student spacing rhythm — driven by design.config.ts › Density.
+      spacing: {
+        "s-page-x": "var(--s-page-x)",
+        "s-page-y": "var(--s-page-y)",
+        "s-gap": "var(--s-gap)",
+        "s-gap-lg": "var(--s-gap-lg)",
+        "s-card": "var(--s-card-pad)",
+        "s-row": "var(--s-row-h)",
+        "s-row-x": "var(--s-row-pad-x)",
+        "s-section": "var(--s-section-gap)",
+      },
+      transitionTimingFunction: {
+        "m3-std": "var(--s-e-std)",
+        "m3-spring": "var(--s-e-spring)",
+      },
+      transitionDuration: {
+        "m3-fast": "var(--s-t-fast)",
+        "m3-med": "var(--s-t-med)",
+        "m3-slow": "var(--s-t-slow)",
       },
       boxShadow: {
         "elev-1": "var(--m3-elev-1)",

@@ -70,6 +70,7 @@ async function isTeacherOfCenter(teacherUid: string, centerId: string): Promise<
  *
  *  - yourself, or a super admin           → yes
  *  - a teacher, for a student in one of THEIR OWN classes
+ *  - a student, for the TEACHER of a class they are enrolled in
  *  - a manager, for a teacher of their center, or for a student enrolled in a
  *    class taught by one of their center's teachers
  *
@@ -78,6 +79,16 @@ async function isTeacherOfCenter(teacherUid: string, centerId: string): Promise<
  */
 export async function canReadContact(caller: Caller, targetUid: string): Promise<boolean> {
   if (caller.isSuperAdmin || caller.uid === targetUid) return true;
+
+  // Student → their own teacher (the reverse of the teacher→student edge; the
+  // class page shows the teacher's contact through this).
+  if (caller.role === 'student') {
+    const myClasses = await adminDb
+      .collection('classes')
+      .where('studentIds', 'array-contains', caller.uid)
+      .get();
+    return myClasses.docs.some((d) => d.data().teacherId === targetUid);
+  }
 
   // Classes the target is enrolled in (single-field array-contains index — no
   // composite index needed).

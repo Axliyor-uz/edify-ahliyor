@@ -15,6 +15,10 @@ import { diagnosticsFor, getRASCHLevels, savePracticeResult } from '@/services/R
 import { weakestSpots } from '@/lib/RASCHdiagnosis';
 import { buildPractice } from '@/lib/Examquestions';
 import { topicForChapter } from '@/lib/Examblueprint';
+import {
+  Banner, Button, Card, Chip, EmptyState, ListGroup, ListRow, LoadingState, Page, cn,
+  MOTION_ON, springTransition,
+} from '@/components/student-ui';
 import type { ChapterRef } from '@/types/Exam';
 import type { DifficultyId, Lang, OptionKey, QuestionDoc } from '@/types/Math';
 import type { ItemResponse, RASCHLevels } from '@/types/RASCH';
@@ -259,94 +263,117 @@ export default function PracticePage() {
 
   const score = questions.filter((q) => answers[q.id] === q.answer).length;
 
-  if (authLoading) return <div className="p-10 text-center text-[14px] font-black text-zinc-400">{t.loading}</div>;
-  if (!user) return <div className="p-10 text-center text-[14px] font-black text-zinc-400">{t.signIn}</div>;
+  if (authLoading) {
+    return (
+      <Page>
+        <LoadingState rows={3} label={t.loading} />
+      </Page>
+    );
+  }
+  if (!user) {
+    return (
+      <Page>
+        <EmptyState title={t.signIn} />
+      </Page>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-zinc-100 font-sans pb-28 md:pb-12">
-      <div className="max-w-[760px] mx-auto px-4 sm:px-6 md:px-8 pt-8 flex flex-col gap-5">
+    <Page className="flex flex-col gap-s-gap-lg">
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/RASCHmodel/diagnosis" className="flex items-center gap-1.5 px-3.5 py-2 bg-white border-2 border-zinc-200 border-b-4 rounded-2xl text-[12px] font-black text-zinc-600 active:border-b-2 active:translate-y-[2px] transition-all">
-            <ArrowLeft size={14} strokeWidth={3} /> {t.back}
-          </Link>
-          <Link href="/RASCHmodel" className="flex items-center gap-1.5 px-3.5 py-2 bg-white border-2 border-zinc-200 border-b-4 rounded-2xl text-[12px] font-black text-zinc-600 active:border-b-2 active:translate-y-[2px] transition-all">
-            <Home size={14} strokeWidth={3} /> {t.home}
-          </Link>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href="/RASCHmodel/diagnosis">
+          <Button variant="outlined" size="sm" icon={<ArrowLeft size={14} strokeWidth={3} />}>
+            {t.back}
+          </Button>
+        </Link>
+        <Link href="/RASCHmodel">
+          <Button variant="outlined" size="sm" icon={<Home size={14} strokeWidth={3} />}>
+            {t.home}
+          </Button>
+        </Link>
+      </div>
 
-        {error && (
-          <div className="flex items-center gap-2 bg-rose-50 border-2 border-rose-200 text-rose-700 rounded-2xl px-4 py-3 text-[13px] font-bold">
-            <AlertCircle size={16} strokeWidth={3} /> {error}
-          </div>
-        )}
+      {error && (
+        <Banner status="error" title={error} icon={<AlertCircle size={16} strokeWidth={3} />} />
+      )}
 
-        {/* ── INTRO ─────────────────────────────────────────────────── */}
-        {(stage === 'intro' || stage === 'loading') && (
-          <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-6 md:p-8">
-            <h1 className="text-2xl md:text-3xl font-black text-zinc-900 tracking-tight">{t.title}</h1>
-            <p className="text-[14px] font-bold text-zinc-500 mt-1 mb-6">{t.subtitle}</p>
+      {/* ── INTRO ─────────────────────────────────────────────────── */}
+      {(stage === 'intro' || stage === 'loading') && (
+        <Card>
+          <h1 className="s-display text-2xl font-bold tracking-tight md:text-3xl">{t.title}</h1>
+          <p className="mb-6 mt-1 text-[14px] font-bold text-on-surface-variant">{t.subtitle}</p>
 
-            {weakChapters.length === 0 ? (
-              <div className="flex flex-col items-center gap-4 text-center py-6">
-                <p className="text-[13px] font-bold text-zinc-400 max-w-sm">{t.needData}</p>
-                <Link href="/RASCHmodel/exam" className="flex items-center gap-2 px-5 py-3 bg-violet-500 text-white font-black text-[13px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider">
-                  <Rocket size={16} strokeWidth={3} /> {t.startExam}
+          {weakChapters.length === 0 ? (
+            <EmptyState
+              title={t.needData}
+              action={
+                <Link href="/RASCHmodel/exam">
+                  <Button size="lg" icon={<Rocket size={16} strokeWidth={3} />}>
+                    {t.startExam}
+                  </Button>
                 </Link>
+              }
+            />
+          ) : (
+            <>
+              <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-on-surface-variant">
+                {t.focus}
+              </p>
+              <ListGroup className="mb-5">
+                {weakChapters.map((spot) => (
+                  <ListRow
+                    key={spot.key}
+                    title={spot.chapterName}
+                    trailing={<span className="s-num shrink-0 text-[12px] font-black text-on-surface-variant">{spot.correct}/{spot.seen}</span>}
+                  />
+                ))}
+              </ListGroup>
+
+              <div className="mb-6 flex items-center justify-between gap-3 rounded-m3-md bg-primary-container px-4 py-2.5 text-on-primary-container">
+                <span className="text-[12px] font-black uppercase tracking-wider">{t.difficulty}</span>
+                <span className="text-[13px] font-black">{difficultyLabel}</span>
               </div>
-            ) : (
-              <>
-                <p className="text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-2">{t.focus}</p>
-                <div className="flex flex-col gap-2 mb-5">
-                  {weakChapters.map((spot) => (
-                    <div key={spot.key} className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200">
-                      <span className="text-[13px] font-bold text-zinc-700 truncate">{spot.chapterName}</span>
-                      <span className="text-[12px] font-black text-zinc-400 shrink-0">{spot.correct}/{spot.seen}</span>
-                    </div>
-                  ))}
-                </div>
 
-                <div className="flex items-center justify-between gap-3 mb-6 px-4 py-2.5 rounded-xl bg-violet-50 border-2 border-violet-200">
-                  <span className="text-[12px] font-black text-violet-700 uppercase tracking-wider">{t.difficulty}</span>
-                  <span className="text-[13px] font-black text-violet-800">{difficultyLabel}</span>
-                </div>
+              <Button
+                onClick={start}
+                disabled={stage === 'loading'}
+                loading={stage === 'loading'}
+                fullWidth
+                size="lg"
+                icon={stage === 'loading' ? undefined : <Play size={18} strokeWidth={3} />}
+              >
+                {stage === 'loading' ? t.loading : `${t.start} · ${PRACTICE_SIZE}`}
+              </Button>
+            </>
+          )}
+        </Card>
+      )}
 
-                <button
-                  onClick={start}
-                  disabled={stage === 'loading'}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-4 bg-violet-500 text-white font-black text-[15px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider disabled:opacity-60"
-                >
-                  {stage === 'loading' ? t.loading : (<><Play size={18} strokeWidth={3} /> {t.start} · {PRACTICE_SIZE}</>)}
-                </button>
-              </>
-            )}
+      {/* ── RUNNING ───────────────────────────────────────────────── */}
+      {stage === 'running' && questions[current] && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="s-num text-[13px] font-black text-on-surface">
+              {t.question} {current + 1}/{questions.length}
+            </span>
+            <span className="s-num text-[11px] font-bold text-on-surface-variant">{docsRead} {t.reads}</span>
           </div>
-        )}
 
-        {/* ── RUNNING ───────────────────────────────────────────────── */}
-        {stage === 'running' && questions[current] && (
-          <>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[13px] font-black text-zinc-600">
-                {t.question} {current + 1}/{questions.length}
-              </span>
-              <span className="text-[11px] font-bold text-zinc-400">{docsRead} {t.reads}</span>
-            </div>
-
-            <motion.div
-              key={questions[current].id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-6"
-            >
-              <span className="inline-block px-2.5 py-1 rounded-lg bg-zinc-100 border border-zinc-200 text-[11px] font-black text-zinc-500 mb-4 truncate max-w-full">
+          <motion.div
+            key={questions[current].id}
+            initial={MOTION_ON ? { opacity: 0, y: 10 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={springTransition}
+          >
+            <Card>
+              <Chip status="neutral" className="mb-4 max-w-full truncate">
                 {questions[current].chapter}
-              </span>
+              </Chip>
 
               <LatexRenderer
                 latex={questions[current].question[lang]}
-                className="text-[16px] font-bold text-zinc-900 leading-snug block mb-5"
+                className="mb-5 block text-[16px] font-bold leading-snug text-on-surface"
               />
 
               <div className="flex flex-col gap-2.5">
@@ -357,84 +384,106 @@ export default function PracticePage() {
                     <button
                       key={opt}
                       onClick={() => answer(q.id, opt)}
-                      className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 text-left transition-all ${
-                        selected ? 'bg-violet-50 border-violet-300' : 'border-zinc-100 hover:border-violet-200 hover:bg-violet-50/40'
-                      }`}
+                      aria-pressed={selected}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-m3-md border-2 p-3.5 text-left',
+                        'transition-colors duration-m3-fast ease-m3-std',
+                        selected
+                          ? 'border-primary bg-primary-container text-on-primary-container'
+                          : 'border-outline-variant hover:bg-state-hover',
+                      )}
                     >
-                      <span className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-[13px] font-black shrink-0 ${
-                        selected ? 'bg-violet-500 border-violet-600 text-white' : 'bg-zinc-100 border-zinc-200 text-zinc-500'
-                      }`}>
+                      <span
+                        className={cn(
+                          'grid h-8 w-8 shrink-0 place-items-center rounded-m3-sm border-2 text-[13px] font-black',
+                          selected
+                            ? 'border-primary bg-primary text-on-primary'
+                            : 'border-outline-variant bg-surface-container-high text-on-surface-variant',
+                        )}
+                      >
                         {opt}
                       </span>
-                      <LatexRenderer latex={q.options[opt][lang]} className="text-[14px] font-bold text-zinc-800" />
+                      <LatexRenderer latex={q.options[opt][lang]} className="text-[14px] font-bold" />
                     </button>
                   );
                 })}
               </div>
-            </motion.div>
+            </Card>
+          </motion.div>
 
-            <button
-              onClick={advance}
-              className="w-full flex items-center justify-center gap-2 px-5 py-4 bg-zinc-800 text-white font-black text-[14px] rounded-2xl border-b-4 border-zinc-950 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider"
-            >
-              {current < questions.length - 1 ? (<>{t.next} <ChevronRight size={16} strokeWidth={3} /></>) : (<><Target size={16} strokeWidth={3} /> {t.finish}</>)}
-            </button>
-          </>
-        )}
+          <Button
+            onClick={advance}
+            tone="secondary"
+            fullWidth
+            size="lg"
+            icon={current < questions.length - 1 ? undefined : <Target size={16} strokeWidth={3} />}
+            trailingIcon={current < questions.length - 1 ? <ChevronRight size={16} strokeWidth={3} /> : undefined}
+          >
+            {current < questions.length - 1 ? t.next : t.finish}
+          </Button>
+        </>
+      )}
 
-        {/* ── DONE ──────────────────────────────────────────────────── */}
-        {stage === 'done' && (
-          <>
-            <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-6 md:p-8 text-center">
-              <p className="text-[13px] font-black text-zinc-400 uppercase tracking-wider mb-1">{t.result}</p>
-              <p className="text-5xl font-black text-violet-600 tracking-tight">
-                {score}<span className="text-zinc-300 text-3xl">/{questions.length}</span>
-              </p>
-              <p className="text-[12px] font-bold text-zinc-400 mt-2">
-                {saving ? t.saving : savedOk ? t.saved : ''}
-              </p>
-            </div>
+      {/* ── DONE ──────────────────────────────────────────────────── */}
+      {stage === 'done' && (
+        <>
+          <Card className="text-center">
+            <p className="mb-1 text-[13px] font-black uppercase tracking-wider text-on-surface-variant">{t.result}</p>
+            <p className="s-num text-5xl font-black tracking-tight text-primary">
+              {score}<span className="text-3xl text-on-surface-variant">/{questions.length}</span>
+            </p>
+            <p className="mt-2 text-[12px] font-bold text-on-surface-variant">
+              {saving ? t.saving : savedOk ? t.saved : ''}
+            </p>
+          </Card>
 
-            <div className="flex flex-col gap-3">
-              {questions.map((q, i) => {
-                const given = answers[q.id];
-                const ok = given === q.answer;
-                return (
-                  <div key={q.id} className={`bg-white rounded-2xl border-2 p-4 ${ok ? 'border-emerald-200' : given ? 'border-rose-200' : 'border-zinc-200'}`}>
-                    <div className="flex items-start gap-2 mb-1">
-                      <span className="w-6 h-6 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[11px] font-black text-zinc-500 shrink-0">{i + 1}</span>
-                      <LatexRenderer latex={q.question[lang]} className="text-[13px] font-bold text-zinc-800" />
-                      {ok
-                        ? <CheckCircle2 size={18} className="text-emerald-500 ml-auto shrink-0" />
-                        : <XCircle size={18} className="text-rose-400 ml-auto shrink-0" />}
-                    </div>
-                    {!ok && (
-                      <p className="text-[12px] font-bold text-emerald-600 pl-8">
-                        {t.correctAnswer}: {q.answer}
-                      </p>
-                    )}
+          <div className="flex flex-col gap-s-gap">
+            {questions.map((q, i) => {
+              const given = answers[q.id];
+              const ok = given === q.answer;
+              return (
+                <Card
+                  key={q.id}
+                  variant="outlined"
+                  className={cn('border-2', ok ? 'border-success' : given ? 'border-error' : 'border-outline-variant')}
+                >
+                  <div className="mb-1 flex items-start gap-2">
+                    <span className="s-num grid h-6 w-6 shrink-0 place-items-center rounded-m3-sm bg-surface-container-high text-[11px] font-black text-on-surface-variant">
+                      {i + 1}
+                    </span>
+                    <LatexRenderer latex={q.question[lang]} className="text-[13px] font-bold text-on-surface" />
+                    {ok
+                      ? <CheckCircle2 size={18} className="ml-auto shrink-0 text-success" />
+                      : <XCircle size={18} className="ml-auto shrink-0 text-error" />}
                   </div>
-                );
-              })}
-            </div>
+                  {!ok && (
+                    <p className="pl-8 text-[12px] font-bold text-success">
+                      {t.correctAnswer}: {q.answer}
+                    </p>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={reset}
-                className="flex-1 flex items-center justify-center gap-2 px-5 py-4 bg-violet-500 text-white font-black text-[14px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider"
-              >
-                <Rocket size={16} strokeWidth={3} /> {t.again}
-              </button>
-              <Link
-                href="/RASCHmodel/diagnosis"
-                className="flex-1 flex items-center justify-center gap-2 px-5 py-4 bg-zinc-800 text-white font-black text-[14px] rounded-2xl border-b-4 border-zinc-950 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider"
-              >
-                <Target size={16} strokeWidth={3} /> {t.diagnosis}
-              </Link>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              onClick={reset}
+              size="lg"
+              fullWidth
+              className="flex-1"
+              icon={<Rocket size={16} strokeWidth={3} />}
+            >
+              {t.again}
+            </Button>
+            <Link href="/RASCHmodel/diagnosis" className="flex-1">
+              <Button tone="secondary" size="lg" fullWidth icon={<Target size={16} strokeWidth={3} />}>
+                {t.diagnosis}
+              </Button>
+            </Link>
+          </div>
+        </>
+      )}
+    </Page>
   );
 }

@@ -3,25 +3,25 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { db, auth } from '@/lib/firebase';
-import { 
-  doc, getDoc, updateDoc, writeBatch, collection, query, 
-  where, getDocs, arrayRemove, deleteDoc 
-} from 'firebase/firestore';
-import { 
-  updateProfile, updatePassword, deleteUser, reauthenticateWithCredential, 
-  EmailAuthProvider, GoogleAuthProvider, reauthenticateWithPopup 
+import { doc, getDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import {
+  updateProfile, updatePassword, reauthenticateWithCredential,
+  EmailAuthProvider, GoogleAuthProvider, reauthenticateWithPopup
 } from 'firebase/auth';
 import { checkUsernameUnique } from '@/services/userService';
 import { useStudentLanguage } from '../layout';
-import toast from 'react-hot-toast';
 import { getOwnContact, setOwnContact } from '@/lib/directory';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Page, PageHeader, Tabs, Card, ListGroup, ListRow, Tile,
+  TextField, TextArea, Select, Button, Banner, Dialog,
+  LoadingState, sToast,
+} from '@/components/student-ui';
 
 // Icons
-import { 
-  User, Shield, Settings as SettingsIcon, AtSign, Phone, Mail, 
-  Calendar, Building, RefreshCw, CheckCircle, XCircle, 
-  AlertTriangle, Key, Trash2, Check, Loader2, MapPin, GraduationCap, Smile,AlertCircle,Info,Send, Github, Linkedin
+import {
+  User, Shield, Settings as SettingsIcon, AtSign, Phone, Mail,
+  Calendar, Building, RefreshCw, CheckCircle, XCircle,
+  AlertTriangle, Key, Trash2, Check, AlertCircle, Info, Send, Github, Linkedin
 } from 'lucide-react';
 
 // --- 1. TRANSLATION DICTIONARY ---
@@ -32,7 +32,7 @@ const SETTINGS_TRANSLATIONS: any = {
     labels: { fullName: "To'liq Ism", birthDate: "Tug'ilgan Sana", bio: "O'zim haqimda", region: "Viloyat", district: "Tuman", selectRegion: "Viloyatni tanlang", selectDistrict: "Tumanni tanlang", school: "Muassasa nomi", grade: "Sinf/Kurs", selectGrade: "Sinfni tanlang", gender: "Jinsi", selectGender: "Jinsni tanlang", username: "Foydalanuvchi nomi", phone: "Telefon raqami", email: "Email" },
     genders: { male: "Erkak (Male)", female: "Ayol (Female)" },
     status: { minChar: "Kamida 5 ta belgi", regex: "Harf bilan boshlang", taken: "Bu nom band", avail: "Bu nom bo'sh!" },
-    security: { warn: "Parolni o'zgartirish qayta kirishni talab qiladi.", googleWarn: "Siz Google orqali kirdingiz. Parol kerak emas.", current: "Joriy Parol", new: "Yangi Parol", confirm: "Tasdiqlash", updateBtn: "Parolni Yangilash", danger: "Xavfli Hudud", deleteTitle: "Hisobni O'chirish", deleteDesc: "Hisob o'chirilgach, uni qayta tiklab bo'lmaydi.", deleteBtn: "O'chirish", sureTitle: "Ishonchingiz komilmi?", sureDesc: "Bu amal barcha yutuqlar va ma'lumotlarni butunlay o'chiradi.", passPlace: "Tasdiqlash uchun parolni kiriting", cancel: "Bekor qilish", yesDelete: "Ha, O'chirish" },
+    security: { warn: "Parolni o'zgartirish qayta kirishni talab qiladi.", googleWarn: "Siz Google orqali kirdingiz. Parol kerak emas.", centerWarn: "Hisobingiz o'quv markazi tomonidan boshqariladi. Parolni faqat markaz menejeri o'zgartira oladi.", current: "Joriy Parol", new: "Yangi Parol", confirm: "Tasdiqlash", updateBtn: "Parolni Yangilash", danger: "Xavfli Hudud", deleteTitle: "Hisobni O'chirish", deleteDesc: "Hisob o'chirilgach, uni qayta tiklab bo'lmaydi.", deleteBtn: "O'chirish", sureTitle: "Ishonchingiz komilmi?", sureDesc: "Bu amal barcha yutuqlar va ma'lumotlarni butunlay o'chiradi.", passPlace: "Tasdiqlash uchun parolni kiriting", cancel: "Bekor qilish", yesDelete: "Ha, O'chirish" },
     buttons: { save: "Saqlash", saving: "Saqlanmoqda..." },
     toasts: { success: "Sozlamalar yangilandi!", errPass: "Parol noto'g'ri", errDel: "O'chirishda xatolik", passUpdate: "Parol yangilandi!", passReq: "Parolni kiriting", clean: "Tozalanmoqda...", deleted: "Hisob o'chirildi." },
     aboutContent: {
@@ -52,7 +52,7 @@ const SETTINGS_TRANSLATIONS: any = {
     labels: { fullName: "Full Name", birthDate: "Birth Date", bio: "Bio", region: "Region", district: "District", selectRegion: "Select Region", selectDistrict: "Select District", school: "Institution Name", grade: "Grade", selectGrade: "Select Grade", gender: "Gender", selectGender: "Select Gender", username: "Username", phone: "Phone Number", email: "Email" },
     genders: { male: "Male", female: "Female" },
     status: { minChar: "Min 5 chars", regex: "Start with letter", taken: "Taken", avail: "Available!" },
-    security: { warn: "Changing password requires re-login.", googleWarn: "Logged in via Google. No password needed.", current: "Current Password", new: "New Password", confirm: "Confirm Password", updateBtn: "Update Password", danger: "Danger Zone", deleteTitle: "Delete Account", deleteDesc: "Once deleted, it cannot be recovered.", deleteBtn: "Delete", sureTitle: "Are you sure?", sureDesc: "This will permanently delete all your progress and data.", passPlace: "Enter password to confirm", cancel: "Cancel", yesDelete: "Yes, Delete" },
+    security: { warn: "Changing password requires re-login.", googleWarn: "Logged in via Google. No password needed.", centerWarn: "Your account is managed by your learning center. Only the center's manager can change the password.", current: "Current Password", new: "New Password", confirm: "Confirm Password", updateBtn: "Update Password", danger: "Danger Zone", deleteTitle: "Delete Account", deleteDesc: "Once deleted, it cannot be recovered.", deleteBtn: "Delete", sureTitle: "Are you sure?", sureDesc: "This will permanently delete all your progress and data.", passPlace: "Enter password to confirm", cancel: "Cancel", yesDelete: "Yes, Delete" },
     buttons: { save: "Save Changes", saving: "Saving..." },
     toasts: { success: "Settings updated!", errPass: "Incorrect password", errDel: "Failed to delete", passUpdate: "Password updated!", passReq: "Enter password", clean: "Cleaning up...", deleted: "Account deleted." },
     aboutContent: {
@@ -73,7 +73,7 @@ const SETTINGS_TRANSLATIONS: any = {
     labels: { fullName: "Полное Имя", birthDate: "Дата Рождения", bio: "О себе", region: "Регион", district: "Район", selectRegion: "Выберите регион", selectDistrict: "Выберите район", school: "Название учреждения", grade: "Класс/Курс", selectGrade: "Выберите класс", gender: "Пол", selectGender: "Выберите пол", username: "Имя пользователя", phone: "Телефон", email: "Email" },
     genders: { male: "Мужской (Male)", female: "Женский (Female)" },
     status: { minChar: "Мин. 5 символов", regex: "Начните с буквы", taken: "Занято", avail: "Доступно!" },
-    security: { warn: "Смена пароля требует повторного входа.", googleWarn: "Вход через Google. Пароль не нужен.", current: "Текущий пароль", new: "Новый пароль", confirm: "Подтверждение", updateBtn: "Обновить пароль", danger: "Опасная Зона", deleteTitle: "Удалить Аккаунт", deleteDesc: "Удаление необратимо.", deleteBtn: "Удалить", sureTitle: "Вы уверены?", sureDesc: "Это навсегда удалит весь ваш прогресс и данные.", passPlace: "Введите пароль", cancel: "Отмена", yesDelete: "Да, Удалить" },
+    security: { warn: "Смена пароля требует повторного входа.", googleWarn: "Вход через Google. Пароль не нужен.", centerWarn: "Ваш аккаунт управляется учебным центром. Пароль может изменить только менеджер центра.", current: "Текущий пароль", new: "Новый пароль", confirm: "Подтверждение", updateBtn: "Обновить пароль", danger: "Опасная Зона", deleteTitle: "Удалить Аккаунт", deleteDesc: "Удаление необратимо.", deleteBtn: "Удалить", sureTitle: "Вы уверены?", sureDesc: "Это навсегда удалит весь ваш прогресс и данные.", passPlace: "Введите пароль", cancel: "Отмена", yesDelete: "Да, Удалить" },
     buttons: { save: "Сохранить", saving: "Сохранение..." },
     toasts: { success: "Настройки обновлены!", errPass: "Неверный пароль", errDel: "Ошибка удаления", passUpdate: "Пароль обновлен!", passReq: "Введите пароль", clean: "Очистка...", deleted: "Аккаунт удален." },
     aboutContent: {
@@ -108,8 +108,8 @@ const UZB_LOCATIONS: Record<string, string[]> = {
 };
 
 const GRADES = [
-  "school_1", "school_2", "school_3", "school_4", "school_5", "school_6", 
-  "school_7", "school_8", "school_9", "school_10", "school_11", 
+  "school_1", "school_2", "school_3", "school_4", "school_5", "school_6",
+  "school_7", "school_8", "school_9", "school_10", "school_11",
   "uni_1", "uni_2", "uni_3", "uni_4"
 ];
 
@@ -151,6 +151,11 @@ export default function SettingsPage() {
   const [usernameError, setUsernameError] = useState('');
 
   const isGoogleUser = auth.currentUser?.providerData.some(p => p.providerId === 'google.com');
+  // Manager-created accounts: the manager's stored recovery credential
+  // (center_student_credentials) is the ONLY reset path for the synthetic
+  // no-inbox email, so self-service password change must stay off for them
+  // (docs/AUTH.md / MANAGER.md).
+  const [isCenterManaged, setIsCenterManaged] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -172,6 +177,7 @@ export default function SettingsPage() {
           phone: (await getOwnContact()).phone,
         });
         setOriginalUsername(data.username || '');
+        setIsCenterManaged(data.accountType === 'center-managed');
       }
       setLoading(false);
     }
@@ -238,30 +244,31 @@ export default function SettingsPage() {
       } else {
         await updateDoc(doc(db, 'users', user.uid), updates);
       }
-      toast.success(t.toasts.success);
-    } catch (error) { toast.error(t.toasts.errDel); } finally { setIsSaving(false); }
+      sToast.success(t.toasts.success);
+    } catch (error) { sToast.error(t.toasts.errDel); } finally { setIsSaving(false); }
   };
 
   // 🟢 UPDATE PASSWORD
   const handlePasswordUpdate = async () => {
+    if (isCenterManaged) { sToast.error(t.security.centerWarn); return; }
     if (!user || newPass !== confirmPass || !currentPass) return;
     setIsSaving(true);
     try {
       const credential = EmailAuthProvider.credential(user.email!, currentPass);
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPass);
-      toast.success(t.toasts.passUpdate);
+      sToast.success(t.toasts.passUpdate);
       setCurrentPass(''); setNewPass(''); setConfirmPass('');
-    } catch (error) { toast.error(t.toasts.errPass); } finally { setIsSaving(false); }
+    } catch (error) { sToast.error(t.toasts.errPass); } finally { setIsSaving(false); }
   };
 
   // 🟢 DELETE ACCOUNT
   const handleDeleteAccount = async () => {
     if (!user) return;
-    if (!isGoogleUser && !deletePassword) { toast.error(t.toasts.passReq); return; }
+    if (!isGoogleUser && !deletePassword) { sToast.error(t.toasts.passReq); return; }
 
     setIsDeleting(true);
-    const toastId = toast.loading(t.toasts.clean);
+    const toastId = sToast.loading(t.toasts.clean);
     try {
       if (isGoogleUser) {
         await reauthenticateWithPopup(user, new GoogleAuthProvider());
@@ -270,430 +277,400 @@ export default function SettingsPage() {
         await reauthenticateWithCredential(user, credential);
       }
 
-      // Cleanup
-      const queries = [
-        getDocs(query(collection(db, 'attempts'), where('userId', '==', user.uid))),
-        getDocs(query(collection(db, 'notifications'), where('userId', '==', user.uid))),
-        getDocs(query(collection(db, 'classes'), where('studentIds', 'array-contains', user.uid)))
-      ];
-      const [attemptsSnap, notifSnap, classesSnap] = await Promise.all(queries);
-      
-      const deletions = attemptsSnap.docs.map(d => deleteDoc(d.ref)).concat(notifSnap.docs.map(d => deleteDoc(d.ref)));
-      const classUpdates = classesSnap.docs.map(d => updateDoc(d.ref, { studentIds: arrayRemove(user.uid) }));
-      await Promise.all([...deletions, ...classUpdates]);
+      // Server-side deletion (Admin SDK): the old client-side cleanup could not
+      // delete the user's own `attempts` (teacher-only rule) so it ABORTED for
+      // any student who had ever taken a test — and it orphaned social edges,
+      // leaderboard rows, join requests, RASCH docs and center links. The API
+      // removes everything (and the Auth account) under the caller's own token.
+      const idToken = await user.getIdToken(true);
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!res.ok) throw new Error('deletion failed');
 
-      // Delete User Docs
-      const batch = writeBatch(db);
-      batch.delete(doc(db, 'users', user.uid));
-      if (originalUsername) batch.delete(doc(db, 'usernames', originalUsername.toLowerCase()));
-      await batch.commit();
-
-      await deleteUser(user);
-      toast.success(t.toasts.deleted, { id: toastId });
+      sToast.dismiss(toastId);
+      sToast.success(t.toasts.deleted);
       window.location.href = '/auth/login';
     } catch (error) {
-      toast.error(t.toasts.errDel, { id: toastId });
+      sToast.dismiss(toastId);
+      sToast.error(t.toasts.errDel);
       setIsDeleting(false);
     }
   };
 
   if (loading) {
-    return <div className="w-full min-h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-violet-500" size={32}/></div>;
+    return (
+      <Page>
+        <LoadingState rows={5} />
+      </Page>
+    );
   }
 
-  return (
-    <div className="w-full max-w-[800px] mx-auto px-4 sm:px-6 py-6 md:py-10 pb-28 md:pb-12">
-      <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight mb-8">{t.title}</h1>
+  const genderOptions = [
+    { value: '', label: t.labels.selectGender },
+    { value: 'male', label: t.genders.male },
+    { value: 'female', label: t.genders.female },
+  ];
 
-      {/* 🟢 CHUNKY PILL TABS (Mobile Optimized) */}
-      <div className="flex gap-1.5 sm:gap-2 p-1.5 bg-zinc-200/50 rounded-[1.25rem] mb-6">
-        {[
-          { id: 'profile', icon: User, label: t.tabs.profile },
-          { id: 'account', icon: SettingsIcon, label: t.tabs.account },
-          { id: 'security', icon: Shield, label: t.tabs.security },
-          { id: 'about', icon: Info, label: t.tabs.about }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            title={tab.label} // Tooltip for accessibility
-            className={`flex-1 flex items-center justify-center gap-2 py-3 sm:py-3 px-2 sm:px-4 rounded-xl font-black text-[14px] transition-all duration-200 ${
-              activeTab === tab.id 
-                ? 'bg-white text-zinc-900 shadow-sm border-2 border-zinc-200/50' 
-                : 'text-zinc-500 hover:bg-zinc-200/50 border-2 border-transparent'
-            }`}
-          >
-            {/* Icon is slightly larger on mobile since text is hidden */}
-            <tab.icon 
-              size={20} 
-              strokeWidth={activeTab === tab.id ? 3 : 2.5} 
-              className={activeTab === tab.id ? 'text-violet-500' : ''} 
-            />
-            {/* Text is hidden on mobile, visible on sm and up */}
-            <span className="hidden sm:block">{tab.label}</span>
-          </button>
-        ))}
-      </div>
+  const gradeOptions = [
+    { value: '', label: t.labels.selectGrade },
+    ...GRADES.map(g => ({
+      value: g,
+      label: g.startsWith('school_')
+        ? `${g.replace('school_', '')}${lang === 'uz' ? '-sinf' : lang === 'ru' ? ' класс' : 'th Grade'}`
+        : `${g.replace('uni_', '')}${lang === 'uz' ? '-kurs' : lang === 'ru' ? ' курс' : 'st Year'}`,
+    })),
+  ];
+
+  const regionOptions = [
+    { value: '', label: t.labels.selectRegion },
+    ...Object.keys(UZB_LOCATIONS).map(r => ({ value: r, label: r })),
+  ];
+
+  const districtOptions = [
+    { value: '', label: t.labels.selectDistrict },
+    ...(formData.region ? UZB_LOCATIONS[formData.region] ?? [] : []).map((d: string) => ({ value: d, label: d })),
+  ];
+
+  const closeDeleteDialog = () => { setShowDeleteConfirm(false); setDeletePassword(''); };
+
+  return (
+    <Page>
+      <PageHeader title={t.title} />
+
+      {/* 🟢 TABS */}
+      <Tabs
+        label={t.title}
+        value={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { value: 'profile',  label: t.tabs.profile,  icon: <User size={18} strokeWidth={2.5} /> },
+          { value: 'account',  label: t.tabs.account,  icon: <SettingsIcon size={18} strokeWidth={2.5} /> },
+          { value: 'security', label: t.tabs.security, icon: <Shield size={18} strokeWidth={2.5} /> },
+          { value: 'about',    label: t.tabs.about,    icon: <Info size={18} strokeWidth={2.5} /> },
+        ]}
+        className="mb-s-gap-lg"
+      />
 
       {/* 🟢 TAB CONTENT AREA */}
-      <div className="bg-white border-2 border-zinc-200 rounded-[2rem] p-6 md:p-8 shadow-sm">
-        
+      <Card>
+
         {/* ===================================== PROFILE TAB ===================================== */}
         {activeTab === 'profile' && (
-          <div className="space-y-6 animate-in fade-in">
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.fullName}</label>
-                <input type="text" value={formData.displayName} onChange={(e) => setFormData({...formData, displayName: e.target.value})} className="w-full px-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors" />
-              </div>
-              <div>
-                <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.birthDate}</label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                  <input type="date" value={formData.birthDate} max={new Date().toISOString().split("T")[0]} onChange={(e) => setFormData({...formData, birthDate: e.target.value})} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors" />
-                </div>
-              </div>
-            </div>
+          <div className="flex flex-col gap-s-gap">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.gender}</label>
-                <div className="relative">
-                  <Smile className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                  <select value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors appearance-none">
-                    <option value="">{t.labels.selectGender}</option>
-                    <option value="male">{t.genders.male}</option>
-                    <option value="female">{t.genders.female}</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.grade}</label>
-                <div className="relative">
-                  <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                  <select value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors appearance-none">
-                    <option value="">{t.labels.selectGrade}</option>
-                    {GRADES.map(g => (
-                      <option key={g} value={g}>
-                        {g.startsWith('school_') ? `${g.replace('school_', '')}${lang === 'uz' ? '-sinf' : lang === 'ru' ? ' класс' : 'th Grade'}` : `${g.replace('uni_', '')}${lang === 'uz' ? '-kurs' : lang === 'ru' ? ' курс' : 'st Year'}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Bio Input with Character Counter */}
-            <div>
-              <div className="flex justify-between items-end mb-1">
-                <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 block">
-                  {t.labels.bio}
-                </label>
-                <span className={`text-[10px] font-bold mr-2 ${formData.bio?.length === 100 ? 'text-rose-500' : 'text-zinc-400'}`}>
-                  {formData.bio?.length || 0}/100
-                </span>
-              </div>
-              <textarea 
-                value={formData.bio} 
-                onChange={handleBioChange} 
-                maxLength={100}
-                rows={3} 
-                className="w-full px-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-bold text-[14px] text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors resize-none custom-scrollbar" 
+            <div className="grid grid-cols-1 gap-s-gap md:grid-cols-2">
+              <TextField
+                label={t.labels.fullName}
+                value={formData.displayName}
+                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+              />
+              <TextField
+                label={t.labels.birthDate}
+                type="date"
+                value={formData.birthDate}
+                max={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                leading={<Calendar size={18} strokeWidth={2.5} />}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.region}</label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                  <select value={formData.region} onChange={(e) => setFormData({...formData, region: e.target.value, district: ''})} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors appearance-none">
-                    <option value="">{t.labels.selectRegion}</option>
-                    {Object.keys(UZB_LOCATIONS).map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.district}</label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                  <select value={formData.district} onChange={(e) => setFormData({...formData, district: e.target.value})} disabled={!formData.region} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors disabled:opacity-50 appearance-none">
-                    <option value="">{t.labels.selectDistrict}</option>
-                    {formData.region && UZB_LOCATIONS[formData.region]?.map((d: string) => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-s-gap md:grid-cols-2">
+              <Select
+                label={t.labels.gender}
+                options={genderOptions}
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+              />
+              <Select
+                label={t.labels.grade}
+                options={gradeOptions}
+                value={formData.grade}
+                onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+              />
             </div>
 
-            <div>
-              <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.school}</label>
-              <div className="relative">
-                <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                <input type="text" value={formData.institution} onChange={(e) => setFormData({...formData, institution: e.target.value})} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors" />
-              </div>
+            {/* Bio Input with Character Counter */}
+            <TextArea
+              label={t.labels.bio}
+              value={formData.bio}
+              onChange={handleBioChange}
+              maxLength={100}
+              rows={3}
+              hint={`${formData.bio?.length || 0}/100`}
+            />
+
+            <div className="grid grid-cols-1 gap-s-gap md:grid-cols-2">
+              <Select
+                label={t.labels.region}
+                options={regionOptions}
+                value={formData.region}
+                onChange={(e) => setFormData({ ...formData, region: e.target.value, district: '' })}
+              />
+              <Select
+                label={t.labels.district}
+                options={districtOptions}
+                value={formData.district}
+                disabled={!formData.region}
+                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+              />
             </div>
+
+            <TextField
+              label={t.labels.school}
+              value={formData.institution}
+              onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
+              leading={<Building size={18} strokeWidth={2.5} />}
+            />
           </div>
         )}
 
         {/* ===================================== ACCOUNT TAB ===================================== */}
         {activeTab === 'account' && (
-          <div className="space-y-6 animate-in fade-in">
-            
+          <div className="flex flex-col gap-s-gap">
+
             {/* Username */}
-            <div>
-              <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.username}</label>
-              <div className="relative">
-                <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={3} />
-                <input 
-                  type="text" value={formData.username} 
-                  onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, '')})}
-                  className={`w-full pl-11 pr-12 py-3.5 bg-zinc-50 border-2 rounded-2xl font-black text-zinc-900 focus:outline-none focus:bg-white transition-colors ${
-                    usernameStatus === 'valid' ? 'border-emerald-500 focus:border-emerald-500 bg-emerald-50/30' :
-                    (usernameStatus === 'taken' || usernameStatus === 'invalid') ? 'border-rose-500 focus:border-rose-500 bg-rose-50/30' :
-                    'border-zinc-200 focus:border-violet-500'
-                  }`} 
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  {usernameStatus === 'checking' && <RefreshCw className="animate-spin text-zinc-400" size={18} strokeWidth={3}/>}
-                  {usernameStatus === 'valid' && <CheckCircle className="text-emerald-500" size={18} strokeWidth={3}/>}
-                  {(usernameStatus === 'taken' || usernameStatus === 'invalid') && <XCircle className="text-rose-500" size={18} strokeWidth={3}/>}
-                </div>
-              </div>
-              {usernameStatus === 'invalid' && <p className="text-[12px] font-bold text-rose-500 mt-1.5 ml-2">{usernameError}</p>}
-              {usernameStatus === 'taken' && <p className="text-[12px] font-bold text-rose-500 mt-1.5 ml-2">{usernameError}</p>}
-              {usernameStatus === 'valid' && formData.username !== originalUsername && <p className="text-[12px] font-bold text-emerald-600 mt-1.5 ml-2">{t.status.avail}</p>}
-            </div>
+            <TextField
+              label={t.labels.username}
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, '') })}
+              leading={<AtSign size={18} strokeWidth={3} />}
+              trailing={
+                usernameStatus === 'checking' ? <RefreshCw className="animate-spin" size={18} strokeWidth={3} />
+                : usernameStatus === 'valid' ? <CheckCircle className="text-success" size={18} strokeWidth={3} />
+                : (usernameStatus === 'taken' || usernameStatus === 'invalid') ? <XCircle className="text-error" size={18} strokeWidth={3} />
+                : null
+              }
+              error={usernameStatus === 'taken' || usernameStatus === 'invalid' ? usernameError : undefined}
+              hint={usernameStatus === 'valid' && formData.username !== originalUsername ? t.status.avail : undefined}
+            />
 
             {/* Phone */}
-            <div>
-              <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.phone}</label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: formatPhoneNumber(e.target.value)})}
-                  className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors"
-                />
-              </div>
-            </div>
-            
+            <TextField
+              label={t.labels.phone}
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
+              leading={<Phone size={18} strokeWidth={2.5} />}
+            />
+
             {/* Email (Disabled) */}
-            <div>
-              <label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-2 mb-1 block">{t.labels.email}</label>
-              <div className="relative opacity-60">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                <input type="text" value={user?.email || ''} disabled className="w-full pl-11 pr-4 py-3.5 bg-zinc-100 border-2 border-zinc-200 rounded-2xl font-black text-zinc-500 cursor-not-allowed" />
-              </div>
-            </div>
+            <TextField
+              label={t.labels.email}
+              value={user?.email || ''}
+              disabled
+              leading={<Mail size={18} strokeWidth={2.5} />}
+            />
           </div>
         )}
 
         {/* ===================================== SAVE BUTTON (For Profile & Account) ===================================== */}
         {(activeTab === 'profile' || activeTab === 'account') && (
-          <div className="mt-8 pt-6 border-t-2 border-zinc-100">
-            <button 
-              onClick={handleSave} 
-              disabled={isSaving || usernameStatus === 'checking' || usernameStatus === 'invalid' || usernameStatus === 'taken'}
-              className="w-full md:w-auto px-8 py-3.5 bg-violet-500 text-white font-black text-[15px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-[4px] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          <div className="mt-8 border-t border-outline-variant pt-6">
+            <Button
+              onClick={handleSave}
+              loading={isSaving}
+              disabled={usernameStatus === 'checking' || usernameStatus === 'invalid' || usernameStatus === 'taken'}
+              icon={<Check size={18} strokeWidth={3} />}
+              className="w-full md:w-auto"
             >
-              {isSaving ? <Loader2 size={18} className="animate-spin"/> : <Check size={18} strokeWidth={3}/>} {isSaving ? t.buttons.saving : t.buttons.save}
-            </button>
+              {isSaving ? t.buttons.saving : t.buttons.save}
+            </Button>
           </div>
         )}
 
         {/* ===================================== SECURITY TAB ===================================== */}
         {activeTab === 'security' && (
-          <div className="space-y-8 animate-in fade-in">
-            
-            {/* Change Password Section */}
-            {!isGoogleUser ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-2xl flex gap-3 text-orange-600 text-[14px] font-bold">
-                  <AlertCircle size={20} strokeWidth={3} className="shrink-0" />
-                  <p>{t.security.warn}</p>
-                </div>
-                <div className="space-y-3">
-                  <div className="relative">
-                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                    <input type="password" placeholder={t.security.current} value={currentPass} onChange={e => setCurrentPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors"/>
-                  </div>
-                  <div className="relative">
-                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                    <input type="password" placeholder={t.security.new} value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors"/>
-                  </div>
-                  <div className="relative">
-                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} strokeWidth={2.5}/>
-                    <input type="password" placeholder={t.security.confirm} value={confirmPass} onChange={e => setConfirmPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-zinc-50 border-2 border-zinc-200 rounded-2xl font-black text-zinc-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-colors"/>
-                  </div>
-                  <button 
-                    onClick={handlePasswordUpdate} 
-                    disabled={!currentPass || !newPass || newPass !== confirmPass || isSaving}
-                    className="w-full md:w-auto mt-2 px-8 py-3.5 bg-zinc-800 text-white font-black text-[15px] rounded-2xl border-b-4 border-zinc-950 active:border-b-0 active:translate-y-[4px] transition-all disabled:opacity-50"
-                  >
-                    {t.security.updateBtn}
-                  </button>
-                </div>
+          <div className="flex flex-col gap-s-section">
+
+            {/* Change Password Section — center-managed accounts are locked out:
+                a self-change would desync the manager's stored recovery
+                credential, and the synthetic email has no inbox for resets. */}
+            {isCenterManaged ? (
+              <Banner
+                status="info"
+                icon={<Building size={20} strokeWidth={3} />}
+                title={t.security.centerWarn}
+              />
+            ) : !isGoogleUser ? (
+              <div className="flex flex-col gap-s-gap">
+                <Banner
+                  status="warning"
+                  icon={<AlertCircle size={20} strokeWidth={3} />}
+                  title={t.security.warn}
+                />
+                <TextField
+                  label={t.security.current}
+                  type="password"
+                  value={currentPass}
+                  onChange={e => setCurrentPass(e.target.value)}
+                  leading={<Key size={18} strokeWidth={2.5} />}
+                />
+                <TextField
+                  label={t.security.new}
+                  type="password"
+                  value={newPass}
+                  onChange={e => setNewPass(e.target.value)}
+                  leading={<Key size={18} strokeWidth={2.5} />}
+                />
+                <TextField
+                  label={t.security.confirm}
+                  type="password"
+                  value={confirmPass}
+                  onChange={e => setConfirmPass(e.target.value)}
+                  leading={<Key size={18} strokeWidth={2.5} />}
+                />
+                <Button
+                  onClick={handlePasswordUpdate}
+                  loading={isSaving}
+                  disabled={!currentPass || !newPass || newPass !== confirmPass}
+                  className="w-full md:w-auto"
+                >
+                  {t.security.updateBtn}
+                </Button>
               </div>
             ) : (
-              <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl flex gap-3 text-emerald-600 text-[14px] font-bold">
-                <CheckCircle size={20} strokeWidth={3} className="shrink-0" />
-                <p>{t.security.googleWarn}</p>
-              </div>
+              <Banner
+                status="success"
+                icon={<CheckCircle size={20} strokeWidth={3} />}
+                title={t.security.googleWarn}
+              />
             )}
 
             {/* DANGER ZONE - DELETE ACCOUNT */}
-            <div className="pt-8 border-t-2 border-zinc-100">
-              <h3 className="text-rose-500 font-black text-[16px] mb-4 flex items-center gap-2 uppercase tracking-widest">
-                <AlertTriangle size={18} strokeWidth={3}/> {t.security.danger}
+            <div className="border-t border-outline-variant pt-8">
+              <h3 className="mb-4 flex items-center gap-2 text-[16px] font-black uppercase tracking-widest text-error">
+                <AlertTriangle size={18} strokeWidth={3} /> {t.security.danger}
               </h3>
-              
-              {!showDeleteConfirm ? (
-                <div className="flex flex-col sm:flex-row items-center justify-between p-5 border-2 border-rose-200 bg-rose-50 rounded-2xl gap-4">
-                  <div className="text-[13px] font-bold text-rose-600/80 text-center sm:text-left">
-                    <p className="font-black text-[16px] text-rose-600 mb-1">{t.security.deleteTitle}</p>
-                    <p>{t.security.deleteDesc}</p>
-                  </div>
-                  <button 
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="w-full sm:w-auto px-6 py-3 bg-white text-rose-600 font-black text-[14px] rounded-xl border-2 border-rose-200 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all shrink-0"
-                  >
-                    {t.security.deleteBtn}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4 p-5 border-2 border-rose-500 bg-rose-50 rounded-2xl animate-in fade-in zoom-in-95">
-                  <p className="text-[16px] font-black text-rose-600">{t.security.sureTitle}</p>
-                  <p className="text-[13px] font-bold text-rose-600/80">
-                    {t.security.sureDesc}
-                  </p>
-                  
-                  {!isGoogleUser && (
-                    <input 
-                      type="password" 
-                      placeholder={t.security.passPlace}
-                      value={deletePassword}
-                      onChange={(e) => setDeletePassword(e.target.value)}
-                      className="w-full p-3.5 rounded-xl border-2 border-rose-300 bg-white font-black text-zinc-900 outline-none focus:border-rose-500"
-                    />
-                  )}
 
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                    <button 
-                      onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); }}
-                      className="flex-1 py-3.5 bg-white text-zinc-600 font-black rounded-xl border-2 border-zinc-200 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all"
-                    >
-                      {t.security.cancel}
-                    </button>
-                    <button 
-                      onClick={handleDeleteAccount}
-                      disabled={(!isGoogleUser && !deletePassword) || isDeleting}
-                      className="flex-1 py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl border-b-4 border-rose-700 active:border-b-0 active:translate-y-[4px] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {isDeleting ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} strokeWidth={2.5}/>}
-                      {t.security.yesDelete}
-                    </button>
-                  </div>
+              <div className="flex flex-col items-center justify-between gap-4 rounded-m3-md bg-error-container p-5 text-on-error-container sm:flex-row">
+                <div className="text-center text-[13px] font-bold sm:text-left">
+                  <p className="mb-1 text-[16px] font-black">{t.security.deleteTitle}</p>
+                  <p>{t.security.deleteDesc}</p>
                 </div>
-              )}
+                <Button
+                  tone="error"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full shrink-0 sm:w-auto"
+                >
+                  {t.security.deleteBtn}
+                </Button>
+              </div>
             </div>
           </div>
         )}
 
         {/* ===================================== ABOUT TAB ===================================== */}
         {activeTab === 'about' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            
+          <div>
+
             {/* 🟢 PREMIUM HERO HEADER */}
-            <div className="relative h-48 md:h-56 bg-zinc-900 rounded-[1.5rem] overflow-hidden shrink-0 flex items-center justify-center mb-8 border-4 border-zinc-950">
-              <div className="absolute top-0 right-0 w-72 h-72 bg-violet-500 rounded-full mix-blend-screen filter blur-[64px] opacity-40 -translate-y-1/2 translate-x-1/3 animate-pulse"></div>
-              <div className="absolute bottom-0 left-0 w-72 h-72 bg-fuchsia-500 rounded-full mix-blend-screen filter blur-[64px] opacity-40 translate-y-1/3 -translate-x-1/3"></div>
-              
-              <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-white rounded-[1.2rem] flex items-center justify-center shadow-2xl shadow-violet-500/20 mb-4 rotate-3 hover:rotate-0 transition-transform">
-                    <span className="text-3xl font-black bg-gradient-to-br from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">E</span>
-                </div>
-                <h2 className="text-3xl font-black text-white tracking-tight">Edify<span className="text-violet-400">Student</span></h2>
-                <p className="text-zinc-400 text-[10px] font-black mt-1.5 uppercase tracking-widest">{t.aboutContent.title}</p>
+            <Card variant="gradient" className="mb-8 flex flex-col items-center py-10 text-center">
+              <div className="mb-4 grid h-16 w-16 place-items-center rounded-m3-md bg-surface text-3xl font-black text-primary">
+                E
               </div>
+              <h2 className="s-display text-3xl font-bold tracking-tight text-white">EdifyStudent</h2>
+              <p className="mt-1.5 text-[10px] font-black uppercase tracking-widest text-white">
+                {t.aboutContent.title}
+              </p>
+            </Card>
+
+            <div className="mx-auto mb-10 max-w-2xl text-center">
+              <h3 className="s-display mb-3 text-[18px] font-bold tracking-tight">{t.aboutContent.descTitle}</h3>
+              <p className="text-[14px] font-bold leading-relaxed text-on-surface-variant">{t.aboutContent.desc}</p>
             </div>
 
-            <div className="mb-10 text-center max-w-2xl mx-auto">
-                <h3 className="text-[18px] font-black text-zinc-900 tracking-tight mb-3">{t.aboutContent.descTitle}</h3>
-                <p className="text-zinc-500 font-bold text-[14px] leading-relaxed">{t.aboutContent.desc}</p>
+            <div className="grid grid-cols-1 gap-s-gap md:grid-cols-2">
+
+              {/* SUPPORT CONTACTS */}
+              <ListGroup header={t.aboutContent.support}>
+                <a href="https://t.me/Umidjon0339" target="_blank" rel="noopener noreferrer" className="block">
+                  <ListRow
+                    clickable
+                    leading={<Tile tone="secondary"><Send size={20} strokeWidth={2.5} /></Tile>}
+                    title="@Umidjon0339"
+                    subtitle="Telegram"
+                  />
+                </a>
+                <ListRow
+                  leading={<Tile tone="success"><Phone size={20} strokeWidth={2.5} /></Tile>}
+                  title="+998 33 860 20 06"
+                  subtitle={t.aboutContent.hotline}
+                />
+              </ListGroup>
+
+              {/* DEVELOPER LINKS */}
+              <ListGroup header={t.aboutContent.dev}>
+                <a href="https://github.com/Wasp-2-AI" target="_blank" rel="noopener noreferrer" className="block">
+                  <ListRow
+                    clickable
+                    leading={<Tile tone="neutral"><Github size={20} strokeWidth={2.5} /></Tile>}
+                    title="Wasp-2-AI"
+                    subtitle="GitHub"
+                  />
+                </a>
+                <a href="https://www.linkedin.com/company/wasp-2-ai" target="_blank" rel="noopener noreferrer" className="block">
+                  <ListRow
+                    clickable
+                    leading={<Tile tone="secondary"><Linkedin size={20} strokeWidth={2.5} /></Tile>}
+                    title="WASP-2 AI Solutions"
+                    subtitle="LinkedIn"
+                  />
+                </a>
+              </ListGroup>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* SUPPORT CONTACTS */}
-                <div className="bg-zinc-50 border-2 border-zinc-200 rounded-3xl p-6">
-                  <h3 className="text-[12px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span> {t.aboutContent.support}
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    <a href="https://t.me/Umidjon0339" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-2xl bg-white border-2 border-zinc-200 hover:border-blue-300 hover:shadow-sm active:translate-y-[2px] transition-all">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white bg-blue-500 group-hover:bg-blue-600 transition-colors shrink-0">
-                          <Send size={20} strokeWidth={2.5}/>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Telegram</p>
-                          <p className="text-[15px] font-black text-zinc-900 group-hover:text-blue-600 transition-colors">@Umidjon0339</p>
-                        </div>
-                    </a>
-
-                    <div className="group flex items-center gap-4 p-4 rounded-2xl bg-white border-2 border-zinc-200 hover:border-emerald-300 transition-all cursor-default">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white bg-emerald-500 transition-colors shrink-0">
-                          <Phone size={20} strokeWidth={2.5}/>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">{t.aboutContent.hotline}</p>
-                          <p className="text-[15px] font-black text-zinc-900">+998 33 860 20 06</p>
-                        </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* DEVELOPER LINKS */}
-                <div className="bg-zinc-50 border-2 border-zinc-200 rounded-3xl p-6">
-                  <h3 className="text-[12px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                      <span className="w-2 h-2 bg-purple-500 rounded-full"></span> {t.aboutContent.dev}
-                  </h3>
-
-                  <div className="space-y-3">
-                    <a href="https://github.com/Wasp-2-AI" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-2xl bg-white border-2 border-zinc-200 hover:border-zinc-400 hover:shadow-sm active:translate-y-[2px] transition-all">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white bg-zinc-900 group-hover:bg-black transition-colors shrink-0">
-                          <Github size={20} strokeWidth={2.5}/>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">GitHub</p>
-                          <p className="text-[15px] font-black text-zinc-900 group-hover:text-black transition-colors">Wasp-2-AI</p>
-                        </div>
-                    </a>
-
-                    <a href="https://www.linkedin.com/company/wasp-2-ai" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-2xl bg-white border-2 border-zinc-200 hover:border-[#0077b5] hover:shadow-sm active:translate-y-[2px] transition-all">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white bg-[#0077b5] group-hover:bg-[#005e93] transition-colors shrink-0">
-                          <Linkedin size={20} strokeWidth={2.5}/>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">LinkedIn</p>
-                          <p className="text-[15px] font-black text-zinc-900 group-hover:text-[#0077b5] transition-colors">WASP-2 AI Solutions</p>
-                        </div>
-                    </a>
-                  </div>
-                </div>
-            </div>
-
-            <div className="mt-8 text-center pt-6 border-t-2 border-zinc-100">
-                <p className="text-[13px] font-black text-zinc-500">{t.aboutContent.version}</p>
-                <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-widest">© 2026 WASP-2 AI Solutions. {t.aboutContent.rights}</p>
+            <div className="mt-8 border-t border-outline-variant pt-6 text-center">
+              <p className="text-[13px] font-black text-on-surface-variant">{t.aboutContent.version}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-outline">
+                © 2026 WASP-2 AI Solutions. {t.aboutContent.rights}
+              </p>
             </div>
           </div>
         )}
 
-      </div>
+      </Card>
 
-    </div>
+      {/* Deletion is irreversible and server-side (POST /api/account/delete) —
+          it always goes through this confirmation + reauthentication. */}
+      <Dialog
+        open={showDeleteConfirm}
+        onClose={closeDeleteDialog}
+        title={t.security.sureTitle}
+        icon={
+          <div className="grid h-14 w-14 place-items-center rounded-full bg-error-container text-on-error-container">
+            <AlertTriangle size={26} strokeWidth={2.5} />
+          </div>
+        }
+        actions={
+          <>
+            <Button variant="text" onClick={closeDeleteDialog} disabled={isDeleting}>
+              {t.security.cancel}
+            </Button>
+            <Button
+              tone="error"
+              onClick={handleDeleteAccount}
+              loading={isDeleting}
+              disabled={!isGoogleUser && !deletePassword}
+              icon={<Trash2 size={18} strokeWidth={2.5} />}
+            >
+              {t.security.yesDelete}
+            </Button>
+          </>
+        }
+      >
+        <p>{t.security.sureDesc}</p>
+        {!isGoogleUser && (
+          <TextField
+            label={t.security.passPlace}
+            type="password"
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            containerClassName="mt-5 text-left"
+          />
+        )}
+      </Dialog>
+    </Page>
   );
 }

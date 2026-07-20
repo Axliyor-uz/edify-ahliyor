@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { Gamepad2, ChevronRight, Crown, Sparkles, Brain } from 'lucide-react';
+import { Page, PageHeader, Card, Tile, Chip } from '@/components/student-ui';
 import { useStudentLanguage } from '../layout'; // Assuming your context is exported from the layout
 
 // --- TRANSLATIONS ---
@@ -50,72 +50,62 @@ export default function GamesPage() {
   const t = PAGE_TRANSLATIONS[currentLang];
 
   return (
-    <div className="min-h-screen bg-zinc-100 p-4 md:p-8">
-      <div className="max-w-[1200px] mx-auto">
-        
-        {/* Header Section */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center text-violet-600 border-2 border-violet-200">
-              <Gamepad2 size={24} strokeWidth={2.5} />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight">
-              {t.title}
-            </h1>
-          </div>
-          <p className="text-zinc-500 font-medium text-[15px] flex items-center gap-2">
+    <Page width="wide">
+      <PageHeader
+        title={
+          <span className="inline-flex items-center gap-3">
+            <Tile tone="primary">
+              <Gamepad2 size={22} strokeWidth={2.5} />
+            </Tile>
+            {t.title}
+          </span>
+        }
+        subtitle={
+          <span className="inline-flex items-center gap-2">
             <Brain size={16} />
             {t.subtitle}
-          </p>
-        </div>
+          </span>
+        }
+      />
 
-        {/* Games Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          
-          {/* Checkers Card */}
-          <Link href="/games/checkers">
-            <motion.div 
-              whileHover={{ y: -4 }}
-              whileTap={{ scale: 0.98 }}
-              className="bg-white rounded-[2rem] p-6 border-2 border-zinc-200 shadow-sm hover:border-violet-300 hover:shadow-xl transition-all cursor-pointer group flex flex-col h-full relative overflow-hidden"
-            >
-              {/* Background Decoration */}
-              <div className="absolute -right-6 -top-6 w-32 h-32 bg-violet-50 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              
-              <div className="flex items-start justify-between mb-4 relative z-10">
-                <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-2xl flex items-center justify-center text-white shadow-md border-b-4 border-violet-700">
-                  <Crown size={28} strokeWidth={2.5} />
-                </div>
-                <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">
-                  <Sparkles size={12} />
-                  Top
-                </div>
-              </div>
+      {/* Games Grid */}
+      <div className="grid grid-cols-1 gap-s-gap-lg md:grid-cols-2 lg:grid-cols-3">
 
-              <div className="relative z-10 flex-1">
-                <h3 className="text-xl font-black text-zinc-900 mb-2">
-                  {t.games.checkers.title}
-                </h3>
-                <p className="text-zinc-500 text-sm font-medium leading-relaxed mb-6">
-                  {t.games.checkers.desc}
-                </p>
-              </div>
+        {/* Checkers Card */}
+        <Link href="/games/checkers" className="block">
+          <Card interactive className="group flex h-full flex-col">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <Tile tone="primary" size="lg">
+                <Crown size={28} strokeWidth={2.5} />
+              </Tile>
+              <Chip status="gold" icon={<Sparkles size={12} />}>
+                Top
+              </Chip>
+            </div>
 
-              <div className="relative z-10 flex items-center justify-between mt-auto pt-4 border-t-2 border-zinc-100">
-                <span className="text-violet-600 font-bold text-[15px] group-hover:text-violet-700">
-                  {t.games.checkers.play}
-                </span>
-                <div className="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-500 group-hover:bg-violet-100 group-hover:text-violet-600 transition-colors">
-                  <ChevronRight size={18} strokeWidth={3} />
-                </div>
-              </div>
-            </motion.div>
-          </Link>
+            <div className="flex-1">
+              <h3 className="s-display mb-2 text-[19px] font-bold leading-tight">
+                {t.games.checkers.title}
+              </h3>
+              <p className="mb-6 text-[13.5px] font-bold leading-relaxed text-on-surface-variant">
+                {t.games.checkers.desc}
+              </p>
+            </div>
 
-          {/* You can add more game cards here in the future (e.g., Chess, Sudoku, Math Games) */}
+            <div className="mt-auto flex items-center justify-between border-t border-outline-variant pt-4">
+              <span className="text-[15px] font-extrabold text-primary">
+                {t.games.checkers.play}
+              </span>
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-container-high text-on-surface-variant transition-colors duration-m3-fast group-hover:bg-primary-container group-hover:text-on-primary-container">
+                <ChevronRight size={18} strokeWidth={3} />
+              </span>
+            </div>
+          </Card>
+        </Link>
 
-        </div>
+        {/* You can add more game cards here in the future (e.g., Chess, Sudoku, Math Games) */}
+
       </div>
-    </div>
+    </Page>
   );
 }

@@ -39,6 +39,27 @@ export function calculateStreak(dailyHistory: Record<string, number> | undefined
   return streak;
 }
 
+/**
+ * The four leaderboard period doc IDs for "now" — all UTC, matching the day-key
+ * convention above. Every leaderboard writer AND reader must use this one copy:
+ * the ISO-week formula in particular must never be re-derived locally, or the
+ * writers and readers silently address different `week_*` documents.
+ */
+export function getPeriodIds(now: Date = new Date()) {
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  const oneJan = new Date(Date.UTC(year, 0, 1));
+  const days = Math.floor((now.getTime() - oneJan.getTime()) / DAY_MS);
+  const weekNum = Math.ceil((days + oneJan.getUTCDay() + 1) / 7);
+  return {
+    dayId: `day_${year}_${month}_${day}`,
+    weekId: `week_${year}_${String(weekNum).padStart(2, '0')}`,
+    monthId: `month_${year}_${month}`,
+    globalId: 'all_time',
+  };
+}
+
 /** The last 7 UTC days, oldest first — the shape the XP area charts consume. */
 export function last7Days(
   dailyHistory: Record<string, number> | undefined,

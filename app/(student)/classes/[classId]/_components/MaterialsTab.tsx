@@ -3,7 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
-import { Folder, Image as ImageIcon, Video, FileText, File, Link as LinkIcon, ExternalLink, Download, Loader2 } from 'lucide-react';
+import { Folder, Image as ImageIcon, Video, FileText, File, Link as LinkIcon, ExternalLink, Download } from 'lucide-react';
+import {
+  ListGroup, Tile, Chip, EmptyState, LoadingState, Spinner, cn,
+  type TileProps,
+} from '@/components/student-ui';
 import { useStudentLanguage } from '@/app/(student)/layout';
 
 // ============================================================================
@@ -61,7 +65,7 @@ export default function MaterialsTab({ classId }: { classId: string }) {
 
         // If fresh, stop here. 0 Firebase Reads!
         if (now - cached.timestamp < CACHE_LIFESPAN) return;
-        
+
         // If stale, silently fetch page 1 in the background
         fetchMaterials(false, true);
       } else {
@@ -69,34 +73,34 @@ export default function MaterialsTab({ classId }: { classId: string }) {
         fetchMaterials(false, false);
       }
     };
-    
+
     initializeTab();
   }, [classId]);
 
   const fetchMaterials = async (isNextPage: boolean = false, silent: boolean = false) => {
     if (!classId) return;
     if (isNextPage && !lastDoc) return;
-    
+
     if (!silent) isNextPage ? setLoadingMore(true) : setLoadingInitial(true);
 
     try {
       // 🟢 Security: Only fetch visible, unarchived materials!
       let q = query(
-        collection(db, 'classes', classId, 'materials'), 
-        where('isVisible', '==', true),     
-        where('isArchived', '==', false),   
-        orderBy('createdAt', 'desc'), 
+        collection(db, 'classes', classId, 'materials'),
+        where('isVisible', '==', true),
+        where('isArchived', '==', false),
+        orderBy('createdAt', 'desc'),
         limit(PAGE_SIZE)
       );
 
       // 🟢 PRO FIX: Use startAfter to only fetch the NEXT 10 items, not all of them!
       if (isNextPage && lastDoc) {
         q = query(
-          collection(db, 'classes', classId, 'materials'), 
+          collection(db, 'classes', classId, 'materials'),
           where('isVisible', '==', true),
           where('isArchived', '==', false),
-          orderBy('createdAt', 'desc'), 
-          startAfter(lastDoc), 
+          orderBy('createdAt', 'desc'),
+          startAfter(lastDoc),
           limit(PAGE_SIZE)
         );
       }
@@ -110,11 +114,11 @@ export default function MaterialsTab({ classId }: { classId: string }) {
         const newHasMore = snap.docs.length >= PAGE_SIZE;
 
         // 🟢 Save to Cache
-        globalStudentMaterialsCache[classId] = { 
-          materials: updated, 
-          lastDoc: newLastDoc, 
-          hasMore: newHasMore, 
-          timestamp: Date.now() 
+        globalStudentMaterialsCache[classId] = {
+          materials: updated,
+          lastDoc: newLastDoc,
+          hasMore: newHasMore,
+          timestamp: Date.now()
         };
 
         if (!silent || !isNextPage) {
@@ -126,7 +130,7 @@ export default function MaterialsTab({ classId }: { classId: string }) {
     } catch (e) {
       console.error("Materials fetch error:", e);
     } finally {
-      setLoadingInitial(false); 
+      setLoadingInitial(false);
       setLoadingMore(false);
     }
   };
@@ -143,96 +147,85 @@ export default function MaterialsTab({ classId }: { classId: string }) {
 
 
   // ============================================================================
-  // 🟢 4. UI HELPERS & RENDER (Tactile Campus Design)
+  // 🟢 4. UI HELPERS & RENDER
   // ============================================================================
-  const getSemanticStyle = (type: string) => {
-    if (type === 'pdf') return { color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100', icon: FileText };
-    if (type === 'image') return { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', icon: ImageIcon };
-    if (type === 'video') return { color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100', icon: Video };
-    if (type === 'link') return { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: LinkIcon };
-    return { color: 'text-zinc-600', bg: 'bg-zinc-100', border: 'border-zinc-200', icon: File };
+  const getSemanticStyle = (type: string): { tone: TileProps['tone']; action: string; icon: any } => {
+    if (type === 'pdf') return { tone: 'error', action: 'bg-error-container text-on-error-container', icon: FileText };
+    if (type === 'image') return { tone: 'secondary', action: 'bg-secondary-container text-on-secondary-container', icon: ImageIcon };
+    if (type === 'video') return { tone: 'primary', action: 'bg-primary-container text-on-primary-container', icon: Video };
+    if (type === 'link') return { tone: 'success', action: 'bg-success-container text-on-success-container', icon: LinkIcon };
+    return { tone: 'neutral', action: 'bg-surface-container-high text-on-surface-variant', icon: File };
   };
 
   if (loadingInitial && materials.length === 0) {
-    return <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-indigo-500" size={28}/></div>;
+    return <LoadingState rows={3} />;
   }
 
   if (materials.length === 0) {
-    return (
-      <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-zinc-300 flex flex-col items-center shadow-sm">
-        <div className="w-16 h-16 bg-zinc-100 text-zinc-400 rounded-[1.2rem] flex items-center justify-center mb-4 rotate-6 border-2 border-zinc-200">
-          <Folder size={32} strokeWidth={2.5} />
-        </div>
-        <h3 className="text-[16px] font-black text-zinc-900 tracking-tight">{t.empty}</h3>
-      </div>
-    );
+    return <EmptyState icon={<Folder size={30} strokeWidth={2.5} />} title={t.empty} />;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-s-gap">
+      <ListGroup>
         {materials.map((mat, index) => {
           const isLastElement = index === materials.length - 1;
           const style = getSemanticStyle(mat.fileType);
           const IconComp = style.icon;
 
           return (
-            <div 
-              key={mat.id} 
+            <div
+              key={mat.id}
               ref={isLastElement ? lastElementRef : null}
-              className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 flex flex-col justify-between group hover:border-indigo-300 hover:border-b-indigo-400 active:border-b-2 active:translate-y-[4px] transition-all duration-200"
+              className="flex items-center gap-3 px-s-row-x py-3.5"
             >
-              {/* Header: Icon & Text */}
-              <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-[14px] border-2 flex items-center justify-center shrink-0 shadow-sm ${style.bg} ${style.color} ${style.border}`}>
-                  <IconComp size={24} strokeWidth={2.5}/>
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  {mat.topicId && (
-                    <span className="inline-flex items-center gap-1 bg-zinc-100 text-zinc-500 text-[9px] font-black uppercase px-2 py-0.5 rounded-md border-2 border-zinc-200 mb-1.5 shadow-sm">
-                      <Folder size={10} strokeWidth={3}/> {mat.topicId}
-                    </span>
+              <Tile tone={style.tone}><IconComp size={22} strokeWidth={2.5} /></Tile>
+
+              <div className="min-w-0 flex-1">
+                {mat.topicId && (
+                  <Chip status="neutral" className="mb-1 uppercase tracking-widest" icon={<Folder size={10} strokeWidth={3} />}>
+                    {mat.topicId}
+                  </Chip>
+                )}
+                <h3 className="truncate text-[15px] font-bold leading-tight text-on-surface">
+                  {mat.title}
+                </h3>
+                {mat.description && (
+                  <p className="truncate text-[12.5px] font-bold text-on-surface-variant">{mat.description}</p>
+                )}
+
+                <div className="mt-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
+                  {mat.isExternal ? (
+                    <span className="flex items-center gap-1 text-success"><ExternalLink size={12} strokeWidth={3} /> {t.external}</span>
+                  ) : (
+                    <span className="s-num">{(mat.fileSize / 1024 / 1024).toFixed(2)} MB</span>
                   )}
-                  <h3 className="font-black text-[16px] text-zinc-900 truncate group-hover:text-indigo-600 transition-colors">
-                    {mat.title}
-                  </h3>
-                  {mat.description && (
-                    <p className="text-[13px] font-bold text-zinc-500 truncate mt-1">{mat.description}</p>
-                  )}
-                  
-                  <div className="flex items-center gap-3 mt-3 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                    {mat.isExternal ? (
-                       <span className="text-emerald-500 flex items-center gap-1"><ExternalLink size={12} strokeWidth={3}/> {t.external}</span>
-                    ) : (
-                       <span>{(mat.fileSize / 1024 / 1024).toFixed(2)} MB</span>
-                    )}
-                    <span>•</span>
-                    <span>{mat.createdAt ? new Date(mat.createdAt.seconds * 1000).toLocaleDateString() : t.new}</span>
-                  </div>
+                  <span>•</span>
+                  <span>{mat.createdAt ? new Date(mat.createdAt.seconds * 1000).toLocaleDateString() : t.new}</span>
                 </div>
               </div>
 
-              {/* Action Button */}
-              <div className="mt-5 pt-4 border-t-2 border-zinc-100 flex justify-end">
-                <a 
-                  href={mat.fileUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={`px-5 py-2.5 rounded-xl border-2 flex items-center gap-2 text-[13px] font-black tracking-widest uppercase transition-all active:scale-95 ${style.bg} ${style.color} ${style.border} hover:brightness-95`}
-                >
-                  {mat.isExternal ? <><ExternalLink size={16} strokeWidth={3}/> {t.open}</> : <><Download size={16} strokeWidth={3}/> {t.download}</>}
-                </a>
-              </div>
+              <a
+                href={mat.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-m3-btn px-3.5',
+                  'text-[12px] font-extrabold uppercase tracking-widest s-press',
+                  style.action,
+                )}
+              >
+                {mat.isExternal ? <><ExternalLink size={15} strokeWidth={3} /> {t.open}</> : <><Download size={15} strokeWidth={3} /> {t.download}</>}
+              </a>
             </div>
           );
         })}
-      </div>
+      </ListGroup>
 
       {/* Invisible loading indicator to trigger the observer */}
       {loadingMore && (
-        <div className="py-6 flex justify-center">
-          <Loader2 className="animate-spin text-indigo-500" size={24}/>
+        <div className="flex justify-center py-6">
+          <Spinner size={24} />
         </div>
       )}
     </div>

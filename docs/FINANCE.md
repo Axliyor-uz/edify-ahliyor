@@ -16,7 +16,7 @@
 | Money out | Salaries + expenses (Phase 3) |
 | Salary % base | Per-center setting: % of collected vs % of charged (Phase 3) |
 | Collection | Manual recording by manager, integration-ready for Payme/Click |
-| Visibility | Manager-only (student/teacher views later) |
+| Visibility | Manager UI + a read-only student self-view: `GET /api/student/finance` (Admin SDK, caller's own uid only) feeding `app/(student)/payments/page.tsx` — the client-side rules stay manager-only |
 | Receipts / SMS reminders | Later phases |
 | Contracts / branches / multi-currency / cashier role | Out of scope; UZS only; manager records payments |
 
@@ -344,8 +344,11 @@ Deploy: `firebase deploy --only firestore:rules,firestore:indexes`.
   editable expense-categories UI.
 - **Phase 4 (NOT built)**: Payme/Click gateway (webhook → `financeOps.recordPayment` with
   `source: 'payme_gateway'` — the `PaymentSource` type already includes the gateway values but
-  nothing produces them), SMS reminders (Eskiz.uz), student/parent-visible balance,
+  nothing produces them), SMS reminders (Eskiz.uz),
   teacher-visible salary, un-pay/cancel flow for paid payouts (paid payouts are currently immutable).
+  🟢 The **student-visible balance** part of Phase 4 shipped 2026-07-20 as `GET /api/student/finance`
+  (read-only, Admin SDK, uid from the verified token; centers resolved via `center_students`) +
+  `app/(student)/payments/page.tsx`. The rules on the finance collections were NOT relaxed.
 
 ## 11. Legacy note
 

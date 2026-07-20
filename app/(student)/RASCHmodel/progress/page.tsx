@@ -8,7 +8,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Minus, Target, Rocket, Sliders, AlertCircle, ChevronRight, ChevronDown, Home, Crosshair, Brain, Hexagon } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Target, Rocket, Sliders, ChevronRight, ChevronDown, Home, Crosshair, Brain, Hexagon } from 'lucide-react';
 
 import { useAuth } from '@/lib/AuthContext';
 import { useStudentLanguage } from '../../layout';
@@ -22,8 +22,12 @@ import {
   learningPicture, dimensions, overallTheta, chapterLevels, mathLevel,
   type Dimension, type TopicSection,
 } from '@/services/RASCHProgressService';
-import { BAND_COLOR, chanceAt, formatLevel, levelBand, MASTER_LEVEL } from '@/lib/RASCHscale';
+import { chanceAt, formatLevel, levelBand, MASTER_LEVEL, type LevelBand } from '@/lib/RASCHscale';
 import { daysToTarget, type LearningRate, type ScorePrediction } from '@/lib/RASCHdynamic';
+import {
+  Button, Card, Chip, EmptyState, ErrorState, FilterChip, LoadingState,
+  Page, PageHeader, Slider, Stack, cn, type Status,
+} from '@/components/student-ui';
 import type { RASCHLevels } from '@/types/RASCH';
 import type { Lang } from '@/types/Math';
 
@@ -240,7 +244,34 @@ const UI: Record<Lang, Record<string, string>> = {
   },
 };
 
-const OVERALL_HEX = '#3f3f46'; // zinc-700 — the reference line, not a topic hue
+/** The overall reference line — deliberately neutral, so the seven topic hues
+ *  read as the data and this reads as the baseline. */
+const OVERALL_STROKE = 'var(--m3-on-surface)';
+
+/** Chart ink, pinned to palette tokens so every plot follows light/dark mode. */
+const AXIS_INK = 'var(--m3-on-surface-variant)';
+const FAINT_INK = 'var(--m3-outline)';
+const GRID_INK = 'var(--m3-outline-variant)';
+const ACCENT = 'var(--m3-primary)';
+
+const TOOLTIP_STYLE = {
+  borderRadius: 12,
+  border: `1px solid ${GRID_INK}`,
+  backgroundColor: 'var(--m3-surface-container-high)',
+  color: 'var(--m3-on-surface)',
+  fontSize: 12,
+  fontWeight: 700,
+} as const;
+
+/** The 0–3 band scale, mapped onto the palette's semantic roles: an ordinal
+ *  ramp from "unmeasured grey" up to gold at master. */
+const BAND_TONE: Record<LevelBand, { color: string; chip: Status }> = {
+  beginner: { color: 'var(--m3-outline)', chip: 'neutral' },
+  basic: { color: 'var(--m3-secondary)', chip: 'info' },
+  confident: { color: 'var(--m3-primary)', chip: 'primary' },
+  advanced: { color: 'var(--m3-success)', chip: 'success' },
+  master: { color: 'var(--m3-gold)', chip: 'gold' },
+};
 
 /** Firebase throws a typed error; the only one that realistically lands here is
  *  permission-denied, which means the RASCH_levels rules are not deployed. */
@@ -251,17 +282,43 @@ function describeError(err: unknown, t: Record<string, string>): string {
   return t.error;
 }
 
+/** Link that carries a Button's shape without nesting a <button> in an <a>. */
+function NavLink({
+  href, tone = 'outlined', className, children,
+}: {
+  href: string;
+  tone?: 'outlined' | 'filled';
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-m3-btn px-4',
+        'text-[13px] font-extrabold leading-none s-press',
+        tone === 'filled'
+          ? 'bg-primary text-on-primary'
+          : 'border-[1.5px] border-outline text-on-surface-variant hover:bg-state-hover',
+        className,
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
 function DeltaBadge({ delta }: { delta: number }) {
   if (delta === 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-[11px] font-black text-zinc-400">
+      <span className="s-num inline-flex items-center gap-0.5 text-[11px] font-black text-on-surface-variant">
         <Minus size={11} strokeWidth={3} /> 0
       </span>
     );
   }
   const up = delta > 0;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[11px] font-black ${up ? 'text-emerald-600' : 'text-rose-600'}`}>
+    <span className={cn('s-num inline-flex items-center gap-0.5 text-[11px] font-black', up ? 'text-success' : 'text-error')}>
       {up ? <TrendingUp size={11} strokeWidth={3} /> : <TrendingDown size={11} strokeWidth={3} />}
       {up ? '+' : ''}{delta}
     </span>
@@ -277,58 +334,58 @@ function ForecastCard({ f, t }: { f: Forecast; t: Record<string, string> }) {
     : t.confNone;
 
   const tone =
-    f.direction === 'up' ? 'text-emerald-600'
-    : f.direction === 'down' ? 'text-rose-600'
-    : 'text-zinc-500';
+    f.direction === 'up' ? 'text-success'
+    : f.direction === 'down' ? 'text-error'
+    : 'text-on-surface-variant';
 
   const Icon = f.direction === 'up' ? TrendingUp : f.direction === 'down' ? TrendingDown : Minus;
 
   return (
-    <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Crosshair size={16} strokeWidth={3} className="text-violet-500" />
-        <h2 className="text-[15px] font-black text-zinc-900">{t.forecastTitle}</h2>
-        <span className="ml-auto text-[11px] font-black text-zinc-400 uppercase tracking-wider">{confLabel}</span>
+    <Card>
+      <div className="mb-4 flex items-center gap-2">
+        <Crosshair size={16} strokeWidth={3} className="text-primary" />
+        <h2 className="s-display text-[15px] font-bold">{t.forecastTitle}</h2>
+        <span className="ml-auto text-[11px] font-black uppercase tracking-wider text-on-surface-variant">{confLabel}</span>
       </div>
 
       {f.confidence === 'none' ? (
-        <p className="text-[13px] font-bold text-zinc-400">{t.forecastNoData}</p>
+        <p className="text-[13px] font-bold text-on-surface-variant">{t.forecastNoData}</p>
       ) : (
         <>
-          <div className="flex items-end gap-4 flex-wrap">
+          <div className="flex flex-wrap items-end gap-4">
             <div>
-              <p className="text-5xl font-black text-violet-600 tracking-tight leading-none">{f.expected}%</p>
-              <p className={`flex items-center gap-1 text-[12px] font-black mt-2 ${tone}`}>
+              <p className="s-display s-num text-5xl font-bold leading-none tracking-tight text-primary">{f.expected}%</p>
+              <p className={cn('s-num mt-2 flex items-center gap-1 text-[12px] font-black', tone)}>
                 <Icon size={13} strokeWidth={3} />
                 {f.slope > 0 ? '+' : ''}{f.slope} / {t.exam.toLowerCase()}
               </p>
             </div>
 
-            <div className="flex-1 min-w-[180px]">
-              <p className="text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1.5">
+            <div className="min-w-[180px] flex-1">
+              <p className="mb-1.5 text-[11px] font-black uppercase tracking-wider text-on-surface-variant">
                 {t.expectedRange}
               </p>
               {/* The band, drawn to scale on a 0–100 track — the width IS the uncertainty */}
-              <div className="relative h-2.5 rounded-full bg-zinc-100 overflow-hidden">
+              <div className="relative h-2.5 overflow-hidden rounded-full bg-surface-container-highest">
                 <div
-                  className="absolute h-full bg-violet-200"
+                  className="absolute h-full bg-primary-container"
                   style={{ left: `${f.low}%`, width: `${Math.max(1, f.high - f.low)}%` }}
                 />
                 <div
-                  className="absolute h-full w-1 bg-violet-600 rounded-full"
+                  className="absolute h-full w-1 rounded-full bg-primary"
                   style={{ left: `calc(${f.expected}% - 2px)` }}
                 />
               </div>
-              <p className="text-[13px] font-black text-zinc-700 mt-1.5">{f.low}% – {f.high}%</p>
+              <p className="s-num mt-1.5 text-[13px] font-black">{f.low}% – {f.high}%</p>
             </div>
           </div>
 
-          <p className="text-[11px] font-medium text-zinc-400 mt-4 pt-3 border-t border-zinc-100 leading-relaxed">
+          <p className="mt-4 border-t border-outline-variant pt-3 text-[11px] font-medium leading-relaxed text-on-surface-variant">
             {t.forecastNote}
           </p>
         </>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -346,36 +403,34 @@ function MathLevelCard({
   t: Record<string, string>;
 }) {
   const band = levelBand(level);
-  const colors = BAND_COLOR[band];
+  const tone = BAND_TONE[band];
   const pct = (level / MASTER_LEVEL) * 100;
 
   return (
-    <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-7">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
+    <Card className="md:p-7">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[12px] font-black text-zinc-400 uppercase tracking-wider">{t.mathLevel}</p>
-          <div className="flex items-end gap-2 mt-1">
-            <span className="text-6xl font-black tracking-tight leading-none" style={{ color: colors.hex }}>
+          <p className="text-[12px] font-black uppercase tracking-wider text-on-surface-variant">{t.mathLevel}</p>
+          <div className="mt-1 flex items-end gap-2">
+            <span className="s-display s-num text-6xl font-bold leading-none tracking-tight" style={{ color: tone.color }}>
               {formatLevel(level)}
             </span>
-            <span className="text-2xl font-black text-zinc-300 leading-none pb-1">/ {MASTER_LEVEL}</span>
+            <span className="s-num pb-1 text-2xl font-black leading-none text-on-surface-variant">/ {MASTER_LEVEL}</span>
           </div>
         </div>
-        <div className={`px-3 py-1.5 rounded-xl border-2 text-[13px] font-black ${colors.bg} ${colors.text}`}>
-          {t[`band${band}`]}
-        </div>
+        <Chip status={tone.chip} size="md">{t[`band${band}`]}</Chip>
       </div>
 
       {/* The 0–3 track, with the difficulty tiers marked where they actually are */}
       <div className="mt-5">
-        <div className="relative h-3 rounded-full bg-zinc-100 overflow-hidden">
-          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: colors.hex }} />
+        <div className="relative h-3 overflow-hidden rounded-full bg-surface-container-highest">
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: tone.color }} />
         </div>
-        <div className="relative h-4 mt-1">
+        <div className="relative mt-1 h-4">
           {[0, 1, 2, 3].map((tick) => (
             <span
               key={tick}
-              className="absolute text-[10px] font-black text-zinc-300 -translate-x-1/2"
+              className="s-num absolute -translate-x-1/2 text-[10px] font-black text-on-surface-variant"
               style={{ left: `${(tick / MASTER_LEVEL) * 100}%` }}
             >
               {tick}
@@ -385,21 +440,21 @@ function MathLevelCard({
       </div>
 
       {/* What the number MEANS, in problems rather than logits */}
-      <div className="grid grid-cols-3 gap-2 mt-4">
+      <div className="mt-4 grid grid-cols-3 gap-2">
         {([1, 2, 3] as const).map((d) => (
-          <div key={d} className="px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-center">
-            <p className="text-[17px] font-black text-zinc-800 leading-none">{chanceAt(level, d)}%</p>
-            <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-wider">
+          <div key={d} className="rounded-m3-sm bg-surface-container-high px-3 py-2 text-center">
+            <p className="s-num text-[17px] font-black leading-none">{chanceAt(level, d)}%</p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
               {d === 1 ? t.ofEasy : d === 2 ? t.ofMedium : t.ofOlympic}
             </p>
           </div>
         ))}
       </div>
 
-      <p className="text-[11px] font-medium text-zinc-400 mt-3 leading-relaxed">
-        {t.scaleHint} <span className="text-zinc-300">θ = {theta.toFixed(2)} · {dimensionsMeasured}/7</span>
+      <p className="mt-3 text-[11px] font-medium leading-relaxed text-on-surface-variant">
+        {t.scaleHint} <span className="s-num text-outline">θ = {theta.toFixed(2)} · {dimensionsMeasured}/7</span>
       </p>
-    </div>
+    </Card>
   );
 }
 
@@ -408,68 +463,63 @@ function ChapterLevels({ sections, t }: { sections: TopicSection[]; t: Record<st
   const [open, setOpen] = useState<string | null>(sections[0]?.topicId ?? null);
 
   return (
-    <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-6">
-      <h2 className="text-[15px] font-black text-zinc-900 mb-1">{t.chaptersTitle}</h2>
-      <p className="text-[11px] font-bold text-zinc-400 mb-4">{t.chaptersHint}</p>
+    <Card>
+      <h2 className="s-display mb-1 text-[15px] font-bold">{t.chaptersTitle}</h2>
+      <p className="mb-4 text-[11px] font-bold text-on-surface-variant">{t.chaptersHint}</p>
 
       <div className="flex flex-col gap-3">
         {sections.map((section) => {
           const isOpen = open === section.topicId;
           return (
-            <div key={section.topicId} className="rounded-2xl border-2 border-zinc-100 overflow-hidden">
+            <div key={section.topicId} className="overflow-hidden rounded-m3-md border border-outline-variant">
               <button
                 onClick={() => setOpen(isOpen ? null : section.topicId)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-50 transition-colors"
+                aria-expanded={isOpen}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-m3-fast ease-m3-std hover:bg-state-hover"
               >
-                <span className="text-[14px] font-black text-zinc-800 flex-1">{section.name}</span>
+                <span className="flex-1 text-[14px] font-black">{section.name}</span>
                 {section.level !== null && (
-                  <span
-                    className="px-2 py-0.5 rounded-lg text-[12px] font-black border-2"
-                    style={{
-                      color: BAND_COLOR[levelBand(section.level)].hex,
-                      borderColor: BAND_COLOR[levelBand(section.level)].hex + '40',
-                    }}
-                  >
+                  <Chip status={BAND_TONE[levelBand(section.level)].chip} className="s-num">
                     {formatLevel(section.level)}
-                  </span>
+                  </Chip>
                 )}
                 <ChevronDown
                   size={16}
                   strokeWidth={3}
-                  className={`text-zinc-300 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  className={cn('text-on-surface-variant transition-transform', isOpen && 'rotate-180')}
                 />
               </button>
 
               {isOpen && (
-                <div className="px-3 pb-3 flex flex-col gap-1">
+                <div className="flex flex-col gap-1 px-3 pb-3">
                   {section.chapters.map((chapter, i) => {
                     const measured = chapter.level !== null;
-                    const hex = measured ? BAND_COLOR[levelBand(chapter.level!)].hex : '#e4e4e7';
+                    const color = measured ? BAND_TONE[levelBand(chapter.level!)].color : GRID_INK;
                     return (
                       <div
                         key={chapter.chapterId}
-                        className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl ${measured ? '' : 'opacity-50'}`}
+                        className={cn('flex items-center gap-2.5 rounded-m3-sm px-2.5 py-2', !measured && 'opacity-50')}
                       >
-                        <span className="w-5 text-[10px] font-black text-zinc-300 shrink-0 text-right">{i + 1}</span>
-                        <span className="text-[12px] font-bold text-zinc-700 truncate flex-1">{chapter.name}</span>
+                        <span className="s-num w-5 shrink-0 text-right text-[10px] font-black text-on-surface-variant">{i + 1}</span>
+                        <span className="flex-1 truncate text-[12px] font-bold text-on-surface-variant">{chapter.name}</span>
 
                         {measured ? (
                           <>
-                            <div className="w-16 h-1.5 rounded-full bg-zinc-100 overflow-hidden shrink-0">
+                            <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-surface-container-highest">
                               <div
                                 className="h-full rounded-full"
-                                style={{ width: `${(chapter.level! / MASTER_LEVEL) * 100}%`, backgroundColor: hex }}
+                                style={{ width: `${(chapter.level! / MASTER_LEVEL) * 100}%`, backgroundColor: color }}
                               />
                             </div>
-                            <span className="text-[12px] font-black shrink-0 w-9 text-right" style={{ color: hex }}>
+                            <span className="s-num w-9 shrink-0 text-right text-[12px] font-black" style={{ color }}>
                               {formatLevel(chapter.level!)}
                             </span>
-                            <span className="text-[10px] font-black text-zinc-300 shrink-0 w-10 text-right">
+                            <span className="s-num w-10 shrink-0 text-right text-[10px] font-black text-on-surface-variant">
                               {chapter.correct}/{chapter.seen}
                             </span>
                           </>
                         ) : (
-                          <span className="text-[10px] font-bold text-zinc-300 shrink-0">{t.notMet}</span>
+                          <span className="shrink-0 text-[10px] font-bold text-on-surface-variant">{t.notMet}</span>
                         )}
                       </div>
                     );
@@ -480,7 +530,7 @@ function ChapterLevels({ sections, t }: { sections: TopicSection[]; t: Record<st
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -511,55 +561,55 @@ function AbilityHeptagon({
   const measured = dims.some((d) => d.measured > 0);
 
   return (
-    <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-6">
-      <div className="flex items-center gap-2 mb-1">
-        <Hexagon size={16} strokeWidth={3} className="text-violet-500" />
-        <h2 className="text-[15px] font-black text-zinc-900">{t.heptagon}</h2>
+    <Card>
+      <div className="mb-1 flex items-center gap-2">
+        <Hexagon size={16} strokeWidth={3} className="text-primary" />
+        <h2 className="s-display text-[15px] font-bold">{t.heptagon}</h2>
       </div>
 
       {!measured ? (
-        <p className="text-[13px] font-bold text-zinc-400 py-8 text-center">{t.hepEmpty}</p>
+        <p className="py-8 text-center text-[13px] font-bold text-on-surface-variant">{t.hepEmpty}</p>
       ) : (
         <>
-          <ChartFrame className="h-[340px] sm:h-[400px] -mx-2">
+          <ChartFrame className="-mx-2 h-[340px] sm:h-[400px]">
             {({ width, height }) => (
               <RadarChart width={width} height={height} data={data} outerRadius="72%">
-                <PolarGrid stroke="#e4e4e7" />
+                <PolarGrid stroke={GRID_INK} />
                 <PolarAngleAxis
                   dataKey="axis"
-                  tick={{ fill: '#71717a', fontSize: 11, fontWeight: 800 }}
+                  tick={{ fill: AXIS_INK, fontSize: 11, fontWeight: 800 }}
                 />
                 <PolarRadiusAxis
                   domain={[0, MASTER_LEVEL]}
                   tickCount={4}
-                  tick={{ fill: '#d4d4d8', fontSize: 9, fontWeight: 700 }}
+                  tick={{ fill: FAINT_INK, fontSize: 9, fontWeight: 700 }}
                   axisLine={false}
                 />
                 {/* Previous sitting, drawn first so it sits behind */}
                 <Radar
                   name={t.hepBefore}
                   dataKey={t.hepBefore}
-                  stroke="#a1a1aa"
+                  stroke={FAINT_INK}
                   strokeWidth={2}
                   strokeDasharray="5 4"
-                  fill="#a1a1aa"
+                  fill={FAINT_INK}
                   fillOpacity={0.08}
                 />
                 <Radar
                   name={t.hepNow}
                   dataKey={t.hepNow}
-                  stroke="#7c3aed"
+                  stroke={ACCENT}
                   strokeWidth={2}
-                  fill="#7c3aed"
+                  fill={ACCENT}
                   fillOpacity={0.25}
-                  dot={{ r: 3, strokeWidth: 0, fill: '#7c3aed' }}
+                  dot={{ r: 3, strokeWidth: 0, fill: ACCENT }}
                 />
                 <Legend
                   wrapperStyle={{ fontSize: 11, fontWeight: 800, paddingTop: 4 }}
                   iconType="plainline"
                 />
                 <Tooltip
-                  contentStyle={{ borderRadius: 12, border: '2px solid #e4e4e7', fontSize: 12, fontWeight: 700 }}
+                  contentStyle={TOOLTIP_STYLE}
                   formatter={(value, name) => [`${Number(value).toFixed(2)} / ${MASTER_LEVEL}`, String(name)]}
                 />
               </RadarChart>
@@ -568,24 +618,25 @@ function AbilityHeptagon({
 
           {/* The precise view. A radar reads shape well and exact values badly,
               so the numbers live here — and this doubles as the table view. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2">
+          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             {dims.map((d) => {
               const topic = RASCH_TOPICS.find((tp) => tp.key === d.key)!;
               const up = d.delta > 0;
               const flat = d.delta === 0;
               return (
-                <div key={d.key} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: topic.hex }} />
-                  <span className="text-[12px] font-bold text-zinc-600 truncate flex-1">
+                <div key={d.key} className="flex items-center gap-2 rounded-m3-sm px-2.5 py-1.5">
+                  {/* Topic hue — the categorical series color this axis shares with the chart. */}
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: topic.hex }} />
+                  <span className="flex-1 truncate text-[12px] font-bold text-on-surface-variant">
                     {topic.label[lang]}
                   </span>
-                  <span className={`text-[10px] font-black shrink-0 ${flat ? 'text-zinc-300' : up ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <span className={cn('s-num shrink-0 text-[10px] font-black', flat ? 'text-on-surface-variant' : up ? 'text-success' : 'text-error')}>
                     {flat ? '±0' : `${up ? '▲+' : '▼'}${d.delta}`}
                   </span>
-                  <span className="text-[13px] font-black shrink-0 w-10 text-right" style={{ color: BAND_COLOR[levelBand(d.level)].hex }}>
+                  <span className="s-num w-10 shrink-0 text-right text-[13px] font-black" style={{ color: BAND_TONE[levelBand(d.level)].color }}>
                     {formatLevel(d.level)}
                   </span>
-                  <span className="text-[10px] font-black text-zinc-300 shrink-0 w-9 text-right">
+                  <span className="s-num w-9 shrink-0 text-right text-[10px] font-black text-on-surface-variant">
                     {d.score}%
                   </span>
                 </div>
@@ -593,12 +644,12 @@ function AbilityHeptagon({
             })}
           </div>
 
-          <p className="text-[11px] font-medium text-zinc-400 mt-3 pt-3 border-t border-zinc-100 leading-relaxed">
+          <p className="mt-3 border-t border-outline-variant pt-3 text-[11px] font-medium leading-relaxed text-on-surface-variant">
             {t.hepHint}
           </p>
         </>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -618,61 +669,61 @@ function RaschForecastCard({
   const improving = rate.perWeek > 0.02;
   const declining = rate.perWeek < -0.02;
   const Icon = improving ? TrendingUp : declining ? TrendingDown : Minus;
-  const tone = improving ? 'text-emerald-600' : declining ? 'text-rose-600' : 'text-zinc-500';
+  const tone = improving ? 'text-success' : declining ? 'text-error' : 'text-on-surface-variant';
 
   return (
-    <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Crosshair size={16} strokeWidth={3} className="text-violet-500" />
-        <h2 className="text-[15px] font-black text-zinc-900">{t.raschTitle}</h2>
-        <span className="ml-auto text-[11px] font-black text-zinc-300">
+    <Card>
+      <div className="mb-4 flex items-center gap-2">
+        <Crosshair size={16} strokeWidth={3} className="text-primary" />
+        <h2 className="s-display text-[15px] font-bold">{t.raschTitle}</h2>
+        <span className="s-num ml-auto text-[11px] font-black text-on-surface-variant">
           θ = {now.theta.toFixed(2)} ± {now.se.toFixed(2)}
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Now */}
-        <div className="p-4 rounded-2xl bg-zinc-50 border-2 border-zinc-200">
-          <p className="text-[11px] font-black text-zinc-400 uppercase tracking-wider">{t.raschNow}</p>
-          <p className="text-4xl font-black text-violet-600 tracking-tight leading-none mt-1">{now.expected}%</p>
-          <p className="text-[12px] font-black text-zinc-400 mt-1.5">{now.low}% – {now.high}%</p>
+        <div className="rounded-m3-md bg-surface-container-high p-4">
+          <p className="text-[11px] font-black uppercase tracking-wider text-on-surface-variant">{t.raschNow}</p>
+          <p className="s-display s-num mt-1 text-4xl font-bold leading-none tracking-tight">{now.expected}%</p>
+          <p className="s-num mt-1.5 text-[12px] font-black text-on-surface-variant">{now.low}% – {now.high}%</p>
         </div>
 
         {/* Projected — the bit plain Rasch cannot give you */}
-        <div className="p-4 rounded-2xl bg-violet-50 border-2 border-violet-200">
-          <p className="text-[11px] font-black text-violet-400 uppercase tracking-wider">{t.raschIn2w}</p>
+        <div className="rounded-m3-md bg-primary-container p-4 text-on-primary-container">
+          <p className="text-[11px] font-black uppercase tracking-wider opacity-80">{t.raschIn2w}</p>
           {future ? (
             <>
-              <p className="text-4xl font-black text-violet-700 tracking-tight leading-none mt-1">
+              <p className="s-display s-num mt-1 text-4xl font-bold leading-none tracking-tight">
                 {future.expected}%
               </p>
-              <p className="text-[12px] font-black text-violet-400 mt-1.5">{future.low}% – {future.high}%</p>
+              <p className="s-num mt-1.5 text-[12px] font-black opacity-80">{future.low}% – {future.high}%</p>
             </>
           ) : (
-            <p className="text-[13px] font-bold text-violet-400 mt-2">{t.noRate}</p>
+            <p className="mt-2 text-[13px] font-bold opacity-80">{t.noRate}</p>
           )}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 pt-3 border-t border-zinc-100">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-outline-variant pt-3">
         <span className="flex items-center gap-1.5 text-[12px] font-black">
-          <span className="text-zinc-400 uppercase tracking-wider">{t.raschRate}</span>
+          <span className="uppercase tracking-wider text-on-surface-variant">{t.raschRate}</span>
           <Icon size={13} strokeWidth={3} className={tone} />
-          <span className={tone}>
+          <span className={cn('s-num', tone)}>
             {rate.perWeek > 0 ? '+' : ''}{rate.perWeek} {t.perWeek}
           </span>
         </span>
 
         <span className="text-[12px] font-black">
-          <span className="text-zinc-400 uppercase tracking-wider">{t.toTarget}</span>{' '}
-          <span className="text-zinc-700">
+          <span className="uppercase tracking-wider text-on-surface-variant">{t.toTarget}</span>{' '}
+          <span className="s-num">
             {target !== null ? `${target} ${t.days}` : t.notImproving}
           </span>
         </span>
       </div>
 
-      <p className="text-[11px] font-medium text-zinc-400 mt-3 leading-relaxed">{t.raschHow}</p>
-    </div>
+      <p className="mt-3 text-[11px] font-medium leading-relaxed text-on-surface-variant">{t.raschHow}</p>
+    </Card>
   );
 }
 
@@ -690,26 +741,28 @@ function BaselineSetup({
   );
 
   return (
-    <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-6 md:p-8">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-11 h-11 rounded-[1rem] bg-violet-50 border-2 border-violet-200 text-violet-600 flex items-center justify-center shrink-0">
+    <Card className="md:p-8">
+      <div className="mb-2 flex items-center gap-3">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-m3-sm bg-primary-container text-on-primary-container">
           <Sliders size={20} strokeWidth={2.5} />
         </div>
-        <h2 className="text-xl md:text-2xl font-black text-zinc-900 tracking-tight">{t.setupTitle}</h2>
+        <h2 className="s-display text-xl font-bold tracking-tight md:text-2xl">{t.setupTitle}</h2>
       </div>
-      <p className="text-[13px] font-bold text-zinc-500 mb-6">{t.setupHint}</p>
+      <p className="mb-6 text-[13px] font-bold text-on-surface-variant">{t.setupHint}</p>
 
-      <div className="flex flex-col gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-4">
         {RASCH_TOPICS.map((topic) => (
           <div key={topic.key} className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[13px] font-bold text-zinc-700 truncate">{topic.label[lang]}</span>
-              <span className={`px-2 py-0.5 rounded-lg border text-[12px] font-black shrink-0 ${topic.color}`}>
-                {values[topic.key]}%
+              <span className="flex min-w-0 items-center gap-2">
+                {/* Topic hue — the same categorical color the charts use. */}
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: topic.hex }} />
+                <span className="truncate text-[13px] font-bold text-on-surface-variant">{topic.label[lang]}</span>
               </span>
+              <Chip className="s-num">{values[topic.key]}%</Chip>
             </div>
-            <input
-              type="range"
+            <Slider
+              label={topic.label[lang]}
               min={0}
               max={100}
               step={5}
@@ -717,22 +770,23 @@ function BaselineSetup({
               onChange={(e) =>
                 setValues((prev) => ({ ...prev, [topic.key]: Number(e.target.value) }))
               }
-              className="w-full accent-violet-500"
-              aria-label={topic.label[lang]}
+              className="w-full"
             />
           </div>
         ))}
       </div>
 
-      <button
+      <Button
+        fullWidth
         onClick={() => onSave(values)}
         disabled={saving}
-        className="w-full flex items-center justify-center gap-2 px-5 py-4 bg-violet-500 text-white font-black text-[15px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider disabled:opacity-60"
+        loading={saving}
+        icon={<Target size={18} strokeWidth={3} />}
+        className="uppercase tracking-wider"
       >
-        <Target size={18} strokeWidth={3} />
         {saving ? t.saving : t.save}
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 }
 
@@ -867,24 +921,24 @@ export default function ProgressPage() {
     setShown((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
   if (authLoading || status === 'loading') {
-    return <div className="p-10 text-center text-[14px] font-black text-zinc-400">{t.loading}</div>;
+    return (
+      <Page width="wide">
+        <LoadingState label={t.loading} />
+      </Page>
+    );
   }
   if (!user) {
-    return <div className="p-10 text-center text-[14px] font-black text-zinc-400">{t.signIn}</div>;
+    return (
+      <Page width="wide">
+        <EmptyState icon="🔐" title={t.signIn} />
+      </Page>
+    );
   }
   if (status === 'error' || !levels) {
     return (
-      <div className="max-w-[900px] mx-auto p-6">
-        <div className="flex items-start gap-3 bg-rose-50 border-2 border-rose-200 text-rose-700 rounded-2xl px-4 py-3.5 text-[13px] font-bold">
-          <AlertCircle size={18} strokeWidth={3} className="shrink-0 mt-0.5" />
-          <div className="min-w-0">
-            <p>{t.error}</p>
-            {errorDetail && (
-              <p className="mt-1 text-[12px] font-medium text-rose-600/80 break-words">{errorDetail}</p>
-            )}
-          </div>
-        </div>
-      </div>
+      <Page width="wide">
+        <ErrorState title={t.error} description={errorDetail ?? undefined} />
+      </Page>
     );
   }
 
@@ -892,11 +946,11 @@ export default function ProgressPage() {
   // every level is seeded from it.
   if (!levels.baseline || editingBaseline) {
     return (
-      <div className="min-h-screen bg-zinc-100 font-sans py-8 px-4">
-        <div className="max-w-[700px] mx-auto">
+      <Page>
+        <div className="mx-auto w-full max-w-2xl">
           <BaselineSetup lang={lang} t={t} onSave={handleSaveBaseline} saving={saving} />
         </div>
-      </div>
+      </Page>
     );
   }
 
@@ -904,29 +958,19 @@ export default function ProgressPage() {
   const hasExams = levels.exams.length > 0;
 
   return (
-    <div className="min-h-screen bg-zinc-100 font-sans pb-28 md:pb-12">
-      <div className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-8 pt-8 flex flex-col gap-6">
-
+    <Page width="wide">
+      <Stack>
         {/* Nav — get out of here, or straight into another test */}
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/RASCHmodel"
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border-2 border-zinc-200 border-b-4 rounded-2xl text-[12px] font-black text-zinc-600 active:border-b-2 active:translate-y-[2px] transition-all hover:border-zinc-300"
-          >
+          <NavLink href="/RASCHmodel">
             <Home size={14} strokeWidth={3} /> {t.home}
-          </Link>
-          <Link
-            href="/RASCHmodel/diagnosis"
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border-2 border-zinc-200 border-b-4 rounded-2xl text-[12px] font-black text-zinc-600 active:border-b-2 active:translate-y-[2px] transition-all hover:border-violet-200 hover:text-violet-600"
-          >
+          </NavLink>
+          <NavLink href="/RASCHmodel/diagnosis">
             <Brain size={14} strokeWidth={3} /> {t.diagnosis}
-          </Link>
-          <Link
-            href="/RASCHmodel/exam"
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-violet-500 text-white border-b-4 border-violet-700 rounded-2xl text-[12px] font-black active:border-b-0 active:translate-y-1 transition-all ml-auto"
-          >
+          </NavLink>
+          <NavLink href="/RASCHmodel/exam" tone="filled" className="ml-auto">
             <Rocket size={14} strokeWidth={3} /> {t.newTest}
-          </Link>
+          </NavLink>
         </div>
 
         {/* Header + overall level */}
@@ -934,25 +978,27 @@ export default function ProgressPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight">{t.title}</h1>
-            <p className="text-[14px] font-bold text-zinc-500 mt-1">{t.subtitle}</p>
-          </div>
-          <div className="bg-white rounded-[1.2rem] border-2 border-zinc-200 border-b-[6px] px-5 py-3 flex items-center gap-4 shrink-0">
-            <div>
-              <p className="text-[11px] font-black text-zinc-400 uppercase tracking-wider">{t.overall}</p>
-              <p className="text-3xl font-black text-violet-600 leading-none mt-0.5">{overall}%</p>
-              {/* Mathematics ability: the mean of the seven dimensions. */}
-              <p className="text-[10px] font-black text-zinc-300 mt-1">θ {theta.toFixed(2)}</p>
-            </div>
-            <div className="w-px h-10 bg-zinc-200" />
-            <div>
-              <p className="text-[18px] font-black text-zinc-800 leading-none">{levels.examCount}</p>
-              <p className="text-[11px] font-bold text-zinc-400 mt-0.5">{t.examsTaken}</p>
-            </div>
-          </div>
+          <PageHeader
+            title={t.title}
+            subtitle={t.subtitle}
+            className="pb-0"
+            actions={
+              <Card className="flex items-center gap-4 py-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-wider text-on-surface-variant">{t.overall}</p>
+                  <p className="s-display s-num mt-0.5 text-3xl font-bold leading-none text-primary">{overall}%</p>
+                  {/* Mathematics ability: the mean of the seven dimensions. */}
+                  <p className="s-num mt-1 text-[10px] font-black text-outline">θ {theta.toFixed(2)}</p>
+                </div>
+                <div className="h-10 w-px bg-outline-variant" />
+                <div>
+                  <p className="s-num text-[18px] font-black leading-none">{levels.examCount}</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-on-surface-variant">{t.examsTaken}</p>
+                </div>
+              </Card>
+            }
+          />
         </motion.div>
 
         <MathLevelCard
@@ -981,7 +1027,7 @@ export default function ProgressPage() {
         {/* Per-topic levels — also the chart's accessible table view. Each card
             opens the questions the student actually solved in that topic; that
             list is read from localStorage, so opening it costs no reads. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {RASCH_TOPICS.map((topic, i) => {
             const stat = levels.topics[topic.key];
             const solved = solved_counts[topic.key];
@@ -993,40 +1039,40 @@ export default function ProgressPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: i * 0.04 }}
               >
-                <Link
-                  href={`/RASCHmodel/topic/${topic.key}`}
-                  className="group block bg-white rounded-2xl border-2 border-zinc-200 border-b-[6px] p-4 hover:border-zinc-300 active:border-b-2 active:translate-y-[4px] transition-all"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <span className="text-[13px] font-bold text-zinc-700 leading-snug group-hover:text-violet-700 transition-colors">
-                      {topic.label[lang]}
-                    </span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <DeltaBadge delta={stat.delta} />
-                      <span className="text-[18px] font-black text-zinc-900 leading-none">{stat.level}%</span>
+                <Link href={`/RASCHmodel/topic/${topic.key}`} className="group block">
+                  <Card interactive className="rounded-m3-md p-4">
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <span className="text-[13px] font-bold leading-snug text-on-surface-variant transition-colors group-hover:text-primary">
+                        {topic.label[lang]}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <DeltaBadge delta={stat.delta} />
+                        <span className="s-num text-[18px] font-black leading-none">{stat.level}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${stat.level}%`, backgroundColor: topic.hex }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between gap-2 mt-2">
-                    <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1.5">
-                      {solved.solved > 0
-                        ? `${solved.correct}/${solved.solved} ${t.solvedLabel}`
-                        : t.noneSolved}
-                      {tf && tf.confidence !== 'none' && (
-                        <span className="text-zinc-300">
-                          · {t.nextShort} ≈ {tf.expected}%
-                        </span>
-                      )}
-                    </span>
-                    <span className="flex items-center gap-0.5 text-[11px] font-black text-zinc-300 group-hover:text-violet-500 transition-colors">
-                      {t.review} <ChevronRight size={12} strokeWidth={3} />
-                    </span>
-                  </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-surface-container-highest">
+                      {/* Topic hue — the categorical series color shared with the chart. */}
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${stat.level}%`, backgroundColor: topic.hex }}
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-[11px] font-bold text-on-surface-variant">
+                        {solved.solved > 0
+                          ? `${solved.correct}/${solved.solved} ${t.solvedLabel}`
+                          : t.noneSolved}
+                        {tf && tf.confidence !== 'none' && (
+                          <span className="s-num text-outline">
+                            · {t.nextShort} ≈ {tf.expected}%
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-0.5 text-[11px] font-black text-on-surface-variant transition-colors group-hover:text-primary">
+                        {t.review} <ChevronRight size={12} strokeWidth={3} />
+                      </span>
+                    </div>
+                  </Card>
                 </Link>
               </motion.div>
             );
@@ -1034,135 +1080,133 @@ export default function ProgressPage() {
         </div>
 
         {/* Chart */}
-        <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5 md:p-6">
-          <div className="flex items-center justify-between gap-3 mb-1">
-            <h2 className="text-[15px] font-black text-zinc-900">{t.chartTitle}</h2>
-            <span className="text-[11px] font-bold text-zinc-400">{t.chartHint}</span>
+        <Card>
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <h2 className="s-display text-[15px] font-bold">{t.chartTitle}</h2>
+            <span className="text-[11px] font-bold text-on-surface-variant">{t.chartHint}</span>
           </div>
 
           {!hasExams ? (
-            <div className="py-10 flex flex-col items-center gap-4 text-center">
-              <p className="text-[13px] font-bold text-zinc-400 max-w-sm">{t.noExams}</p>
-              <Link
-                href="/RASCHmodel/exam"
-                className="flex items-center gap-2 px-5 py-3 bg-violet-500 text-white font-black text-[13px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider"
-              >
-                <Rocket size={16} strokeWidth={3} /> {t.startExam}
-              </Link>
-            </div>
+            <EmptyState
+              icon="📈"
+              title={t.noExams}
+              action={
+                <NavLink href="/RASCHmodel/exam" tone="filled">
+                  <Rocket size={16} strokeWidth={3} /> {t.startExam}
+                </NavLink>
+              }
+            />
           ) : (
             <>
               {/* Legend + series picker in one row above the plot */}
-              <div className="flex flex-wrap items-center gap-1.5 my-3">
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border-2 border-zinc-300 bg-zinc-50 text-[11px] font-black text-zinc-700">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: OVERALL_HEX }} />
+              <div className="my-3 flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 rounded-m3-xs border-[1.5px] border-outline px-2.5 py-1 text-[11px] font-black">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: OVERALL_STROKE }} />
                   {t.overall}
                 </span>
                 {RASCH_TOPICS.map((topic) => {
                   const on = shown.includes(topic.key);
                   return (
-                    <button
+                    <FilterChip
                       key={topic.key}
+                      selected={on}
                       onClick={() => toggleTopic(topic.key)}
-                      aria-pressed={on}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border-2 text-[11px] font-black transition-all ${on ? topic.color : 'bg-white border-zinc-200 text-zinc-400 hover:border-zinc-300'
-                        }`}
+                      className="gap-1.5 px-2.5 py-1 text-[11px]"
                     >
+                      {/* Topic hue — the categorical series color of its line. */}
                       <span
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: on ? topic.hex : '#d4d4d8' }}
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: on ? topic.hex : FAINT_INK }}
                       />
                       {topic.label[lang].split(' ')[0]}
-                    </button>
+                    </FilterChip>
                   );
                 })}
               </div>
 
-              <ChartFrame className="h-[260px] -ml-2">
-                {({ width, height }) => (
-                  <LineChart width={width} height={height} data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
-                    <CartesianGrid stroke="#f4f4f5" vertical={false} />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fill: '#a1a1aa', fontSize: 11, fontWeight: 700 }}
-                      axisLine={{ stroke: '#e4e4e7' }}
-                      tickLine={false}
-                      label={{ value: t.exam, position: 'insideBottomRight', offset: -2, fill: '#d4d4d8', fontSize: 10 }}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      ticks={[0, 25, 50, 75, 100]}
-                      unit="%"
-                      tick={{ fill: '#a1a1aa', fontSize: 11, fontWeight: 700 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={44}
-                    />
-                    <Tooltip
-                      cursor={{ stroke: '#d4d4d8', strokeWidth: 1 }}
-                      contentStyle={{
-                        borderRadius: 12,
-                        border: '2px solid #e4e4e7',
-                        fontSize: 12,
-                        fontWeight: 700,
-                      }}
-                      formatter={(value, name) => [
-                        `${value}%`,
-                        RASCH_TOPICS.find((tp) => tp.key === name)?.label[lang] ?? String(name),
-                      ]}
-                      labelFormatter={(label) => `${t.exam} ${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey={t.overall}
-                      stroke={OVERALL_HEX}
-                      strokeWidth={2}
-                      dot={{ r: 4, strokeWidth: 0, fill: OVERALL_HEX }}
-                      activeDot={{ r: 6 }}
-                    />
-                    {/* Forecast — dashed, hollow dot: visibly not a real result */}
-                    <Line
-                      type="monotone"
-                      dataKey={t.predicted}
-                      stroke="#7c3aed"
-                      strokeWidth={2}
-                      strokeDasharray="5 4"
-                      dot={{ r: 4, strokeWidth: 2, stroke: '#7c3aed', fill: '#ffffff' }}
-                      activeDot={{ r: 6 }}
-                      connectNulls
-                    />
-                    {RASCH_TOPICS.filter((tp) => shown.includes(tp.key)).map((tp) => (
+              <div className="overflow-x-auto">
+                <ChartFrame className="-ml-2 h-[260px] min-w-[320px]">
+                  {({ width, height }) => (
+                    <LineChart width={width} height={height} data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+                      <CartesianGrid stroke={GRID_INK} vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fill: AXIS_INK, fontSize: 11, fontWeight: 700 }}
+                        axisLine={{ stroke: GRID_INK }}
+                        tickLine={false}
+                        label={{ value: t.exam, position: 'insideBottomRight', offset: -2, fill: FAINT_INK, fontSize: 10 }}
+                      />
+                      <YAxis
+                        domain={[0, 100]}
+                        ticks={[0, 25, 50, 75, 100]}
+                        unit="%"
+                        tick={{ fill: AXIS_INK, fontSize: 11, fontWeight: 700 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={44}
+                      />
+                      <Tooltip
+                        cursor={{ stroke: FAINT_INK, strokeWidth: 1 }}
+                        contentStyle={TOOLTIP_STYLE}
+                        formatter={(value, name) => [
+                          `${value}%`,
+                          RASCH_TOPICS.find((tp) => tp.key === name)?.label[lang] ?? String(name),
+                        ]}
+                        labelFormatter={(label) => `${t.exam} ${label}`}
+                      />
                       <Line
-                        key={tp.key}
                         type="monotone"
-                        dataKey={tp.key}
-                        stroke={tp.hex}
+                        dataKey={t.overall}
+                        stroke={OVERALL_STROKE}
                         strokeWidth={2}
-                        dot={{ r: 4, strokeWidth: 0, fill: tp.hex }}
+                        dot={{ r: 4, strokeWidth: 0, fill: OVERALL_STROKE }}
+                        activeDot={{ r: 6 }}
+                      />
+                      {/* Forecast — dashed, hollow dot: visibly not a real result */}
+                      <Line
+                        type="monotone"
+                        dataKey={t.predicted}
+                        stroke={ACCENT}
+                        strokeWidth={2}
+                        strokeDasharray="5 4"
+                        dot={{ r: 4, strokeWidth: 2, stroke: ACCENT, fill: 'var(--m3-surface)' }}
                         activeDot={{ r: 6 }}
                         connectNulls
                       />
-                    ))}
-                  </LineChart>
-                )}
-              </ChartFrame>
+                      {RASCH_TOPICS.filter((tp) => shown.includes(tp.key)).map((tp) => (
+                        <Line
+                          key={tp.key}
+                          type="monotone"
+                          dataKey={tp.key}
+                          stroke={tp.hex}
+                          strokeWidth={2}
+                          dot={{ r: 4, strokeWidth: 0, fill: tp.hex }}
+                          activeDot={{ r: 6 }}
+                          connectNulls
+                        />
+                      ))}
+                    </LineChart>
+                  )}
+                </ChartFrame>
+              </div>
             </>
           )}
-        </div>
+        </Card>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
+          <Button
+            variant="outlined"
+            size="sm"
             onClick={() => setEditingBaseline(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-zinc-200 border-b-4 rounded-2xl text-[12px] font-black text-zinc-500 active:border-b-2 active:translate-y-[2px] transition-all"
+            icon={<Sliders size={14} strokeWidth={3} />}
           >
-            <Sliders size={14} strokeWidth={3} /> {t.editBaseline}
-          </button>
-          <p className="text-[11px] font-bold text-zinc-400">
+            {t.editBaseline}
+          </Button>
+          <p className="text-[11px] font-bold text-on-surface-variant">
             {t.level} = mean(last {LEVEL_WINDOW})
           </p>
         </div>
-
-      </div>
-    </div>
+      </Stack>
+    </Page>
   );
 }

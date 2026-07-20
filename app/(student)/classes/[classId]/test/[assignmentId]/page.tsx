@@ -1,25 +1,27 @@
 'use client';
 
-import { sendNotification } from '@/services/notificationService';
-import { 
-  increment, updateDoc, arrayUnion, writeBatch, runTransaction, doc, getDoc, 
-  serverTimestamp, collection, query, where, getDocs 
+import {
+  increment, updateDoc, arrayUnion, runTransaction, doc, getDoc, serverTimestamp
 } from 'firebase/firestore';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
-import { 
-  Loader2, Clock, AlertTriangle, CheckCircle, 
-  ChevronRight, AlertCircle, Flag, Eye, Lock, ChevronLeft, Zap, Maximize2, Minimize2, ShieldAlert, X
+import {
+  Clock, CheckCircle, ChevronRight, AlertCircle, Flag, Eye, Lock,
+  ChevronLeft, Zap, ShieldAlert, X
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import LatexRenderer from '@/components/LatexRenderer';
 import QuestionCreator from '@/components/QuestionCreator';
 import { useStudentLanguage } from '@/app/(student)/layout';
 import { motion } from 'framer-motion';
+import {
+  Banner, Button, Card, Chip, ErrorState, IconButton, Page, Spinner, TextField, Tile,
+  cn, sToast,
+} from '@/components/student-ui';
 import { normalizeQuestions, isAnswerCorrect, hasAnswer, gradeQuestion, isBlockAnswer, type BlockAnswer } from '@/lib/questionSchema';
 import type { NormalizedPart, NormalizedQuestion } from '@/types/question';
+import { applyUserXp, mirrorLeaderboards, notifyLevelUp } from '@/lib/xp';
 
 // XP per correct answer, by the 6 canonical difficulty levels (types/question.ts).
 // Anything unknown keeps the historical default of 2.
@@ -29,27 +31,11 @@ const XP_BY_DIFFICULTY: Record<string, number> = {
 const DEFAULT_XP = 2;
 
 // --- HELPERS ---
-const getPeriodIds = () => {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(now.getUTCDate()).padStart(2, '0');
-  const oneJan = new Date(Date.UTC(year, 0, 1));
-  const days = Math.floor((now.getTime() - oneJan.getTime()) / 86400000);
-  const weekNum = Math.ceil((days + oneJan.getUTCDay() + 1) / 7);
-  return {
-    dayId: `day_${year}_${month}_${day}`, weekId: `week_${year}_${String(weekNum).padStart(2, '0')}`,
-    monthId: `month_${year}_${month}`, globalId: `all_time`
-  };
-};
+// XP/streak/leaderboard writing lives in lib/xp.ts — do not inline it here again.
 
-const getTodayAndYesterday = () => {
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-  const yesterday = new Date(now);
-  yesterday.setUTCDate(now.getUTCDate() - 1);
-  return { todayStr, yesterdayStr: yesterday.toISOString().split('T')[0] };
-};
+// The assignment deadline in epoch ms, or null when the assignment has none.
+const dueAtMs = (dueAt: any): number | null =>
+  dueAt?.seconds ? dueAt.seconds * 1000 : null;
 
 // Questions are normalized (lib/questionSchema.ts), so every text field is a
 // {uz,ru,en} object — never dump the object itself into the UI: an image-only
@@ -170,16 +156,20 @@ export default function TestRunnerPage() {
         const assignData = assignSnap.data();
 
         if (assignData.dueAt && isPastDeadline(assignData.dueAt)) {
-          toast.error(t.toasts.deadline);
+          sToast.error(t.toasts.deadline);
           localStorage.removeItem(STORAGE_KEY);
           router.push(`/classes/${classId}`); return;
         }
 
+        // Attempts are ONE deterministic doc (${uid}_${assignmentId}, merge-upsert)
+        // with an `attemptsTaken` counter — counting documents here would always
+        // see ≤1 and never block a limit of 2+.
         const limit = assignData.allowedAttempts ?? 1;
-        if (limit !== 0) { 
-          const attemptsSnap = await getDocs(query(collection(db, 'attempts'), where('assignmentId', '==', assignmentId), where('userId', '==', user!.uid)));
-          if (attemptsSnap.size >= limit) {
-            toast.error(t.toasts.maxAttempts);
+        if (limit !== 0) {
+          const priorSnap = await getDoc(doc(db, 'attempts', `${user!.uid}_${assignmentId}`));
+          const taken = priorSnap.exists() ? (priorSnap.data().attemptsTaken || 1) : 0;
+          if (taken >= limit) {
+            sToast.error(t.toasts.maxAttempts);
             localStorage.removeItem(STORAGE_KEY);
             router.push(`/classes/${classId}/test/${assignmentId}/results`); return;
           }
@@ -198,10 +188,15 @@ export default function TestRunnerPage() {
         const savedSession = localStorage.getItem(STORAGE_KEY);
         if (savedSession) {
           const parsed = JSON.parse(savedSession);
+          // The countdown must never outlive the assignment deadline: the rules
+          // reject any attempt written after dueAt (server time), so working past
+          // it would only lose the submission.
+          const due = dueAtMs(assignData.dueAt);
+          if (due && parsed.endTime > due) parsed.endTime = due;
           const realTimeRemaining = Math.floor((parsed.endTime - Date.now()) / 1000);
 
           if (realTimeRemaining <= 0) {
-            toast.error(t.toasts.expired);
+            sToast.error(t.toasts.expired);
             localStorage.removeItem(STORAGE_KEY);
           } else {
             setState({
@@ -211,7 +206,7 @@ export default function TestRunnerPage() {
               endTime: parsed.endTime, startTime: parsed.startTime || Date.now()
             });
             setDisplayTime(realTimeRemaining);
-            toast.success(t.toasts.restored); return;
+            sToast.success(t.toasts.restored); return;
           }
         }
 
@@ -252,7 +247,7 @@ export default function TestRunnerPage() {
         if (remaining <= 1) {
           clearInterval(timerRef.current!);
           setDisplayTime(0);
-          toast(t.toasts.timeUp, { icon: '⏰' });
+          sToast.reward(t.toasts.timeUp, '⏰');
           handleSubmit();
         } else {
           setDisplayTime(remaining);
@@ -281,16 +276,18 @@ export default function TestRunnerPage() {
     const handleBlur = () => triggerFocusLoss();
     const handleFocus = () => { isAwayRef.current = false; };
 
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleBlur);
     window.addEventListener("focus", handleFocus);
-    document.addEventListener("contextmenu", (e) => e.preventDefault()); 
+    document.addEventListener("contextmenu", handleContextMenu);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("contextmenu", () => {});
+      document.removeEventListener("contextmenu", handleContextMenu);
     };
   }, [state.status, showSubmitModal, showFocusWarning, isSubmitting]);
 
@@ -329,10 +326,13 @@ export default function TestRunnerPage() {
     }
     const durationSec = (state.test.duration || 60) * 60;
     const now = Date.now();
-    setState(prev => ({ 
-      ...prev, status: 'taking', endTime: now + (durationSec * 1000), startTime: now
+    // Clamp the session to the deadline — the rules deny writes after dueAt.
+    const due = dueAtMs(state.assignment?.dueAt);
+    const endTime = due ? Math.min(now + durationSec * 1000, due) : now + durationSec * 1000;
+    setState(prev => ({
+      ...prev, status: 'taking', endTime, startTime: now
     }));
-    setDisplayTime(durationSec);
+    setDisplayTime(Math.floor((endTime - now) / 1000));
   };
 
   // mcq/true_false → replace the letter. multiple_select → toggle it in a letter array.
@@ -412,7 +412,7 @@ export default function TestRunnerPage() {
     } else {
       const firstSkipped = state.questions.findIndex(q => !isQuestionAnswered(q, state.answers[q.id]));
       if (firstSkipped !== -1) {
-        toast(t.toasts.missedQ, { icon: '📝' });
+        sToast.reward(t.toasts.missedQ, '📝');
         setState(p => ({ ...p, currentQuestionIndex: firstSkipped }));
       } else {
         setShowSubmitModal(true);
@@ -431,9 +431,10 @@ export default function TestRunnerPage() {
     setIsSubmitting(true); 
     
     if (!user) { setIsSubmitting(false); return; }
-    
+
     const userId = user.uid;
-    localStorage.removeItem(STORAGE_KEY); 
+    // ⚠️ The local session is cleared ONLY after the transaction commits — a
+    // failed submit (network, rules) must keep the answers recoverable.
 
     let correctCount = 0;   // POINTS earned  (blocks: partial credit, per-part points)
     let totalPoints = 0;    // POINTS available
@@ -466,124 +467,142 @@ export default function TestRunnerPage() {
 
     try {
       const result = await runTransaction(db, async (transaction) => {
-        const attemptDoc = await transaction.get(doc(db, 'attempts', attemptDocId));
-        const userDoc = await transaction.get(doc(db, 'users', userId));
-        
+        const attemptRef = doc(db, 'attempts', attemptDocId);
+        const userRef = doc(db, 'users', userId);
+        const attemptDoc = await transaction.get(attemptRef);
+        const userDoc = await transaction.get(userRef);
+
         const isRetake = attemptDoc.exists();
         const previousAttempts = isRetake ? attemptDoc.data()?.attemptsTaken || 0 : 0;
-        const userData = userDoc.exists() ? userDoc.data() : {};
-        const existingHistory = Array.isArray(userData?.recentActivity) ? userData.recentActivity : [];
 
-        const { todayStr, yesterdayStr } = getTodayAndYesterday();
-        const lastActive = userData?.lastActiveDate || "";
-        let currentStreak = userData?.currentStreak || 0;
-        let streakBonus = 0;
-        let streakMessage = "";
-
-        if (lastActive === todayStr) {
-           if (currentStreak === 0) currentStreak = 1;
-        } else if (lastActive === yesterdayStr) {
-           currentStreak += 1;
-           if (currentStreak === 7) { streakBonus = 30; streakMessage = "7 Day Streak!"; }
-           if (currentStreak === 30) { streakBonus = 200; streakMessage = "30 Day Streak!"; }
-        } else { currentStreak = 1; }
-
-        let xpToAward = 0;
-        let breakdown: string[] = [];
+        let baseXp = 0;
+        const breakdown: string[] = [];
 
         if (previousAttempts >= 10) {
-          xpToAward = 0; breakdown.push("Max retakes reached: +0");
+          breakdown.push("Max retakes reached: +0");
         } else if (!isRetake) {
-          xpToAward = earnedBaseXP; breakdown.push(`Base Score: +${earnedBaseXP}`);
+          baseXp = earnedBaseXP; breakdown.push(`Base Score: +${earnedBaseXP}`);
           if (state.tabSwitchCount === 0) {
-            if (scorePercentage > 80) { xpToAward += 5; breakdown.push("Perfectionist: +5"); }
-            if (timeLimitSeconds > 0 && scorePercentage > 80 && durationSeconds < (timeLimitSeconds * 0.5)) { xpToAward += 5; breakdown.push("Speed Demon: +5"); }
+            if (scorePercentage > 80) { baseXp += 5; breakdown.push("Perfectionist: +5"); }
+            if (timeLimitSeconds > 0 && scorePercentage > 80 && durationSeconds < (timeLimitSeconds * 0.5)) { baseXp += 5; breakdown.push("Speed Demon: +5"); }
           } else { breakdown.push(`No Bonus (Focus Lost ${state.tabSwitchCount}x)`); }
         } else {
-          if (scorePercentage > 60 && state.questions.length > 5 && state.tabSwitchCount < 2) { 
-            xpToAward = 5; breakdown.push("Practice Reward: +5"); 
-          } else { 
-            xpToAward = 0; breakdown.push("Retake / Penalty: +0"); 
+          if (scorePercentage > 60 && state.questions.length > 5 && state.tabSwitchCount < 2) {
+            baseXp = 5; breakdown.push("Practice Reward: +5");
+          } else {
+            breakdown.push("Retake / Penalty: +0");
           }
         }
 
-        if (streakBonus > 0) { xpToAward += streakBonus; breakdown.push(`${streakMessage}: +${streakBonus}`); }
-
-        let dailyHistory = userData?.dailyHistory || {};
-        dailyHistory[todayStr] = (dailyHistory[todayStr] || 0) + xpToAward;
-        const sortedDates = Object.keys(dailyHistory).sort(); 
-        if (sortedDates.length > 30) {
-          const newHistory: Record<string, number> = {};
-          sortedDates.slice(sortedDates.length - 30).forEach(date => newHistory[date] = dailyHistory[date]);
-          dailyHistory = newHistory;
-        }
-
-        const updatedHistory = [{ id: attemptDocId, testTitle: state.test.title, score: correctCount, totalQuestions: totalPoints, submittedAt: Date.now() }, ...existingHistory].slice(0, 5);
-
-        // ⚠️ Do NOT write `email` here. Contact details live in the owner-only
-        // users/{uid}/private/contact subcollection (docs/AUTH.md); re-mirroring the
-        // email onto this world-readable doc on every submit would silently undo the
-        // migration that removed it.
-        transaction.set(doc(db, 'users', userId), {
-          totalXP: increment(xpToAward), currentStreak, dailyHistory, lastActiveDate: todayStr,
-          displayName: user.displayName, lastActiveTimestamp: serverTimestamp(), recentActivity: updatedHistory
-        }, { merge: true });
+        // Streak advance/bonuses, daily-goal + level-up bonuses, dailyHistory
+        // trim and the user-doc write all live in lib/xp.ts.
+        const applied = applyUserXp(transaction, userRef, userDoc, {
+          xp: baseXp,
+          breakdown,
+          activityEntry: { id: attemptDocId, testTitle: state.test.title, score: correctCount, totalQuestions: totalPoints, submittedAt: Date.now() },
+          activityLimit: 5,
+          extraUserFields: { displayName: user.displayName },
+        });
 
         // `score` / `totalQuestions` are POINTS. For a test without blocks every
         // question is worth 1, so these are byte-for-byte the old "correct / count"
         // numbers; a block contributes its parts' points and can land in between.
-        transaction.set(doc(db, 'attempts', attemptDocId), {
-          userId, userName: user.displayName, classId, assignmentId,type: 'assignment', testId: state.assignment.testId,
+        transaction.set(attemptRef, {
+          userId, userName: user.displayName, classId, assignmentId, type: 'assignment', testId: state.assignment.testId,
           testTitle: state.test.title, score: correctCount, totalQuestions: totalPoints,
           answers: state.answers, tabSwitches: state.tabSwitchCount, submittedAt: serverTimestamp(),
-          attemptsTaken: isRetake ? increment(1) : 1, xpEarned: xpToAward
+          attemptsTaken: isRetake ? increment(1) : 1, xpEarned: applied.finalXp
         }, { merge: true });
 
-        return { xpToAward, breakdown, currentStreak, latestName: userData?.displayName || user.displayName || 'Student', latestAvatar: userData?.photoURL || user.photoURL || null };
+        // Leaderboard mirrors commit atomically with the user doc — the old
+        // separate batch could fail after the transaction and desync the counters.
+        const userData = userDoc.exists() ? userDoc.data() : {};
+        mirrorLeaderboards(transaction, userId, applied.finalXp, {
+          displayName: userData?.displayName || user.displayName,
+          avatar: userData?.photoURL || user.photoURL || null,
+          classId,
+        }, [classId]);
+
+        return applied;
       });
 
-      if (result.xpToAward > 0) {
-        const batch = writeBatch(db);
-        const { dayId, weekId, monthId, globalId } = getPeriodIds();
-        const lbData = { uid: userId, displayName: result.latestName, avatar: result.latestAvatar, classId, xp: increment(result.xpToAward), lastActive: serverTimestamp() };
-        [dayId, weekId, monthId, globalId].forEach(pid => batch.set(doc(db, 'leaderboards', pid, 'users', userId), lbData, { merge: true }));
-        batch.set(doc(db, 'classes', classId, 'leaderboard', userId), lbData, { merge: true });
-        await batch.commit();
-      }
+      // Only now is the local session safe to discard.
+      localStorage.removeItem(STORAGE_KEY);
+      if (result.leveledUp) notifyLevelUp(userId, result.newLevel);
 
       await updateDoc(doc(db, 'classes', classId, 'assignments', assignmentId), { completedBy: arrayUnion(userId) }).catch(() => {});
 
-      setState(prev => ({ ...prev, status: 'submitted', score: correctCount, maxScore: totalPoints, earnedXP: result.xpToAward, xpBreakdown: result.breakdown }));
+      setState(prev => ({ ...prev, status: 'submitted', score: correctCount, maxScore: totalPoints, earnedXP: result.finalXp, xpBreakdown: result.breakdown }));
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      if (result.currentStreak > 1) toast.success(`${result.currentStreak} Day Streak! 🔥`, { icon: '🔥', duration: 3000 });
-      else toast.success(t.toasts.success);
+      if (result.finalXp > 0 && result.currentStreak > 1) sToast.reward(`${result.currentStreak} Day Streak! 🔥`, '🔥');
+      else sToast.success(t.toasts.success);
 
-    } catch (e) { 
-      toast.error(t.toasts.fail); 
+    } catch (e: any) {
+      // The answers are still in localStorage (cleared only on success), so the
+      // student can retry. A permission-denied here almost always means the
+      // deadline passed server-side mid-session.
+      if (e?.code === 'permission-denied') sToast.error(t.toasts.deadline);
+      else sToast.error(t.toasts.fail);
     } finally {
-      setIsSubmitting(false); 
+      setIsSubmitting(false);
     }
   };
 
   // --- RENDERERS ---
-  if (state.status === 'loading') return <div className="flex h-screen items-center justify-center bg-zinc-50 text-indigo-600 gap-3"><Loader2 className="animate-spin" size={32} /><span className="font-bold">{t.loading}</span></div>;
-  if (state.status === 'error') return <div className="flex h-screen items-center justify-center flex-col gap-4"><AlertTriangle size={48} className="text-red-500" /><h1 className="text-xl font-bold">{t.error}</h1><button onClick={() => router.back()} className="text-indigo-600 hover:underline">{t.back}</button></div>;
+  if (state.status === 'loading') return (
+    <Page width="full" className="grid min-h-[70vh] place-items-center">
+      <div className="flex flex-col items-center gap-4">
+        <Spinner size={34} label={t.loading} />
+        <p className="text-[14px] font-bold text-on-surface-variant">{t.loading}</p>
+      </div>
+    </Page>
+  );
+
+  if (state.status === 'error') return (
+    <Page width="full" className="grid min-h-[70vh] place-items-center">
+      <ErrorState title={t.error} onRetry={() => router.back()} retryLabel={t.back} />
+    </Page>
+  );
 
   if (state.status === 'lobby') return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4 font-sans">
-      <div className="max-w-lg w-full bg-white rounded-[2rem] shadow-xl border-2 border-b-8 border-zinc-200 p-8 text-center space-y-6">
-        <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center mx-auto mb-2 border-2 border-indigo-100 rotate-6"><Clock size={40} strokeWidth={2.5}/></div>
-        <div><h1 className="text-3xl font-black text-zinc-900 mb-2 tracking-tight">{state.test.title}</h1><p className="text-zinc-500 font-bold uppercase tracking-widest text-[12px]">{state.questions.length} {t.lobby.questions} • {state.test.duration || 60} {t.lobby.minutes}</p></div>
-        <div className="bg-amber-50 border-2 border-amber-200 rounded-[1.5rem] p-4 text-left flex gap-3"><AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={24} strokeWidth={2.5} /><div className="text-[13px] text-amber-900"><p className="font-black mb-1 uppercase tracking-widest">{t.lobby.instructions}</p><ul className="list-disc list-inside space-y-1 font-bold opacity-80"><li>{t.lobby.rule1}</li><li>{t.lobby.rule2}</li><li>{t.lobby.rule3}</li></ul></div></div>
-        <button onClick={startTest} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[16px] uppercase tracking-widest rounded-2xl active:translate-y-[2px] transition-all">{t.lobby.startBtn}</button>
-        <button onClick={() => router.back()} className="text-zinc-400 font-black text-[12px] uppercase tracking-widest hover:text-zinc-600">{t.lobby.cancel}</button>
-      </div>
-    </div>
+    <Page width="full" className="flex min-h-[80vh] items-center justify-center">
+      <Card variant="outlined" className="w-full max-w-lg space-y-6 text-center">
+        <Tile tone="primary" size="lg" className="mx-auto h-20 w-20 rotate-6 rounded-m3-lg">
+          <Clock size={40} strokeWidth={2.5} />
+        </Tile>
+        <div>
+          <h1 className="s-display text-[28px] font-bold leading-tight text-on-surface">{state.test.title}</h1>
+          <p className="mt-1.5 text-[12px] font-black uppercase tracking-[0.12em] text-on-surface-variant">
+            {state.questions.length} {t.lobby.questions} • {state.test.duration || 60} {t.lobby.minutes}
+          </p>
+        </div>
+        <Banner
+          status="warning"
+          className="text-left"
+          icon={<AlertCircle size={22} strokeWidth={2.5} />}
+          title={t.lobby.instructions}
+          description={
+            <ul className="list-inside list-disc space-y-1">
+              <li>{t.lobby.rule1}</li>
+              <li>{t.lobby.rule2}</li>
+              <li>{t.lobby.rule3}</li>
+            </ul>
+          }
+        />
+        <div className="space-y-2">
+          <Button fullWidth size="lg" onClick={startTest}>{t.lobby.startBtn}</Button>
+          <Button fullWidth variant="text" onClick={() => router.back()}>{t.lobby.cancel}</Button>
+        </div>
+      </Card>
+    </Page>
   );
 
   if (state.status === 'submitted') {
     const visibility = state.test.resultsVisibility || (state.test.showResults ? 'always' : 'never');
-    const canShow = visibility === 'always' || (visibility === 'after_due' && isPastDeadline(state.assignment.dueAt));
+    // 'after_due' with NO due date means "hold results" — isPastDeadline(null)
+    // returns true, which used to reveal them immediately.
+    const canShow = visibility === 'always' ||
+      (visibility === 'after_due' && !!state.assignment.dueAt && isPastDeadline(state.assignment.dueAt));
     // Points, not questions — identical to the old count when nothing is worth >1 point.
     const maxScore = state.maxScore ?? state.questions.length;
     const accuracy = maxScore > 0 ? Math.round((state.score! / maxScore) * 100) : 0;
@@ -617,110 +636,104 @@ export default function TestRunnerPage() {
       show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, bounce: 0.5, duration: 0.6 } }
     };
     return (
-      <div className="min-h-screen bg-indigo-50/50 flex items-center justify-center p-4 relative overflow-hidden font-sans">
-        
+      <Page width="full" className="relative flex min-h-[80vh] items-center justify-center overflow-hidden">
+
         {/* 🟢 FLOATING BACKGROUND EMOJIS (Confetti Effect) */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
            <motion.div initial={{ y: "100vh", x: "10vw", opacity: 0 }} animate={{ y: "-20vh", opacity: [0, 1, 0], rotate: 360 }} transition={{ duration: 4, ease: "easeOut", delay: 0.1 }} className="absolute text-5xl">✨</motion.div>
            <motion.div initial={{ y: "100vh", x: "80vw", opacity: 0 }} animate={{ y: "-10vh", opacity: [0, 1, 0], rotate: -180 }} transition={{ duration: 3.5, ease: "easeOut", delay: 0.3 }} className="absolute text-6xl">🎉</motion.div>
            <motion.div initial={{ y: "100vh", x: "50vw", opacity: 0 }} animate={{ y: "-30vh", opacity: [0, 1, 0], rotate: 90 }} transition={{ duration: 4.5, ease: "easeOut", delay: 0.5 }} className="absolute text-5xl">🔥</motion.div>
         </div>
 
-        <motion.div 
-          variants={container} 
-          initial="hidden" 
-          animate="show" 
-          className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl border-2 border-b-[8px] border-zinc-200 p-8 text-center space-y-6 relative z-10"
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="relative z-10 w-full max-w-md"
         >
-          {/* HEADER & TROPHY */}
-          <motion.div variants={item} className="relative mt-2">
-             <motion.div 
-                initial={{ scale: 0, rotate: -45 }} 
-                animate={{ scale: 1, rotate: 0 }} 
-                transition={{ type: "spring", bounce: 0.6, delay: 0.2, duration: 0.8 }}
-                className="w-32 h-32 bg-amber-100 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 border-4 border-amber-300 shadow-inner rotate-6"
-              >
-                <div className="text-7xl drop-shadow-md">🏆</div>
-             </motion.div>
-             <h1 className="text-3xl font-black text-zinc-900 tracking-tight mb-2">{t.result.submitted}</h1>
-             <p className="text-zinc-400 font-black text-[12px] uppercase tracking-widest">{t.result.saved}</p>
-          </motion.div>
-
-          <div className="grid grid-cols-2 gap-4">
-             {/* 🟢 XP CARD (Spans full width) */}
-             {state.earnedXP !== undefined && state.earnedXP >= 0 && (
-               <motion.div variants={item} className="col-span-2 relative overflow-hidden group">
-                 {/* Shimmer Effect */}
-                 <div className="absolute top-0 -inset-full h-full w-1/2 z-10 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shimmer" />
-                 
-                 <div className="bg-amber-500 rounded-3xl p-1 border-b-[6px] border-amber-600 shadow-sm transition-all">
-                    <div className="relative p-6 flex flex-col items-center">
-                      <div className="flex items-center gap-2 text-amber-900/60 font-black text-[12px] uppercase tracking-widest mb-1">
-                        <Zap size={18} fill="currentColor" /> {t.result.xpEarned}
-                      </div>
-                      <span className="text-6xl font-black text-white drop-shadow-sm tracking-tighter">
-                        +<AnimatedNumber value={state.earnedXP} />
-                      </span>
-
-                      {/* 🟢 XP BREAKDOWN PILLS */}
-                      {state.xpBreakdown && state.xpBreakdown.length > 0 && (
-                        <div className="flex flex-wrap justify-center gap-2 mt-4">
-                          {state.xpBreakdown.map((item, idx) => (
-                            <motion.span 
-                              key={idx} 
-                              initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1 + (idx * 0.2) }}
-                              className="px-3 py-1 bg-amber-700/30 rounded-xl text-[11px] font-black text-white border-2 border-white/20 uppercase tracking-wider"
-                            >
-                              {item.split(':')[0]} <span className="text-amber-200">{item.split(':')[1]}</span>
-                            </motion.span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                 </div>
+          <Card variant="outlined" className="space-y-6 text-center">
+            {/* HEADER & TROPHY */}
+            <motion.div variants={item} className="relative">
+               <motion.div
+                  initial={{ scale: 0, rotate: -45 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", bounce: 0.6, delay: 0.2, duration: 0.8 }}
+                  className="mx-auto mb-6 grid h-32 w-32 rotate-6 place-items-center rounded-m3-lg bg-gold-container text-on-gold-container"
+                >
+                  <div className="text-7xl">🏆</div>
                </motion.div>
-             )}
+               <h1 className="s-display text-[28px] font-bold leading-tight text-on-surface">{t.result.submitted}</h1>
+               <p className="mt-1.5 text-[12px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.result.saved}</p>
+            </motion.div>
 
-             {/* 🟢 SCORE CARD */}
-             <motion.div variants={item} className="bg-white border-2 border-zinc-200 border-b-[6px] rounded-[1.5rem] p-5 flex flex-col items-center justify-center">
-                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t.result.score}</span>
-                <span className="text-3xl font-black text-indigo-600">
-                  <AnimatedNumber value={state.score!} /> <span className="text-lg text-zinc-300">/ {maxScore}</span>
-                </span>
-             </motion.div>
+            <div className="grid grid-cols-2 gap-4">
+               {/* 🟢 XP CARD (Spans full width) */}
+               {state.earnedXP !== undefined && state.earnedXP >= 0 && (
+                 <motion.div variants={item} className="col-span-2 flex flex-col items-center overflow-hidden rounded-m3-lg bg-gold p-6 text-on-gold">
+                    <div className="mb-1 flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.12em] opacity-80">
+                      <Zap size={18} fill="currentColor" /> {t.result.xpEarned}
+                    </div>
+                    <span className="s-display s-num text-[54px] font-bold leading-none tracking-tight">
+                      +<AnimatedNumber value={state.earnedXP} />
+                    </span>
 
-             {/* 🟢 ACCURACY CARD */}
-             <motion.div variants={item} className="bg-white border-2 border-zinc-200 border-b-[6px] rounded-[1.5rem] p-5 flex flex-col items-center justify-center">
-                <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest mb-1">Accuracy</span>
-                <span className={`text-3xl font-black ${accuracy >= 80 ? 'text-emerald-500' : accuracy >= 60 ? 'text-amber-500' : 'text-red-500'}`}>
-                  <AnimatedNumber value={accuracy} suffix="%" />
-                </span>
-             </motion.div>
-          </div>
+                    {/* 🟢 XP BREAKDOWN PILLS */}
+                    {state.xpBreakdown && state.xpBreakdown.length > 0 && (
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        {state.xpBreakdown.map((item, idx) => (
+                          <motion.span
+                            key={idx}
+                            initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1 + (idx * 0.2) }}
+                            className="rounded-full bg-gold-container px-3 py-1 text-[11px] font-black uppercase tracking-wider text-on-gold-container"
+                          >
+                            {item.split(':')[0]} <span className="s-num opacity-75">{item.split(':')[1]}</span>
+                          </motion.span>
+                        ))}
+                      </div>
+                    )}
+                 </motion.div>
+               )}
 
-          {/* 🟢 ACTION BUTTONS */}
-          <motion.div variants={item} className="space-y-3 pt-4">
-            {canShow ? (
-              <button 
-                onClick={() => router.push(`/classes/${classId}/test/${assignmentId}/results`)} 
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-[1.2rem] border-b-4 border-indigo-800 active:border-b-0 active:translate-y-[4px] transition-all flex items-center justify-center gap-3 text-[15px] uppercase tracking-widest"
-              >
-                <Eye size={20} strokeWidth={3}/> {t.actions.viewResults}
-              </button>
-            ) : (
-              <div className="bg-zinc-50 p-4 rounded-[1.2rem] text-zinc-500 text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-zinc-200 border-dashed">
-                <Lock size={16} strokeWidth={3}/> {t.result.hidden}
-              </div>
-            )}
-            <button 
-              onClick={() => router.push(`/classes/${classId}`)} 
-              className="w-full py-4 bg-white border-2 border-zinc-200 border-b-4 text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 font-black text-[13px] uppercase tracking-widest rounded-[1.2rem] transition-all active:translate-y-[2px] active:border-b-2"
-            >
-              {t.actions.returnClass}
-            </button>
-          </motion.div>
+               {/* 🟢 SCORE CARD */}
+               <motion.div variants={item} className="flex flex-col items-center justify-center rounded-m3-lg border border-outline-variant bg-surface p-5">
+                  <span className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.result.score}</span>
+                  <span className="s-display s-num text-[30px] font-bold text-primary">
+                    <AnimatedNumber value={state.score!} /> <span className="text-[18px] text-on-surface-variant">/ {maxScore}</span>
+                  </span>
+               </motion.div>
+
+               {/* 🟢 ACCURACY CARD */}
+               <motion.div variants={item} className="flex flex-col items-center justify-center rounded-m3-lg border border-outline-variant bg-surface p-5">
+                  <span className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">Accuracy</span>
+                  <span className={cn('s-display s-num text-[30px] font-bold', accuracy >= 80 ? 'text-success' : accuracy >= 60 ? 'text-gold' : 'text-error')}>
+                    <AnimatedNumber value={accuracy} suffix="%" />
+                  </span>
+               </motion.div>
+            </div>
+
+            {/* 🟢 ACTION BUTTONS */}
+            <motion.div variants={item} className="space-y-3 pt-2">
+              {canShow ? (
+                <Button
+                  fullWidth
+                  size="lg"
+                  icon={<Eye size={20} strokeWidth={3} />}
+                  onClick={() => router.push(`/classes/${classId}/test/${assignmentId}/results`)}
+                >
+                  {t.actions.viewResults}
+                </Button>
+              ) : (
+                <div className="flex items-center justify-center gap-2 rounded-m3-md border border-dashed border-outline-variant bg-surface-container p-4 text-[12px] font-black uppercase tracking-[0.12em] text-on-surface-variant">
+                  <Lock size={16} strokeWidth={3}/> {t.result.hidden}
+                </div>
+              )}
+              <Button fullWidth variant="outlined" onClick={() => router.push(`/classes/${classId}`)}>
+                {t.actions.returnClass}
+              </Button>
+            </motion.div>
+          </Card>
         </motion.div>
-      </div>
+      </Page>
     );
   }
 
@@ -742,85 +755,118 @@ export default function TestRunnerPage() {
   const selectedKeys = Array.isArray(scalarAnswer) ? scalarAnswer : scalarAnswer ? [scalarAnswer] : [];
 
   return (
-    // 🟢 OPTION 1 IMPLEMETED: "Immersive Mode" (Fixed, inset-0, z-high) 
-    // This perfectly overlays the global layout and ensures no scroll issues.
-    <div className="fixed inset-0 z-[100] flex flex-col bg-zinc-50 overflow-hidden select-none font-sans">
-      
+    // "Immersive Mode": a fixed, full-bleed overlay above the global shell, so the
+    // header/nav/footer meet the screen edges. `!p-0` is required — tailwind-merge
+    // cannot dedupe Page's own `px-s-page-x`/`py-s-page-y` (not a known scale).
+    <Page width="full" className="fixed inset-0 z-[100] flex select-none flex-col overflow-hidden bg-background !p-0">
+
       {isSubmitting && (
-        <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-white/90 backdrop-blur-md">
-           <div className="w-24 h-24 bg-indigo-50 border-4 border-indigo-100 text-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 animate-spin shadow-xl">
-             <Loader2 size={48} strokeWidth={3} />
+        <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center gap-6 bg-[color-mix(in_srgb,var(--m3-surface)_92%,transparent)] backdrop-blur-md">
+           <Spinner size={56} label={t.grading} />
+           <div className="text-center">
+             <h2 className="s-display text-[22px] font-bold text-on-surface">{t.grading || "Grading your answers..."}</h2>
+             <p className="mt-2 text-[13px] font-black uppercase tracking-[0.12em] text-on-surface-variant">Please wait</p>
            </div>
-           <h2 className="text-2xl font-black text-zinc-900 tracking-tight">{t.grading || "Grading your answers..."}</h2>
-           <p className="text-zinc-500 font-bold text-[13px] uppercase tracking-widest mt-2">Please wait</p>
         </div>
       )}
 
+      {/* ⚠️ ANTI-CHEAT BLOCKER — deliberately NOT a <Dialog>: it must not be
+          dismissable by backdrop click or Escape, only by the acknowledge button. */}
       {showFocusWarning && !isSubmitting && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full p-8 text-center animate-in zoom-in-95 border-2 border-red-100">
-            <div className="w-20 h-20 bg-red-50 text-red-600 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 border-2 border-red-200 rotate-12">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[color-mix(in_srgb,var(--m3-scrim)_60%,transparent)] p-4 backdrop-blur-md">
+          <div role="alertdialog" aria-modal="true" className="w-full max-w-sm rounded-m3-xl bg-surface-container-high p-8 text-center shadow-elev-3">
+            <div className="mx-auto mb-6 grid h-20 w-20 rotate-12 place-items-center rounded-m3-lg bg-error-container text-on-error-container">
               <ShieldAlert size={40} strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-black text-zinc-900 tracking-tight mb-3">{t.focusModal.title}</h2>
-            <p className="text-zinc-500 font-bold text-[14px] leading-relaxed mb-8">{t.focusModal.desc}</p>
-            <button 
-              onClick={() => setShowFocusWarning(false)} 
-              className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black text-[15px] uppercase tracking-widest rounded-2xl shadow-lg border-b-4 border-red-800 active:border-b-0 active:translate-y-[4px] transition-all"
-            >
+            <h2 className="s-display mb-3 text-[22px] font-bold text-on-surface">{t.focusModal.title}</h2>
+            <p className="mb-8 text-[14px] font-bold leading-relaxed text-on-surface-variant">{t.focusModal.desc}</p>
+            <Button fullWidth size="lg" tone="error" onClick={() => setShowFocusWarning(false)}>
               {t.focusModal.btn}
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
+      {/* Also kept as a plain overlay so the runner cannot be closed accidentally
+          mid-submit — the only exits are the two buttons below. */}
       {showSubmitModal && !isSubmitting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full p-8 border-2 border-zinc-200 animate-in zoom-in-95">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[1.2rem] border-2 border-indigo-100 flex items-center justify-center mx-auto mb-4"><Flag size={32} strokeWidth={2.5}/></div>
-              <h2 className="text-[20px] font-black text-zinc-900 tracking-tight">{t.modal.title}</h2>
-              <p className="text-zinc-500 font-bold mt-2 text-[14px] uppercase tracking-widest">{t.modal.answered} <strong className="text-indigo-600">{answeredCount}</strong> / <strong className="text-zinc-900">{state.questions.length}</strong></p>
-              {answeredCount < state.questions.length && <p className="text-amber-600 font-black text-[11px] uppercase tracking-widest mt-4 bg-amber-50 border-2 border-amber-200 py-1.5 px-3 rounded-lg inline-block">⚠️ {t.modal.unanswered}</p>}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--m3-scrim)_60%,transparent)] p-4 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-m3-xl bg-surface-container-high p-8 shadow-elev-3">
+            <div className="mb-8 text-center">
+              <Tile tone="primary" size="lg" className="mx-auto mb-4 h-16 w-16"><Flag size={32} strokeWidth={2.5}/></Tile>
+              <h2 className="s-display text-[20px] font-bold text-on-surface">{t.modal.title}</h2>
+              <p className="mt-2 text-[12px] font-black uppercase tracking-[0.12em] text-on-surface-variant">
+                {t.modal.answered} <strong className="s-num text-primary">{answeredCount}</strong> / <strong className="s-num text-on-surface">{state.questions.length}</strong>
+              </p>
+              {answeredCount < state.questions.length && (
+                <Chip status="warning" className="mt-4">⚠️ {t.modal.unanswered}</Chip>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setShowSubmitModal(false)} className="py-4 font-black text-[12px] uppercase tracking-widest text-zinc-500 bg-white border-2 border-zinc-200 border-b-4 hover:bg-zinc-50 rounded-xl active:translate-y-[2px] active:border-b-2 transition-all">{t.modal.back}</button>
-              <button onClick={handleSubmit} className="py-4 bg-indigo-600 hover:bg-indigo-500 border-b-4 border-indigo-800 text-white font-black text-[12px] uppercase tracking-widest rounded-xl active:translate-y-[4px] active:border-b-0 transition-all">{t.actions.submit}</button>
+              <Button variant="outlined" onClick={() => setShowSubmitModal(false)}>{t.modal.back}</Button>
+              <Button onClick={handleSubmit}>{t.actions.submit}</Button>
             </div>
           </div>
         </div>
       )}
 
       {/* HEADER */}
-      <header className="h-16 md:h-20 border-b-2 border-zinc-200 flex items-center justify-between px-4 md:px-6 bg-white shrink-0 shadow-sm z-20 relative">
-        <div className="font-black text-zinc-800 flex items-center gap-3">
-          <span className="text-[15px] md:text-[18px] tracking-tight">{t.header.question} {state.currentQuestionIndex + 1} <span className="text-zinc-300">/ {state.questions.length}</span></span>
-          {state.tabSwitchCount > 0 && <div className="flex items-center gap-1.5 bg-red-50 border-2 border-red-200 text-red-600 px-3 py-1 rounded-xl"><AlertCircle size={14} strokeWidth={3}/><span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest">{t.header.focus}: {state.tabSwitchCount}</span></div>}
+      <header className="relative z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-outline-variant bg-surface px-4 md:h-20 md:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="s-display text-[15px] font-bold text-on-surface md:text-[18px]">
+            {t.header.question} <span className="s-num">{state.currentQuestionIndex + 1}</span>{' '}
+            <span className="s-num text-on-surface-variant">/ {state.questions.length}</span>
+          </span>
+          {state.tabSwitchCount > 0 && (
+            <Chip status="error" icon={<AlertCircle size={14} strokeWidth={3} />} className="uppercase tracking-[0.1em]">
+              {t.header.focus}: {state.tabSwitchCount}
+            </Chip>
+          )}
         </div>
-        
-        <div className="flex items-center gap-3">
-           <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-mono font-black border-2 border-b-4 transition-colors text-[14px] md:text-[16px] ${displayTime < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-white text-zinc-700 border-zinc-200'}`}>
-             <Clock size={18} strokeWidth={2.5}/>{formatTime(displayTime)}
+
+        <div className="flex shrink-0 items-center gap-2">
+           <div className={cn(
+             'flex items-center gap-2 rounded-m3-sm border px-3 py-2 text-[14px] font-black md:text-[16px]',
+             displayTime < 60
+               ? 'animate-pulse border-error bg-error-container text-on-error-container'
+               : 'border-outline-variant bg-surface-container text-on-surface',
+           )}>
+             <Clock size={18} strokeWidth={2.5}/><span className="s-num">{formatTime(displayTime)}</span>
            </div>
-           <button onClick={() => { if(confirm("Are you sure you want to exit? Timer will continue running.")) { router.back(); } }} className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 transition-colors border-2 border-zinc-200 lg:hidden">
+           <IconButton
+             aria-label={t.back}
+             onClick={() => { if(confirm("Are you sure you want to exit? Timer will continue running.")) { router.back(); } }}
+             className="bg-surface-container lg:hidden"
+           >
              <X size={20} strokeWidth={3} />
-           </button>
+           </IconButton>
         </div>
       </header>
 
       {/* NUMBER NAVIGATOR */}
-      <div className="bg-zinc-50 border-b-2 border-zinc-200 py-3 px-4 shadow-inner z-10 shrink-0">
-         <div ref={scrollNavRef} className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2 px-1">
+      <div className="z-10 shrink-0 border-b border-outline-variant bg-surface-container-low px-4 py-3">
+         <div ref={scrollNavRef} className="s-scroll flex items-center gap-2 overflow-x-auto px-1 pb-2">
             {state.questions.map((q, idx) => {
                 const isActive = idx === state.currentQuestionIndex;
                 const isAnswered = isQuestionAnswered(q, state.answers[q.id]);
                 const isQFlagged = state.flagged.includes(q.id);
                 return (
-                    <button 
-                        key={idx} onClick={() => setState(p => ({...p, currentQuestionIndex: idx}))} 
-                        className={`shrink-0 w-11 h-11 md:w-12 md:h-12 rounded-[1rem] flex items-center justify-center font-black text-[15px] transition-all border-2 border-b-4 active:border-b-2 active:translate-y-[2px] ${isActive ? 'bg-indigo-600 text-white border-indigo-800 shadow-md scale-105' : isQFlagged ? 'bg-amber-50 text-amber-500 border-amber-300' : isAnswered ? 'bg-zinc-800 text-white border-zinc-900' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300'}`}
+                    <button
+                        key={idx} onClick={() => setState(p => ({...p, currentQuestionIndex: idx}))}
+                        aria-label={`${t.header.question} ${idx + 1}`}
+                        aria-current={isActive ? 'true' : undefined}
+                        className={cn(
+                          's-press grid h-11 w-11 shrink-0 place-items-center rounded-m3-sm border text-[15px] font-black md:h-12 md:w-12',
+                          isActive
+                            ? 'scale-105 border-primary bg-primary text-on-primary shadow-elev-1'
+                            : isQFlagged
+                              ? 'border-transparent bg-gold-container text-on-gold-container'
+                              : isAnswered
+                                ? 'border-transparent bg-inverse-surface text-inverse-on-surface'
+                                : 'border-outline-variant bg-surface text-on-surface-variant hover:bg-state-hover',
+                        )}
                     >
-                        {isQFlagged && !isActive ? <Flag size={16} strokeWidth={3} fill="currentColor"/> : idx + 1}
+                        {isQFlagged && !isActive ? <Flag size={16} strokeWidth={3} fill="currentColor"/> : <span className="s-num">{idx + 1}</span>}
                     </button>
                 )
             })}
@@ -828,20 +874,20 @@ export default function TestRunnerPage() {
       </div>
 
       {/* QUESTION BODY */}
-      <main className="flex-1 flex overflow-hidden bg-white">
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl mx-auto w-full pb-24">
+      <main className="flex flex-1 overflow-hidden bg-surface">
+        <div className="s-scroll mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-4 pb-24 md:p-8">
           <div className="mb-8">
-             <div className="text-[18px] md:text-[22px] font-bold text-zinc-900 leading-relaxed"><LatexRenderer latex={getContentText(currentQ.question)} /></div>
+             <div className="text-[18px] font-bold leading-relaxed text-on-surface md:text-[22px]"><LatexRenderer latex={getContentText(currentQ.question)} /></div>
              {currentQ.imageUrl && (
-               <img src={currentQ.imageUrl} alt="" className="mt-5 max-h-60 w-auto rounded-[1.5rem] border-2 border-zinc-200 bg-white object-contain" />
+               <img src={currentQ.imageUrl} alt="" className="mt-5 max-h-60 w-auto rounded-m3-md border border-outline-variant bg-surface object-contain" />
              )}
              {isMultiSelect && (
-               <p className="mt-4 text-[11px] font-black uppercase tracking-widest text-indigo-500">{t.input.selectAll}</p>
+               <p className="mt-4 text-[11px] font-black uppercase tracking-[0.12em] text-primary">{t.input.selectAll}</p>
              )}
              {isBlock && (
-               <p className="mt-4 text-[11px] font-black uppercase tracking-widest text-indigo-500">{t.block.hint}</p>
+               <p className="mt-4 text-[11px] font-black uppercase tracking-[0.12em] text-primary">{t.block.hint}</p>
              )}
-             <QuestionCreator creatorName={currentQ.creatorName} correctedBy={currentQ.correctedBy} className="mt-3 text-zinc-400" />
+             <QuestionCreator creatorName={currentQ.creatorName} correctedBy={currentQ.correctedBy} className="mt-3 text-on-surface-variant" />
           </div>
 
           {isBlock ? (
@@ -852,16 +898,16 @@ export default function TestRunnerPage() {
             // options (or a typed answer), so it renders them itself.
             <div className="space-y-4">
               {sharedPool.length > 0 && (
-                <div className="rounded-[1.5rem] border-2 border-zinc-200 bg-zinc-50 p-4 md:p-5">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-zinc-400 mb-3">{t.block.pool}</p>
+                <div className="rounded-m3-md border border-outline-variant bg-surface-container p-4 md:p-5">
+                  <p className="mb-3 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.block.pool}</p>
                   <div className="grid gap-2.5 sm:grid-cols-2">
                     {sharedPool.map((o) => (
                       <div key={o.id} className="flex items-start gap-2.5">
-                        <span className="w-8 h-8 shrink-0 rounded-[0.8rem] bg-white border-2 border-zinc-200 text-zinc-600 font-black text-[13px] flex items-center justify-center">{o.id}</span>
-                        <div className="pt-1 min-w-0 text-zinc-700 font-bold text-[14px] md:text-[15px] leading-relaxed break-words">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-m3-xs border border-outline-variant bg-surface text-[13px] font-black text-on-surface-variant">{o.id}</span>
+                        <div className="min-w-0 break-words pt-1 text-[14px] font-bold leading-relaxed text-on-surface md:text-[15px]">
                           <LatexRenderer latex={getContentText(o.text)} />
                           {o.imageUrl && (
-                            <img src={o.imageUrl} alt={o.id} className="mt-2 max-h-28 w-auto rounded-[1rem] border-2 border-zinc-200 bg-white object-contain" />
+                            <img src={o.imageUrl} alt={o.id} className="mt-2 max-h-28 w-auto rounded-m3-sm border border-outline-variant bg-surface object-contain" />
                           )}
                         </div>
                       </div>
@@ -878,26 +924,25 @@ export default function TestRunnerPage() {
                 const compact = sharedPool.length > 0; // pool already printed above
 
                 return (
-                  <div key={part.id} className="rounded-[1.5rem] border-2 border-b-[6px] border-zinc-200 bg-white p-4 md:p-5">
+                  <div key={part.id} className="rounded-m3-md border border-outline-variant bg-surface p-4 md:p-5">
                     <div className="flex items-start gap-3">
-                      <span className="w-8 h-8 shrink-0 rounded-[0.8rem] bg-indigo-50 border-2 border-indigo-100 text-indigo-600 font-black text-[13px] flex items-center justify-center">{part.id}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-zinc-800 font-bold text-[15px] md:text-[17px] leading-relaxed break-words">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-m3-xs bg-primary-container text-[13px] font-black text-on-primary-container">{part.id}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="break-words text-[15px] font-bold leading-relaxed text-on-surface md:text-[17px]">
                           <LatexRenderer latex={getContentText(part.prompt)} />
                         </div>
                         {partIsMulti && (
-                          <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-indigo-400">{t.input.selectAll}</p>
+                          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-primary">{t.input.selectAll}</p>
                         )}
 
                         {partIsTyped ? (
-                          <input
-                            type="text"
+                          <TextField
+                            label={t.input.typeAnswer}
+                            containerClassName="mt-3"
                             inputMode={part.type === 'numeric' ? 'decimal' : 'text'}
                             autoComplete="off"
                             value={typeof given === 'string' ? given : ''}
                             onChange={(e) => setPartTypedAnswer(part, e.target.value)}
-                            placeholder={t.input.typeAnswer}
-                            className="mt-3 w-full p-3 md:p-4 rounded-[1.2rem] border-2 border-b-[6px] border-zinc-200 bg-white text-zinc-800 font-bold text-[15px] placeholder:text-zinc-300 placeholder:font-bold focus:border-indigo-600 focus:outline-none transition-colors"
                           />
                         ) : compact ? (
                           // shared pool → a compact row of letter buttons.
@@ -908,7 +953,13 @@ export default function TestRunnerPage() {
                                 <button
                                   key={o.id}
                                   onClick={() => selectPartOption(part, o.id)}
-                                  className={`w-12 h-12 rounded-[1rem] border-2 border-b-4 font-black text-[15px] transition-all active:translate-y-[2px] active:border-b-2 ${sel ? 'bg-indigo-600 text-white border-indigo-800' : 'bg-white text-zinc-500 border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50'}`}
+                                  aria-pressed={sel}
+                                  className={cn(
+                                    's-press grid h-12 w-12 place-items-center rounded-m3-sm border text-[15px] font-black',
+                                    sel
+                                      ? 'border-primary bg-primary text-on-primary'
+                                      : 'border-outline-variant bg-surface text-on-surface-variant hover:bg-state-hover',
+                                  )}
                                 >
                                   {o.id}
                                 </button>
@@ -924,17 +975,29 @@ export default function TestRunnerPage() {
                                 <button
                                   key={o.id}
                                   onClick={() => selectPartOption(part, o.id)}
-                                  className={`w-full text-left p-3 md:p-4 rounded-[1.2rem] border-2 border-b-4 transition-all flex items-center gap-3 active:translate-y-[2px] active:border-b-2 ${sel ? 'border-indigo-600 bg-indigo-50' : 'border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50 bg-white'}`}
+                                  aria-pressed={sel}
+                                  className={cn(
+                                    's-press flex w-full items-center gap-3 rounded-m3-md border p-3 text-left md:p-4',
+                                    sel
+                                      ? 'border-primary bg-primary-container text-on-primary-container'
+                                      : 'border-outline-variant bg-surface text-on-surface hover:bg-state-hover',
+                                  )}
                                 >
-                                  <span className={`w-9 h-9 shrink-0 flex items-center justify-center text-[14px] font-black border-2 transition-colors ${partIsMulti ? 'rounded-[0.6rem]' : 'rounded-[0.9rem]'} ${sel ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
+                                  <span className={cn(
+                                    'grid h-9 w-9 shrink-0 place-items-center border text-[14px] font-black',
+                                    partIsMulti ? 'rounded-m3-xs' : 'rounded-m3-sm',
+                                    sel
+                                      ? 'border-primary bg-primary text-on-primary'
+                                      : 'border-outline-variant bg-surface-container-high text-on-surface-variant',
+                                  )}>
                                     {partIsMulti && sel ? <CheckCircle size={18} strokeWidth={3} /> : o.id}
                                   </span>
                                   <div className="w-full min-w-0">
-                                    <div className="text-zinc-800 font-bold text-[14px] md:text-[16px] leading-relaxed break-words">
+                                    <div className="break-words text-[14px] font-bold leading-relaxed md:text-[16px]">
                                       <LatexRenderer latex={getContentText(o.text)} />
                                     </div>
                                     {o.imageUrl && (
-                                      <img src={o.imageUrl} alt={o.id} className="mt-2 max-h-28 w-auto rounded-[1rem] border-2 border-zinc-200 bg-white object-contain" />
+                                      <img src={o.imageUrl} alt={o.id} className="mt-2 max-h-28 w-auto rounded-m3-sm border border-outline-variant bg-surface object-contain" />
                                     )}
                                   </div>
                                 </button>
@@ -950,28 +1013,42 @@ export default function TestRunnerPage() {
             </div>
           ) : isTyped ? (
             // open / numeric / fill_blank — nothing to pick, the student types the answer.
-            <input
-              type="text"
+            <TextField
+              label={t.input.typeAnswer}
               inputMode={currentQ.type === 'numeric' ? 'decimal' : 'text'}
               autoComplete="off"
               value={typeof currentAnswer === 'string' ? currentAnswer : ''}
               onChange={(e) => setTypedAnswer(e.target.value)}
-              placeholder={t.input.typeAnswer}
-              className="w-full p-4 md:p-5 rounded-[1.5rem] border-2 border-b-[6px] border-zinc-200 bg-white text-zinc-800 font-bold text-[15px] md:text-[17px] placeholder:text-zinc-300 placeholder:font-bold focus:border-indigo-600 focus:outline-none transition-colors"
             />
           ) : (
           <div className="grid gap-3">
              {Object.entries(currentQ.options || {}).map(([key, val]: any) => {
                const isSelected = selectedKeys.includes(key);
                return (
-                 <button key={key} onClick={() => selectAnswer(key)} className={`w-full text-left p-4 md:p-5 rounded-[1.5rem] border-2 border-b-[6px] transition-all flex items-center gap-4 group active:translate-y-[4px] active:border-b-2 ${isSelected ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50 bg-white'}`}>
-                   <span className={`w-10 h-10 flex items-center justify-center text-[15px] font-black transition-colors shrink-0 border-2 ${isMultiSelect ? 'rounded-[0.6rem]' : 'rounded-[1rem]'} ${isSelected ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
+                 <button
+                   key={key}
+                   onClick={() => selectAnswer(key)}
+                   aria-pressed={isSelected}
+                   className={cn(
+                     's-press flex w-full items-center gap-4 rounded-m3-md border p-4 text-left md:p-5',
+                     isSelected
+                       ? 'border-primary bg-primary-container text-on-primary-container'
+                       : 'border-outline-variant bg-surface text-on-surface hover:bg-state-hover',
+                   )}
+                 >
+                   <span className={cn(
+                     'grid h-10 w-10 shrink-0 place-items-center border text-[15px] font-black',
+                     isMultiSelect ? 'rounded-m3-xs' : 'rounded-m3-sm',
+                     isSelected
+                       ? 'border-primary bg-primary text-on-primary'
+                       : 'border-outline-variant bg-surface-container-high text-on-surface-variant',
+                   )}>
                      {isMultiSelect && isSelected ? <CheckCircle size={20} strokeWidth={3} /> : key}
                    </span>
-                   <div className="w-full">
-                     <div className="text-zinc-800 font-bold text-[15px] md:text-[17px] leading-relaxed break-words"><LatexRenderer latex={getContentText(val)} /></div>
+                   <div className="w-full min-w-0">
+                     <div className="break-words text-[15px] font-bold leading-relaxed md:text-[17px]"><LatexRenderer latex={getContentText(val)} /></div>
                      {val?.imageUrl && (
-                       <img src={val.imageUrl} alt={`${key}`} className="mt-2 max-h-32 md:max-h-40 w-auto rounded-[1rem] border-2 border-zinc-200 bg-white object-contain" />
+                       <img src={val.imageUrl} alt={`${key}`} className="mt-2 max-h-32 w-auto rounded-m3-sm border border-outline-variant bg-surface object-contain md:max-h-40" />
                      )}
                    </div>
                  </button>
@@ -983,20 +1060,40 @@ export default function TestRunnerPage() {
       </main>
 
       {/* 🟢 REDESIGNED MOBILE-FIRST FOOTER */}
-      <footer className="h-auto min-h-[90px] border-t-2 border-zinc-200 bg-zinc-50 px-4 md:px-6 py-4 pb-[max(env(safe-area-inset-bottom,16px),16px)] flex items-center gap-3 shrink-0 z-20">
-         
-         <button onClick={toggleFlag} className={`w-14 h-14 md:w-auto md:flex-1 md:px-5 rounded-[1.2rem] border-2 border-b-4 flex items-center justify-center gap-2 font-black text-[12px] uppercase tracking-widest transition-all active:translate-y-[2px] active:border-b-2 ${isFlagged ? 'bg-amber-50 border-amber-300 text-amber-600' : 'bg-white border-zinc-200 text-zinc-500 hover:bg-zinc-100'}`}>
+      <footer className="z-20 flex min-h-[90px] shrink-0 items-center gap-3 border-t border-outline-variant bg-surface-container-low px-4 py-4 pb-[max(env(safe-area-inset-bottom,16px),16px)] md:px-6">
+
+         <Button
+           onClick={toggleFlag}
+           variant={isFlagged ? 'tonal' : 'outlined'}
+           tone={isFlagged ? 'gold' : 'primary'}
+           size="lg"
+           aria-label={isFlagged ? t.actions.flagged : t.actions.flag}
+           className="h-14 w-14 shrink-0 px-0 text-[12px] uppercase tracking-[0.1em] md:w-auto md:flex-1 md:px-5"
+         >
            <Flag size={20} strokeWidth={3} fill={isFlagged ? "currentColor" : "none"} /><span className="hidden md:inline">{isFlagged ? t.actions.flagged : t.actions.flag}</span>
-         </button>
-         
-         <button onClick={() => setState(p => ({...p, currentQuestionIndex: Math.max(0, p.currentQuestionIndex - 1)}))} disabled={state.currentQuestionIndex === 0} className="w-14 h-14 md:w-auto md:flex-1 md:px-6 rounded-[1.2rem] font-black text-[12px] uppercase tracking-widest text-zinc-600 bg-white border-2 border-zinc-200 border-b-4 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center active:translate-y-[2px] active:border-b-2">
+         </Button>
+
+         <Button
+           onClick={() => setState(p => ({...p, currentQuestionIndex: Math.max(0, p.currentQuestionIndex - 1)}))}
+           disabled={state.currentQuestionIndex === 0}
+           variant="outlined"
+           size="lg"
+           aria-label={t.actions.prev}
+           className="h-14 w-14 shrink-0 px-0 text-[12px] uppercase tracking-[0.1em] md:w-auto md:flex-1 md:px-6"
+         >
            <ChevronLeft size={24} strokeWidth={3} /> <span className="hidden md:inline">{t.actions.prev}</span>
-         </button>
-         
-         <button onClick={handleNextOrFinish} className={`flex-1 px-4 py-3 md:py-4 h-14 text-white font-black text-[14px] md:text-[15px] uppercase tracking-widest rounded-[1.2rem] border-b-4 transition-all flex items-center justify-center gap-2 shadow-sm active:translate-y-[4px] active:border-b-0 ${state.currentQuestionIndex < state.questions.length - 1 ? 'bg-zinc-800 border-black hover:bg-black' : 'bg-emerald-500 border-emerald-700 hover:bg-emerald-400'}`}>
-           {state.currentQuestionIndex < state.questions.length - 1 ? <>{t.actions.next} <ChevronRight size={20} strokeWidth={3} className="hidden md:block"/></> : t.actions.finish}
-         </button>
+         </Button>
+
+         <Button
+           onClick={handleNextOrFinish}
+           size="lg"
+           tone={state.currentQuestionIndex < state.questions.length - 1 ? 'primary' : 'success'}
+           trailingIcon={state.currentQuestionIndex < state.questions.length - 1 ? <ChevronRight size={20} strokeWidth={3} className="hidden md:block"/> : undefined}
+           className="h-14 flex-1 text-[14px] uppercase tracking-[0.1em] md:text-[15px]"
+         >
+           {state.currentQuestionIndex < state.questions.length - 1 ? t.actions.next : t.actions.finish}
+         </Button>
       </footer>
-    </div>
+    </Page>
   );
 }

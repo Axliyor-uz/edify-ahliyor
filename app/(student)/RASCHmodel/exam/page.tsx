@@ -31,6 +31,9 @@ import {
   subscribeExamSnapshot,
 } from '@/lib/Examsession';
 import { EXAM_BLUEPRINT, EXAM_DURATION_MINUTES, EXAM_TOTAL_QUESTIONS } from '@/lib/Examblueprint';
+import {
+  Banner, Button, Card, Dialog, FilterChip, Page, cn,
+} from '@/components/student-ui';
 import type { ExamQuestion, Shortfall } from '@/types/Exam';
 import type { Lang, LocalizedText } from '@/types/Math';
 
@@ -140,6 +143,32 @@ function formatTime(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
   const s = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
+}
+
+/** Link that carries a Button's shape without nesting a <button> in an <a>. */
+function NavLink({
+  href, tone = 'outlined', className, children,
+}: {
+  href: string;
+  tone?: 'outlined' | 'filled' | 'tonal';
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'inline-flex h-11 items-center justify-center gap-2 rounded-m3-btn px-5',
+        'text-[14.5px] font-extrabold leading-none s-press',
+        tone === 'filled' && 'bg-primary text-on-primary',
+        tone === 'tonal' && 'bg-secondary-container text-on-secondary-container',
+        tone === 'outlined' && 'border-[1.5px] border-outline text-primary hover:bg-state-hover',
+        className,
+      )}
+    >
+      {children}
+    </Link>
+  );
 }
 
 /** Everything about one exam in flight. Mirrors the persisted snapshot. */
@@ -552,44 +581,42 @@ export default function ExamPage() {
   // ── INTRO ────────────────────────────────────────────────────────────
   if (stage === 'intro' || stage === 'loading') {
     return (
-      <div className="min-h-screen bg-zinc-100 font-sans py-10 px-4">
-        <div className="max-w-[700px] mx-auto flex flex-col gap-5">
-          <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-6 md:p-8">
-            <h1 className="text-2xl md:text-3xl font-black text-zinc-900 tracking-tight mb-2">{t.examTitle}</h1>
-            <div className="flex items-center gap-4 text-[13px] font-bold text-zinc-500 mb-6">
-              <span className="flex items-center gap-1.5"><Clock size={14} strokeWidth={3} />{EXAM_DURATION_MINUTES} {t.duration}</span>
+      <Page>
+        <div className="mx-auto w-full max-w-2xl">
+          <Card className="p-6 md:p-8">
+            <h1 className="s-display mb-2 text-2xl font-bold tracking-tight md:text-3xl">{t.examTitle}</h1>
+            <div className="mb-6 flex items-center gap-4 text-[13px] font-bold text-on-surface-variant">
+              <span className="flex items-center gap-1.5"><Clock size={14} strokeWidth={3} /><span className="s-num">{EXAM_DURATION_MINUTES}</span> {t.duration}</span>
               <span>·</span>
-              <span>{EXAM_TOTAL_QUESTIONS} {t.totalQ}</span>
+              <span><span className="s-num">{EXAM_TOTAL_QUESTIONS}</span> {t.totalQ}</span>
             </div>
 
             {/* Question language — asked BEFORE the exam, and fixed once it starts. */}
             <div className="mb-6">
-              <p className="flex items-center gap-1.5 text-[12px] font-black text-zinc-500 uppercase tracking-wider mb-2">
+              <p className="mb-2 flex items-center gap-1.5 text-[12px] font-black uppercase tracking-wider text-on-surface-variant">
                 <Languages size={14} strokeWidth={3} /> {t.langTitle}
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {QUESTION_LANGS.map((l) => (
-                  <button
+                  <FilterChip
                     key={l.code}
+                    selected={pendingLang === l.code}
                     onClick={() => setPendingLang(l.code)}
-                    className={`flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 text-[13px] font-black transition-all ${pendingLang === l.code
-                        ? 'bg-violet-50 border-violet-300 text-violet-700 border-b-4'
-                        : 'bg-white border-zinc-200 text-zinc-400 hover:border-violet-200'
-                      }`}
+                    className="w-full justify-center"
                   >
                     <span className="text-[16px] leading-none">{l.flag}</span>
                     {l.label}
-                  </button>
+                  </FilterChip>
                 ))}
               </div>
-              <p className="text-[12px] font-bold text-zinc-400 mt-2">{t.langHint}</p>
+              <p className="mt-2 text-[12px] font-bold text-on-surface-variant">{t.langHint}</p>
             </div>
 
-            <div className="flex flex-col gap-2 mb-6">
+            <div className="mb-6 flex flex-col gap-2">
               {EXAM_BLUEPRINT.map((b) => (
-                <div key={b.id} className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200">
-                  <span className="text-[13px] font-bold text-zinc-700">{b.label[appLang]}</span>
-                  <span className="text-[12px] font-black text-zinc-400 shrink-0">{b.testType} · {b.count}</span>
+                <div key={b.id} className="flex items-center justify-between gap-3 rounded-m3-sm bg-surface-container-high px-4 py-2.5">
+                  <span className="text-[13px] font-bold">{b.label[appLang]}</span>
+                  <span className="s-num shrink-0 text-[12px] font-black text-on-surface-variant">{b.testType} · {b.count}</span>
                 </div>
               ))}
             </div>
@@ -598,79 +625,93 @@ export default function ExamPage() {
                 answered. It is thrown away rather than recorded as a 0% exam —
                 say so, so the student isn't left wondering where it went. */}
             {discarded && (
-              <div className="flex items-start gap-2 mb-4 bg-amber-50 border-2 border-amber-200 text-amber-700 rounded-xl px-4 py-3 text-[13px] font-bold">
-                <AlertTriangle size={16} strokeWidth={3} className="shrink-0 mt-0.5" />
-                <span>{t.discarded}</span>
-              </div>
+              <Banner
+                status="warning"
+                className="mb-4"
+                icon={<AlertTriangle size={16} strokeWidth={3} />}
+                title={t.discarded}
+              />
             )}
 
             {loadError && (
-              <div className="flex items-start gap-2 mb-4 bg-rose-50 border-2 border-rose-200 text-rose-700 rounded-xl px-4 py-3 text-[13px] font-bold">
-                <AlertTriangle size={16} strokeWidth={3} className="shrink-0 mt-0.5" />
-                <span>{loadError}</span>
-              </div>
+              <Banner
+                status="error"
+                className="mb-4"
+                icon={<AlertTriangle size={16} strokeWidth={3} />}
+                title={loadError}
+              />
             )}
 
-            <button
+            <Button
+              fullWidth
               onClick={startExam}
               disabled={stage === 'loading'}
-              className="w-full flex items-center justify-center gap-2 px-5 py-4 bg-violet-500 text-white font-black text-[15px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider disabled:opacity-60"
+              loading={stage === 'loading'}
+              icon={<Play size={18} strokeWidth={3} />}
+              className="uppercase tracking-wider"
             >
-              {stage === 'loading' ? t.loadingExam : (<><Play size={18} strokeWidth={3} />{t.start}</>)}
-            </button>
-          </div>
+              {stage === 'loading' ? t.loadingExam : t.start}
+            </Button>
+          </Card>
         </div>
-      </div>
+      </Page>
     );
   }
 
   // ── RESULTS ──────────────────────────────────────────────────────────
   if (stage === 'submitted') {
     return (
-      <div className="min-h-screen bg-zinc-100 font-sans py-10 px-4">
-        <div className="max-w-[700px] mx-auto flex flex-col gap-5">
+      <Page>
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-s-section">
           {autoSubmitted && (
-            <div className="flex items-center gap-2 bg-amber-50 border-2 border-amber-200 text-amber-700 rounded-xl px-4 py-3 text-[13px] font-bold">
-              <AlertTriangle size={16} strokeWidth={3} /> {t.timeUp}
-            </div>
+            <Banner
+              status="warning"
+              icon={<AlertTriangle size={16} strokeWidth={3} />}
+              title={t.timeUp}
+            />
           )}
 
-          <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-6 md:p-8 text-center">
-            <p className="text-[13px] font-black text-zinc-400 uppercase tracking-wider mb-1">{t.results}</p>
-            <p className="text-5xl font-black text-violet-600 tracking-tight">{score}<span className="text-zinc-300 text-3xl">/{totalQuestions}</span></p>
-          </div>
+          <Card className="p-6 text-center md:p-8">
+            <p className="mb-1 text-[13px] font-black uppercase tracking-wider text-on-surface-variant">{t.results}</p>
+            <p className="s-display s-num text-5xl font-bold tracking-tight text-primary">
+              {score}<span className="text-3xl text-on-surface-variant">/{totalQuestions}</span>
+            </p>
+          </Card>
 
           {shortfalls.length > 0 && (
-            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 text-[12px] font-bold text-amber-700">
-              {t.shortfallWarning}
-              <ul className="mt-1 list-disc list-inside">
-                {shortfalls.map((s) => (
-                  <li key={s.sectionId}>{s.label[appLang]} ({s.testType}): {s.received}/{s.requested}</li>
-                ))}
-              </ul>
-            </div>
+            <Banner
+              status="warning"
+              title={t.shortfallWarning}
+              description={
+                <ul className="list-inside list-disc">
+                  {shortfalls.map((s) => (
+                    <li key={s.sectionId}>{s.label[appLang]} ({s.testType}): {s.received}/{s.requested}</li>
+                  ))}
+                </ul>
+              }
+            />
           )}
 
           {/* How this exam moved each topic level. The levels document comes
               back from the same transaction that saved the result, so drawing
               this costs no extra read. */}
-          <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <p className="text-[14px] font-black text-zinc-800">{t.levelTitle}</p>
+          <Card>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="s-display text-[14px] font-bold">{t.levelTitle}</p>
               <Link
                 href="/RASCHmodel/progress"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-zinc-200 text-[11px] font-black text-zinc-500 hover:border-violet-200 hover:text-violet-600 transition-all shrink-0"
+                className="shrink-0 rounded-m3-btn border-[1.5px] border-outline px-3 py-1.5 text-[11px] font-black text-on-surface-variant s-press hover:bg-state-hover hover:text-primary"
               >
                 {t.viewProgress}
               </Link>
             </div>
 
             {!user ? (
-              <p className="text-[12px] font-bold text-zinc-400">{t.signInToSave}</p>
+              <p className="text-[12px] font-bold text-on-surface-variant">{t.signInToSave}</p>
             ) : saveError ? (
-              <p className="text-[12px] font-bold text-rose-600">{saveError}</p>
+              <p className="text-[12px] font-bold text-error">{saveError}</p>
             ) : !levels ? (
-              <p className="text-[12px] font-bold text-zinc-400">{t.savingResult}</p>
+              <p className="text-[12px] font-bold text-on-surface-variant">{t.savingResult}</p>
             ) : (
               <>
                 <div className="flex flex-col gap-2">
@@ -681,40 +722,41 @@ export default function ExamPage() {
                     const flat = stat.delta === 0;
                     return (
                       <div key={topic.key} className="flex items-center justify-between gap-3 text-[13px] font-bold">
-                        <span className="flex items-center gap-2 min-w-0">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: topic.hex }} />
-                          <span className="text-zinc-600 truncate">{topic.label[appLang]}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          {/* Topic hue — a categorical series color shared with the progress chart. */}
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: topic.hex }} />
+                          <span className="truncate text-on-surface-variant">{topic.label[appLang]}</span>
                         </span>
-                        <span className="flex items-center gap-2 shrink-0">
-                          <span className={`text-[11px] font-black ${flat ? 'text-zinc-400' : up ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className={cn('s-num text-[11px] font-black', flat ? 'text-on-surface-variant' : up ? 'text-success' : 'text-error')}>
                             {flat ? '±0' : `${up ? '▲ +' : '▼ '}${stat.delta}`}
                           </span>
-                          <span className="text-[15px] font-black text-zinc-900 w-11 text-right">{stat.level}%</span>
+                          <span className="s-num w-11 text-right text-[15px] font-black">{stat.level}%</span>
                         </span>
                       </div>
                     );
                   })}
                 </div>
                 {!levels.baseline && (
-                  <p className="mt-3 pt-3 border-t border-zinc-100 text-[12px] font-bold text-amber-600">
+                  <p className="mt-3 border-t border-outline-variant pt-3 text-[12px] font-bold text-warning">
                     {t.setBaseline}
                   </p>
                 )}
               </>
             )}
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-5">
-            <p className="text-[14px] font-black text-zinc-800 mb-3">{t.byTopic}</p>
+          <Card>
+            <p className="s-display mb-3 text-[14px] font-bold">{t.byTopic}</p>
             <div className="flex flex-col gap-2">
               {bySection.map(([sectionId, s]) => (
-                <div key={sectionId} className="flex items-center justify-between text-[13px] font-bold gap-3">
-                  <span className="text-zinc-600 truncate">{s.label}</span>
-                  <span className="text-zinc-400 shrink-0">{s.testType} · {s.correct}/{s.total}</span>
+                <div key={sectionId} className="flex items-center justify-between gap-3 text-[13px] font-bold">
+                  <span className="truncate text-on-surface-variant">{s.label}</span>
+                  <span className="s-num shrink-0 text-on-surface-variant">{s.testType} · {s.correct}/{s.total}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           <div className="flex flex-col gap-3">
             {questions.map((q) => {
@@ -726,37 +768,46 @@ export default function ExamPage() {
               // the plain-text answer the typed input was graded against.
               const expected = mode === 'open' ? examExpectedText(q, examLang) : q.answer;
               return (
-                <div key={q.id} className={`bg-white rounded-2xl border-2 p-4 ${correct ? 'border-emerald-200' : isAnswered ? 'border-rose-200' : 'border-zinc-200'}`}>
-                  <div className="flex items-start gap-2 mb-2">
-                    <span className="w-6 h-6 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[11px] font-black text-zinc-500 shrink-0">{q.slotNumber}</span>
+                <Card
+                  key={q.id}
+                  variant="outlined"
+                  className={cn(
+                    'rounded-m3-md p-4',
+                    correct ? 'border-success' : isAnswered ? 'border-error' : 'border-outline-variant',
+                  )}
+                >
+                  <div className="mb-2 flex items-start gap-2">
+                    <span className="s-num grid h-6 w-6 shrink-0 place-items-center rounded-m3-xs bg-surface-container-high text-[11px] font-black text-on-surface-variant">{q.slotNumber}</span>
                     <span className="min-w-0">
                       {pickLang(q.stem) && (
-                        <MathText text={pickLang(q.stem)} className="text-[12px] font-semibold text-zinc-500 block mb-1" />
+                        <MathText text={pickLang(q.stem)} className="mb-1 block text-[12px] font-semibold text-on-surface-variant" />
                       )}
-                      <MathText text={pickLang(q.question)} className="text-[13px] font-bold text-zinc-800" />
+                      <MathText text={pickLang(q.question)} className="text-[13px] font-bold" />
                     </span>
-                    {correct ? <CheckCircle2 size={18} className="text-emerald-500 ml-auto shrink-0" /> : <XCircle size={18} className="text-rose-400 ml-auto shrink-0" />}
+                    {correct
+                      ? <CheckCircle2 size={18} className="ml-auto shrink-0 text-success" />
+                      : <XCircle size={18} className="ml-auto shrink-0 text-error" />}
                   </div>
                   {q.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={q.imageUrl} alt="" className="ml-8 mb-2 max-h-48 w-auto rounded-xl border-2 border-zinc-200 bg-white object-contain" />
+                    <img src={q.imageUrl} alt="" className="mb-2 ml-8 max-h-48 w-auto rounded-m3-sm border border-outline-variant bg-surface object-contain" />
                   )}
-                  <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="ml-8 mb-2 text-zinc-400" iconSize={9} />
+                  <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="mb-2 ml-8 text-on-surface-variant" iconSize={9} />
                   {mode === 'block' ? (
-                    <div className="pl-8 flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 pl-8">
                       {(q.parts ?? []).map((p) => {
                         const pg = answers[partKey(q.id, p.id)];
                         const pCorrect = isExamPartCorrect(p, pg);
                         return (
-                          <div key={p.id} className="text-[12px] font-bold text-zinc-500 flex flex-wrap items-center gap-x-1">
+                          <div key={p.id} className="flex flex-wrap items-center gap-x-1 text-[12px] font-bold text-on-surface-variant">
                             {pCorrect
-                              ? <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
-                              : <XCircle size={13} className="text-rose-400 shrink-0" />}
-                            <MathText text={pickLang(p.prompt)} className="text-zinc-700" />
-                            <span className="text-zinc-400">—</span>
+                              ? <CheckCircle2 size={13} className="shrink-0 text-success" />
+                              : <XCircle size={13} className="shrink-0 text-error" />}
+                            <MathText text={pickLang(p.prompt)} className="text-on-surface" />
+                            <span>—</span>
                             {pg ? <MathText text={pg} /> : <span>—</span>}
                             {!pCorrect && (
-                              <span className="text-emerald-600 flex items-center gap-1">
+                              <span className="flex items-center gap-1 text-success">
                                 · <MathText text={examPartExpected(p, examLang)} />
                               </span>
                             )}
@@ -765,11 +816,11 @@ export default function ExamPage() {
                       })}
                     </div>
                   ) : (
-                  <div className="text-[12px] font-bold text-zinc-500 pl-8 flex flex-wrap items-center gap-x-1">
+                  <div className="flex flex-wrap items-center gap-x-1 pl-8 text-[12px] font-bold text-on-surface-variant">
                     <span>{t.yourAnswer}:</span>
                     {isAnswered ? <MathText text={given!} /> : <span>—</span>}
                     {!correct && (
-                      <span className="text-emerald-600 flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-success">
                         · {t.correctAnswer}: <MathText text={expected} />
                       </span>
                     )}
@@ -779,20 +830,24 @@ export default function ExamPage() {
                       the doc we already read — so this button costs nothing.
                       Collapsed by default: 45 open explanations is a wall of text. */}
                   {pickLang(q.explanation) && (
-                    <div className="pl-8 mt-2">
+                    <div className="mt-2 pl-8">
                       <button
                         onClick={() => toggleExplanation(q.id)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border-2 text-[11px] font-black transition-all ${openExplanations.has(q.id)
-                            ? 'bg-violet-50 border-violet-200 text-violet-700'
-                            : 'bg-zinc-50 border-zinc-200 text-zinc-400 hover:border-violet-200 hover:text-violet-600'
-                          }`}
+                        aria-expanded={openExplanations.has(q.id)}
+                        className={cn(
+                          'flex items-center gap-1.5 rounded-m3-xs border-[1.5px] px-2.5 py-1 text-[11px] font-black s-press',
+                          'transition-colors duration-m3-fast ease-m3-std',
+                          openExplanations.has(q.id)
+                            ? 'border-transparent bg-primary-container text-on-primary-container'
+                            : 'border-outline-variant text-on-surface-variant hover:bg-state-hover',
+                        )}
                       >
                         <BookOpen size={12} strokeWidth={3} />
                         {t.explanation}
                         <ChevronDown
                           size={12}
                           strokeWidth={3}
-                          className={`transition-transform ${openExplanations.has(q.id) ? 'rotate-180' : ''}`}
+                          className={cn('transition-transform', openExplanations.has(q.id) && 'rotate-180')}
                         />
                       </button>
 
@@ -801,41 +856,37 @@ export default function ExamPage() {
                           initial={{ opacity: 0, y: -4 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.15 }}
-                          className="mt-2 text-[12px] font-medium text-zinc-500 border-t border-zinc-100 pt-2"
+                          className="mt-2 border-t border-outline-variant pt-2 text-[12px] font-medium text-on-surface-variant"
                         >
                           <MathText text={pickLang(q.explanation)} />
                         </motion.div>
                       )}
                     </div>
                   )}
-                </div>
+                </Card>
               );
             })}
           </div>
 
           {/* Where to next: another paper, the level chart, or out */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              fullWidth
               onClick={newExam}
-              className="flex-1 flex items-center justify-center gap-2 px-5 py-4 bg-violet-500 text-white font-black text-[14px] rounded-2xl border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider"
+              icon={<RotateCcw size={16} strokeWidth={3} />}
+              className="flex-1 uppercase tracking-wider"
             >
-              <RotateCcw size={16} strokeWidth={3} /> {t.retake}
-            </button>
-            <Link
-              href="/RASCHmodel/progress"
-              className="flex-1 flex items-center justify-center gap-2 px-5 py-4 bg-zinc-800 text-white font-black text-[14px] rounded-2xl border-b-4 border-zinc-950 active:border-b-0 active:translate-y-1 transition-all uppercase tracking-wider"
-            >
+              {t.retake}
+            </Button>
+            <NavLink href="/RASCHmodel/progress" tone="tonal" className="flex-1 uppercase tracking-wider">
               <TrendingUp size={16} strokeWidth={3} /> {t.viewProgress}
-            </Link>
-            <Link
-              href="/RASCHmodel"
-              className="flex items-center justify-center gap-2 px-5 py-4 bg-white text-zinc-600 font-black text-[14px] rounded-2xl border-2 border-zinc-200 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all uppercase tracking-wider"
-            >
+            </NavLink>
+            <NavLink href="/RASCHmodel" className="uppercase tracking-wider">
               <Home size={16} strokeWidth={3} /> {t.home}
-            </Link>
+            </NavLink>
           </div>
         </div>
-      </div>
+      </Page>
     );
   }
 
@@ -851,31 +902,35 @@ export default function ExamPage() {
   const qOptions = q.options as Record<string, LocalizedText>;
 
   return (
-    <div className="min-h-screen bg-zinc-100 font-sans pb-10">
-      {/* Sticky header: timer + progress */}
-      <div className="sticky top-0 z-10 bg-white border-b-2 border-zinc-200 px-4 py-3">
-        <div className="max-w-[900px] mx-auto flex items-center justify-between gap-4">
-          <span className="text-[13px] font-black text-zinc-700">
+    <Page width="full" flush>
+      {/* Sticky header: timer + progress. Offset by the shell topbar height —
+          at top-0 it would slide underneath the topbar and disappear. */}
+      <div className="sticky top-[var(--s-topbar-h)] z-10 border-b border-outline-variant bg-surface px-s-page-x py-3">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
+          <span className="s-num text-[13px] font-black">
             {t.question} {q.slotNumber}{examSlotCount(q) > 1 ? `–${q.slotNumber + examSlotCount(q) - 1}` : ''}{t.of}{totalQuestions}
           </span>
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 font-black text-[13px] ${lowTime ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-violet-50 border-violet-200 text-violet-600'}`}>
+          <div className={cn(
+            's-num flex items-center gap-1.5 rounded-m3-sm px-3 py-1.5 text-[13px] font-black',
+            lowTime ? 'bg-error-container text-on-error-container' : 'bg-primary-container text-on-primary-container',
+          )}>
             <Clock size={14} strokeWidth={3} />
             {formatTime(secondsLeft)}
           </div>
         </div>
       </div>
 
-      <div className="max-w-[900px] mx-auto px-4 pt-5 flex flex-col gap-5">
+      <div className="mx-auto flex max-w-4xl flex-col gap-s-section px-s-page-x py-s-page-y">
         {/* Where the paper came from: a fresh build reports its exact read
             count; a resumed one cost nothing at all. */}
-        <div className="flex items-center gap-2 text-[12px] font-bold text-zinc-400">
+        <div className="flex items-center gap-2 text-[12px] font-bold text-on-surface-variant">
           <Database size={12} strokeWidth={3} />
           {session.resumed ? t.resumed : `${session.docsRead} ${t.reads}`}
         </div>
 
         {/* Question navigator */}
-        <div className="bg-white rounded-2xl border-2 border-zinc-200 p-4">
-          <div className="grid grid-cols-9 sm:grid-cols-[repeat(15,minmax(0,1fr))] gap-1.5">
+        <Card variant="outlined" className="rounded-m3-md p-4">
+          <div className="grid grid-cols-9 gap-1.5 sm:grid-cols-[repeat(15,minmax(0,1fr))]">
             {questions.map((qq, i) => {
               const isDone = answered(qq);
               const isCurrent = i === current;
@@ -884,20 +939,24 @@ export default function ExamPage() {
                 <button
                   key={qq.id}
                   onClick={() => goTo(i)}
-                  className={`aspect-square rounded-lg text-[11px] font-black flex items-center justify-center border-2 transition-all relative ${isCurrent
-                      ? 'bg-violet-500 border-violet-600 text-white'
+                  aria-current={isCurrent ? 'true' : undefined}
+                  className={cn(
+                    's-num relative flex aspect-square items-center justify-center rounded-m3-xs text-[11px] font-black',
+                    'transition-colors duration-m3-fast ease-m3-std',
+                    isCurrent
+                      ? 'bg-primary text-on-primary'
                       : isDone
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                        : 'bg-zinc-50 border-zinc-200 text-zinc-400'
-                    }`}
+                        ? 'bg-success-container text-on-success-container'
+                        : 'bg-surface-container-high text-on-surface-variant',
+                  )}
                 >
                   {qq.slotNumber}
-                  {isFlag && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-white" />}
+                  {isFlag && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-surface bg-gold" />}
                 </button>
               );
             })}
           </div>
-        </div>
+        </Card>
 
         {/* Question card */}
         <motion.div
@@ -905,16 +964,20 @@ export default function ExamPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
-          className="bg-white rounded-[1.5rem] border-2 border-zinc-200 border-b-[6px] p-6"
         >
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <span className="px-2.5 py-1 rounded-lg bg-zinc-100 border border-zinc-200 text-[11px] font-black text-zinc-500 min-w-0 truncate">
+          <Card className="p-6">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <span className="min-w-0 truncate rounded-m3-xs bg-surface-container-high px-2.5 py-1 text-[11px] font-black text-on-surface-variant">
               {q.chapter} · {q.testType}
             </span>
             <button
               onClick={() => toggleFlag(q.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-[12px] font-black transition-all shrink-0 ${isFlagged ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
-                }`}
+              aria-pressed={isFlagged}
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 rounded-m3-sm px-3 py-1.5 text-[12px] font-black s-press',
+                'transition-colors duration-m3-fast ease-m3-std',
+                isFlagged ? 'bg-gold-container text-on-gold-container' : 'bg-surface-container-high text-on-surface-variant',
+              )}
             >
               <Flag size={13} strokeWidth={3} /> {t.flag}
             </button>
@@ -923,24 +986,24 @@ export default function ExamPage() {
           {/* Block stem — the statement several sub-questions share (a split-out
               shared_options item carries it so it is never dropped). */}
           {pickLang(q.stem) && (
-            <MathText text={pickLang(q.stem)} className="text-[15px] font-semibold text-zinc-600 leading-snug block mb-3" />
+            <MathText text={pickLang(q.stem)} className="mb-3 block text-[15px] font-semibold leading-snug text-on-surface-variant" />
           )}
 
-          <MathText text={pickLang(q.question)} className="text-[16px] font-bold text-zinc-900 leading-snug block mb-4" />
+          <MathText text={pickLang(q.question)} className="mb-4 block text-[16px] font-bold leading-snug" />
 
           {/* Prompt image (teacher questions — e.g. a geometry diagram). */}
           {q.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={q.imageUrl} alt="" className="mb-5 max-h-72 w-auto rounded-2xl border-2 border-zinc-200 bg-white object-contain" />
+            <img src={q.imageUrl} alt="" className="mb-5 max-h-72 w-auto rounded-m3-md border border-outline-variant bg-surface object-contain" />
           )}
 
-          <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="mb-4 text-zinc-400" />
+          <QuestionCreator creatorName={q.creatorName} correctedBy={q.correctedBy} className="mb-4 text-on-surface-variant" />
 
           {mode === 'open' ? (
             // Typed answer: a questions1 O item (options hidden, graded by
             // Examanswers) or a teacher open/numeric item (graded on its text).
             <div className="flex flex-col gap-2">
-              <label htmlFor="open-answer" className="text-[12px] font-black text-zinc-500 uppercase tracking-wider">
+              <label htmlFor="open-answer" className="text-[12px] font-black uppercase tracking-wider text-on-surface-variant">
                 {t.openLabel}
               </label>
               <input
@@ -951,9 +1014,9 @@ export default function ExamPage() {
                 value={answers[q.id] ?? ''}
                 onChange={(e) => setAnswer(q.id, e.target.value)}
                 placeholder={t.openPlaceholder}
-                className="w-full px-4 py-3.5 rounded-2xl border-2 border-zinc-200 bg-zinc-50 text-[16px] font-bold text-zinc-900 placeholder:text-zinc-300 placeholder:font-medium focus:outline-none focus:border-violet-400 focus:bg-white transition-all"
+                className="w-full rounded-m3-sm border-[1.5px] border-outline bg-surface-container-low px-4 py-3.5 text-[16px] font-bold text-on-surface transition-colors duration-m3-fast ease-m3-std placeholder:font-medium placeholder:text-on-surface-variant focus:border-primary focus:outline-none"
               />
-              <p className="text-[12px] font-bold text-zinc-400">{t.openHint}</p>
+              <p className="text-[12px] font-bold text-on-surface-variant">{t.openHint}</p>
             </div>
           ) : mode === 'block' ? (
             // A block: one card, several sub-questions.
@@ -964,17 +1027,17 @@ export default function ExamPage() {
             //     and the whole block counts as one question.
             <div className="flex flex-col gap-4">
               {q.qType === 'shared_options' && optionKeys.length > 0 && (
-                <div className="rounded-2xl border-2 border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-[11px] font-black uppercase tracking-wider text-zinc-400 mb-3">{t.sharedPool}</p>
+                <div className="rounded-m3-md border border-outline-variant bg-surface-container-low p-4">
+                  <p className="mb-3 text-[11px] font-black uppercase tracking-wider text-on-surface-variant">{t.sharedPool}</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {optionKeys.map((opt) => (
                       <div key={opt} className="flex items-start gap-2">
-                        <span className="w-7 h-7 shrink-0 rounded-lg bg-white border-2 border-zinc-200 text-zinc-600 font-black text-[12px] flex items-center justify-center">{opt}</span>
-                        <span className="pt-1 min-w-0 text-zinc-700 font-bold text-[13px]">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-m3-xs bg-surface-container-high text-[12px] font-black text-on-surface-variant">{opt}</span>
+                        <span className="min-w-0 pt-1 text-[13px] font-bold">
                           <MathText text={pickLang(qOptions[opt])} />
                           {q.optionImages?.[opt] && (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={q.optionImages[opt]!} alt={opt} className="mt-1 max-h-24 w-auto rounded-lg border border-zinc-200 bg-white object-contain" />
+                            <img src={q.optionImages[opt]!} alt={opt} className="mt-1 max-h-24 w-auto rounded-m3-xs border border-outline-variant bg-surface object-contain" />
                           )}
                         </span>
                       </div>
@@ -991,10 +1054,10 @@ export default function ExamPage() {
                 // (33, 34, 35); a multi_part part keeps its letter (a, b, c).
                 const badge = pooled ? String(q.slotNumber + pi) : (p.id || String(pi + 1));
                 return (
-                  <div key={p.id} className="rounded-2xl border-2 border-zinc-100 p-4">
-                    <div className="flex items-start gap-2 mb-3">
-                      <span className="min-w-6 h-6 px-1.5 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center text-[11px] font-black text-violet-600 shrink-0">{badge}</span>
-                      <MathText text={pickLang(p.prompt)} className="text-[14px] font-bold text-zinc-800" />
+                  <div key={p.id} className="rounded-m3-md border border-outline-variant p-4">
+                    <div className="mb-3 flex items-start gap-2">
+                      <span className="s-num flex h-6 min-w-6 shrink-0 items-center justify-center rounded-m3-xs bg-primary-container px-1.5 text-[11px] font-black text-on-primary-container">{badge}</span>
+                      <MathText text={pickLang(p.prompt)} className="text-[14px] font-bold" />
                     </div>
                     {isTyped ? (
                       <input
@@ -1004,7 +1067,7 @@ export default function ExamPage() {
                         value={answers[key] ?? ''}
                         onChange={(e) => setAnswer(key, e.target.value)}
                         placeholder={t.openPlaceholder}
-                        className="w-full px-4 py-3 rounded-2xl border-2 border-zinc-200 bg-zinc-50 text-[15px] font-bold text-zinc-900 placeholder:text-zinc-300 placeholder:font-medium focus:outline-none focus:border-violet-400 focus:bg-white transition-all"
+                        className="w-full rounded-m3-sm border-[1.5px] border-outline bg-surface-container-low px-4 py-3 text-[15px] font-bold text-on-surface transition-colors duration-m3-fast ease-m3-std placeholder:font-medium placeholder:text-on-surface-variant focus:border-primary focus:outline-none"
                       />
                     ) : pooled ? (
                       // Shared pool already printed above — just the letters here.
@@ -1015,7 +1078,14 @@ export default function ExamPage() {
                             <button
                               key={opt}
                               onClick={() => setAnswer(key, opt)}
-                              className={`w-11 h-11 rounded-xl border-2 font-black text-[14px] transition-all ${selected ? 'bg-violet-500 border-violet-600 text-white' : 'bg-white border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50/40'}`}
+                              aria-pressed={selected}
+                              className={cn(
+                                'h-11 w-11 rounded-m3-sm text-[14px] font-black s-press',
+                                'transition-colors duration-m3-fast ease-m3-std',
+                                selected
+                                  ? 'bg-primary text-on-primary'
+                                  : 'border-[1.5px] border-outline-variant text-on-surface-variant hover:bg-state-hover',
+                              )}
                             >
                               {opt}
                             </button>
@@ -1031,17 +1101,27 @@ export default function ExamPage() {
                             <button
                               key={opt}
                               onClick={() => setAnswer(key, opt)}
-                              className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all ${selected ? 'bg-violet-50 border-violet-300' : 'border-zinc-100 hover:border-violet-200 hover:bg-violet-50/40'}`}
+                              aria-pressed={selected}
+                              className={cn(
+                                'flex w-full items-center gap-3 rounded-m3-md border-[1.5px] p-3 text-left',
+                                'transition-colors duration-m3-fast ease-m3-std',
+                                selected
+                                  ? 'border-primary bg-primary-container text-on-primary-container'
+                                  : 'border-outline-variant hover:bg-state-hover',
+                              )}
                             >
-                              <span className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center text-[12px] font-black shrink-0 ${selected ? 'bg-violet-500 border-violet-600 text-white' : 'bg-zinc-100 border-zinc-200 text-zinc-500'}`}>{opt}</span>
+                              <span className={cn(
+                                'flex h-7 w-7 shrink-0 items-center justify-center rounded-m3-xs text-[12px] font-black',
+                                selected ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant',
+                              )}>{opt}</span>
                               <span className="min-w-0">
-                                <MathText text={pickLang(p.options[opt])} className="text-[14px] font-bold text-zinc-800" />
+                                <MathText text={pickLang(p.options[opt])} className="text-[14px] font-bold" />
                                 {img && (
                                   // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={img} alt={opt} className="mt-1 max-h-28 w-auto rounded-lg border border-zinc-200 bg-white object-contain" />
+                                  <img src={img} alt={opt} className="mt-1 max-h-28 w-auto rounded-m3-xs border border-outline-variant bg-surface object-contain" />
                                 )}
                               </span>
-                              {selected ? <Circle className="ml-auto shrink-0 text-violet-500 fill-violet-500" size={15} /> : null}
+                              {selected ? <Circle className="ml-auto shrink-0 fill-current text-primary" size={15} /> : null}
                             </button>
                           );
                         })}
@@ -1062,75 +1142,86 @@ export default function ExamPage() {
                   <button
                     key={opt}
                     onClick={() => setAnswer(q.id, opt)}
-                    className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 text-left transition-all ${selected ? 'bg-violet-50 border-violet-300' : 'border-zinc-100 hover:border-violet-200 hover:bg-violet-50/40'
-                      }`}
+                    aria-pressed={selected}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-m3-md border-[1.5px] p-3.5 text-left',
+                      'transition-colors duration-m3-fast ease-m3-std',
+                      selected
+                        ? 'border-primary bg-primary-container text-on-primary-container'
+                        : 'border-outline-variant hover:bg-state-hover',
+                    )}
                   >
-                    <span className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-[13px] font-black shrink-0 ${selected ? 'bg-violet-500 border-violet-600 text-white' : 'bg-zinc-100 border-zinc-200 text-zinc-500'
-                      }`}>
+                    <span className={cn(
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-m3-xs text-[13px] font-black',
+                      selected ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant',
+                    )}>
                       {opt}
                     </span>
                     <span className="min-w-0">
-                      <MathText text={pickLang(qOptions[opt])} className="text-[14px] font-bold text-zinc-800" />
+                      <MathText text={pickLang(qOptions[opt])} className="text-[14px] font-bold" />
                       {img && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={img} alt={opt} className="mt-1 max-h-32 w-auto rounded-lg border border-zinc-200 bg-white object-contain" />
+                        <img src={img} alt={opt} className="mt-1 max-h-32 w-auto rounded-m3-xs border border-outline-variant bg-surface object-contain" />
                       )}
                     </span>
-                    {selected ? <Circle className="ml-auto shrink-0 text-violet-500 fill-violet-500" size={16} /> : null}
+                    {selected ? <Circle className="ml-auto shrink-0 fill-current text-primary" size={16} /> : null}
                   </button>
                 );
               })}
             </div>
           )}
+          </Card>
         </motion.div>
 
         {/* Prev / Next / Submit */}
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="outlined"
             onClick={() => goTo(Math.max(0, current - 1))}
             disabled={current === 0}
-            className="flex items-center gap-1.5 px-4 py-3 bg-white border-2 border-zinc-200 rounded-2xl font-black text-[13px] text-zinc-600 disabled:opacity-40"
+            icon={<ChevronLeft size={16} strokeWidth={3} />}
           >
-            <ChevronLeft size={16} strokeWidth={3} /> {t.prev}
-          </button>
+            {t.prev}
+          </Button>
 
           {current < questions.length - 1 ? (
-            <button
+            <Button
+              tone="secondary"
               onClick={() => goTo(Math.min(questions.length - 1, current + 1))}
-              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 bg-zinc-800 text-white rounded-2xl font-black text-[13px] border-b-4 border-zinc-950 active:border-b-0 active:translate-y-1 transition-all"
+              trailingIcon={<ChevronRight size={16} strokeWidth={3} />}
+              className="flex-1"
             >
-              {t.next} <ChevronRight size={16} strokeWidth={3} />
-            </button>
+              {t.next}
+            </Button>
           ) : (
-            <button
+            <Button
               onClick={() => setShowConfirm(true)}
-              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 bg-violet-500 text-white rounded-2xl font-black text-[13px] border-b-4 border-violet-700 active:border-b-0 active:translate-y-1 transition-all"
+              icon={<Send size={15} strokeWidth={3} />}
+              className="flex-1"
             >
-              <Send size={15} strokeWidth={3} /> {t.submit}
-            </button>
+              {t.submit}
+            </Button>
           )}
         </div>
       </div>
 
       {/* Confirm submit modal */}
-      {showConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-20">
-          <div className="bg-white rounded-2xl border-2 border-zinc-200 p-6 max-w-sm w-full">
-            <p className="text-[14px] font-bold text-zinc-700 mb-5">{t.submitConfirm}</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowConfirm(false)} className="flex-1 px-4 py-3 rounded-xl border-2 border-zinc-200 font-black text-[13px] text-zinc-600">
-                {t.cancel}
-              </button>
-              <button
-                onClick={() => { setShowConfirm(false); finish(); }}
-                className="flex-1 px-4 py-3 rounded-xl bg-violet-500 text-white font-black text-[13px]"
-              >
-                {t.yes}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <Dialog
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        actions={
+          <>
+            <Button variant="text" onClick={() => setShowConfirm(false)}>
+              {t.cancel}
+            </Button>
+            <Button onClick={() => { setShowConfirm(false); finish(); }}>
+              {t.yes}
+            </Button>
+          </>
+        }
+      >
+        {t.submitConfirm}
+      </Dialog>
+    </Page>
   );
 }
