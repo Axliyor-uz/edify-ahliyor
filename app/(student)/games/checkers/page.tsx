@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, RotateCcw, Crown, Trophy, Users, Bot, Zap, Brain, Target, ShieldAlert, Skull, Loader2, Wifi, Hash, LogOut, Flag } from 'lucide-react';
+import { ArrowLeft, Crown, Trophy, Users, Bot, Zap, Brain, Target, ShieldAlert, Skull, Loader2, Wifi, Hash, Flag, Volume2, VolumeX, Handshake } from 'lucide-react';
 import { useStudentLanguage } from '../../layout';
 import { Button, Card, Tile, Page, cn, sToast } from '@/components/student-ui';
 
@@ -14,15 +14,17 @@ import { useAuth } from '@/lib/AuthContext';
 import { applyUserXp, mirrorLeaderboards, notifyLevelUp, GAMES_DAILY_XP_CAP } from '@/lib/xp';
 import { xpDayKey } from '@/lib/xpDays';
 
-// AI Core Imports (Make sure CheckersAI.ts has these exported!)
-import { Player, Piece, BoardState, Position, Move, simulateMove, minimax, clearAI_Memory } from './_components/CheckersAI';
-
-const INITIAL_ROWS = 8;
-const INITIAL_COLS = 8;
+// Rules (strict Russian shashki) + engine worker
+import {
+  Player, BoardState, Position, Move, ChainState,
+  ROWS, initializeBoard, legalMoves, applyStep, boardKey, countPieces,
+} from './_components/rules';
+import type { SearchRequest, SearchResult } from './_components/engine';
+import { sfx, isMuted, setMuted } from './_components/sounds';
 
 // Losses pay NOTHING (a lose reward made every game farmable), wins are capped
 // by GAMES_DAILY_XP_CAP per UTC day (lib/xp.ts), and online games decided by an
-// early forfeit pay nothing either — see the XP effect below.
+// early forfeit pay nothing either — see the XP effect below. Draws pay 0.
 const XP_REWARDS = {
   lose: 0,
   pvp_win: 10,
@@ -31,21 +33,19 @@ const XP_REWARDS = {
 /** An online game must have at least this many moves for forfeit XP to count. */
 const MIN_MOVES_FOR_FORFEIT_XP = 10;
 
+/** Quiet king moves (both sides, no capture, no man move) before a draw. */
+const QUIET_MOVES_DRAW_LIMIT = 30;
+
 /**
- * BOARD INK — these hexes are board ink, NOT theme colors.
+ * BOARD THEMES — these hexes are board ink, NOT design-system colors.
  *
  * A checkers board legitimately needs its own two-tone palette: the squares
  * must hold a hard contrast against each other and the red/black pieces have
- * to stay recognisable as red and black under every design.config.ts palette,
- * in both light and dark mode. Themed tokens can't guarantee either. Injected
- * as custom properties on the game root so the markup below stays declarative.
+ * to stay recognisable under every design.config.ts palette in both modes.
+ * Injected as custom properties on the game root. Three switchable looks;
+ * the piece palette is shared so red/black stay consistent everywhere.
  */
-const BOARD_INK = {
-  '--bd-light': '#e9e4d8',
-  '--bd-dark': '#4e5d6c',
-  '--bd-dark-hover': '#5d6d7d',
-  '--bd-selected': '#3b4753',
-  '--bd-frame': '#242a31',
+const PIECE_INK = {
   '--bd-hi': '#ffc53d',
   '--bd-hi-edge': '#c68b00',
   '--bd-red': '#d7263d',
@@ -56,47 +56,79 @@ const BOARD_INK = {
   '--bd-black-rim': '#48515c',
   '--bd-black-edge': '#05070a',
   '--bd-black-ink': '#aab3bf',
-} as React.CSSProperties;
+} as const;
+
+type BoardTheme = 'wood' | 'green' | 'slate';
+const BOARD_THEMES: Record<BoardTheme, React.CSSProperties> = {
+  wood: {
+    ...PIECE_INK,
+    '--bd-light': '#ead3a8',
+    '--bd-dark': '#9a6b3e',
+    '--bd-dark-hover': '#aa7b4e',
+    '--bd-selected': '#7d5430',
+    '--bd-frame': '#4a2f1b',
+  } as React.CSSProperties,
+  green: {
+    ...PIECE_INK,
+    '--bd-light': '#efe7d2',
+    '--bd-dark': '#4a7457',
+    '--bd-dark-hover': '#578364',
+    '--bd-selected': '#3c5f49',
+    '--bd-frame': '#2f4a38',
+  } as React.CSSProperties,
+  slate: {
+    ...PIECE_INK,
+    '--bd-light': '#e9e4d8',
+    '--bd-dark': '#4e5d6c',
+    '--bd-dark-hover': '#5d6d7d',
+    '--bd-selected': '#3b4753',
+    '--bd-frame': '#242a31',
+  } as React.CSSProperties,
+};
+const THEME_KEY = 'checkers_board_theme';
 
 // ============================================================================
 // TRANSLATIONS
 // ============================================================================
 const TRANSLATIONS = {
   uz: {
-    title: "Shashka", back: "Orqaga", reset: "Qaytadan", setup: "O'yin Sozlamalari", backToGames: "O'yinlarga qaytish",
-    mode: "Rejimni tanlang", pvp_local: "1 Qurilmada", pvp_online: "Do'st bilan", pve: "Botga qarshi", diff: "Qiyinchilik",
+    title: "Shashka", back: "Orqaga", setup: "O'yin sozlamalari", backToGames: "O'yinlar",
+    mode: "Rejim", pvp_local: "1 qurilmada", pvp_online: "Do'st bilan", pve: "Botga qarshi", diff: "Qiyinchilik",
     levels: { 1: "Oson", 2: "Yengil", 3: "O'rtacha", 4: "Qiyin", 5: "Grosmeyster" },
     start: "Boshlash", botThinking: "O'ylamoqda...",
-    youRed: "Siz (Qizil)", opponentBlack: "Raqib (Qora)", 
-    resultTitleWin: "Ajoyib G'alaba!", resultTitleLose: "Mag'lubiyat...", 
-    xpEarned: "XP Qo'lga kiritildi", playAgain: "Yana O'ynash", exit: "Chiqish",
-    createRoom: "Xona Yaratish", joinRoom: "Xonaga Kirish", enterCode: "4 xonali kod", waiting: "Do'st kutilmoqda...", roomCode: "Xona KODI:",
+    youRed: "Siz (Qizil)", opponentBlack: "Raqib (Qora)",
+    resultTitleWin: "G'alaba!", resultTitleLose: "Mag'lubiyat", resultTitleDraw: "Durrang",
+    xpEarned: "XP olindi", playAgain: "Yana o'ynash", exit: "Chiqish",
+    createRoom: "Xona yaratish", joinRoom: "Kirish", enterCode: "4 xonali kod", waiting: "Do'st kutilmoqda...", roomCode: "Xona kodi:",
     resign: "Taslim bo'lish", opponentResigned: "Raqib taslim bo'ldi!",
-    turnIndicatorMine: "Sizning navbatingiz", turnIndicatorTheirs: "Raqib navbati"
+    turnIndicatorMine: "Sizning navbat", turnIndicatorTheirs: "Raqib navbati",
+    boardTheme: "Taxta", themes: { wood: "Yog'och", green: "Turnir", slate: "Tungi" },
   },
   en: {
-    title: "Checkers", back: "Back", reset: "Restart", setup: "Game Setup", backToGames: "All Games",
-    mode: "Select Mode", pvp_local: "Local 2P", pvp_online: "Play Online", pve: "vs AI Bot", diff: "Difficulty",
+    title: "Checkers", back: "Back", setup: "Game setup", backToGames: "All games",
+    mode: "Mode", pvp_local: "Local 2P", pvp_online: "Play online", pve: "vs AI", diff: "Difficulty",
     levels: { 1: "Beginner", 2: "Easy", 3: "Medium", 4: "Hard", 5: "Grandmaster" },
-    start: "Start Game", botThinking: "Thinking...",
-    youRed: "You (Red)", opponentBlack: "Opponent (Black)", 
-    resultTitleWin: "Epic Victory!", resultTitleLose: "Defeat...", 
-    xpEarned: "XP Earned", playAgain: "Play Again", exit: "Exit",
-    createRoom: "Create Room", joinRoom: "Join Room", enterCode: "4-digit code", waiting: "Waiting for friend...", roomCode: "ROOM CODE:",
-    resign: "Resign Game", opponentResigned: "Opponent resigned!",
-    turnIndicatorMine: "Your Turn", turnIndicatorTheirs: "Opponent's Turn"
+    start: "Start", botThinking: "Thinking...",
+    youRed: "You (Red)", opponentBlack: "Opponent (Black)",
+    resultTitleWin: "Victory!", resultTitleLose: "Defeat", resultTitleDraw: "Draw",
+    xpEarned: "XP earned", playAgain: "Play again", exit: "Exit",
+    createRoom: "Create room", joinRoom: "Join", enterCode: "4-digit code", waiting: "Waiting for friend...", roomCode: "Room code:",
+    resign: "Resign", opponentResigned: "Opponent resigned!",
+    turnIndicatorMine: "Your turn", turnIndicatorTheirs: "Opponent's turn",
+    boardTheme: "Board", themes: { wood: "Wood", green: "Tournament", slate: "Night" },
   },
   ru: {
-    title: "Шашки", back: "Назад", reset: "Заново", setup: "Настройки игры", backToGames: "Все игры",
-    mode: "Выберите режим", pvp_local: "На 1 устройстве", pvp_online: "Онлайн с другом", pve: "Против бота", diff: "Сложность",
+    title: "Шашки", back: "Назад", setup: "Настройки игры", backToGames: "Все игры",
+    mode: "Режим", pvp_local: "На 1 устройстве", pvp_online: "Онлайн", pve: "Против бота", diff: "Сложность",
     levels: { 1: "Новичок", 2: "Легкий", 3: "Средний", 4: "Сложный", 5: "Гроссмейстер" },
-    start: "Начать игру", botThinking: "Думает...",
-    youRed: "Вы (Красный)", opponentBlack: "Противник (Черный)", 
-    resultTitleWin: "Победа!", resultTitleLose: "Поражение...", 
-    xpEarned: "Получено XP", playAgain: "Играть Снова", exit: "Выход",
-    createRoom: "Создать комнату", joinRoom: "Войти в комнату", enterCode: "4-значный код", waiting: "Ожидание друга...", roomCode: "КОД:",
+    start: "Начать", botThinking: "Думает...",
+    youRed: "Вы (Красный)", opponentBlack: "Противник (Черный)",
+    resultTitleWin: "Победа!", resultTitleLose: "Поражение", resultTitleDraw: "Ничья",
+    xpEarned: "Получено XP", playAgain: "Играть снова", exit: "Выход",
+    createRoom: "Создать комнату", joinRoom: "Войти", enterCode: "4-значный код", waiting: "Ожидание друга...", roomCode: "Код:",
     resign: "Сдаться", opponentResigned: "Противник сдался!",
-    turnIndicatorMine: "Ваш ход", turnIndicatorTheirs: "Ход противника"
+    turnIndicatorMine: "Ваш ход", turnIndicatorTheirs: "Ход противника",
+    boardTheme: "Доска", themes: { wood: "Дерево", green: "Турнир", slate: "Ночь" },
   }
 };
 
@@ -104,7 +136,7 @@ const AnimatedNumber = ({ value }: { value: number }) => {
   const [count, setCount] = useState(0);
   useEffect(() => {
     let startTime: number;
-    const duration = 1200; 
+    const duration = 1200;
     const step = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
@@ -116,19 +148,9 @@ const AnimatedNumber = ({ value }: { value: number }) => {
   return <>{count}</>;
 };
 
-const initializeBoard = (): BoardState => {
-  const board: BoardState = Array(INITIAL_ROWS).fill(null).map(() => Array(INITIAL_COLS).fill(null));
-  let id = 0;
-  for (let r = 0; r < INITIAL_ROWS; r++) {
-    for (let c = 0; c < INITIAL_COLS; c++) {
-      if ((r + c) % 2 === 1) {
-        if (r < 3) board[r][c] = { id: `p-${id++}`, player: 'black', isKing: false };
-        else if (r > 4) board[r][c] = { id: `p-${id++}`, player: 'red', isKing: false };
-      }
-    }
-  }
-  return board;
-};
+const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+type Winner = Player | 'draw' | null;
 
 export default function CheckersGame() {
   const router = useRouter();
@@ -143,9 +165,21 @@ export default function CheckersGame() {
   const [board, setBoard] = useState<BoardState>(initializeBoard);
   const [turn, setTurn] = useState<Player>('red');
   const [selectedPos, setSelectedPos] = useState<Position | null>(null);
-  const [mustJumpPiece, setMustJumpPiece] = useState<Position | null>(null);
-  const [winner, setWinner] = useState<Player | null>(null);
+  /** Mid capture-chain state: chain piece position + dead ("ghost") squares. */
+  const [chain, setChain] = useState<ChainState | null>(null);
+  const [winner, setWinner] = useState<Winner>(null);
   const [isBotThinking, setIsBotThinking] = useState(false);
+
+  // Board theme + sound (loaded after mount to avoid hydration mismatch).
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>('wood');
+  const [muted, setMutedState] = useState(false);
+  useEffect(() => {
+    const saved = localStorage.getItem(THEME_KEY) as BoardTheme | null;
+    if (saved && BOARD_THEMES[saved]) setBoardTheme(saved);
+    setMutedState(isMuted());
+  }, []);
+  const pickTheme = (th: BoardTheme) => { setBoardTheme(th); localStorage.setItem(THEME_KEY, th); };
+  const toggleMute = () => { const m = !muted; setMutedState(m); setMuted(m); };
 
   // Online Multiplayer State
   const [roomCode, setRoomCode] = useState('');
@@ -161,7 +195,17 @@ export default function CheckersGame() {
   const [moveCount, setMoveCount] = useState(0);
   const [endedByForfeit, setEndedByForfeit] = useState(false);
 
-  const isMyWin = mode === 'pvp_online' ? winner === myColor : winner === 'red';
+  // Draw bookkeeping (the mover detects; online opponents get it via the doc).
+  const repetitionRef = useRef(new Map<string, number>());
+  const quietMovesRef = useRef(0);
+
+  // Bot orchestration
+  const workerRef = useRef<Worker | null>(null);
+  const requestIdRef = useRef(0);
+  const botBusyRef = useRef(false);
+
+  const isMyWin = winner !== 'draw' && winner !== null &&
+    (mode === 'pvp_online' ? winner === myColor : winner === 'red');
 
   // --- ONLINE MULTIPLAYER SYNC ---
   useEffect(() => {
@@ -169,13 +213,12 @@ export default function CheckersGame() {
       const unsub = onSnapshot(doc(db, 'active_games', roomCode), (snapshot) => {
         if (!snapshot.exists()) return;
         const data = snapshot.data();
-        
-        // Flawless identity binding
+
         if (user?.uid === data.host) setMyColor('red');
         else if (user?.uid === data.guest) setMyColor('black');
 
         if (data.status === 'playing' && isWaitingForOpponent) setIsWaitingForOpponent(false);
-        
+
         if (typeof data.moveCount === 'number') setMoveCount(data.moveCount);
 
         if (data.status === 'forfeit') {
@@ -189,13 +232,23 @@ export default function CheckersGame() {
         if (data.board) setBoard(JSON.parse(data.board));
         if (data.turn) setTurn(data.turn);
         if (data.winner) setWinner(data.winner);
+        // Field kept as `mustJumpPiece` for doc-shape continuity; now holds the
+        // whole chain state {pos, ghosts}.
         if (data.mustJumpPiece !== undefined) {
-          setMustJumpPiece(data.mustJumpPiece ? JSON.parse(data.mustJumpPiece) : null);
+          setChain(data.mustJumpPiece ? JSON.parse(data.mustJumpPiece) : null);
         }
       });
       return () => unsub();
     }
   }, [mode, roomCode, isWaitingForOpponent, myColor, user?.uid, t.opponentResigned]);
+
+  const resetLocalGame = () => {
+    setBoard(initializeBoard()); setTurn('red'); setChain(null); setSelectedPos(null);
+    setWinner(null); setHasSavedXP(false); setEarnedXP(0);
+    setMoveCount(0); setEndedByForfeit(false);
+    repetitionRef.current = new Map(); quietMovesRef.current = 0;
+    requestIdRef.current++; botBusyRef.current = false; setIsBotThinking(false);
+  };
 
   const handleCreateRoom = async () => {
     if (!user) return;
@@ -203,13 +256,10 @@ export default function CheckersGame() {
     await setDoc(doc(db, 'active_games', code), {
       host: user.uid, guest: null, status: 'waiting', board: JSON.stringify(initializeBoard()), turn: 'red', winner: null, mustJumpPiece: null, moveCount: 0
     });
+    resetLocalGame();
     setRoomCode(code);
     setMyColor('red');
     setIsWaitingForOpponent(true);
-    setBoard(initializeBoard());
-    setTurn('red');
-    setMoveCount(0);
-    setEndedByForfeit(false);
     setAppState('playing');
   };
 
@@ -228,13 +278,13 @@ export default function CheckersGame() {
       });
       if (!joined) return sToast.error("Room not found or active.");
 
+      resetLocalGame();
       setRoomCode(joinCodeInput);
       setMyColor('black');
       setIsWaitingForOpponent(false);
       setBoard(JSON.parse(joined.board));
       setTurn(joined.turn);
       setMoveCount(joined.moveCount || 0);
-      setEndedByForfeit(false);
       setAppState('playing');
     } catch {
       sToast.error("Room not found or active.");
@@ -258,98 +308,27 @@ export default function CheckersGame() {
       if (isWaitingForOpponent || winner) deleteDoc(ref).catch(() => {});
       else updateDoc(ref, { status: 'forfeit', forfeitedBy: myColor }).catch(() => {});
     }
-    setAppState('menu'); setRoomCode(''); setWinner(null); setHasSavedXP(false);
-    setEarnedXP(0); setMoveCount(0); setEndedByForfeit(false); setIsWaitingForOpponent(false);
-    setBoard(initializeBoard()); setTurn('red'); setMustJumpPiece(null); setSelectedPos(null);
+    setAppState('menu'); setRoomCode(''); setIsWaitingForOpponent(false);
+    resetLocalGame();
   };
 
-  // --- VALID MOVES ENGINE ---
-  const getValidMovesForPiece = useCallback((currentBoard: BoardState, r: number, c: number, piece: Piece): Move[] => {
-    const moves: Move[] = [];
-    if (!currentBoard || currentBoard.length === 0) return moves; 
-
-    if (piece.isKing) {
-      const dirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-      dirs.forEach(([dr, dc]) => {
-        let foundOpponent: Position | null = null;
-        let step = 1;
-        while (true) {
-          const nr = r + step * dr; const nc = c + step * dc;
-          if (nr < 0 || nr >= INITIAL_ROWS || nc < 0 || nc >= INITIAL_COLS) break;
-          const targetPiece = currentBoard[nr][nc];
-          if (!foundOpponent) {
-            if (targetPiece === null) moves.push({ r: nr, c: nc });
-            else if (targetPiece.player !== piece.player) foundOpponent = { r: nr, c: nc };
-            else break; 
-          } else {
-            if (targetPiece === null) moves.push({ r: nr, c: nc, capture: foundOpponent });
-            else break; 
-          }
-          step++;
-        }
-      });
-    } else {
-      const moveDirs = piece.player === 'red' ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]];
-      moveDirs.forEach(([dr, dc]) => {
-        const nr = r + dr; const nc = c + dc;
-        if (nr >= 0 && nr < INITIAL_ROWS && nc >= 0 && nc < INITIAL_COLS && currentBoard[nr][nc] === null) {
-          moves.push({ r: nr, c: nc });
-        }
-      });
-      const jumpDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-      jumpDirs.forEach(([dr, dc]) => {
-        const jr = r + dr; const jc = c + dc;
-        const jnr = r + 2 * dr; const jnc = c + 2 * dc;
-        if (jnr >= 0 && jnr < INITIAL_ROWS && jnc >= 0 && jnc < INITIAL_COLS) {
-          const jumpedPiece = currentBoard[jr][jc];
-          if (jumpedPiece && jumpedPiece.player !== piece.player && currentBoard[jnr][jnc] === null) {
-            moves.push({ r: jnr, c: jnc, capture: { r: jr, c: jc } });
-          }
-        }
-      });
-    }
-    return moves;
-  }, []);
-
-  const getAllValidMoves = useCallback((currentBoard: BoardState, activePlayer: Player, activeJumper: Position | null) => {
-    let allMoves: { start: Position; move: Move }[] = [];
-    if (!currentBoard || currentBoard.length === 0) return allMoves;
-    if (activeJumper) {
-      const piece = currentBoard[activeJumper.r][activeJumper.c]!;
-      const moves = getValidMovesForPiece(currentBoard, activeJumper.r, activeJumper.c, piece).filter(m => m.capture);
-      return moves.map(m => ({ start: activeJumper, move: m }));
-    }
-    for (let r = 0; r < INITIAL_ROWS; r++) {
-      for (let c = 0; c < INITIAL_COLS; c++) {
-        const piece = currentBoard[r][c];
-        if (piece && piece.player === activePlayer) {
-          const pieceMoves = getValidMovesForPiece(currentBoard, r, c, piece);
-          pieceMoves.forEach(m => allMoves.push({ start: { r, c }, move: m }));
-        }
-      }
-    }
-    const hasJumps = allMoves.some(m => m.move.capture);
-    if (hasJumps) allMoves = allMoves.filter(m => m.move.capture);
-    return allMoves;
-  }, [getValidMovesForPiece]);
-
-  const currentTurnMoves = useMemo(() => getAllValidMoves(board, turn, mustJumpPiece), [board, turn, mustJumpPiece, getAllValidMoves]);
+  const currentTurnMoves = useMemo(() => legalMoves(board, turn, chain), [board, turn, chain]);
 
   useEffect(() => {
-    if (appState !== 'playing' || !board || board.length === 0 || isWaitingForOpponent) return;
-    let redCount = 0; let blackCount = 0;
-    board.forEach(row => row.forEach(p => {
-      if (p?.player === 'red') redCount++;
-      if (p?.player === 'black') blackCount++;
-    }));
-
-    if (redCount === 0) handleWinner('black');
-    else if (blackCount === 0) handleWinner('red');
+    if (appState !== 'playing' || !board || board.length === 0 || isWaitingForOpponent || winner) return;
+    const { red, black } = countPieces(board);
+    if (red === 0) handleWinner('black');
+    else if (black === 0) handleWinner('red');
     else if (currentTurnMoves.length === 0) handleWinner(turn === 'red' ? 'black' : 'red');
-  }, [board, turn, currentTurnMoves.length, appState, isWaitingForOpponent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board, turn, currentTurnMoves.length, appState, isWaitingForOpponent, winner]);
 
-  const handleWinner = async (winPlayer: Player) => {
+  const handleWinner = async (winPlayer: Player | 'draw') => {
     setWinner(winPlayer);
+    if (winPlayer !== 'draw') {
+      const iWon = mode === 'pvp_online' ? winPlayer === myColor : winPlayer === 'red';
+      if (iWon) sfx.win(); else sfx.lose();
+    }
     if (mode === 'pvp_online' && roomCode) {
       await updateDoc(doc(db, 'active_games', roomCode), { winner: winPlayer });
     }
@@ -358,9 +337,9 @@ export default function CheckersGame() {
   // --- SAVE XP TRANSACTION LAYER ---
   // All user-doc math (streak advance + bonuses, daily-goal/level-up bonuses,
   // dailyHistory trim) and the leaderboard mirrors run through lib/xp.ts, in
-  // ONE transaction. Guards: losses pay 0; online games decided by an early
-  // forfeit pay 0 (two-account collusion farm); a per-UTC-day games-XP cap
-  // (users.gamesDaily {date, xp}) bounds vs-AI grinding.
+  // ONE transaction. Guards: losses and draws pay 0; online games decided by an
+  // early forfeit pay 0 (two-account collusion farm); a per-UTC-day games-XP
+  // cap (users.gamesDaily {date, xp}) bounds vs-AI grinding.
   useEffect(() => {
     if (winner && !hasSavedXP && user && (mode === 'pve' || mode === 'pvp_online')) {
       setHasSavedXP(true);
@@ -410,104 +389,125 @@ export default function CheckersGame() {
     }
   }, [winner, mode, difficulty, hasSavedXP, user, myColor, isMyWin, endedByForfeit, moveCount]);
 
-  // --- BOT ACTION CONTROLLER ---
-  useEffect(() => {
-    if (appState !== 'playing' || mode !== 'pve' || turn !== 'black' || winner) return;
+  // --- MOVE EXECUTION (humans and bot share this path) ---
+  // Applies ONE step under strict shashki rules: captured pieces stay on the
+  // board as dimmed "ghosts" until the chain completes; crowning mid-chain
+  // continues the chain as a king. Returns the new snapshot so the bot can
+  // thread a whole chain through without waiting for React state.
+  const performStep = (
+    bd: BoardState, ch: ChainState | null, start: Position, move: Move,
+  ): { board: BoardState; chain: ChainState | null; turn: Player } => {
+    const mover = bd[start.r][start.c]!;
+    const wasKing = mover.isKing;
+    const result = applyStep(bd, start, move, ch);
 
-    const initialDelay = setTimeout(() => {
-      setIsBotThinking(true);
+    if (result.crowned) sfx.crown();
+    else if (result.captured) sfx.capture();
+    else sfx.move();
 
-      setTimeout(() => {
-        const moves = currentTurnMoves;
-        if (moves.length === 0) { setIsBotThinking(false); return; }
-
-        clearAI_Memory();
-        
-        const depths = { 1: 2, 2: 4, 3: 5, 4: 6, 5: 8 }; 
-        const randomnessRates = { 1: 0.70, 2: 0.40, 3: 0.15, 4: 0.05, 5: 0.0 };
-        const thresholdValues = { 1: Infinity, 2: 50, 3: 20, 4: 30, 5: 0 }; 
-        
-        const searchDepth = depths[difficulty];
-        const isRandomMove = Math.random() < randomnessRates[difficulty];
-
-        const scoredMoves: { move: { start: Position; move: Move }, score: number }[] = [];
-        for (const m of moves) {
-          const simBoard = simulateMove(board, m.start, m.move);
-          const score = minimax(simBoard, searchDepth - 1, -Infinity, Infinity, false, difficulty);
-          scoredMoves.push({ move: m, score });
-        }
-
-        const bestScore = Math.max(...scoredMoves.map(s => s.score));
-
-        let candidatePool;
-        if (isRandomMove && difficulty < 5) {
-            const threshold = thresholdValues[difficulty];
-            candidatePool = scoredMoves.filter(s => s.score >= bestScore - threshold);
-        } else {
-            candidatePool = scoredMoves.filter(s => s.score === bestScore);
-        }
-
-        if (candidatePool.length === 0) candidatePool = scoredMoves;
-
-        const chosenMoveObj = candidatePool[Math.floor(Math.random() * candidatePool.length)];
-        const chosenMove = chosenMoveObj.move;
-
-        setTimeout(() => {
-          setIsBotThinking(false);
-          setSelectedPos(chosenMove.start);
-          setTimeout(() => { executeMove(chosenMove.start, chosenMove.move); }, 300);
-        }, 300);
-      }, 50);
-    }, 400);
-
-    return () => clearTimeout(initialDelay);
-  }, [appState, mode, difficulty, turn, mustJumpPiece, currentTurnMoves, winner, board]);
-
-  const executeMove = async (start: Position, move: Move) => {
-    const newBoard = board.map(row => [...row]);
-    const piece = newBoard[start.r][start.c]!;
-
-    newBoard[start.r][start.c] = null;
-    newBoard[move.r][move.c] = piece;
-    if (move.capture) newBoard[move.capture.r][move.capture.c] = null;
-
-    let wasCrowned = false;
-    if ((piece.player === 'red' && move.r === 0) || (piece.player === 'black' && move.r === INITIAL_ROWS - 1)) {
-      if (!piece.isKing) { piece.isKing = true; wasCrowned = true; }
-    }
-
-    setBoard(newBoard);
-    setSelectedPos(null);
-
-    let nextTurn = turn;
-    let newMustJump = null;
-
-    if (move.capture && !wasCrowned) {
-      const furtherJumps = getValidMovesForPiece(newBoard, move.r, move.c, piece).filter(m => m.capture);
-      if (furtherJumps.length > 0) {
-        newMustJump = { r: move.r, c: move.c };
-        setMustJumpPiece(newMustJump);
-        setSelectedPos(newMustJump);
-      } else {
-        setMustJumpPiece(null);
-        nextTurn = turn === 'red' ? 'black' : 'red';
-        setTurn(nextTurn);
-      }
+    let nextTurn: Player = mover.player;
+    if (result.chain) {
+      setSelectedPos(result.chain.pos);
     } else {
-      setMustJumpPiece(null);
-      nextTurn = turn === 'red' ? 'black' : 'red';
-      setTurn(nextTurn);
+      nextTurn = mover.player === 'red' ? 'black' : 'red';
+      setSelectedPos(null);
+
+      // Draw bookkeeping happens only on completed moves (mover side).
+      if (result.captured || !wasKing) quietMovesRef.current = 0;
+      else quietMovesRef.current++;
+      const key = boardKey(result.board, nextTurn);
+      const seen = (repetitionRef.current.get(key) ?? 0) + 1;
+      repetitionRef.current.set(key, seen);
+      if (seen >= 3 || quietMovesRef.current >= QUIET_MOVES_DRAW_LIMIT) {
+        handleWinner('draw');
+      }
     }
 
+    setBoard(result.board);
+    setChain(result.chain);
+    setTurn(nextTurn);
     setMoveCount(c => c + 1);
 
     if (mode === 'pvp_online' && roomCode) {
-      await updateDoc(doc(db, 'active_games', roomCode), {
-        board: JSON.stringify(newBoard), turn: nextTurn, mustJumpPiece: newMustJump ? JSON.stringify(newMustJump) : null,
+      updateDoc(doc(db, 'active_games', roomCode), {
+        board: JSON.stringify(result.board), turn: nextTurn,
+        mustJumpPiece: result.chain ? JSON.stringify(result.chain) : null,
         moveCount: increment(1)
-      });
+      }).catch(() => {});
     }
+
+    return { board: result.board, chain: result.chain, turn: nextTurn };
   };
+
+  // --- BOT ACTION CONTROLLER (engine in a Web Worker) ---
+  const searchAsync = (request: SearchRequest, requestId: number): Promise<SearchResult | null> =>
+    new Promise((resolve) => {
+      try {
+        if (!workerRef.current) {
+          workerRef.current = new Worker(new URL('./_components/aiWorker.ts', import.meta.url));
+        }
+        const worker = workerRef.current;
+        const onMessage = (e: MessageEvent<SearchResult & { requestId: number }>) => {
+          if (e.data.requestId !== requestId) return;
+          worker.removeEventListener('message', onMessage);
+          resolve(e.data);
+        };
+        worker.addEventListener('message', onMessage);
+        worker.postMessage({ ...request, requestId });
+      } catch {
+        // Worker unavailable (very old browser) — search on the main thread.
+        import('./_components/engine')
+          .then(engine => resolve(engine.findBestMove(request)))
+          .catch(() => resolve(null));
+      }
+    });
+
+  useEffect(() => () => { workerRef.current?.terminate(); }, []);
+
+  useEffect(() => {
+    if (appState !== 'playing' || mode !== 'pve' || turn !== 'black' || winner || botBusyRef.current) return;
+    if (currentTurnMoves.length === 0) return;
+
+    botBusyRef.current = true;
+    const requestId = ++requestIdRef.current;
+    const startBoard = board;
+
+    const run = async () => {
+      await delay(350);
+      if (requestIdRef.current !== requestId) return;
+      setIsBotThinking(true);
+
+      const repeatKeys = Array.from(repetitionRef.current.entries())
+        .filter(([, n]) => n >= 2).map(([k]) => k);
+      const result = await searchAsync(
+        { board: startBoard, player: 'black', level: difficulty, repeatKeys },
+        requestId,
+      );
+      if (requestIdRef.current !== requestId) return;
+      setIsBotThinking(false);
+      if (!result?.move) { botBusyRef.current = false; return; }
+
+      // Animate the chain step by step through the shared move path.
+      let bd = startBoard;
+      let ch: ChainState | null = null;
+      let start = result.move.from;
+      setSelectedPos(start);
+      for (let i = 0; i < result.move.path.length; i++) {
+        await delay(i === 0 ? 260 : 380);
+        if (requestIdRef.current !== requestId) return;
+        const step: Move = {
+          r: result.move.path[i].r, c: result.move.path[i].c,
+          capture: result.move.captures[i],
+        };
+        const applied = performStep(bd, ch, start, step);
+        bd = applied.board; ch = applied.chain;
+        start = { r: step.r, c: step.c };
+      }
+      botBusyRef.current = false;
+    };
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appState, mode, turn, winner, difficulty, board, chain]);
 
   const handleSquareClick = (logicalR: number, logicalC: number) => {
     if (winner || isWaitingForOpponent) return;
@@ -517,19 +517,19 @@ export default function CheckersGame() {
     const clickedPiece = board[logicalR][logicalC];
     if (clickedPiece && clickedPiece.player === turn) {
       if (currentTurnMoves.some(m => m.start.r === logicalR && m.start.c === logicalC)) {
-        setSelectedPos(selectedPos?.r === logicalR && selectedPos?.c === logicalC && !mustJumpPiece ? null : { r: logicalR, c: logicalC });
+        setSelectedPos(selectedPos?.r === logicalR && selectedPos?.c === logicalC && !chain ? null : { r: logicalR, c: logicalC });
       }
       return;
     }
     if (selectedPos && board[logicalR][logicalC] === null) {
       const move = currentTurnMoves.find(m => m.start.r === selectedPos.r && m.start.c === selectedPos.c && m.move.r === logicalR && m.move.c === logicalC);
-      if (move) executeMove(selectedPos, move.move);
-      else if (!mustJumpPiece) setSelectedPos(null);
+      if (move) performStep(board, chain, selectedPos, move.move);
+      else if (!chain) setSelectedPos(null);
     }
   };
 
-  // 💡 FIXED: Re-injected the activeTargets calculation so jump targets highlight instantly!
   const activeTargets = selectedPos ? currentTurnMoves.filter(m => m.start.r === selectedPos.r && m.start.c === selectedPos.c).map(m => m.move) : [];
+  const ghosts = chain?.ghosts ?? [];
 
   // ============================================================================
   // VIEW: SETUP MENU
@@ -584,7 +584,7 @@ export default function CheckersGame() {
 
             <AnimatePresence mode="wait">
               {mode === 'pve' && (
-                <motion.div key="pve" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-8 overflow-hidden">
+                <motion.div key="pve" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-6 overflow-hidden">
                   <h3 className="mb-3 pt-2 text-[12px] font-black uppercase tracking-widest text-on-surface-variant">{t.diff}</h3>
                   <div className="grid grid-cols-5 gap-1 rounded-m3-sm bg-surface-container-high p-1.5">
                     {[{ l: 1 as const, icon: Zap, c: 'text-success' }, { l: 2 as const, icon: Brain, c: 'text-success' }, { l: 3 as const, icon: Target, c: 'text-gold' }, { l: 4 as const, icon: ShieldAlert, c: 'text-warning' }, { l: 5 as const, icon: Skull, c: 'text-error' }].map((level) => (
@@ -608,7 +608,7 @@ export default function CheckersGame() {
               )}
 
               {mode === 'pvp_online' && (
-                <motion.div key="online" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-8 space-y-3 overflow-hidden pt-2">
+                <motion.div key="online" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-6 space-y-3 overflow-hidden pt-2">
                   <Button tone="secondary" size="lg" fullWidth icon={<Wifi size={18} strokeWidth={3} />} onClick={handleCreateRoom}>
                     {t.createRoom}
                   </Button>
@@ -633,12 +633,42 @@ export default function CheckersGame() {
               )}
             </AnimatePresence>
 
+            {/* Board theme picker — mini board previews */}
+            <div className="mb-6">
+              <h3 className="mb-3 text-[12px] font-black uppercase tracking-widest text-on-surface-variant">{t.boardTheme}</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {(Object.keys(BOARD_THEMES) as BoardTheme[]).map(th => {
+                  const vars = BOARD_THEMES[th] as Record<string, string>;
+                  return (
+                    <button
+                      key={th}
+                      type="button"
+                      aria-pressed={boardTheme === th}
+                      onClick={() => pickTheme(th)}
+                      className={cn(
+                        'flex flex-col items-center gap-1.5 rounded-m3-sm border-[1.5px] p-2 s-press transition-colors',
+                        boardTheme === th ? 'border-primary bg-primary-container' : 'border-outline-variant bg-surface-container-lowest',
+                      )}
+                    >
+                      <span className="grid h-8 w-8 grid-cols-2 grid-rows-2 overflow-hidden rounded" style={{ border: `2px solid ${vars['--bd-frame']}` }}>
+                        <span style={{ background: vars['--bd-light'] }} />
+                        <span style={{ background: vars['--bd-dark'] }} />
+                        <span style={{ background: vars['--bd-dark'] }} />
+                        <span style={{ background: vars['--bd-light'] }} />
+                      </span>
+                      <span className={cn('text-[10px] font-black', boardTheme === th ? 'text-on-primary-container' : 'text-on-surface-variant')}>{t.themes[th]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {mode !== 'pvp_online' && (
               <Button
                 size="lg"
                 fullWidth
                 trailingIcon={<ArrowLeft size={20} className="rotate-180" strokeWidth={3} />}
-                onClick={() => { setBoard(initializeBoard()); setAppState('playing'); setTurn('red'); setWinner(null); setHasSavedXP(false); }}
+                onClick={() => { resetLocalGame(); setAppState('playing'); }}
               >
                 {t.start}
               </Button>
@@ -650,45 +680,47 @@ export default function CheckersGame() {
   }
 
   // ============================================================================
-  // VIEW: MAIN BOARD INTERFACE (Co-existing flawlessly inside StudentLayout)
+  // VIEW: MAIN BOARD INTERFACE
   // ============================================================================
-  
+
   const isMyTurn = turn === myColor || (mode === 'pve' && turn === 'red') || mode === 'pvp_local';
 
   const visualBoard = [];
-  for (let visualR = 0; visualR < INITIAL_ROWS; visualR++) {
-    for (let visualC = 0; visualC < INITIAL_COLS; visualC++) {
+  for (let visualR = 0; visualR < ROWS; visualR++) {
+    for (let visualC = 0; visualC < ROWS; visualC++) {
       const logicalR = (mode === 'pvp_online' && myColor === 'black') ? 7 - visualR : visualR;
       const logicalC = (mode === 'pvp_online' && myColor === 'black') ? 7 - visualC : visualC;
-      
+
       const piece = board[logicalR][logicalC];
-      const isDark = (logicalR + logicalC) % 2 === 1; 
+      const isDark = (logicalR + logicalC) % 2 === 1;
       const isSelected = selectedPos?.r === logicalR && selectedPos?.c === logicalC;
       const isMoveTarget = activeTargets.some(m => m.r === logicalR && m.c === logicalC);
+      const isGhostPiece = ghosts.some(g => g.r === logicalR && g.c === logicalC);
 
-      const isMyOwnPiece = 
+      const isMyOwnPiece =
         mode === 'pve' ? piece?.player === 'red' :
         mode === 'pvp_online' ? piece?.player === myColor :
-        true; 
+        true;
 
       const hasAnyMove = currentTurnMoves.some(m => m.start.r === logicalR && m.start.c === logicalC);
-      const isLegallyMovable = 
-        !winner && 
-        !isWaitingForOpponent && 
-        turn === piece?.player && 
-        isMyOwnPiece && 
-        (mustJumpPiece ? (mustJumpPiece.r === logicalR && mustJumpPiece.c === logicalC) : hasAnyMove);
+      const isLegallyMovable =
+        !winner &&
+        !isWaitingForOpponent &&
+        turn === piece?.player &&
+        isMyOwnPiece &&
+        !isGhostPiece &&
+        (chain ? (chain.pos.r === logicalR && chain.pos.c === logicalC) : hasAnyMove);
 
-      const isDimmedByMandatoryJump = mustJumpPiece && piece && piece.player === turn && !(mustJumpPiece.r === logicalR && mustJumpPiece.c === logicalC);
+      const isDimmedByMandatoryJump =
+        (chain && piece && piece.player === turn && !(chain.pos.r === logicalR && chain.pos.c === logicalC)) || isGhostPiece;
 
-      visualBoard.push({ logicalR, logicalC, piece, isDark, isSelected, isMoveTarget, isLegallyMovable, isDimmedByMandatoryJump });
+      visualBoard.push({ logicalR, logicalC, piece, isDark, isSelected, isMoveTarget, isLegallyMovable, isDimmedByMandatoryJump, isGhostPiece });
     }
   }
 
   return (
-    // Responsive container that naturally respects your layout headers and footers
     <div
-      style={BOARD_INK}
+      style={BOARD_THEMES[boardTheme]}
       className="flex w-full select-none flex-col overflow-hidden bg-background min-h-[calc(100dvh_-_var(--s-topbar-h)_-_var(--s-dock-h)_-_var(--s-safe-b)_-_16px)] md:min-h-[calc(100dvh_-_var(--s-topbar-h)_-_2rem)] lg:flex-row"
     >
 
@@ -709,7 +741,7 @@ export default function CheckersGame() {
         </div>
       )}
 
-      {/* 📱 MOBILE TOP HEADER (Permanent Back button & Status) */}
+      {/* 📱 MOBILE TOP HEADER */}
       <header className="z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-outline-variant bg-surface-container px-3 lg:hidden">
         <Button variant="tonal" size="sm" icon={<ArrowLeft size={16} />} onClick={handleExitToMenu} className="shrink-0">
           {t.setup}
@@ -720,23 +752,25 @@ export default function CheckersGame() {
           isMyTurn ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant',
         )}>
           <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', isMyTurn ? 'animate-ping bg-on-primary' : 'bg-outline')} />
-          <span className="truncate">{isMyTurn ? t.turnIndicatorMine : t.turnIndicatorTheirs}</span>
+          <span className="truncate">{isBotThinking ? t.botThinking : isMyTurn ? t.turnIndicatorMine : t.turnIndicatorTheirs}</span>
         </div>
 
-        <Button variant="tonal" tone="error" size="sm" icon={<Flag size={14} />} onClick={handleResign} className="shrink-0">
-          Taslim
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button variant="text" size="sm" icon={muted ? <VolumeX size={16} /> : <Volume2 size={16} />} onClick={toggleMute} aria-label="sound" />
+          <Button variant="tonal" tone="error" size="sm" icon={<Flag size={14} />} onClick={handleResign}>
+            {t.resign}
+          </Button>
+        </div>
       </header>
 
-      {/* MATRIX TILE LAYER (Centered felt board) */}
+      {/* BOARD */}
       <div className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center bg-background p-2 sm:p-6">
 
         <div className="relative flex aspect-square w-full max-w-[min(100vw-1rem,500px)] items-center justify-center rounded-m3-lg border-b-[10px] border-[var(--bd-frame)] bg-[var(--bd-frame)] p-2 shadow-elev-3 sm:p-4 lg:max-w-[min(100vh-3rem,680px)]">
 
-          {/* 🛑 layoutRoot completely absorbs inline transform matrices to eliminate screen shaking */}
           <motion.div layoutRoot className="relative grid h-full w-full grid-cols-8 grid-rows-8 overflow-hidden rounded-m3-sm border-4 border-[var(--bd-frame)] bg-[var(--bd-light)]">
 
-            {visualBoard.map(({ logicalR, logicalC, piece, isDark, isSelected, isMoveTarget, isLegallyMovable, isDimmedByMandatoryJump }) => (
+            {visualBoard.map(({ logicalR, logicalC, piece, isDark, isSelected, isMoveTarget, isLegallyMovable, isDimmedByMandatoryJump, isGhostPiece }) => (
               <div
                 key={`sq-${logicalR}-${logicalC}`}
                 onClick={() => isDark && handleSquareClick(logicalR, logicalC)}
@@ -756,26 +790,32 @@ export default function CheckersGame() {
                       layout
                       initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0, opacity: 0 }}
                       transition={{ layout: { type: "spring", stiffness: 180, damping: 22 }, default: { duration: 0.2 } }}
-                      // Absolute inline sizing stops grid layout recalculation loops during animation frames
-                      style={{ width: '82%', height: '82%', position: 'absolute', zIndex: isSelected ? 30 : 20 }}
+                      style={{
+                        width: '82%', height: '82%', position: 'absolute', zIndex: isSelected ? 30 : 20,
+                        background: piece.player === 'red'
+                          ? 'radial-gradient(circle at 32% 28%, var(--bd-red-rim), var(--bd-red) 62%, var(--bd-red-edge))'
+                          : 'radial-gradient(circle at 32% 28%, var(--bd-black-rim), var(--bd-black) 62%, var(--bd-black-edge))',
+                      }}
                       className={`
                         rounded-full shadow-[0_6px_12px_rgba(0,0,0,0.4)] flex items-center justify-center cursor-grab active:cursor-grabbing
                         ${piece.player === 'red'
-                          ? 'bg-[var(--bd-red)] border-2 border-[var(--bd-red-rim)] border-b-[6px] border-b-[var(--bd-red-edge)]'
-                          : 'bg-[var(--bd-black)] border-2 border-[var(--bd-black-rim)] border-b-[6px] border-b-[var(--bd-black-edge)]'}
+                          ? 'border-2 border-[var(--bd-red-rim)] border-b-[6px] border-b-[var(--bd-red-edge)]'
+                          : 'border-2 border-[var(--bd-black-rim)] border-b-[6px] border-b-[var(--bd-black-edge)]'}
 
-                        /* Movable Aura */
                         ${isLegallyMovable && !isSelected ? 'ring-4 ring-[var(--bd-hi)] ring-offset-2 ring-offset-[var(--bd-dark)] animate-pulse cursor-pointer hover:-translate-y-0.5 transition-transform' : ''}
 
-                        /* Mandatory jump dimming */
-                        ${isDimmedByMandatoryJump ? 'opacity-30 grayscale' : ''}
+                        ${isDimmedByMandatoryJump ? (isGhostPiece ? 'opacity-40 saturate-50' : 'opacity-30 grayscale') : ''}
 
                         ${isSelected ? 'ring-4 ring-[var(--bd-hi)] ring-offset-2 ring-offset-[var(--bd-selected)]' : ''}
                         ${!isLegallyMovable && !isSelected ? 'cursor-default' : ''}
                       `}
                     >
                       <div className={`w-[56%] h-[56%] rounded-full border flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] ${piece.player === 'red' ? 'border-[var(--bd-red-edge)] bg-[var(--bd-red-edge)]' : 'border-[var(--bd-black-edge)] bg-[var(--bd-black-edge)]'}`}>
-                        {piece.isKing && <Crown size={20} strokeWidth={3} className={piece.player === 'red' ? 'text-[var(--bd-red-ink)]' : 'text-[var(--bd-black-ink)]'} />}
+                        {piece.isKing && (
+                          <motion.span initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 14 }}>
+                            <Crown size={20} strokeWidth={3} className="text-[var(--bd-hi)] drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" fill="var(--bd-hi)" />
+                          </motion.span>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -786,7 +826,7 @@ export default function CheckersGame() {
         </div>
       </div>
 
-      {/* 📱 MOBILE BOTTOM VS BAR (Sits safely above your global mobile nav bar) */}
+      {/* 📱 MOBILE BOTTOM VS BAR */}
       <footer className="z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-t border-outline-variant bg-surface-container px-6 lg:hidden">
          <div className={cn('flex min-w-0 items-center gap-2 transition-opacity', turn !== myColor ? 'font-bold text-on-surface opacity-100' : 'text-on-surface-variant opacity-50')}>
             <div className="grid h-6 w-6 shrink-0 place-items-center rounded border border-[var(--bd-black-rim)] bg-[var(--bd-black)] text-[10px] font-black text-[var(--bd-black-ink)]">
@@ -805,13 +845,14 @@ export default function CheckersGame() {
          </div>
       </footer>
 
-      {/* 💻 PC RIGHT SIDEBAR (Permanent Back & Actions) */}
+      {/* 💻 PC RIGHT SIDEBAR */}
       <div className="z-20 hidden w-[380px] shrink-0 flex-col border-l border-outline-variant bg-surface p-6 shadow-elev-2 lg:flex">
 
         <div className="mb-8 flex gap-2">
           <Button variant="outlined" fullWidth icon={<ArrowLeft size={16} strokeWidth={3} />} onClick={handleExitToMenu}>
             {t.setup}
           </Button>
+          <Button variant="text" icon={muted ? <VolumeX size={18} /> : <Volume2 size={18} />} onClick={toggleMute} aria-label="sound" className="shrink-0" />
           <Button variant="tonal" tone="error" fullWidth icon={<Flag size={16} strokeWidth={3} />} onClick={handleResign}>
             {t.resign}
           </Button>
@@ -822,7 +863,7 @@ export default function CheckersGame() {
           isMyTurn ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-high text-on-surface-variant',
         )}>
            <span className="text-[18px] font-black uppercase tracking-wider">
-             {isMyTurn ? t.turnIndicatorMine : t.turnIndicatorTheirs}
+             {isBotThinking ? t.botThinking : isMyTurn ? t.turnIndicatorMine : t.turnIndicatorTheirs}
            </span>
            {!isMyTurn && <Loader2 size={16} className="mt-1 animate-spin" />}
         </div>
@@ -886,11 +927,11 @@ export default function CheckersGame() {
                  'mx-auto mb-5 grid h-20 w-20 place-items-center rounded-m3-md',
                  isMyWin ? 'bg-gold-container text-on-gold-container' : 'bg-surface-container-highest text-on-surface-variant',
                )}>
-                  {isMyWin ? <Trophy size={40} strokeWidth={2.5} /> : <Skull size={40} strokeWidth={2.5} />}
+                  {winner === 'draw' ? <Handshake size={40} strokeWidth={2.5} /> : isMyWin ? <Trophy size={40} strokeWidth={2.5} /> : <Skull size={40} strokeWidth={2.5} />}
                </div>
 
                <h2 className="s-display text-[clamp(24px,6vw,30px)] font-bold leading-tight">
-                  {isMyWin ? t.resultTitleWin : t.resultTitleLose}
+                  {winner === 'draw' ? t.resultTitleDraw : isMyWin ? t.resultTitleWin : t.resultTitleLose}
                </h2>
 
                {(mode === 'pve' || mode === 'pvp_online') && earnedXP > 0 && isMyWin && (
