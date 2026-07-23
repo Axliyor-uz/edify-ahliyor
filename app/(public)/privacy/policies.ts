@@ -25,8 +25,8 @@ const CONTACT_SECTION: PolicySection = {
     'If you have questions about this Privacy Policy or want to exercise any of your rights, contact us:',
   ],
   bullets: [
-    'Email: akhliyortojiboyev@gmail.com',
-    'Phone: +998 33 860 20 06',
+    'Email: ilonmask0339@gmail.com',
+    'Phone: +998338602006',
     'Website: https://edify.uz',
   ],
 };
