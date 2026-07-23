@@ -41,7 +41,14 @@ export default function PrivacyIndexPage() {
           ))}
         </div>
 
-        <p className="mt-10 text-sm text-slate-500">
+        <p className="mt-8 text-sm text-slate-500">
+          Want to delete your account?{' '}
+          <Link href="/delete-account" className="font-bold text-blue-600 hover:underline">
+            Account deletion instructions
+          </Link>
+          .
+        </p>
+        <p className="mt-3 text-sm text-slate-500">
           Questions? Contact us at{' '}
           <a href="mailto:ilonmask0339@gmail.com" className="font-bold text-blue-600 hover:underline">
             ilonmask0339@gmail.com

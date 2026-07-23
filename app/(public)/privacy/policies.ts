@@ -87,7 +87,7 @@ export const POLICIES: Record<string, Policy> = {
         title: 'Data Retention and Deletion',
         paragraphs: [
           'Data is retained while the related Edify account or learning center remains active.',
-          'You can request deletion of your account and associated personal data from your account settings in the Edify web application at edify.uz, or by contacting us using the details below. Some records may be retained where required by law.',
+          'You can request deletion of your account and associated personal data from your account settings in the Edify web application at edify.uz, or by contacting us using the details below. Full instructions: https://edify.uz/delete-account. Some records may be retained where required by law.',
         ],
       },
       {
