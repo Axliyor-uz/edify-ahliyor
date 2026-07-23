@@ -45,6 +45,20 @@ Driven from the Android repo — full checklist lives in its
 what real users already installed, or they'll be prompted to "update" to an
 older build that Android will refuse to install over the newer one.
 
+## Privacy policies (`/privacy`)
+
+Play Store requires a public privacy-policy URL per app. One data file drives
+everything: `app/(public)/privacy/policies.ts` — `POLICIES` record, one entry
+per app (slug, appName, packageId, sections in English).
+
+- `/privacy` — index listing every policy (renders from POLICIES).
+- `/privacy/<slug>` — full policy page (`[slug]/page.tsx`, `dynamicParams=false`
+  so unknown slugs 404). Current: `/privacy/manager` (uz.wasp2ai.edifymanager).
+- **Adding a policy for another app** (student/teacher/parent APK): add ONE
+  entry to POLICIES — page + index row appear automatically. Reuse
+  `CONTACT_SECTION`; set `lastUpdated`; bump `lastUpdated` on every text change.
+  The URL to give Play is `https://edify.uz/privacy/<slug>` and must stay stable.
+
 ## Invariants & traps
 
 - `versionCode` in version.json must NEVER be ahead of the actual APK in
