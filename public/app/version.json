@@ -1,0 +1,9 @@
+{
+  "app": "uz.wasp2ai.edifymanager",
+  "versionCode": 2,
+  "versionName": "1.1",
+  "apkUrl": "https://edify.uz/app/edify-manager.apk?v=2",
+  "forceUpdate": false,
+  "changelog": "Ilova ichida avtomatik yangilanish tizimi qo'shildi.",
+  "minAndroid": "7.0"
+}

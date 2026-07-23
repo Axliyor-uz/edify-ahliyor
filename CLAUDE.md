@@ -27,6 +27,7 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | IELTS | [docs/IELTS.md](docs/IELTS.md) |
 | Teacher UI kit — `components/ui/*`, M3 tokens, restyling `app/teacher/*` | [docs/UI_KIT.md](docs/UI_KIT.md) |
 | **Student design system** — [design.config.ts](design.config.ts) switchboard, `components/student-ui/*`, restyling `app/(student)/*` | [docs/STUDENT_UI.md](docs/STUDENT_UI.md) |
+| Android APK distribution — `public/app/*`, `/app` download page, version.json | [docs/APP_DISTRIBUTION.md](docs/APP_DISTRIBUTION.md) |
 
 ## Commands
 
