@@ -38,8 +38,10 @@ export default function ManagerAppPage() {
             <span>Android {version.minAndroid}+</span>
           </div>
 
+          {/* Relative link (not version.apkUrl): downloads from whatever host
+              serves this page, so it works before deploy and in local testing. */}
           <a
-            href={version.apkUrl}
+            href={`/app/edify-manager.apk?v=${version.versionCode}`}
             className="mt-8 inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-[17px] font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/30"
           >
             <Download className="h-5 w-5" />
