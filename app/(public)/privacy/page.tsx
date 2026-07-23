@@ -43,8 +43,8 @@ export default function PrivacyIndexPage() {
 
         <p className="mt-10 text-sm text-slate-500">
           Questions? Contact us at{' '}
-          <a href="mailto:akhliyortojiboyev@gmail.com" className="font-bold text-blue-600 hover:underline">
-            akhliyortojiboyev@gmail.com
+          <a href="mailto:ilonmask0339@gmail.com" className="font-bold text-blue-600 hover:underline">
+            ilonmask0339@gmail.com
           </a>
           .
         </p>
