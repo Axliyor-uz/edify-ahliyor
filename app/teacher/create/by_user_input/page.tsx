@@ -548,7 +548,7 @@ export default function AIUserInputPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-surface font-sans pt-[60px] lg:pt-0">
+    <div className="flex flex-col min-h-[100dvh] bg-surface font-t-body pt-[60px] lg:pt-0">
 
       <AiThinkingModal isVisible={isGenerating} />
 

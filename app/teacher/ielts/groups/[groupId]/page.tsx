@@ -93,7 +93,7 @@ export default function IeltsGroupDetailsPage() {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans flex flex-col selection:bg-primary-container selection:text-on-primary-container">
+    <div className="min-h-[100dvh] bg-surface font-t-body flex flex-col selection:bg-primary-container selection:text-on-primary-container">
 
       {/* ── Modals ── */}
       <AddIeltsStudentModal groupId={groupId} isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />

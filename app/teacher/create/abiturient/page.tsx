@@ -81,7 +81,7 @@ export default function AbiturientSelectionPage() {
   const t = ABITURIENT_TRANSLATIONS[lang] || ABITURIENT_TRANSLATIONS['en'];
 
   return (
-    <div className="min-h-[100dvh] bg-surface flex flex-col font-sans relative overflow-hidden pb-24">
+    <div className="min-h-[100dvh] bg-surface flex flex-col font-t-body relative overflow-hidden pb-24">
 
       {/* 🟢 PREMIUM BACKGROUND GLOWS */}
       <div className="absolute top-0 inset-x-0 h-[60vh] bg-gradient-to-b from-[color-mix(in_oklab,var(--m3-surface-container)_80%,transparent)] via-[color-mix(in_oklab,var(--m3-surface)_50%,transparent)] to-transparent pointer-events-none z-0"></div>

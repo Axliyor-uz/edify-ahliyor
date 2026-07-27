@@ -492,7 +492,7 @@ export default function GeneralAIGeneratorPage() {
   };
 
   return (
-    <div className="flex h-[100dvh] bg-surface overflow-hidden font-sans selection:bg-primary-container selection:text-on-primary-container">
+    <div className="flex h-[100dvh] bg-surface overflow-hidden font-t-body selection:bg-primary-container selection:text-on-primary-container">
 
       <AiThinkingModal isVisible={isGenerating} />
 

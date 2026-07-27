@@ -378,7 +378,7 @@ export default function CreateCustomTestPage() {
   if (!isHydrated) return <div className="min-h-[100dvh] bg-surface" />;
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-24 lg:pb-0">
+    <div className="flex flex-col min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container pb-24 lg:pb-0">
 
       {/* 🟢 TOP BAR (Mobile Offset) */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant z-[10000] flex items-center justify-between px-3 shadow-elev-1">

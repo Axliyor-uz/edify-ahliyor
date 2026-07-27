@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
+import { MOTION_ON, TEACHER_DESIGN, springTransition } from "./config";
 import { Button } from "./Button";
 import { cn } from "./cn";
+
+/** design.teacher.config.ts › Dialog_style: 'sheet' turns the dialog into a
+ *  bottom sheet on phones (< md); 'center' keeps the centered dialog everywhere. */
+const SHEET_MODE = TEACHER_DESIGN.Dialog_style === "sheet";
 
 export interface DialogProps {
   open: boolean;
@@ -21,6 +27,18 @@ export interface DialogProps {
 }
 
 export function Dialog({ open, onClose, title, description, icon, actions, children, className }: DialogProps) {
+  // Tracks the < md breakpoint so sheet mode can switch presentation. Only
+  // wired up when the switchboard asks for sheets.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (!SHEET_MODE) return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -37,20 +55,45 @@ export function Dialog({ open, onClose, title, description, icon, actions, child
 
   if (!open) return null;
 
+  const asSheet = SHEET_MODE && isMobile;
+
+  const panelClass = cn(
+    "relative w-full max-w-md bg-surface-container-high shadow-elev-3",
+    asSheet
+      ? "max-h-[85vh] overflow-y-auto rounded-t-m3-xl px-6 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+      : "rounded-m3-xl p-6",
+    className,
+  );
+
+  const body = (
+    <>
+      {asSheet && <div aria-hidden className="mx-auto mb-3 h-1 w-10 rounded-full bg-outline-variant" />}
+      {icon && (
+        <div className="mx-auto mb-3.5 grid h-11 w-11 place-items-center rounded-full bg-error-container text-on-error-container [&_svg]:h-5 [&_svg]:w-5">
+          {icon}
+        </div>
+      )}
+      <h2 className={cn("text-lg font-semibold text-on-surface", icon && "text-center")}>{title}</h2>
+      {description && <p className={cn("mt-2 text-sm text-on-surface-variant", icon && "text-center")}>{description}</p>}
+      {children}
+      {actions && <div className="mt-6 flex justify-end gap-1.5">{actions}</div>}
+    </>
+  );
+
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" role="dialog" aria-modal="true">
+    <div
+      className={cn("fixed inset-0 z-[100] flex justify-center", asSheet ? "items-end" : "items-center p-6")}
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="absolute inset-0 bg-scrim" onClick={onClose} aria-hidden />
-      <div className={cn("relative w-full max-w-md rounded-m3-xl bg-surface-container-high p-6 shadow-elev-3", className)}>
-        {icon && (
-          <div className="mx-auto mb-3.5 grid h-11 w-11 place-items-center rounded-full bg-error-container text-on-error-container [&_svg]:h-5 [&_svg]:w-5">
-            {icon}
-          </div>
-        )}
-        <h2 className={cn("text-lg font-semibold text-on-surface", icon && "text-center")}>{title}</h2>
-        {description && <p className={cn("mt-2 text-sm text-on-surface-variant", icon && "text-center")}>{description}</p>}
-        {children}
-        {actions && <div className="mt-6 flex justify-end gap-1.5">{actions}</div>}
-      </div>
+      {asSheet && MOTION_ON ? (
+        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={springTransition} className={panelClass}>
+          {body}
+        </motion.div>
+      ) : (
+        <div className={panelClass}>{body}</div>
+      )}
     </div>,
     document.body,
   );

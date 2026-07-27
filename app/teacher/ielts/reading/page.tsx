@@ -82,7 +82,7 @@ export default function ReadingDashboard() {
   );
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto w-full animate-in fade-in duration-500 font-sans text-on-surface">
+    <div className="p-6 md:p-10 max-w-6xl mx-auto w-full animate-in fade-in duration-500 font-t-body text-on-surface">
 
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">

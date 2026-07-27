@@ -471,7 +471,7 @@ export default function MyAssessmentsPage() {
   });
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-[100px] md:pb-12">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-[100px] md:pb-12">
 
       {/* 🟢 ORIGINAL STICKY TOP BAR */}
       <div className="bg-surface-container-low border-b border-outline-variant sticky top-0 z-30">

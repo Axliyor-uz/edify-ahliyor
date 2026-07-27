@@ -114,7 +114,7 @@ export default function PassagePane({ passage, update }: any) {
   };
 
   return (
-    <div ref={containerRef} className="px-2 py-4 sm:px-6 sm:py-8 max-w-[800px] mx-auto selection:bg-primary-container font-sans">
+    <div ref={containerRef} className="px-2 py-4 sm:px-6 sm:py-8 max-w-[800px] mx-auto selection:bg-primary-container font-t-body">
       
       {/* ===================================================================== */}
       {/* TINY TOP METADATA BAR                                                 */}
@@ -208,7 +208,7 @@ export default function PassagePane({ passage, update }: any) {
                     update('blocks', b); 
                     autoResize(e.target); 
                   }} 
-                  className="w-full bg-transparent border-none focus:ring-0 p-0 text-[15.5px] leading-[1.9] text-on-surface outline-none resize-none overflow-hidden min-h-[30px] font-serif placeholder:font-sans placeholder:text-[13px] placeholder:text-outline"
+                  className="w-full bg-transparent border-none focus:ring-0 p-0 text-[15.5px] leading-[1.9] text-on-surface outline-none resize-none overflow-hidden min-h-[30px] font-serif placeholder:font-t-body placeholder:text-[13px] placeholder:text-outline"
                   rows={1}
                 />
               </div>

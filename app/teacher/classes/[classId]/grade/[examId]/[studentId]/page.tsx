@@ -227,7 +227,7 @@ export default function GradingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface pb-24 font-sans selection:bg-primary-container">
+    <div className="min-h-screen bg-surface pb-24 font-t-body selection:bg-primary-container">
 
       <header className="sticky top-0 z-40 bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant shadow-elev-1 px-4 md:px-8 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 md:gap-4 min-w-0 pr-2">

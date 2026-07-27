@@ -1,6 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "./cn";
+import { MOTION_ON, TEACHER_DESIGN, type TeacherDesignConfig } from "./config";
 
 export type ButtonVariant =
   | "filled" // the ONE main action of a screen
@@ -13,8 +14,26 @@ export type ButtonVariant =
 
 export type ButtonSize = "sm" | "md" | "lg";
 
+/* ── Button_style switch (design.teacher.config.ts) ─────────────────────────
+   Shapes the FILLED variant's personality; every other variant only follows
+   the shared radius (pill → rounded-full, otherwise rounded-m3-btn — note the
+   CSS already resolves --m3-shape-button to 999px when the switch is 'pill',
+   we still emit consistent classes). */
+type ButtonStyleName = TeacherDesignConfig["Button_style"];
+
+const BUTTON_STYLE: ButtonStyleName = TEACHER_DESIGN.Button_style;
+
+const RADIUS = BUTTON_STYLE === "pill" ? "rounded-full" : "rounded-m3-btn";
+
+const FILLED_BY_STYLE: Record<ButtonStyleName, string> = {
+  pill: "bg-primary text-on-primary hover:shadow-elev-1",
+  shaped: "bg-primary text-on-primary hover:shadow-elev-1",
+  gradient: "t-gradient text-on-primary hover:shadow-elev-1",
+  glow: "bg-primary text-on-primary shadow-t-glow",
+};
+
 const VARIANT: Record<ButtonVariant, string> = {
-  filled: "bg-primary text-on-primary hover:shadow-elev-1",
+  filled: FILLED_BY_STYLE[BUTTON_STYLE],
   tonal: "bg-secondary-container text-on-secondary-container",
   elevated: "bg-surface-container-low text-primary shadow-elev-1 hover:shadow-elev-2",
   outlined: "text-primary ring-1 ring-inset ring-outline",
@@ -23,14 +42,23 @@ const VARIANT: Record<ButtonVariant, string> = {
   "danger-text": "text-error",
 };
 
+/* Density-aware heights (h-t-control* map to CSS vars driven by the Density
+   switch); paddings stay proportionate. */
 const SIZE: Record<ButtonSize, string> = {
-  sm: "h-8 gap-1.5 px-4 text-xs [&_svg]:h-4 [&_svg]:w-4",
-  md: "h-10 gap-2 px-6 text-sm [&_svg]:h-[18px] [&_svg]:w-[18px]",
-  lg: "h-12 gap-2 px-7 text-[15px] [&_svg]:h-5 [&_svg]:w-5",
+  sm: "h-t-control-sm gap-1.5 px-4 text-xs [&_svg]:h-4 [&_svg]:w-4",
+  md: "h-t-control gap-2 px-6 text-sm [&_svg]:h-[18px] [&_svg]:w-[18px]",
+  lg: "h-t-control-lg gap-2 px-7 text-[15px] [&_svg]:h-5 [&_svg]:w-5",
 };
 
 /* text-style buttons get tighter padding */
 const TEXT_PAD: Record<ButtonSize, string> = { sm: "px-2.5", md: "px-3.5", lg: "px-4" };
+
+/* Premium press feel — CSS only. theme.css zeroes duration-t-* when
+   Motion_level='none' / reduced-motion, but we also skip the scale entirely
+   when motion is off. */
+const PRESS = MOTION_ON
+  ? "transition-[transform,box-shadow] duration-t-fast ease-t-spring active:scale-[0.97]"
+  : "transition-shadow";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -53,8 +81,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type ?? "button"}
       disabled={isDisabled}
       className={cn(
-        "m3-interactive inline-flex flex-none select-none items-center justify-center whitespace-nowrap rounded-m3-btn font-semibold tracking-[0.1px] transition-shadow",
-        VARIANT[variant],
+        "m3-interactive inline-flex flex-none select-none items-center justify-center whitespace-nowrap font-semibold tracking-[0.1px]",
+        RADIUS,
+        PRESS,
+        /* skip the filled personality when disabled — .t-gradient paints a
+           background-image that bg-disabled-bg alone would not cover */
+        variant === "filled" && isDisabled ? "" : VARIANT[variant],
         SIZE[size],
         (variant === "text" || variant === "danger-text") && TEXT_PAD[size],
         isDisabled &&
@@ -86,8 +118,8 @@ const ICON_VARIANT: Record<NonNullable<IconButtonProps["variant"]>, string> = {
 };
 
 const ICON_SIZE: Record<NonNullable<IconButtonProps["size"]>, string> = {
-  sm: "h-8 w-8 [&_svg]:h-4 [&_svg]:w-4",
-  md: "h-10 w-10 [&_svg]:h-5 [&_svg]:w-5",
+  sm: "h-t-control-sm w-t-control-sm [&_svg]:h-4 [&_svg]:w-4",
+  md: "h-t-control w-t-control [&_svg]:h-5 [&_svg]:w-5",
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
@@ -100,7 +132,9 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       type={type ?? "button"}
       disabled={disabled}
       className={cn(
-        "m3-interactive inline-grid flex-none select-none place-items-center rounded-full",
+        "m3-interactive inline-grid flex-none select-none place-items-center",
+        RADIUS,
+        PRESS,
         ICON_VARIANT[variant],
         ICON_SIZE[size],
         disabled && "cursor-not-allowed text-disabled-fg",

@@ -523,7 +523,7 @@ export default function IxtisoslashtirilganGeneratorPage() {
   };
 
   return (
-    <div className="flex h-[100dvh] bg-surface overflow-hidden font-sans selection:bg-tertiary-container selection:text-on-tertiary-container">
+    <div className="flex h-[100dvh] bg-surface overflow-hidden font-t-body selection:bg-tertiary-container selection:text-on-tertiary-container">
       
       <AiThinkingModal isVisible={isGenerating} />
 

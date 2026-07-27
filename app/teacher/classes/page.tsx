@@ -74,7 +74,7 @@ export default function ClassesPage() {
   if (loading || isLoadingData) return <ClassesSkeleton />;
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12">
+    <div className="min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12">
       
       <CreateClassModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
 

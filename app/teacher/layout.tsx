@@ -7,7 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { signOut } from 'firebase/auth';
 
 import '@/components/ui/theme.css';
-import { Button, ConfirmDialog, ProgressBar, cn } from '@/components/ui';
+import {
+  Button, ConfirmDialog, ProgressBar, Loader, cn,
+  TeacherThemeProvider, useTeacherTheme,
+  TEACHER_DESIGN, MOTION_ON, springTransition, popIn, pageTransition,
+} from '@/components/ui';
 
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
@@ -19,6 +23,7 @@ import {
   LayoutDashboard, Users, FilePlus, FolderOpen, Library,
   Sparkles, Settings, LogOut, Menu, X, Bell,
   Zap, BookOpen, UserIcon, CreditCard, PanelLeft, MoreVertical,
+  MoreHorizontal, Sun, Moon, Monitor,
 } from 'lucide-react';
 
 // ============================================================================
@@ -48,7 +53,8 @@ const LAYOUT_TRANSLATIONS = {
     menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", notifications: "Bildirishnomalar", subscription: "Obuna", profile: "Profil", ielts: "IELTS Moduli" },
     menuShort: { library: "Kutubxonam", onlineLibrary: "Kitoblar", notifications: "Xabarlar" },
     bottom: { home: "Boshqaruv", create: "Yaratish", classes: "Sinflar", library: "Kutubxona", menu: "Menyu" },
-    create: "Yangi Test", signOut: "Chiqish", settings: "Sozlamalar",
+    create: "Yangi Test", signOut: "Chiqish", settings: "Sozlamalar", more: "Yana",
+    theme: { label: "Mavzu", light: "Yorug'", system: "Tizim", dark: "Tun" },
     aiLimit: { title: "Oylik AI Balans", upgrade: "Kredit Olish", used: "ishlatildi", unlimited: "Cheksiz", renews: "Yangilanadi" },
     logoutConfirm: { title: "Tizimdan chiqish", desc: "Haqiqatan ham hisobingizdan chiqmoqchimisiz?", cancel: "Bekor qilish", confirm: "Chiqish" }
   },
@@ -57,7 +63,8 @@ const LAYOUT_TRANSLATIONS = {
     menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", notifications: "Notifications", subscription: "Subscription", profile: "Profile", ielts: "IELTS Module" },
     menuShort: { library: "Library", onlineLibrary: "Books", notifications: "Alerts" },
     bottom: { home: "Home", create: "Create", classes: "Classes", library: "Library", menu: "Menu" },
-    create: "New Test", signOut: "Sign Out", settings: "Settings",
+    create: "New Test", signOut: "Sign Out", settings: "Settings", more: "More",
+    theme: { label: "Theme", light: "Light", system: "System", dark: "Dark" },
     aiLimit: { title: "Monthly AI Balance", upgrade: "Buy Credits", used: "used", unlimited: "Unlimited", renews: "Renews" },
     logoutConfirm: { title: "Sign Out", desc: "Are you sure you want to sign out of your account?", cancel: "Cancel", confirm: "Sign Out" }
   },
@@ -66,7 +73,8 @@ const LAYOUT_TRANSLATIONS = {
     menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", notifications: "Уведомления", subscription: "Подписка", profile: "Профиль", ielts: "Модуль IELTS" },
     menuShort: { library: "Библиотека", onlineLibrary: "Книги", notifications: "Инбокс" },
     bottom: { home: "Обзор", create: "Создать", classes: "Классы", library: "Книги", menu: "Меню" },
-    create: "Новый Тест", signOut: "Выйти", settings: "Настройки",
+    create: "Новый Тест", signOut: "Выйти", settings: "Настройки", more: "Ещё",
+    theme: { label: "Тема", light: "День", system: "Система", dark: "Ночь" },
     aiLimit: { title: "Месячный баланс ИИ", upgrade: "Купить кредиты", used: "использовано", unlimited: "Безлимит", renews: "Обновится" },
     logoutConfirm: { title: "Выход", desc: "Вы уверены, что хотите выйти из аккаунта?", cancel: "Отмена", confirm: "Выйти" }
   }
@@ -88,6 +96,13 @@ const HIDE_BOTTOM_BAR = [
 
 // Shared popover panel styling (M3 menu surface)
 const PANEL = "bg-surface-container rounded-m3-lg shadow-elev-3 border border-outline-variant z-[60]";
+
+// The switchboard decisions this shell renders (design.teacher.config.ts).
+const SHELL = TEACHER_DESIGN.App_shell_navigation;   // sidebar | rail | topbar | floating
+const MOBILE_NAV = TEACHER_DESIGN.Mobile_navigation; // dock | floating | drawer
+// Rail is "sidebar permanently collapsed"; topbar has no side chrome at all.
+const SIDE_SHELL = SHELL === 'sidebar' || SHELL === 'rail' || SHELL === 'floating';
+const COLLAPSIBLE = SHELL === 'sidebar' || SHELL === 'floating';
 
 // ============================================================================
 // 3. SVG FLAGS (emoji flags render inconsistently across devices)
@@ -118,41 +133,61 @@ function FlagSvg({ code }: { code: LangType }) {
 }
 
 // ============================================================================
-// 4. MAIN LAYOUT COMPONENT
+// 4. LAYOUT ENTRY — theme provider wraps the shell so useTeacherTheme works
+//    everywhere inside (including the mode toggle in the profile popover).
 // ============================================================================
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <TeacherThemeProvider>
+      <TeacherShell>{children}</TeacherShell>
+    </TeacherThemeProvider>
+  );
+}
+
+// ============================================================================
+// 5. THE SHELL
+// ============================================================================
+function TeacherShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth() as any;
   const router = useRouter();
   const pathname = usePathname();
   const aiData = useMonthlyLimit();
+  const { mode, preference, setPreference, toggleEnabled } = useTeacherTheme();
 
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(SHELL === 'rail');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isAiMenuOpen, setIsAiMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   const [lang, setLang] = useState<LangType>('uz');
   const t = LAYOUT_TRANSLATIONS[lang as keyof typeof LAYOUT_TRANSLATIONS] || LAYOUT_TRANSLATIONS['uz'];
 
   const headerRef = useRef<HTMLDivElement>(null);
+  const deskHeaderRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
 
-  const showBottomBar = !HIDE_BOTTOM_BAR.some((r) => r.test(pathname));
+  const showBottomBar = MOBILE_NAV !== 'drawer' && !HIDE_BOTTOM_BAR.some((r) => r.test(pathname));
 
-  // Restore persisted rail state
+  // Restore persisted rail state (collapsible shells only; 'rail' is pinned).
   useEffect(() => {
+    if (!COLLAPSIBLE) return;
     try { setIsCollapsed(localStorage.getItem('edify-sb-rail') === '1'); } catch { /* private mode */ }
   }, []);
-  const toggleCollapsed = () => setIsCollapsed((v) => {
-    try { localStorage.setItem('edify-sb-rail', v ? '0' : '1'); } catch { /* private mode */ }
-    return !v;
-  });
+  const toggleCollapsed = () => {
+    if (!COLLAPSIBLE) return;
+    setIsCollapsed((v) => {
+      try { localStorage.setItem('edify-sb-rail', v ? '0' : '1'); } catch { /* private mode */ }
+      return !v;
+    });
+  };
 
   // Keyboard shortcut: [ toggles the rail
   useEffect(() => {
+    if (!COLLAPSIBLE) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== '[') return;
       const tag = (document.activeElement?.tagName || '').toLowerCase();
@@ -166,11 +201,13 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   // Click outside listener for popovers
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const isOutsideHeader = headerRef.current && !headerRef.current.contains(event.target as Node);
-      const isOutsideSidebar = sidebarRef.current && !sidebarRef.current.contains(event.target as Node);
-      if (isOutsideHeader && isOutsideSidebar) {
+      const inHeader = headerRef.current?.contains(event.target as Node);
+      const inDeskHeader = deskHeaderRef.current?.contains(event.target as Node);
+      const inSidebar = sidebarRef.current?.contains(event.target as Node);
+      if (!inHeader && !inDeskHeader && !inSidebar) {
         setIsProfileMenuOpen(false);
         setIsAiMenuOpen(false);
+        setIsMoreMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -193,7 +230,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     checkRole();
   }, [user, loading, router]);
 
-  useEffect(() => { setMobileMenuOpen(false); setIsProfileMenuOpen(false); setIsAiMenuOpen(false); }, [pathname]);
+  useEffect(() => { setMobileMenuOpen(false); setIsProfileMenuOpen(false); setIsAiMenuOpen(false); setIsMoreMenuOpen(false); }, [pathname]);
 
   // Handle tour step changes for mobile sidebar
   useEffect(() => {
@@ -211,10 +248,8 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
   if (loading || !isAuthorized) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-surface">
-        <div className="w-12 h-12 bg-surface-container-low rounded-m3-lg shadow-elev-1 flex items-center justify-center">
-          <BookOpen size={24} className="text-primary animate-pulse" />
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-surface t-canvas">
+        <Loader className="w-40" />
       </div>
     );
   }
@@ -231,6 +266,10 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     // { name: t.menu.subscription, href: '/teacher/subscription', icon: CreditCard }, // deliberately hidden — reachable via AI-balance widget
     { name: t.settings, href: '/teacher/settings', icon: Settings },
   ];
+
+  // Topbar shell: first 5 destinations inline, the rest behind "More".
+  const topbarPrimary = navItems.slice(0, 5);
+  const topbarOverflow = navItems.slice(5);
 
   const isActive = (href: string) => pathname === href || (href !== '/teacher/dashboard' && pathname.startsWith(href));
 
@@ -258,13 +297,39 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     </>
   );
 
-  // --- Profile popover body (shared: sidebar + mobile top bar) ---
+  // --- Theme (light/system/dark) segmented switch — per-device override ---
+  const themeSwitch = toggleEnabled && (
+    <div className="flex items-center bg-surface-container-high p-1 rounded-m3-sm gap-1 mb-2" role="group" aria-label={t.theme.label}>
+      {([
+        { v: 'light' as const, icon: Sun, label: t.theme.light },
+        { v: 'system' as const, icon: Monitor, label: t.theme.system },
+        { v: 'dark' as const, icon: Moon, label: t.theme.dark },
+      ]).map(({ v, icon: Icon, label }) => (
+        <button
+          key={v}
+          onClick={() => setPreference(v)}
+          aria-pressed={preference === v}
+          title={label}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-m3-xs text-[11px] font-bold transition-all",
+            preference === v ? "bg-surface-container-lowest text-primary shadow-elev-1" : "text-on-surface-variant hover:text-on-surface",
+          )}
+        >
+          <Icon size={13} />
+          <span className="hidden sm:inline">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+
+  // --- Profile popover body (shared: sidebar + top bars) ---
   const profilePanelBody = (
     <>
       <div className="px-3 py-3 bg-surface-container-high rounded-m3-md mb-2">
         <p className="text-[13px] font-semibold text-on-surface truncate">{user?.displayName}</p>
         <p className="text-[10px] font-medium text-on-surface-variant truncate">{user?.email}</p>
       </div>
+      {themeSwitch}
       {/* SVG-flag language switcher */}
       <div className="flex items-center bg-surface-container-high p-1 rounded-m3-sm gap-1 mb-2" role="group" aria-label="Til">
         {LANGUAGE_OPTIONS.map((l) => (
@@ -290,9 +355,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     </>
   );
 
-  // --- SIDEBAR (desktop rail/drawer + mobile slide-out drawer) ---
+  // --- SIDEBAR CONTENT (desktop side shells + mobile slide-out drawer) ---
   const renderSidebarContent = (collapsed: boolean, isMobile: boolean = false) => (
-    <div className="flex flex-col h-full bg-surface-container-lowest relative">
+    <div className={cn("flex flex-col h-full relative", SHELL === 'floating' && !isMobile ? "bg-transparent" : "bg-surface-container-lowest")}>
 
       {/* Header: brand + rail toggle */}
       <div className={cn("flex items-center gap-2.5 px-3.5 pt-4 pb-2 shrink-0 min-h-[64px]", collapsed && "flex-col gap-2 px-0 justify-center")}>
@@ -300,7 +365,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           <div className="w-9 h-9 bg-primary rounded-m3-md flex items-center justify-center text-on-primary shrink-0 shadow-elev-1"><BookOpen size={19} /></div>
           {!collapsed && (
             <div className="min-w-0">
-              <h1 className="font-bold text-[15px] text-on-surface leading-none tracking-tight truncate">Edify<span className="text-primary">Teacher</span></h1>
+              <h1 className="font-t-display font-bold text-[15px] text-on-surface leading-none tracking-tight truncate">Edify<span className="text-primary">Teacher</span></h1>
               <p className="text-[8.5px] text-on-surface-variant font-semibold uppercase tracking-[0.14em] mt-1 truncate">{t.brandSubtitle}</p>
             </div>
           )}
@@ -309,7 +374,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           <button onClick={() => setMobileMenuOpen(false)} aria-label="Yopish" className="m3-interactive ml-auto p-2 text-on-surface-variant rounded-full">
             <X size={19} />
           </button>
-        ) : (
+        ) : COLLAPSIBLE ? (
           <button
             onClick={toggleCollapsed}
             title={collapsed ? "Yoyish  [" : "Yig'ish  ["}
@@ -318,7 +383,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           >
             <PanelLeft size={18} className={cn("transition-transform duration-300", collapsed && "rotate-180")} />
           </button>
-        )}
+        ) : null}
       </div>
 
       {/* Navigation */}
@@ -345,7 +410,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
               {active && (
                 <motion.span
                   layoutId={isMobile ? 'sb-pill-m' : 'sb-pill'}
-                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  transition={springTransition}
                   // centered with inset-x + mx-auto: framer's layout animation owns
                   // `transform`, so translate-based centering breaks the pill position
                   className={cn(
@@ -377,7 +442,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         <AnimatePresence>
           {isAiMenuOpen && !isMobile && (
             <motion.div
-              initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              {...popIn}
               className={cn("absolute w-64 p-4", PANEL, collapsed ? "left-full ml-2 bottom-2" : "bottom-full mb-2 left-2.5 origin-bottom-left")}
             >
               {aiPanelBody}
@@ -389,7 +454,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         <AnimatePresence>
           {isProfileMenuOpen && (
             <motion.div
-              initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              {...popIn}
               className={cn("absolute w-60 p-2", PANEL, collapsed && !isMobile ? "left-full ml-2 bottom-2" : "bottom-full mb-2 left-2.5 origin-bottom-left")}
             >
               {profilePanelBody}
@@ -442,9 +507,147 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     </div>
   );
 
+  // --- DESKTOP TOP BAR (SHELL === 'topbar') ---
+  const desktopTopbar = SHELL === 'topbar' && (
+    <header ref={deskHeaderRef} className="hidden md:flex bg-t-bar-blur backdrop-blur-xl border-b border-outline-variant sticky top-0 z-40 px-4 h-[60px] items-center gap-4 shrink-0">
+      {/* Brand */}
+      <div className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink-0" onClick={() => router.push('/teacher/dashboard')}>
+        <div className="w-9 h-9 bg-primary rounded-m3-md flex items-center justify-center text-on-primary shrink-0 shadow-elev-1"><BookOpen size={19} /></div>
+        <b className="font-t-display text-[15px] text-on-surface tracking-tight truncate hidden lg:block">Edify<span className="text-primary">Teacher</span></b>
+      </div>
+
+      {/* Horizontal nav */}
+      <nav className="flex-1 flex items-center gap-1 min-w-0 overflow-x-auto custom-scrollbar">
+        {topbarPrimary.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              data-tour={item.tourId}
+              className={cn(
+                "relative flex items-center gap-2 h-[38px] px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors",
+                active ? "text-on-secondary-container" : "text-on-surface-variant hover:text-on-surface hover:bg-state-hover",
+              )}
+            >
+              {active && (
+                <motion.span layoutId="tb-pill" transition={springTransition} className="absolute inset-0 bg-secondary-container rounded-full" />
+              )}
+              <item.icon size={16} strokeWidth={active ? 2.4 : 2} className={cn("relative z-10", active && "text-primary")} />
+              <span className={cn("relative z-10", active && "font-bold")}>{item.name}</span>
+            </Link>
+          );
+        })}
+
+        {/* More */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => { setIsMoreMenuOpen(!isMoreMenuOpen); setIsProfileMenuOpen(false); setIsAiMenuOpen(false); }}
+            aria-expanded={isMoreMenuOpen}
+            className={cn(
+              "flex items-center gap-2 h-[38px] px-3.5 rounded-full text-[13px] font-medium transition-colors",
+              topbarOverflow.some((i) => isActive(i.href)) ? "bg-secondary-container text-on-secondary-container font-bold" : "text-on-surface-variant hover:text-on-surface hover:bg-state-hover",
+            )}
+          >
+            <MoreHorizontal size={16} />
+            {t.more}
+          </button>
+          <AnimatePresence>
+            {isMoreMenuOpen && (
+              <motion.div {...popIn} className={cn("absolute top-full left-0 mt-2 w-56 p-2 origin-top-left", PANEL)}>
+                {topbarOverflow.map((item) => {
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      data-tour={item.tourId}
+                      onClick={() => setIsMoreMenuOpen(false)}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2.5 rounded-m3-sm text-[13px] font-medium transition-colors",
+                        active ? "bg-secondary-container text-on-secondary-container font-bold" : "text-on-surface-variant hover:text-on-surface hover:bg-state-hover",
+                      )}
+                    >
+                      <item.icon size={16} /> {item.name}
+                      {item.isAI && <span className="ml-auto bg-primary-container text-on-primary-container text-[8.5px] px-1.5 py-[2px] rounded-m3-xs uppercase font-bold tracking-wider">AI</span>}
+                    </Link>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </nav>
+
+      {/* Right cluster: AI chip · bell · avatar */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <div className="relative">
+          <button
+            onClick={() => { setIsAiMenuOpen(!isAiMenuOpen); setIsProfileMenuOpen(false); setIsMoreMenuOpen(false); }}
+            className={cn(
+              "m3-interactive flex items-center gap-1.5 px-2.5 h-9 rounded-full transition-colors",
+              aiData.isDanger ? "bg-error-container text-on-error-container" : "bg-surface-container-low text-on-surface",
+            )}
+          >
+            <Zap size={13} className={aiData.isDanger ? "fill-current" : "text-warning"} />
+            <span className="text-[11.5px] font-bold tabular-nums">{aiData.isUnlimited ? '∞' : aiData.remaining}</span>
+          </button>
+          <AnimatePresence>
+            {isAiMenuOpen && (
+              <motion.div {...popIn} className={cn("absolute top-full right-0 mt-2 w-[260px] p-4 origin-top-right", PANEL)}>
+                {aiPanelBody}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="m3-interactive flex items-center justify-center h-9 w-9 text-on-surface-variant rounded-full shrink-0">
+          <NotificationBell />
+        </div>
+
+        <div className="relative">
+          <button onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); setIsAiMenuOpen(false); setIsMoreMenuOpen(false); }} className="w-9 h-9 rounded-m3-sm bg-primary flex items-center justify-center text-on-primary font-bold transition-transform active:scale-95 overflow-hidden text-[12px] shadow-elev-1">
+            {user?.photoURL ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" /> : user?.displayName?.[0]}
+          </button>
+          <AnimatePresence>
+            {isProfileMenuOpen && (
+              <motion.div {...popIn} className={cn("absolute top-full right-0 mt-2 w-60 p-2 origin-top-right", PANEL)}>
+                {profilePanelBody}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </header>
+  );
+
+  // --- MOBILE BOTTOM NAV ITEMS (dock + floating variants) ---
+  const mobileNavItems = [
+    { label: t.bottom.home, href: '/teacher/dashboard', icon: LayoutDashboard },
+    { label: t.bottom.create, href: '/teacher/create', icon: FilePlus },
+    { label: t.bottom.classes, href: '/teacher/classes', icon: Users },
+    { label: t.bottom.library, href: '/teacher/library', icon: FolderOpen },
+  ];
+
+  const mobileNavLink = (item: { label: string; href: string; icon: typeof LayoutDashboard }) => {
+    const active = isActive(item.href);
+    return (
+      <Link key={item.href} href={item.href} className={cn("flex-1 flex flex-col items-center gap-[3px] py-1 relative", active ? "text-on-secondary-container" : "text-on-surface-variant")}>
+        {active && (
+          <motion.span layoutId="bn-pill" transition={springTransition} className="absolute -top-0.5 inset-x-0 mx-auto w-[52px] h-[28px] bg-secondary-container rounded-full" />
+        )}
+        <item.icon size={21} strokeWidth={active ? 2.4 : 2} className={cn("relative z-10", active && "text-primary")} />
+        <span className={cn("relative z-10 text-[9.5px] font-semibold", active && "font-bold")}>{item.label}</span>
+      </Link>
+    );
+  };
+
   return (
     <TeacherLanguageContext.Provider value={{ lang, setLang }}>
-      <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container flex overflow-hidden relative">
+      <div className={cn(
+        "min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container overflow-hidden relative",
+        SIDE_SHELL ? "flex" : "flex flex-col",
+      )}>
 
         {/* --- LOGOUT CONFIRM --- */}
         <ConfirmDialog
@@ -458,38 +661,62 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           danger
         />
 
-        {/* --- MOBILE SLIDE-OUT DRAWER (full nav list, opened from "Menyu") --- */}
+        {/* --- MOBILE SLIDE-OUT DRAWER (full nav list) --- */}
         <AnimatePresence>
           {mobileMenuOpen && (
             <div className="fixed inset-0 z-50 md:hidden flex">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-              <motion.aside initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ type: "spring", bounce: 0, duration: 0.4 }} className="relative w-[280px] bg-surface-container-lowest h-full shadow-elev-3 border-r border-outline-variant">
+              <motion.aside initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ type: "spring", bounce: 0, duration: MOTION_ON ? 0.4 : 0 }} className="relative w-[280px] bg-surface-container-lowest h-full shadow-elev-3 border-r border-outline-variant">
                 {renderSidebarContent(false, true)}
               </motion.aside>
             </div>
           )}
         </AnimatePresence>
 
-        {/* --- DESKTOP SIDEBAR: flush full-height, drawer ↔ rail --- */}
-        <aside
-          ref={sidebarRef}
-          className={cn(
-            "hidden md:flex shrink-0 h-[100dvh] border-r border-outline-variant bg-surface-container-lowest transition-[width] duration-300 ease-[cubic-bezier(.2,0,0,1)] relative z-[50]",
-            isCollapsed ? "w-[84px]" : "w-[264px]",
-          )}
-        >
-          {renderSidebarContent(isCollapsed, false)}
-        </aside>
+        {/* --- DESKTOP SIDE SHELLS: sidebar (collapsible) · rail (pinned) · floating (glass card) --- */}
+        {SIDE_SHELL && SHELL !== 'floating' && (
+          <aside
+            ref={sidebarRef}
+            className={cn(
+              "hidden md:flex shrink-0 h-[100dvh] border-r border-outline-variant bg-surface-container-lowest transition-[width] duration-t-med ease-t-std relative z-[50]",
+              isCollapsed ? "w-[84px]" : "w-[264px]",
+            )}
+          >
+            {renderSidebarContent(isCollapsed, false)}
+          </aside>
+        )}
+        {SHELL === 'floating' && (
+          <aside
+            ref={sidebarRef}
+            className={cn(
+              "hidden md:flex shrink-0 h-[100dvh] p-3 pr-0 relative z-[50] transition-[width] duration-t-med ease-t-std",
+              isCollapsed ? "w-[96px]" : "w-[276px]",
+            )}
+          >
+            <div className="flex-1 rounded-m3-xl bg-t-glass backdrop-blur-xl border border-t-glass-border shadow-elev-2 overflow-hidden">
+              {renderSidebarContent(isCollapsed, false)}
+            </div>
+          </aside>
+        )}
 
-        {/* --- MAIN CONTENT AREA --- */}
-        <div className="flex-1 flex flex-col min-w-0 h-[100dvh] relative z-10">
+        {/* --- MAIN COLUMN --- */}
+        <div className={cn("flex-1 flex flex-col min-w-0 relative z-10", SIDE_SHELL ? "h-[100dvh]" : "min-h-[100dvh]")}>
 
-          {/* MOBILE TOP BAR — slim: brand · AI chip · bell · avatar */}
-          <header ref={headerRef} className="md:hidden bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-xl border-b border-outline-variant sticky top-0 z-30 px-3 py-2 flex justify-between items-center shrink-0">
+          {desktopTopbar}
 
-            <div className="flex items-center gap-2 min-w-0" onClick={() => router.push('/teacher/dashboard')}>
-              <div className="w-8 h-8 bg-primary rounded-m3-sm flex items-center justify-center text-on-primary shrink-0 shadow-elev-1"><BookOpen size={16} /></div>
-              <b className="text-[14px] text-on-surface tracking-tight truncate">Edify<span className="text-primary">Teacher</span></b>
+          {/* MOBILE TOP BAR — slim: (hamburger) · brand · AI chip · bell · avatar */}
+          <header ref={headerRef} className="md:hidden bg-background-blur backdrop-blur-xl border-b border-outline-variant sticky top-0 z-30 px-3 py-2 flex justify-between items-center shrink-0">
+
+            <div className="flex items-center gap-1.5 min-w-0">
+              {MOBILE_NAV === 'drawer' && (
+                <button onClick={() => setMobileMenuOpen(true)} aria-label={t.bottom.menu} className="m3-interactive flex items-center justify-center h-9 w-9 -ml-1 text-on-surface-variant rounded-full shrink-0">
+                  <Menu size={20} />
+                </button>
+              )}
+              <div className="flex items-center gap-2 min-w-0" onClick={() => router.push('/teacher/dashboard')}>
+                <div className="w-8 h-8 bg-primary rounded-m3-sm flex items-center justify-center text-on-primary shrink-0 shadow-elev-1"><BookOpen size={16} /></div>
+                <b className="font-t-display text-[14px] text-on-surface tracking-tight truncate">Edify<span className="text-primary">Teacher</span></b>
+              </div>
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -508,7 +735,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
                 </button>
                 <AnimatePresence>
                   {isAiMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.96 }} className={cn("absolute top-full right-0 mt-2 w-[260px] p-4 origin-top-right", PANEL)}>
+                    <motion.div {...popIn} className={cn("absolute top-full right-0 mt-2 w-[260px] p-4 origin-top-right", PANEL)}>
                       {aiPanelBody}
                     </motion.div>
                   )}
@@ -520,14 +747,14 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
                 <NotificationBell />
               </div>
 
-              {/* Avatar + profile popover (language switcher lives inside) */}
+              {/* Avatar + profile popover (theme + language switchers live inside) */}
               <div className="relative">
                 <button onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); setIsAiMenuOpen(false); }} className="w-9 h-9 rounded-m3-sm bg-primary flex items-center justify-center text-on-primary font-bold transition-transform active:scale-95 overflow-hidden text-[12px] shadow-elev-1">
                   {user?.photoURL ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" /> : user?.displayName?.[0]}
                 </button>
                 <AnimatePresence>
                   {isProfileMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.96 }} className={cn("absolute top-full right-0 mt-2 w-60 p-2 origin-top-right", PANEL)}>
+                    <motion.div {...popIn} className={cn("absolute top-full right-0 mt-2 w-60 p-2 origin-top-right", PANEL)}>
                       {profilePanelBody}
                     </motion.div>
                   )}
@@ -539,32 +766,28 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
           {/* MAIN SCROLLABLE CONTENT — reserves space for the bottom bar on mobile */}
           <main className={cn(
-            "flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative",
-            showBottomBar && "pb-[calc(68px+env(safe-area-inset-bottom))] md:pb-0",
+            "flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative t-canvas",
+            showBottomBar && MOBILE_NAV === 'dock' && "pb-[calc(68px+env(safe-area-inset-bottom))] md:pb-0",
+            showBottomBar && MOBILE_NAV === 'floating' && "pb-[calc(84px+env(safe-area-inset-bottom))] md:pb-0",
           )}>
-            <div className="w-full h-full relative z-10">{children}</div>
+            <motion.div key={pathname} {...pageTransition} className="w-full h-full relative z-10">
+              {children}
+            </motion.div>
           </main>
 
-          {/* MOBILE BOTTOM NAVIGATION BAR (M3) — hidden on deep routes with their own action bars */}
-          {showBottomBar && (
-            <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[color-mix(in_oklab,var(--m3-surface-container)_94%,transparent)] backdrop-blur-xl border-t border-outline-variant flex px-1.5 pt-1.5" style={{ paddingBottom: 'calc(6px + env(safe-area-inset-bottom))' }}>
-              {[
-                { label: t.bottom.home, href: '/teacher/dashboard', icon: LayoutDashboard },
-                { label: t.bottom.create, href: '/teacher/create', icon: FilePlus },
-                { label: t.bottom.classes, href: '/teacher/classes', icon: Users },
-                { label: t.bottom.library, href: '/teacher/library', icon: FolderOpen },
-              ].map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <Link key={item.href} href={item.href} className={cn("flex-1 flex flex-col items-center gap-[3px] py-1 relative", active ? "text-on-secondary-container" : "text-on-surface-variant")}>
-                    {active && (
-                      <motion.span layoutId="bn-pill" transition={{ type: 'spring', stiffness: 400, damping: 32 }} className="absolute -top-0.5 inset-x-0 mx-auto w-[52px] h-[28px] bg-secondary-container rounded-full" />
-                    )}
-                    <item.icon size={21} strokeWidth={active ? 2.4 : 2} className={cn("relative z-10", active && "text-primary")} />
-                    <span className={cn("relative z-10 text-[9.5px] font-semibold", active && "font-bold")}>{item.label}</span>
-                  </Link>
-                );
-              })}
+          {/* MOBILE BOTTOM NAVIGATION — dock (edge-to-edge) or floating pill */}
+          {showBottomBar && MOBILE_NAV === 'dock' && (
+            <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-t-bar-blur backdrop-blur-xl border-t border-outline-variant flex px-1.5 pt-1.5" style={{ paddingBottom: 'calc(6px + env(safe-area-inset-bottom))' }}>
+              {mobileNavItems.map(mobileNavLink)}
+              <button onClick={() => setMobileMenuOpen(true)} className="flex-1 flex flex-col items-center gap-[3px] py-1 text-on-surface-variant">
+                <Menu size={21} strokeWidth={2} />
+                <span className="text-[9.5px] font-semibold">{t.bottom.menu}</span>
+              </button>
+            </nav>
+          )}
+          {showBottomBar && MOBILE_NAV === 'floating' && (
+            <nav className="md:hidden fixed inset-x-3 z-40 bg-t-bar-blur backdrop-blur-xl border border-t-glass-border shadow-elev-3 rounded-full flex px-2 py-1.5" style={{ bottom: 'calc(10px + env(safe-area-inset-bottom))' }}>
+              {mobileNavItems.map(mobileNavLink)}
               <button onClick={() => setMobileMenuOpen(true)} className="flex-1 flex flex-col items-center gap-[3px] py-1 text-on-surface-variant">
                 <Menu size={21} strokeWidth={2} />
                 <span className="text-[9.5px] font-semibold">{t.bottom.menu}</span>

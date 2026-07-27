@@ -311,7 +311,7 @@ export default function SettingsPage() {
   if (loading) return <div className="min-h-[100dvh] bg-surface flex items-center justify-center"><Spinner size={32}/></div>;
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-20">
+    <div className="min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container pb-20">
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 md:py-10 space-y-6">
         
         {/* HEADER & TABS */}

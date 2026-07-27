@@ -614,7 +614,7 @@ export default function AIImageInputPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface font-sans pb-24">
+    <div className="min-h-screen bg-surface font-t-body pb-24">
       
       <AiThinkingModal isVisible={isGenerating} />
 

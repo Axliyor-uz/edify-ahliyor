@@ -59,7 +59,7 @@ export default function IELTSDashboard() {
   const t = PAGE_TRANSLATIONS[lang] || PAGE_TRANSLATIONS['uz'];
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-28">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-28">
 
       {/* ── Premium top bar ── */}
       <div className="bg-surface-container-low border-b border-outline-variant">

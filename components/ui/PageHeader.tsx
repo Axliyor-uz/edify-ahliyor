@@ -12,9 +12,9 @@ export interface PageHeaderProps {
 /** Standard page top: every teacher page starts with this for consistency. */
 export function PageHeader({ title, subtitle, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-wrap items-end gap-3", className)}>
+    <div className={cn("flex flex-wrap items-end gap-t-gap", className)}>
       <div className="min-w-0">
-        <h1 className="text-[22px] font-bold tracking-tight text-on-surface">{title}</h1>
+        <h1 className="font-t-display text-[22px] font-bold tracking-tight text-on-surface">{title}</h1>
         {subtitle && <p className="mt-0.5 text-[13px] text-on-surface-variant">{subtitle}</p>}
       </div>
       {actions && <div className="ml-auto flex flex-none flex-wrap items-center gap-2">{actions}</div>}

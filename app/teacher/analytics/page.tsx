@@ -360,7 +360,7 @@ export default function AIAnalyticsPage() {
   if (loading) return <div className="h-screen flex items-center justify-center"><Spinner size={40}/></div>;
 
   return (
-    <div className="min-h-screen bg-surface p-6 md:p-8 font-sans text-on-surface pb-20 relative">
+    <div className="min-h-screen bg-surface p-6 md:p-8 font-t-body text-on-surface pb-20 relative">
       
       {/* HEADER & HISTORY TOGGLE */}
       <div className="max-w-4xl mx-auto mb-10 flex flex-col md:flex-row items-center justify-between relative">

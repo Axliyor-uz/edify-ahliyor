@@ -211,7 +211,7 @@ export default function TeacherProfilePage() {
     : '-';
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-20">
+    <div className="min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container pb-20">
       
       {/* Hidden File Input */}
       <input type="file" accept="image/jpeg, image/png, image/webp" ref={fileInputRef} className="hidden" onChange={onSelectFile} />

@@ -83,7 +83,7 @@ export default function IeltsGroupsPage() {
   }, [user]);
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-28">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-28">
       <CreateIeltsGroupModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
       {/* ── Premium top bar ── */}

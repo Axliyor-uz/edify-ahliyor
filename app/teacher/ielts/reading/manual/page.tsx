@@ -345,7 +345,7 @@ export default function HighDensityBuilder() {
   };
 
   return (
-    <div className="h-screen bg-surface text-on-surface font-sans selection:bg-primary-container overflow-hidden flex flex-col text-[13px]">
+    <div className="h-screen bg-surface text-on-surface font-t-body selection:bg-primary-container overflow-hidden flex flex-col text-[13px]">
       <AnimatePresence mode="wait">
 
         {step === 1 && (

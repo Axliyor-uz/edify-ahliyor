@@ -152,7 +152,7 @@ export default function LibraryPage() {
   const THEMES = ['primary', 'secondary', 'tertiary'];
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-[100px] md:pb-12">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-[100px] md:pb-12">
 
       {selectedTest && <EditTestModal key={selectedTest.id} isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); fetchTests(false); }} test={selectedTest} />}
 

@@ -182,7 +182,7 @@ export default function StudentProfilePage() {
   const birthDate = profile.birthDate; 
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-[calc(2rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container pb-[calc(2rem+env(safe-area-inset-bottom))]">
 
       {/* 🟢 ULTRA MINIMALISTIC HEADER */}
       <header className="sticky top-0 z-30 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-xl border-b border-outline-variant px-4 py-3 flex items-center shadow-elev-1">

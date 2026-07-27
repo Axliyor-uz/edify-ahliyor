@@ -292,7 +292,7 @@ export default function MyQuestionsPage() {
 
   // --- UI RENDER ---
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-32">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-32">
 
       {/* 🟢 TOP HEADER */}
       <div className="bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant sticky top-0 z-30 shadow-elev-1">

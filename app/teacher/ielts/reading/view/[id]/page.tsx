@@ -135,7 +135,7 @@ export default function AuthenticIELTSViewSimulator() {
   };
 
   return (
-    <div className="h-[100dvh] bg-surface flex flex-col overflow-hidden font-sans text-on-surface selection:bg-primary-container">
+    <div className="h-[100dvh] bg-surface flex flex-col overflow-hidden font-t-body text-on-surface selection:bg-primary-container">
 
       {/* 🌟 ULTRA-TIGHT HEADER WITH PASSAGE SWITCHER */}
       <header className="bg-surface-container-lowest border-b border-outline-variant px-3 h-10 flex items-center justify-between shrink-0 z-50">
@@ -202,7 +202,7 @@ export default function AuthenticIELTSViewSimulator() {
             <div className="text-justify space-y-3 text-on-surface font-serif">
               {passage.blocks?.map((b: any, i: number) => (
                 <div key={i} className="flex gap-3 items-start">
-                   {b.label && <div className="font-bold text-on-surface-variant w-4 shrink-0 font-sans mt-[0.15em]">{b.label}</div>}
+                   {b.label && <div className="font-bold text-on-surface-variant w-4 shrink-0 font-t-body mt-[0.15em]">{b.label}</div>}
                    <div className="flex-1" dangerouslySetInnerHTML={{ __html: b.content.replace(/\n/g, '<br/>') }}></div>
                 </div>
               ))}

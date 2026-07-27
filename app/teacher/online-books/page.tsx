@@ -544,7 +544,7 @@ export default function OnlineLibraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface font-sans flex flex-col">
+    <div className="min-h-screen bg-surface font-t-body flex flex-col">
 
       {/* HEADER */}
       <header className="bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant sticky top-0 z-40 shadow-elev-1">

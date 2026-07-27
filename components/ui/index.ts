@@ -1,7 +1,13 @@
 /* Edify teacher UI kit — import everything from "@/components/ui".
-   Design tokens live in ./theme.css (imported once in app/teacher/layout.tsx). */
+   Design tokens live in ./theme.css (imported once in app/teacher/layout.tsx);
+   the switchboard driving them is /design.teacher.config.ts. */
 
 export { cn } from "./cn";
+export { TeacherThemeProvider, useTeacherTheme } from "./TeacherThemeProvider";
+export {
+  TEACHER_DESIGN, MOTION_ON, MOTION_EXPRESSIVE,
+  springTransition, fadeUp, popIn, pageTransition, staggerContainer, staggerItem,
+} from "./config";
 export { Button, IconButton } from "./Button";
 export type { ButtonProps, ButtonVariant, ButtonSize, IconButtonProps } from "./Button";
 export { Card, CardHeader } from "./Card";

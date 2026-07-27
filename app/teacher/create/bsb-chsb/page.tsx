@@ -400,7 +400,7 @@ export default function BsbChsbGeneratorPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-[100px] text-on-surface selection:bg-primary-container selection:text-on-primary-container pt-[64px] md:pt-[72px]">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-[100px] text-on-surface selection:bg-primary-container selection:text-on-primary-container pt-[64px] md:pt-[72px]">
       
       <AiThinkingModal isVisible={isGenerating} />
       

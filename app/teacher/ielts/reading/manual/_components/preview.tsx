@@ -71,7 +71,7 @@ export default function PreviewModal({ isOpen, onClose, meta, passage }: Preview
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-[999999] bg-scrim backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 font-sans antialiased">
+    <div className="fixed inset-0 z-[999999] bg-scrim backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 font-t-body antialiased">
       <motion.div 
         initial={{ opacity: 0, scale: 0.98, y: 15 }} 
         animate={{ opacity: 1, scale: 1, y: 0 }} 
@@ -112,7 +112,7 @@ export default function PreviewModal({ isOpen, onClose, meta, passage }: Preview
               <div className="space-y-5 pt-6 text-[15.5px] leading-[1.9] text-on-surface font-serif">
                 {passage?.blocks?.map((b: any, i: number) => (
                   <div key={i} className="flex gap-4">
-                    {b.label && <div className="font-bold text-on-surface-variant w-5 shrink-0 font-sans">{b.label}</div>}
+                    {b.label && <div className="font-bold text-on-surface-variant w-5 shrink-0 font-t-body">{b.label}</div>}
                     <div className="flex-1 whitespace-pre-wrap">{b.content}</div>
                   </div>
                 ))}

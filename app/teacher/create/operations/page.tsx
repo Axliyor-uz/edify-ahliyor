@@ -247,7 +247,7 @@ export default function MathOperationsGenerator() {
   const problemPages = chunkArray(problems, perPage);
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-[calc(2rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-[calc(2rem+env(safe-area-inset-bottom))]">
 
       {/* --- TOP HEADER --- */}
       <div className="bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant sticky top-0 z-30 shadow-elev-1">
