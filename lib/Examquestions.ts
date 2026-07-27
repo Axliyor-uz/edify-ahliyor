@@ -269,6 +269,116 @@ export async function buildPractice(params: {
 }
 
 /**
+ * A drill for ONE skill, inside ONE dimension.
+ *
+ * ⚠️ The bank cannot be queried by skill. Every question carries a subtopicId,
+ * but the exam's single composite index is (topicId, chapterId, difficultyId,
+ * rand) — adding a subtopicId equality would silently demand a second index, and
+ * the sampler's contract says to vary the VALUES, never widen the filter.
+ *
+ * So this over-samples by chapter and filters to the skill in the client. The
+ * cost is real and is reported through `docsRead` (the practice screen already
+ * shows it): a chapter that feeds a skill through two of its nine subtopics
+ * returns roughly two useful questions in nine. OVERSAMPLE sets how hard we try
+ * before falling back.
+ *
+ * The fallback is deliberate and visible: if the skill's own subtopics cannot
+ * fill the set, the remainder comes from the same chapters unfiltered, and
+ * `onSkill` reports how many of the returned questions actually hit the skill.
+ * A short honest drill beats a full dishonest one.
+ */
+/**
+ * Widening factors, tried in order and abandoned the moment the drill is full.
+ *
+ * A flat ×4 was the first version and it billed for the worst case every single
+ * time: three chapters and a 10-question drill asked for 14 docs per chapter —
+ * 42 reads — even when the first dozen already contained ten on-skill questions.
+ * Starting at ×1.5 and only widening when short makes the common case cost close
+ * to the drill size, and the expensive case still reachable.
+ */
+const OVERSAMPLE_STEPS = [1.5, 3, 6];
+
+/**
+ * Hard ceiling on documents read for one drill, as a multiple of its size.
+ *
+ * Widening without a ceiling is how "fill the drill" turns into a bill: a skill
+ * that is two of a chapter's nine subtopics would keep asking for more until it
+ * found ten, which measured out at ~105 reads for a 10-question drill. Three
+ * times the drill size is the cap, and hitting it means the set is topped up
+ * with same-chapter questions instead — `onSkill` reports how many actually hit,
+ * so a thin skill is visible rather than silently expensive.
+ */
+const MAX_READS_PER_QUESTION = 3;
+
+export async function buildSkillPractice(params: {
+  chapters: ChapterRef[];
+  /** Keeps a question only when this returns true for its syllabus position. */
+  matches: (q: Pick<QuestionDoc, 'topicId' | 'chapterId' | 'subtopicId'>) => boolean;
+  difficultyId: DifficultyId;
+  count: number;
+}): Promise<{ questions: QuestionDoc[]; docsRead: number; onSkill: number }> {
+  const { chapters, matches, difficultyId, count } = params;
+  const budget: Budget = { used: new Set(), reads: 0 };
+  if (chapters.length === 0 || count <= 0) return { questions: [], docsRead: 0, onSkill: 0 };
+
+  const onSkill: QuestionDoc[] = [];
+  const spare: QuestionDoc[] = [];
+
+  const take = (docs: QuestionDoc[]) => {
+    for (const q of docs) (matches(q) ? onSkill : spare).push(q);
+  };
+
+  const maxReads = count * MAX_READS_PER_QUESTION;
+
+  // `budget.used` makes every round skip the documents an earlier round already
+  // returned, so widening re-reads nothing it has already paid for.
+  //
+  // The per-chapter ask is clamped to what is left of the budget, not merely
+  // checked before the round: a ceiling tested only between rounds lets the
+  // round that crosses it run at full width, which is how a "30 read cap" bills
+  // 45. Clamping makes the documented bound the real one.
+  const round = async (difficulty: DifficultyId, factor: number) => {
+    const remaining = maxReads - budget.reads;
+    if (remaining <= 0) return;
+    const perChapter = Math.min(
+      Math.max(2, Math.ceil((count * factor) / chapters.length)),
+      Math.max(1, Math.ceil(remaining / chapters.length)),
+    );
+    const docs = await Promise.all(
+      chapters.map((c) =>
+        sample({ topicId: c.topicId, chapterId: c.chapterId, difficultyId: difficulty }, perChapter, budget),
+      ),
+    );
+    take(docs.flat());
+  };
+
+  const exhausted = () => onSkill.length >= count || budget.reads >= maxReads;
+
+  // Pass 1 — the target difficulty, widening only while the skill is short AND
+  // the read budget holds.
+  for (const factor of OVERSAMPLE_STEPS) {
+    if (exhausted()) break;
+    await round(difficultyId, factor);
+  }
+
+  // Pass 2 — neighbouring difficulties, same two stop conditions.
+  for (const d of ALL_DIFFICULTIES.filter((x) => x !== difficultyId)) {
+    if (exhausted()) break;
+    await round(d, OVERSAMPLE_STEPS[1]);
+  }
+
+  const picked = shuffle(onSkill).slice(0, count);
+  // Top up from the same chapters rather than returning a 3-question drill.
+  const filler = picked.length < count ? shuffle(spare).slice(0, count - picked.length) : [];
+
+  return {
+    questions: shuffle([...picked, ...filler]),
+    docsRead: budget.reads,
+    onSkill: picked.length,
+  };
+}
+
+/**
  * Builds the 45-question Milliy sertifikat exam from EXAM_BLUEPRINT.
  *
  * Sections are filled in blueprint order and questions keep that order, so slot

@@ -496,6 +496,53 @@ service cloud.firestore {
       );
     }
 
+    // --- 12b. TEACHER RASCH QUIZZES (docs/RASCH_QUIZ.md) ---
+    //
+    // A 45-question paper a teacher assembled, opened by a private 6-digit
+    // `accessCode`. The student's lookup is a QUERY on that code, so the read
+    // rule cannot depend on the document's own contents being matched — it has
+    // to allow a signed-in user to read the collection, exactly as
+    // `custom_tests` does.
+    //
+    // ⚠️ KNOWN TRAP, same as custom_tests: the paper EMBEDS its questions, and
+    // therefore their correct answers. A signed-in student who enumerates this
+    // collection can read the key without ever entering a code. The 6-digit code
+    // is a convenience for sharing, NOT a security boundary — do not present it
+    // as one, and do not use these papers for anything that must be invigilated
+    // until the questions move behind an Admin-SDK route.
+    match /teacher_rasch_quizzes/{quizId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+
+    // One sitting: `teacher_rasch_results/{quizId}_{uid}`.
+    //
+    // The student writes their own row (a retake overwrites it — the id is
+    // deterministic); the teacher reads every row of their own papers. `read`
+    // covers `list` too, and the teacher's query filters `teacherId ==`, which is
+    // what makes it provable. Nobody may delete: a result the student produced is
+    // not the teacher's to erase, and the student cannot quietly withdraw one.
+    match /teacher_rasch_results/{resultId} {
+      allow read: if isAuth() && (
+        resource.data.studentId == request.auth.uid ||
+        resource.data.teacherId == request.auth.uid
+      );
+      allow create: if isAuth()
+                    && request.resource.data.studentId == request.auth.uid
+                    && request.resource.data.total is int
+                    && isPercent(request.resource.data.percent);
+      // A retake replaces the row, but it stays the SAME student's row and stays
+      // attached to the SAME paper — neither may be rewritten.
+      allow update: if isAuth()
+                    && resource.data.studentId == request.auth.uid
+                    && request.resource.data.studentId == resource.data.studentId
+                    && request.resource.data.quizId == resource.data.quizId
+                    && request.resource.data.teacherId == resource.data.teacherId
+                    && isPercent(request.resource.data.percent);
+      allow delete: if false;
+    }
+
     // --- 13. EXAMS ---
     match /bsb_chsb_tests/{testId} {
       allow read: if isAuth();

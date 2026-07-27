@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/(student)/*`, XP/streak/leaderboard logic, `services/quizService.ts`, `services/historyService.ts`, or `lib/social.ts`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-20 (student logic overhaul: shared XP engine lib/xp.ts, center features, account-deletion API).
+**Last verified:** 2026-07-28 (teacher-built Rasch papers + the shared exam runner).
 
 ## Purpose & scope
 
@@ -12,7 +12,7 @@ The student route tree `app/(student)/` (route group, no URL segment): dashboard
 
 ## ⚠️ Headline facts that contradict old assumptions
 
-1. **There is no student self-practice flow.** The syllabus API routes (`/api/structure`, `/api/syllabus`) and `quizService.fetchQuestions` (the `questions1` bank query) are consumed ONLY by the teacher app. Students only take teacher-authored tests inside classes.
+1. **The syllabus API routes (`/api/structure`, `/api/syllabus`) and `quizService.fetchQuestions` are consumed ONLY by the teacher app.** Inside classes, students only take teacher-authored tests. Self-practice exists exactly once, in the Rasch hub (`/RASCHmodel/exam` + `/practice`), and it reaches `questions1` through **`lib/Examquestions.ts`**, never through those routes — the tree it browses is the bundled `data/syllabus.json` (see the Rasch hub section below).
 2. **`services/historyService.ts` is entirely dead** (`saveAttempt`, `getUserHistory`, `fetchReviewQuestions`, the `questionPath` review mechanism — zero consumers). The "legacy practice attempt shape" exists in code but nothing writes or reads it.
 3. **`services/userService.ts::updateUserStats` is dead** (zero consumers) — and with it the `users.progress` field. All live XP/streak writing flows through **`lib/xp.ts`** (`applyUserXp` + `mirrorLeaderboards`), called from the two writers below inside their own transactions.
 4. `profile/_components/EditProfileModal.tsx` and the typing game were **deleted 2026-07-20** (both were dead: unimported / unlinked).
@@ -96,7 +96,52 @@ Every recharts chart mounts inside [components/ChartFrame.tsx](../components/Cha
 ## The dashboard's two "levels" (they measure different things)
 
 - **Level** (the stat tile) is XP: `floor(totalXP/1000)+1` — how much the student has *done*.
-- **Mathematics level** (`MathLevelSummary`, under the stat grid) is Rasch ability θ mapped to 0–3 — how hard a problem the student can *solve*. It is the same card the Rasch hub (`/RASCHmodel`) shows, reading the same `RASCH_levels/{uid}` document through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so mounting it on the dashboard costs no extra read on a warm cache. It renders `null` until that read resolves.
+- **Mathematics level** (`MathLevelSummary`, under the stat grid) is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). It is the same card the Rasch hub (`/RASCHmodel`) shows, reading the same `RASCH_levels/{uid}` document through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so mounting it on the dashboard costs no extra read on a warm cache. It renders `null` until that read resolves.
+
+## Teacher-built Rasch papers (`/RASCHmodel/quiz`)
+
+A teacher can assemble their own 45-question Rasch paper and hand out a private
+**6-digit code**; the student enters it at `/RASCHmodel/quiz` (nav item **Kod**),
+sits it in the SAME runner as the mock exam, and the result both moves their
+`RASCH_levels` and is reported back to the teacher
+(`teacher_rasch_results/{quizId}_{uid}`). One Firestore read opens a whole paper —
+the questions are embedded snapshots, not refs.
+
+⚠️ The runner and the per-question review now live in
+`RASCHmodel/_components/{ExamRunner,ExamReview}.tsx` and are shared by both pages;
+`/RASCHmodel/exam` no longer renders its own. ⚠️ The two sittings use **separate**
+localStorage stores, so starting a teacher paper never discards a mock exam that
+is still running. Full contract, traps and the answer-key caveat:
+**[RASCH_QUIZ.md](RASCH_QUIZ.md)**.
+
+## The skill axis
+
+Inside the seven dimensions sit **34 content-free skills** ([lib/RASCHskills.ts](../lib/RASCHskills.ts)) — what the student can *do*, as opposed to which content the item came from. Derived entirely from data already persisted (no Firestore change, no migration), 13 of them span more than one dimension, and the 45-question paper detects ~21 of 34 per sitting. Full contract, traps and the syllabus→skill map: **[RASCH_SKILLS.md](RASCH_SKILLS.md)**.
+
+## The Rasch suite's shared navbar
+
+`RASCHmodel/_components/RaschNav.tsx` is the ONE nav for every page under `/RASCHmodel`. Fixed order, everywhere: **Home → My level → Analysis → Practice → Code → Quick start** (the last is the filled CTA, pushed right with `ml-auto`).
+
+- **Six items since 2026-07-28**: `Kod` (`/RASCHmodel/quiz`) sits between Practice and Quick start. It is a plain item, not the CTA — a student arrives holding a code somebody gave them, so it must be findable, but the paper they can always start alone stays the filled call to action.
+- Each page used to roll its own row and they disagreed on both membership and order (progress had Home/Analysis/New test, diagnosis had My level/Home/Practice, practice had Analysis/Home). ⚠️ **Don't add a local nav row back to a Rasch page** — put the change in `RaschNav`.
+- **Sticky, not static**: `sticky top-[var(--s-topbar-h)] z-20`. It parks under the shell's own app bar (z-40) and below the shell-C tab row (z-30) so it can never overlap either; the active shell is `shell_b`, so that tab row isn't rendered today. Translucency uses `bg-surface-blur` — a `bg-surface/85` would render **opaque** (M3 tokens are plain hex inside `var()`).
+- Items scroll horizontally (`s-no-scrollbar`) rather than wrapping: five labelled items don't fit a 360px phone, and a bar that grows to two rows shifts the page down as you navigate.
+- The current page is a **tonal chip**, not an outline, so position is readable without parsing labels. Matching is exact (`pathname === href`) — every route is a sibling of `/RASCHmodel`, so `startsWith` would light "Home" everywhere.
+- ⚠️ **The exam page mounts it only at `intro` and `submitted`, never `in-progress`.** A running paper has its own sticky timer bar, and offering "Home / Practice" mid-sitting invites abandoning a paper that is already being graded against the clock.
+- The hub's `PageHeader actions` row was removed as a duplicate of this bar, along with its `progress`/`diagnosis`/`practice`/`quickStart` strings.
+
+## Known dead after the 2026-07-27 progress-page trim
+
+The per-topic card grid on `/RASCHmodel/progress` (topic %, delta, "N/M solved correctly", "next ≈ X%", "Review →") was removed at the user's request. It was the only consumer of **`lib/RASCHforecast.ts::forecastByTopic`**, which is now dead (zero call sites; `forecastOverall` is still live). Kept rather than deleted — it works and per-topic forecasting is plausibly wanted again — but don't treat it as reachable code. `DeltaBadge`, the page's `solved_counts` rollup and the `solvedLabel`/`noneSolved`/`nextShort`/`review` strings went with the grid. ⚠️ `setSolvedUser` stayed: the per-skill review panels read the same localStorage archive and it must be scoped to the account.
+
+## The Rasch hub's syllabus browser (`/RASCHmodel`)
+
+`RASCHmodel/components/MathematicsCard.tsx` renders the **whole Algebra/Geometriya taxonomy — all three levels** (section → chapter → subtopic) from **`data/syllabus.json` via [lib/Mathstructure.ts](../lib/Mathstructure.ts)**. Bundled at build time, so the entire tree costs **zero Firestore reads** (it deliberately shows no question counts — those were 87 COUNT aggregations per cold cache for a number nobody acted on).
+
+- ⚠️ **Two files hold the same taxonomy. The student side must use `syllabus.json`.** `data/question_topics.json` is the *slug*-keyed copy for `/teacher/create/question`; `syllabus.json` is *numeric*-keyed and its ids (`topicId` unpadded, `chapterId`/`subtopicId` zero-padded to 2 — `padId`) are the ones `questions1` is actually keyed by. Rendering the slug version on a student page would produce ids that match nothing.
+- **Search** is apostrophe- and punctuation-insensitive (`norm()`): the syllabus mixes `o'`, `o’`, `oʻ` and `oʼ`, so `korsatkichli`, `ko'rsatkichli` and `koʻrsatkichli` must all hit. It matches chapter **and** subtopic names; a chapter whose own name matched keeps its full lesson list, a chapter matched only through its lessons shows just those. A live query force-opens every surviving section and chapter (collapsing mid-search would hide the results). Highlighting falls back to plain text when the hit exists only in normalized form — normalized offsets are not mapped back onto the original string.
+- **A chapter row expands; it no longer navigates.** Practice moved to an explicit trailing button on the row (unchanged href).
+- ⚠️ **That practice href's params are dead.** `MathematicsCard` links to `/RASCHmodel/practice?topicId=&chapterId=&lang=`, but `practice/page.tsx` never calls `useSearchParams` — it builds its set from `weakestSpots(diagnosticsFor(levels,'exam'))` regardless, and `buildPractice` (lib/Examquestions.ts) only filters to **chapter** granularity anyway (no subtopic support in `sample()`). So chapter- and subtopic-targeted drilling does not exist yet; the link lands on the generic weakest-spots intro. Subtopic rows are therefore rendered as a read-only lesson list, not as drill targets — don't make them clickable before the practice page honours the params.
 
 ## Caching convention
 

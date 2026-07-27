@@ -132,6 +132,23 @@ function baseDoc(n: NormalizedQuestion): QuestionDoc {
 }
 
 /**
+ * Where an item sits on the paper. The 45-question mock takes this from the
+ * blueprint row it is filling; a teacher-built paper (docs/RASCH_QUIZ.md) derives
+ * it per question from the chapter, since it fills no sections.
+ */
+export interface ExamSlotMeta {
+  sectionId: string;
+  sectionLabel: Record<Lang, string>;
+  testType: BlueprintSection['testType'];
+}
+
+const slotMetaOf = (section: BlueprintSection): ExamSlotMeta => ({
+  sectionId: section.id,
+  sectionLabel: section.label,
+  testType: section.testType,
+});
+
+/**
  * Turns one normalized teacher doc into the exam item(s) it contributes:
  *   • normal question   → 1 flat item
  *   • shared_options     → 1 GROUPED card, but it occupies N exam slots (one per
@@ -139,13 +156,17 @@ function baseDoc(n: NormalizedQuestion): QuestionDoc {
  *                          each sub-question is scored on its own.
  *   • multi_part         → 1 card, 1 slot (graded all-parts-correct).
  * Returns a single card; `examSlotCount()` says how many slots it fills.
+ *
+ * Exported as `teacherExamItem` — the teacher quiz builder turns hand-picked
+ * `teacher_questions` docs into exam items with the SAME function the mock exam
+ * uses, so images, blocks and the taxonomy bridge behave identically on both.
  */
-function toExamItem(n: NormalizedQuestion, section: BlueprintSection): ExamQuestion {
+export function toExamItem(n: NormalizedQuestion, meta: ExamSlotMeta): ExamQuestion {
   const base = baseDoc(n);
   const section_ = {
-    sectionId: section.id,
-    sectionLabel: section.label,
-    testType: section.testType,
+    sectionId: meta.sectionId,
+    sectionLabel: meta.sectionLabel,
+    testType: meta.testType,
     source: 'teacher' as const,
     slotNumber: 0,
   };
@@ -342,7 +363,7 @@ export async function buildTeacherSection(
     if (pools.used.has(n.id)) continue;
     if (topicSlugs.size > 0 && !topicSlugs.has(n.topicId)) continue;
 
-    const card = toExamItem(n, section);
+    const card = toExamItem(n, slotMetaOf(section));
     const cardSlots = examSlotCount(card);
     // A shared_options block occupies one slot PER sub-question — it is placed
     // whole or not at all, never truncated. If it doesn't fit the slots left,

@@ -5,10 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Brain, Clock, Gauge, Home, Rocket, Target, Zap, AlertCircle,
+  Brain, Clock, Gauge, Rocket, Target, Zap, AlertCircle,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/AuthContext';
+import RaschNav from '../_components/RaschNav';
 import { useStudentLanguage } from '../../layout';
 import { abilityFor, diagnosticsFor, getRASCHLevels, type AnalysisSource } from '@/services/RASCHProgressService';
 import { behaviorTotals, weakestSpots, EXPECTED_SEC } from '@/lib/RASCHdiagnosis';
@@ -240,19 +241,8 @@ export default function DiagnosisPage() {
 
   return (
     <Page>
+      <RaschNav lang={lang} />
       <Stack>
-        <div className="flex flex-wrap items-center gap-2">
-          <NavLink href="/RASCHmodel/progress">
-            <ArrowLeft size={14} strokeWidth={3} /> {t.back}
-          </NavLink>
-          <NavLink href="/RASCHmodel">
-            <Home size={14} strokeWidth={3} /> {t.home}
-          </NavLink>
-          <NavLink href="/RASCHmodel/practice" tone="filled" className="ml-auto">
-            <Rocket size={14} strokeWidth={3} /> {t.practice}
-          </NavLink>
-        </div>
-
         <PageHeader title={t.title} subtitle={t.subtitle} className="pb-0" />
 
         {/* Source: exams and practice are different evidence, so they are

@@ -1,15 +1,15 @@
 // app/(student)/RASCHmodel/page.tsx
 'use client';
 
-import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Sparkles, Rocket, Target, TrendingUp, Brain, Dumbbell } from 'lucide-react';
+import { Sparkles, Target } from 'lucide-react';
 
 // Components
 import MathematicsCard from './components/MathematicsCard';
+import RaschNav from './_components/RaschNav';
 import MathLevelSummary from './components/MathLevelSummary';
 import { useStudentLanguage } from '../layout';
-import { Button, Card, Page, PageHeader, Tile, MOTION_ON, springTransition } from '@/components/student-ui';
+import { Card, Page, PageHeader, Tile, MOTION_ON, springTransition } from '@/components/student-ui';
 import type { Lang } from '@/types/Math';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
@@ -19,30 +19,18 @@ import type { Lang } from '@/types/Math';
 const UI: Record<Lang, Record<string, string>> = {
   uz: {
     subtitle: "Fanlarni tanlang va tezkor mashq qilishni boshlang 🚀",
-    progress: 'Darajam',
-    diagnosis: 'Tahlil',
-    practice: 'Mashq',
-    quickStart: 'Tezkor boshlash',
     bannerTitle: 'Imtihonga tayyorlaning!',
     bannerDesc:
       "Har bir fan bo'yicha mavzularni o'rganing, savollarni yeching va bilimingizni sinang. Natijalaringiz real vaqtda kuzatiladi.",
   },
   ru: {
     subtitle: 'Выберите предмет и начните тренировку 🚀',
-    progress: 'Мой уровень',
-    diagnosis: 'Анализ',
-    practice: 'Тренировка',
-    quickStart: 'Быстрый старт',
     bannerTitle: 'Готовьтесь к экзамену!',
     bannerDesc:
       'Изучайте темы по каждому предмету, решайте задачи и проверяйте свои знания. Результаты отслеживаются в реальном времени.',
   },
   en: {
     subtitle: 'Pick a subject and start practising 🚀',
-    progress: 'My level',
-    diagnosis: 'Analysis',
-    practice: 'Practice',
-    quickStart: 'Quick start',
     bannerTitle: 'Get exam-ready!',
     bannerDesc:
       'Work through the topics of each subject, solve the questions and test what you know. Your results are tracked as you go.',
@@ -56,33 +44,9 @@ export default function RASCHModelPage() {
   const { lang } = useStudentLanguage();
   const t = UI[lang];
 
-  // The secondary destinations share one row and wrap freely, so a long label
-  // ("Тренировка" is twice the width of "Mashq") can never push the primary
-  // action off a phone screen.
-  const actions = (
-    <>
-      {[
-        { icon: TrendingUp, label: t.progress, href: '/RASCHmodel/progress' },
-        { icon: Brain, label: t.diagnosis, href: '/RASCHmodel/diagnosis' },
-        { icon: Dumbbell, label: t.practice, href: '/RASCHmodel/practice' },
-      ].map(({ icon: Icon, label, href }) => (
-        <Link key={href} href={href}>
-          <Button variant="outlined" size="sm" icon={<Icon size={16} strokeWidth={3} />}>
-            {label}
-          </Button>
-        </Link>
-      ))}
-
-      <Link href="/RASCHmodel/exam">
-        <Button size="sm" icon={<Rocket size={16} strokeWidth={3} />}>
-          {t.quickStart}
-        </Button>
-      </Link>
-    </>
-  );
-
   return (
     <Page>
+      <RaschNav lang={lang} />
       <PageHeader
         title={
           <span className="flex items-center gap-3">
@@ -93,7 +57,6 @@ export default function RASCHModelPage() {
           </span>
         }
         subtitle={t.subtitle}
-        actions={actions}
       />
 
       {/* ── Where the student actually stands ───────────────────────────── */}

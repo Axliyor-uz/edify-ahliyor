@@ -25,8 +25,8 @@ const UI: Record<Lang, Record<string, string>> = {
     details: "Batafsil",
     master: 'master',
     dims: "o'lchamdan",
-    band_beginner: "Boshlang'ich", band_basic: 'Asosiy', band_confident: 'Ishonchli',
-    band_advanced: 'Yuqori', band_master: 'Master',
+    band_beginner: "Boshlang'ich", band_simple: 'Oddiy', band_easy: 'Oson',
+    band_medium: "O'rta", band_hard: 'Qiyin', band_olympiad: 'Olimpiada',
   },
   ru: {
     title: 'Ваш уровень по математике',
@@ -35,8 +35,8 @@ const UI: Record<Lang, Record<string, string>> = {
     details: 'Подробнее',
     master: 'мастер',
     dims: 'из измерений',
-    band_beginner: 'Начальный', band_basic: 'Базовый', band_confident: 'Уверенный',
-    band_advanced: 'Продвинутый', band_master: 'Мастер',
+    band_beginner: 'Начальный', band_simple: 'Простой', band_easy: 'Лёгкий',
+    band_medium: 'Средний', band_hard: 'Сложный', band_olympiad: 'Олимпиадный',
   },
   en: {
     title: 'Your mathematics level',
@@ -45,8 +45,8 @@ const UI: Record<Lang, Record<string, string>> = {
     details: 'Details',
     master: 'master',
     dims: 'of dimensions',
-    band_beginner: 'Beginner', band_basic: 'Basic', band_confident: 'Confident',
-    band_advanced: 'Advanced', band_master: 'Master',
+    band_beginner: 'Beginner', band_simple: 'Simple', band_easy: 'Easy',
+    band_medium: 'Medium', band_hard: 'Hard', band_olympiad: 'Olympiad',
   },
 };
 
@@ -61,10 +61,11 @@ const BAND_TONE: Record<LevelBand, {
   text: string;
 }> = {
   beginner: { tile: 'neutral', chip: 'neutral', bar: 'primary', text: 'text-on-surface-variant' },
-  basic: { tile: 'secondary', chip: 'info', bar: 'primary', text: 'text-secondary' },
-  confident: { tile: 'primary', chip: 'primary', bar: 'primary', text: 'text-primary' },
-  advanced: { tile: 'success', chip: 'success', bar: 'success', text: 'text-success' },
-  master: { tile: 'gold', chip: 'gold', bar: 'gold', text: 'text-gold' },
+  simple: { tile: 'neutral', chip: 'neutral', bar: 'primary', text: 'text-on-surface-variant' },
+  easy: { tile: 'secondary', chip: 'info', bar: 'primary', text: 'text-secondary' },
+  medium: { tile: 'primary', chip: 'primary', bar: 'primary', text: 'text-primary' },
+  hard: { tile: 'success', chip: 'success', bar: 'success', text: 'text-success' },
+  olympiad: { tile: 'gold', chip: 'gold', bar: 'gold', text: 'text-gold' },
 };
 
 /**

@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/teacher/*`, test/question collections (`teacher_questions`, `custom_tests`, `bsb_chsb_tests`), grading, or subscription/limits display. AI generation routes are covered in [AI.md](AI.md); read both when touching `app/teacher/create/*/api/`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-12 (commit `7c31a96`).
+**Last verified:** 2026-07-28 (Rasch paper creator added; rest unverified since commit `7c31a96`).
 
 ## Cross-cutting
 
@@ -36,10 +36,11 @@ Hub lists 9 methods. Two write targets: per-question docs in **`teacher_question
 | From own bank | `create/my_questions/` | `custom_tests` | manages `teacher_questions where creatorId==uid` |
 | BSB/CHSB | `create/bsb-chsb/` + api | **`bsb_chsb_tests`** only | mixed question types with `points`, `pairs`, `rubric`; ⚠️ NOT feature-gated despite `BSB_GENERATOR` existing in the registry |
 | Operations / Abiturient | `create/operations/`, `create/abiturient/` | none | operations = client-side jsPDF worksheets; abiturient = router hub |
+| **Rasch paper (45 q + 6-digit code)** | `create/rasch/` (+ `build/`, `results/[quizId]/`) | **`teacher_rasch_quizzes`** (+ `teacher_questions` from the compose tab) | Pick from `questions1`/own bank or write new; students open it at `/RASCHmodel/quiz` and it scores into their Rasch levels. Full contract: [RASCH_QUIZ.md](RASCH_QUIZ.md) |
 
 `custom_tests` doc: `{teacherId, teacherName?, title, track, subjectName, topicName..., questions:[full question objects embedded], duration (0 = no limit), shuffle (default true), resultsVisibility ('always'|'after_due'|'never', default 'after_due'), accessCode, status:'active', createdAt, questionCount}`. ⚠️ Shape drifts by creator: `teacherName` absent in ai/my_questions paths; `track` varies (`custom`/`general_ai`/`custom_mix`); `EditTestModal` writes a derived `showResults` bool no creator writes.
 
-`accessCode`: 6 chars from an ambiguity-safe alphabet, generated once per modal mount, **no uniqueness check**.
+`accessCode`: 6 chars from an ambiguity-safe alphabet, generated once per modal mount, **no uniqueness check**. ⚠️ Not the same thing as a Rasch paper's `accessCode`, which is 6 **digits**, minted once on first save and best-effort uniqueness-checked ([RASCH_QUIZ.md](RASCH_QUIZ.md)).
 
 ### Single question builder (`create/question/`)
 

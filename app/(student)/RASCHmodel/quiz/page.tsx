@@ -1,0 +1,832 @@
+// app/(student)/RASCHmodel/quiz/page.tsx
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  AlertTriangle, Clock, Home, KeyRound, Languages, Play, TrendingUp, User,
+} from 'lucide-react';
+
+import Link from 'next/link';
+import { useAuth } from '@/lib/AuthContext';
+import RaschNav from '../_components/RaschNav';
+import NavLink from '../_components/NavLink';
+import ExamRunner, { QUESTION_LANGS } from '../_components/ExamRunner';
+import ExamReview from '../_components/ExamReview';
+import { useStudentLanguage } from '../../layout';
+import { saveExamResult, scoreByTopic, toItemResponses } from '@/services/RASCHProgressService';
+import { findQuizByCode, saveQuizResult } from '@/services/teacherRaschQuizService';
+import { estimateAbility } from '@/lib/RASCHtheta';
+import { RASCH_TOPICS } from '@/lib/RASCHtopics';
+import { skillCoverage, skill as skillMeta, SKILL_KEYS, type SkillKey } from '@/lib/RASCHskills';
+import { archiveExam, setSolvedUser } from '@/lib/RASCHsolved';
+import {
+  ACCESS_CODE_LENGTH, hydrateQuiz, isValidAccessCode, sanitizeAccessCode, shuffleItems,
+} from '@/lib/RASCHquiz';
+import {
+  examExpectedText, examMode, examScore, examSlotCount, hasExamAnswer, isExamItemCorrect,
+} from '@/lib/ExamTeacher';
+import {
+  clearQuizSnapshot, getQuizSnapshot, getServerQuizSnapshot, saveQuizSnapshot, subscribeQuizSnapshot,
+} from '@/lib/Examsession';
+import { Banner, Button, Card, FilterChip, Page, cn } from '@/components/student-ui';
+import type { ExamQuestion } from '@/types/Exam';
+import type { RASCHLevels } from '@/types/RASCH';
+import type { Lang } from '@/types/Math';
+
+/**
+ * A paper the teacher built, opened by its private 6-digit code.
+ *
+ * Everything that makes a sitting a sitting is shared with `/RASCHmodel/exam`:
+ * the runner, the review, the item-response builder, and `saveExamResult`. What
+ * is different is only where the paper came from (one document, not 45 sampled
+ * reads) and that the result is ALSO reported back to the teacher.
+ *
+ * Contract + traps: docs/RASCH_QUIZ.md.
+ */
+
+const UI: Record<Lang, Record<string, string>> = {
+  uz: {
+    title: "O'qituvchi testi",
+    lead: "O'qituvchingiz bergan 6 xonali kodni kiriting.",
+    codeLabel: 'Kirish kodi',
+    open: 'Testni ochish',
+    opening: 'Qidirilmoqda…',
+    notFound: 'Bunday kod bilan test topilmadi. Kodni tekshirib qayta kiriting.',
+    closed: "Bu test yopilgan — o'qituvchi uni endi qabul qilmayapti.",
+    lookupFailed: "Testni ochib bo'lmadi. Internetni tekshirib qayta urinib ko'ring.",
+    empty: "Bu testda savol yo'q.",
+    by: "Muallif", duration: 'daqiqa', totalQ: 'ta savol',
+    langTitle: 'Savollar tili',
+    langHint: "Testni boshlagandan so'ng savollar tili o'zgarmaydi — interfeys tilidan mustaqil.",
+    start: 'Testni boshlash',
+    another: 'Boshqa kod kiritish',
+    resumed: 'Boshlangan test tiklandi — savollar qayta yuklanmadi.',
+    oneRead: "Butun test 1 ta hujjatdan o'qildi",
+    timeUp: 'Vaqt tugadi — test avtomatik yakunlandi.',
+    discarded: "Oldingi testning vaqti tugagan, lekin unda birorta ham savolga javob berilmagan — u natija sifatida saqlanmadi.",
+    results: 'Natija',
+    byTopic: "Bo'limlar bo'yicha",
+    skillsTitle: "Aniqlangan ko'nikmalar",
+    skillsHint:
+      "Ko'nikma mavzudan mustaqil: masalan \"tengsizlik yechish\" logarifmik va trigonometrik savollarda bir xil ko'nikma. To'liq manzara — \"Darajam\" sahifasida.",
+    levelTitle: 'Darajangiz o‘zgarishi',
+    savingResult: 'Natija saqlanmoqda…',
+    saveFailed: 'Natijani saqlab bo‘lmadi.',
+    signInToSave: "Natijani saqlash va o'qituvchiga yuborish uchun tizimga kiring.",
+    sentToTeacher: "Natijangiz o'qituvchingizga yuborildi.",
+    viewProgress: 'Darajam va grafik',
+    home: 'Bosh sahifa',
+  },
+  ru: {
+    title: 'Тест учителя',
+    lead: 'Введите 6-значный код, который дал ваш учитель.',
+    codeLabel: 'Код доступа',
+    open: 'Открыть тест',
+    opening: 'Поиск…',
+    notFound: 'Тест с таким кодом не найден. Проверьте код и введите ещё раз.',
+    closed: 'Этот тест закрыт — учитель больше не принимает ответы.',
+    lookupFailed: 'Не удалось открыть тест. Проверьте соединение и попробуйте снова.',
+    empty: 'В этом тесте нет вопросов.',
+    by: 'Автор', duration: 'минут', totalQ: 'вопросов',
+    langTitle: 'Язык вопросов',
+    langHint: 'После начала теста язык вопросов не меняется — он не зависит от языка интерфейса.',
+    start: 'Начать тест',
+    another: 'Ввести другой код',
+    resumed: 'Начатый тест восстановлен — вопросы не загружались заново.',
+    oneRead: 'Весь тест прочитан одним документом',
+    timeUp: 'Время вышло — тест завершён автоматически.',
+    discarded: 'Время прошлого теста истекло, но в нём не было отвечено ни одного вопроса — он не сохранён как результат.',
+    results: 'Результат',
+    byTopic: 'По разделам',
+    skillsTitle: 'Определённые навыки',
+    skillsHint:
+      'Навык не зависит от темы: «решение неравенства» — один и тот же навык в логарифмических и тригонометрических вопросах. Полная картина — на странице «Мой уровень».',
+    levelTitle: 'Изменение вашего уровня',
+    savingResult: 'Сохранение результата…',
+    saveFailed: 'Не удалось сохранить результат.',
+    signInToSave: 'Войдите, чтобы сохранить результат и отправить его учителю.',
+    sentToTeacher: 'Ваш результат отправлен учителю.',
+    viewProgress: 'Мой уровень и график',
+    home: 'Главная',
+  },
+  en: {
+    title: "Your teacher's test",
+    lead: 'Enter the 6-digit code your teacher gave you.',
+    codeLabel: 'Access code',
+    open: 'Open the test',
+    opening: 'Looking it up…',
+    notFound: 'No test found with that code. Check it and try again.',
+    closed: 'This test is closed — your teacher is no longer accepting answers.',
+    lookupFailed: 'Could not open the test. Check your connection and try again.',
+    empty: 'This test has no questions.',
+    by: 'By', duration: 'minutes', totalQ: 'questions',
+    langTitle: 'Question language',
+    langHint: 'Once the test starts the question language is fixed — it is independent of the interface language.',
+    start: 'Start test',
+    another: 'Enter a different code',
+    resumed: 'Resumed your test — no questions were re-fetched.',
+    oneRead: 'The whole paper was read as one document',
+    timeUp: 'Time is up — the test was submitted automatically.',
+    discarded: 'Your previous paper ran out of time with nothing answered on it, so it was not recorded as a result.',
+    results: 'Results',
+    byTopic: 'By section',
+    skillsTitle: 'Skills detected',
+    skillsHint:
+      'A skill is content-free: "solving an inequality" is the same skill in a logarithmic and a trigonometric question. The full picture is on the My level page.',
+    levelTitle: 'How your level moved',
+    savingResult: 'Saving your result…',
+    saveFailed: 'Could not save your result.',
+    signInToSave: 'Sign in to save your result and send it to your teacher.',
+    sentToTeacher: 'Your result was sent to your teacher.',
+    viewProgress: 'My level & chart',
+    home: 'Home',
+  },
+};
+
+type Stage = 'code' | 'loading' | 'in-progress' | 'submitted';
+
+/** One teacher paper in flight. Mirrors the persisted snapshot. */
+interface Session {
+  quizId: string;
+  quizTitle: string;
+  quizTeacherId: string;
+  quizTeacherName: string;
+  durationMinutes: number;
+  hideAnswers: boolean;
+  examLang: Lang;
+  questions: ExamQuestion[];
+  answers: Record<string, string>;
+  flagged: string[];
+  current: number;
+  /** Epoch ms. A deadline, not a countdown — a reload can't hand back minutes. */
+  endsAt: number;
+  submitted: boolean;
+  resumed: boolean;
+  saved: boolean;
+  seconds: Record<string, number>;
+}
+
+export default function TeacherQuizPage() {
+  const { lang: appLang } = useStudentLanguage();
+  const { user } = useAuth();
+  const uid = user?.uid ?? '';
+  const t = UI[appLang];
+
+  const [code, setCode] = useState('');
+  const [pendingLang, setPendingLang] = useState<Lang>('uz');
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [looking, setLooking] = useState(false);
+
+  // The paper waiting on the intro screen — found by code, not yet started, so
+  // nothing is persisted until the student presses Start.
+  const [pending, setPending] = useState<Session | null>(null);
+
+  const stored = useSyncExternalStore(subscribeQuizSnapshot, getQuizSnapshot, getServerQuizSnapshot);
+  const restored = useMemo<Session | null>(
+    () =>
+      // localStorage is shared by every account on one browser — only resume a
+      // paper that belongs to the student currently signed in.
+      stored && (stored.uid ?? '') === uid && stored.quizId
+        ? {
+          quizId: stored.quizId,
+          quizTitle: stored.quizTitle ?? '',
+          quizTeacherId: stored.quizTeacherId ?? '',
+          quizTeacherName: stored.quizTeacherName ?? '',
+          durationMinutes: stored.durationMinutes ?? 150,
+          hideAnswers: stored.hideAnswers ?? false,
+          examLang: stored.examLang,
+          questions: stored.questions,
+          answers: stored.answers,
+          flagged: stored.flagged,
+          current: stored.current,
+          endsAt: stored.endsAt,
+          submitted: stored.submitted,
+          resumed: true,
+          saved: stored.saved ?? false,
+          seconds: stored.seconds ?? {},
+        }
+        : null,
+    [stored, uid],
+  );
+
+  const [local, setLocal] = useState<{ session: Session | null } | null>(null);
+  const session = local ? local.session : restored;
+
+  const [now, setNow] = useState(() => Date.now());
+  const [levels, setLevels] = useState<RASCHLevels | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [reported, setReported] = useState(false);
+
+  // ── Timer ──────────────────────────────────────────────────────────────
+  // Identical rule to the mock exam: a paper whose deadline passed with NOTHING
+  // answered is abandoned, not submitted — it must never reach the account (or
+  // the teacher) as a 0% result for a paper nobody sat.
+  const expired = !!session && now >= session.endsAt;
+  const answeredCount = session
+    ? session.questions.filter((q) => hasExamAnswer(q, session.answers)).length
+    : 0;
+  const abandoned = !!session && !session.submitted && expired && answeredCount === 0;
+
+  const submitted = !!session && !abandoned && (session.submitted || expired);
+  const autoSubmitted = !!session && !session.submitted && expired && !abandoned;
+
+  const stage: Stage = looking
+    ? 'loading'
+    : !session || abandoned
+      ? 'code'
+      : submitted
+        ? 'submitted'
+        : 'in-progress';
+
+  const [discarded, setDiscarded] = useState(false);
+  useEffect(() => {
+    if (!abandoned) return;
+    clearQuizSnapshot();
+    setLocal({ session: null });
+    setDiscarded(true);
+  }, [abandoned]);
+
+  useEffect(() => {
+    if (stage !== 'in-progress') return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [stage]);
+
+  const secondsLeft = session ? Math.max(0, Math.ceil((session.endsAt - now) / 1000)) : 0;
+
+  // ── Persist ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!session) return;
+    const id = setTimeout(() => {
+      saveQuizSnapshot({
+        uid,
+        quizId: session.quizId,
+        quizTitle: session.quizTitle,
+        quizTeacherId: session.quizTeacherId,
+        quizTeacherName: session.quizTeacherName,
+        durationMinutes: session.durationMinutes,
+        hideAnswers: session.hideAnswers,
+        examLang: session.examLang,
+        questions: session.questions,
+        shortfalls: [],
+        answers: session.answers,
+        flagged: session.flagged,
+        current: session.current,
+        endsAt: session.endsAt,
+        submitted,
+        autoSubmitted,
+        docsRead: 1,
+        saved: session.saved,
+        seconds: session.seconds,
+      });
+    }, 400);
+    return () => clearTimeout(id);
+  }, [session, submitted, autoSubmitted, uid]);
+
+  // ── Per-question stopwatch (same contract as the mock exam) ────────────
+  const timerRef = useRef<{ id: string; since: number } | null>(null);
+
+  const bankSeconds = (s: Session): Record<string, number> => {
+    const mark = timerRef.current;
+    if (!mark) return s.seconds;
+    const elapsed = Math.max(0, Math.round((Date.now() - mark.since) / 1000));
+    if (elapsed === 0) return s.seconds;
+    return { ...s.seconds, [mark.id]: (s.seconds[mark.id] ?? 0) + elapsed };
+  };
+
+  const update = (patch: (s: Session) => Session) => {
+    if (!session) return;
+    setLocal({ session: patch(session) });
+  };
+
+  // ── Open by code ───────────────────────────────────────────────────────
+  async function openByCode() {
+    if (!isValidAccessCode(code)) return;
+    setLooking(true);
+    setLookupError(null);
+    setDiscarded(false);
+    try {
+      const found = await findQuizByCode(code);
+      if ('error' in found) {
+        setLookupError(found.error === 'closed' ? t.closed : t.notFound);
+        return;
+      }
+      const { quiz } = found;
+      if (quiz.questions.length === 0) {
+        setLookupError(t.empty);
+        return;
+      }
+
+      // Shuffling happens ONCE, here — not on every render — so a re-render
+      // never reorders a paper the student is halfway through.
+      const items = quiz.shuffle ? shuffleItems(quiz.questions) : quiz.questions;
+      setPending({
+        quizId: quiz.id,
+        quizTitle: quiz.title,
+        quizTeacherId: quiz.teacherId,
+        quizTeacherName: quiz.teacherName,
+        durationMinutes: quiz.durationMinutes,
+        hideAnswers: !quiz.showAnswers,
+        examLang: pendingLang,
+        questions: hydrateQuiz(items),
+        answers: {},
+        flagged: [],
+        current: 0,
+        endsAt: 0, // set when Start is pressed — the clock starts then, not now
+        submitted: false,
+        resumed: false,
+        saved: false,
+        seconds: {},
+      });
+    } catch (err) {
+      console.error(err);
+      setLookupError(t.lookupFailed);
+    } finally {
+      setLooking(false);
+    }
+  }
+
+  function startQuiz() {
+    if (!pending) return;
+    setNow(Date.now());
+    setLocal({
+      session: {
+        ...pending,
+        examLang: pendingLang,
+        endsAt: Date.now() + pending.durationMinutes * 60 * 1000,
+      },
+    });
+    setPending(null);
+  }
+
+  function reset() {
+    clearQuizSnapshot();
+    setLocal({ session: null });
+    setPending(null);
+    setCode('');
+    setLookupError(null);
+    setLevels(null);
+    setSaveError(null);
+    setReported(false);
+  }
+
+  const setAnswer = (key: string, value: string) =>
+    update((s) => ({ ...s, answers: { ...s.answers, [key]: value } }));
+
+  const toggleFlag = (questionId: string) =>
+    update((s) => ({
+      ...s,
+      flagged: s.flagged.includes(questionId)
+        ? s.flagged.filter((id) => id !== questionId)
+        : [...s.flagged, questionId],
+    }));
+
+  const goTo = (index: number) =>
+    update((s) => {
+      const seconds = bankSeconds(s);
+      timerRef.current = { id: s.questions[index]?.id ?? '', since: Date.now() };
+      return { ...s, current: index, seconds };
+    });
+
+  const finish = () =>
+    update((s) => {
+      const seconds = bankSeconds(s);
+      timerRef.current = null;
+      return { ...s, submitted: true, seconds };
+    });
+
+  const questions = useMemo(() => session?.questions ?? [], [session]);
+  const answers = useMemo(() => session?.answers ?? {}, [session]);
+  const flaggedIds = useMemo(() => new Set(session?.flagged ?? []), [session]);
+  const examLang = session?.examLang ?? pendingLang;
+  const current = session?.current ?? 0;
+
+  const isCorrect = useCallback(
+    (q: ExamQuestion) => isExamItemCorrect(q, answers),
+    [answers],
+  );
+
+  // Slots, not cards — a shared_options block is worth one per sub-question.
+  const score = useMemo(
+    () => questions.reduce((total, q) => total + examScore(q, answers), 0),
+    [questions, answers],
+  );
+  const totalQuestions = useMemo(
+    () => questions.reduce((total, q) => total + examSlotCount(q), 0),
+    [questions],
+  );
+
+  const bySection = useMemo(() => {
+    const map = new Map<string, { label: string; testType: string; correct: number; total: number }>();
+    for (const q of questions) {
+      const entry = map.get(q.sectionId) ?? {
+        label: q.sectionLabel[appLang], testType: q.testType, correct: 0, total: 0,
+      };
+      entry.total += examSlotCount(q);
+      entry.correct += examScore(q, answers);
+      map.set(q.sectionId, entry);
+    }
+    return Array.from(map.entries());
+  }, [questions, answers, appLang]);
+
+  const detected = useMemo(() => {
+    if (!submitted || questions.length === 0) return null;
+    const items = toItemResponses({
+      questions, answers, isCorrect, seconds: session?.seconds ?? {}, kind: 'exam',
+    });
+    const { counts } = skillCoverage(items);
+    return Object.entries(counts)
+      .map(([key, cell]) => ({ key: key as SkillKey, ...cell! }))
+      .sort((a, b) => b.seen - a.seen || a.key.localeCompare(b.key));
+  }, [submitted, questions, answers, isCorrect, session?.seconds]);
+
+  const currentId = session && !submitted ? session.questions[session.current]?.id : undefined;
+  useEffect(() => {
+    if (!currentId) {
+      timerRef.current = null;
+      return;
+    }
+    if (timerRef.current?.id !== currentId) {
+      timerRef.current = { id: currentId, since: Date.now() };
+    }
+  }, [currentId]);
+
+  useEffect(() => { setSolvedUser(uid); }, [uid]);
+
+  // ── Archive locally (feeds the per-skill review) ───────────────────────
+  const archivedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!submitted || !session || archivedRef.current === `${session.quizId}:${session.endsAt}`) return;
+    archivedRef.current = `${session.quizId}:${session.endsAt}`;
+
+    archiveExam({
+      questions: session.questions,
+      answers: session.answers,
+      isCorrect,
+      expectedFor: (q) => (examMode(q) === 'open' ? examExpectedText(q, session.examLang) : undefined),
+      lang: session.examLang,
+      at: Date.now(),
+    });
+  }, [submitted, session, isCorrect]);
+
+  // ── Save: the student's own model, then the teacher's copy ─────────────
+  //
+  // Two independent writes, deliberately. `saveExamResult` moves the student's
+  // Rasch levels; `saveQuizResult` is what the teacher sees. Neither should be
+  // lost because the other failed, so the teacher's copy is written even when the
+  // levels save throws, and vice versa is reported separately.
+  //
+  // `savingRef` closes the double-save window on the client the same way the mock
+  // exam does; `saveExamResult`'s own `examId` check closes it across tabs.
+  const savingRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!submitted || !session || session.saved || !user) return;
+    if (savingRef.current === session.endsAt) return;
+    savingRef.current = session.endsAt;
+
+    let cancelled = false;
+
+    (async () => {
+      const startedAt = session.endsAt - session.durationMinutes * 60 * 1000;
+      const endedAt = Math.min(Date.now(), session.endsAt);
+      const durationSec = Math.max(0, Math.round((endedAt - startedAt) / 1000));
+      const items = toItemResponses({
+        questions: session.questions,
+        answers: session.answers,
+        isCorrect,
+        seconds: session.seconds,
+        kind: 'exam',
+      });
+
+      // The teacher's copy first: it is the thing the student was asked to do,
+      // and it must land even if the ability model refuses the paper (an
+      // untouched one, say).
+      try {
+        const correct = items.filter((i) => i.correct).length;
+        await saveQuizResult({
+          quizId: session.quizId,
+          quizTitle: session.quizTitle,
+          teacherId: session.quizTeacherId,
+          studentId: user.uid,
+          studentName: user.displayName || '',
+          correct,
+          total: items.length,
+          percent: items.length > 0 ? Math.round((correct / items.length) * 100) : 0,
+          durationSec,
+          submittedAt: Date.now(),
+          examLang: session.examLang,
+          topics: scoreByTopic(items),
+          theta: estimateAbility(items).theta,
+        });
+        if (!cancelled) setReported(true);
+      } catch (err) {
+        console.error('[quiz] could not report the result to the teacher', err);
+      }
+
+      try {
+        const next = await saveExamResult({
+          uid: user.uid,
+          examLang: session.examLang,
+          durationSec,
+          items,
+          // The deadline is fixed when the paper is drawn, so it identifies this
+          // sitting and no other — the account can refuse a duplicate on sight.
+          examId: session.endsAt,
+        });
+        if (cancelled) return;
+        setLevels(next);
+        setLocal({ session: { ...session, submitted: true, saved: true } });
+      } catch (err) {
+        console.error(err);
+        savingRef.current = null; // let a genuine failure be retried
+        if (!cancelled) setSaveError(err instanceof Error ? err.message : t.saveFailed);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [submitted, session, user, isCorrect, t.saveFailed]);
+
+  // ── CODE / INTRO ───────────────────────────────────────────────────────
+  if (stage === 'code' || stage === 'loading') {
+    return (
+      <Page>
+        <RaschNav lang={appLang} />
+        <div className="mx-auto w-full max-w-2xl">
+          <Card className="p-6 md:p-8">
+            {!pending ? (
+              <>
+                <h1 className="s-display mb-2 flex items-center gap-2 text-2xl font-bold tracking-tight md:text-3xl">
+                  <KeyRound size={22} strokeWidth={3} className="text-primary" />
+                  {t.title}
+                </h1>
+                <p className="mb-6 text-[13px] font-bold text-on-surface-variant">{t.lead}</p>
+
+                <label htmlFor="quiz-code" className="mb-2 block text-[12px] font-black uppercase tracking-wider text-on-surface-variant">
+                  {t.codeLabel}
+                </label>
+                <input
+                  id="quiz-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={ACCESS_CODE_LENGTH}
+                  value={code}
+                  onChange={(e) => setCode(sanitizeAccessCode(e.target.value))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') openByCode(); }}
+                  placeholder="000000"
+                  className="s-num mb-4 w-full rounded-m3-sm border-[1.5px] border-outline bg-surface-container-low px-4 py-4 text-center text-[30px] font-black tracking-[0.4em] text-on-surface transition-colors duration-m3-fast ease-m3-std placeholder:text-outline focus:border-primary focus:outline-none"
+                />
+
+                {discarded && (
+                  <Banner
+                    status="warning"
+                    className="mb-4"
+                    icon={<AlertTriangle size={16} strokeWidth={3} />}
+                    title={t.discarded}
+                  />
+                )}
+
+                {lookupError && (
+                  <Banner
+                    status="error"
+                    className="mb-4"
+                    icon={<AlertTriangle size={16} strokeWidth={3} />}
+                    title={lookupError}
+                  />
+                )}
+
+                <Button
+                  fullWidth
+                  onClick={openByCode}
+                  disabled={!isValidAccessCode(code) || looking}
+                  loading={looking}
+                  icon={<KeyRound size={18} strokeWidth={3} />}
+                  className="uppercase tracking-wider"
+                >
+                  {looking ? t.opening : t.open}
+                </Button>
+              </>
+            ) : (
+              <>
+                <h1 className="s-display mb-2 text-2xl font-bold tracking-tight md:text-3xl">{pending.quizTitle}</h1>
+                <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-bold text-on-surface-variant">
+                  {pending.quizTeacherName && (
+                    <span className="flex items-center gap-1.5">
+                      <User size={14} strokeWidth={3} /> {t.by}: {pending.quizTeacherName}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={14} strokeWidth={3} />
+                    <span className="s-num">{pending.durationMinutes}</span> {t.duration}
+                  </span>
+                  <span>
+                    <span className="s-num">
+                      {pending.questions.reduce((n, q) => n + examSlotCount(q), 0)}
+                    </span> {t.totalQ}
+                  </span>
+                </div>
+
+                <div className="mb-6">
+                  <p className="mb-2 flex items-center gap-1.5 text-[12px] font-black uppercase tracking-wider text-on-surface-variant">
+                    <Languages size={14} strokeWidth={3} /> {t.langTitle}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {QUESTION_LANGS.map((l) => (
+                      <FilterChip
+                        key={l.code}
+                        selected={pendingLang === l.code}
+                        onClick={() => setPendingLang(l.code)}
+                        className="w-full justify-center"
+                      >
+                        <span className="text-[16px] leading-none">{l.flag}</span>
+                        {l.label}
+                      </FilterChip>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[12px] font-bold text-on-surface-variant">{t.langHint}</p>
+                </div>
+
+                {!user && (
+                  <Banner
+                    status="warning"
+                    className="mb-4"
+                    icon={<AlertTriangle size={16} strokeWidth={3} />}
+                    title={t.signInToSave}
+                  />
+                )}
+
+                <Button
+                  fullWidth
+                  onClick={startQuiz}
+                  icon={<Play size={18} strokeWidth={3} />}
+                  className="mb-2 uppercase tracking-wider"
+                >
+                  {t.start}
+                </Button>
+                <Button fullWidth variant="text" onClick={reset}>{t.another}</Button>
+              </>
+            )}
+          </Card>
+        </div>
+      </Page>
+    );
+  }
+
+  // ── RESULTS ────────────────────────────────────────────────────────────
+  if (stage === 'submitted' && session) {
+    return (
+      <Page>
+        <RaschNav lang={appLang} />
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-s-section">
+          {autoSubmitted && (
+            <Banner status="warning" icon={<AlertTriangle size={16} strokeWidth={3} />} title={t.timeUp} />
+          )}
+
+          <Card className="p-6 text-center md:p-8">
+            <p className="mb-1 text-[13px] font-black uppercase tracking-wider text-on-surface-variant">{session.quizTitle}</p>
+            <p className="s-display s-num text-5xl font-bold tracking-tight text-primary">
+              {score}<span className="text-3xl text-on-surface-variant">/{totalQuestions}</span>
+            </p>
+            {reported && (
+              <p className="mt-2 text-[12px] font-bold text-success">{t.sentToTeacher}</p>
+            )}
+          </Card>
+
+          {/* The paper moves the student's own Rasch levels exactly as a mock
+              exam does — it is 45 questions measured on the same scale. */}
+          <Card>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="s-display text-[14px] font-bold">{t.levelTitle}</p>
+              <Link
+                href="/RASCHmodel/progress"
+                className="shrink-0 rounded-m3-btn border-[1.5px] border-outline px-3 py-1.5 text-[11px] font-black text-on-surface-variant s-press hover:bg-state-hover hover:text-primary"
+              >
+                {t.viewProgress}
+              </Link>
+            </div>
+
+            {!user ? (
+              <p className="text-[12px] font-bold text-on-surface-variant">{t.signInToSave}</p>
+            ) : saveError ? (
+              <p className="text-[12px] font-bold text-error">{saveError}</p>
+            ) : !levels ? (
+              <p className="text-[12px] font-bold text-on-surface-variant">{t.savingResult}</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {RASCH_TOPICS.map((topic) => {
+                  const stat = levels.topics[topic.key];
+                  if (!stat) return null;
+                  const up = stat.delta > 0;
+                  const flat = stat.delta === 0;
+                  return (
+                    <div key={topic.key} className="flex items-center justify-between gap-3 text-[13px] font-bold">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: topic.hex }} />
+                        <span className="truncate text-on-surface-variant">{topic.label[appLang]}</span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className={cn('s-num text-[11px] font-black', flat ? 'text-on-surface-variant' : up ? 'text-success' : 'text-error')}>
+                          {flat ? '±0' : `${up ? '▲ +' : '▼ '}${stat.delta}`}
+                        </span>
+                        <span className="s-num w-11 text-right text-[15px] font-black">{stat.level}%</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <p className="s-display mb-3 text-[14px] font-bold">{t.byTopic}</p>
+            <div className="flex flex-col gap-2">
+              {bySection.map(([sectionId, s]) => (
+                <div key={sectionId} className="flex items-center justify-between gap-3 text-[13px] font-bold">
+                  <span className="truncate text-on-surface-variant">{s.label}</span>
+                  <span className="s-num shrink-0 text-on-surface-variant">{s.testType} · {s.correct}/{s.total}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {detected && detected.length > 0 && (
+            <Card>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="s-display text-[14px] font-bold">{t.skillsTitle}</p>
+                <span className="s-num shrink-0 text-[11px] font-black text-on-surface-variant">
+                  {detected.length}/{SKILL_KEYS.length}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {detected.map((s) => {
+                  const meta = skillMeta(s.key);
+                  const all = s.correct === s.seen;
+                  const none = s.correct === 0;
+                  return (
+                    <div key={s.key} className="flex items-center justify-between gap-3 text-[13px] font-bold">
+                      <span className="min-w-0 truncate text-on-surface-variant">{meta?.label[appLang] ?? s.key}</span>
+                      <span className={cn('s-num shrink-0 text-[12px] font-black', all ? 'text-success' : none ? 'text-error' : 'text-on-surface-variant')}>
+                        {s.correct}/{s.seen}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-3 border-t border-outline-variant pt-3 text-[11px] font-medium leading-relaxed text-on-surface-variant">
+                {t.skillsHint}
+              </p>
+            </Card>
+          )}
+
+          <ExamReview
+            questions={questions}
+            answers={answers}
+            examLang={examLang}
+            appLang={appLang}
+            hideAnswers={session.hideAnswers}
+          />
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              fullWidth
+              onClick={reset}
+              icon={<KeyRound size={16} strokeWidth={3} />}
+              className="flex-1 uppercase tracking-wider"
+            >
+              {t.another}
+            </Button>
+            <NavLink href="/RASCHmodel/progress" tone="tonal" className="flex-1 uppercase tracking-wider">
+              <TrendingUp size={16} strokeWidth={3} /> {t.viewProgress}
+            </NavLink>
+            <NavLink href="/RASCHmodel" className="uppercase tracking-wider">
+              <Home size={16} strokeWidth={3} /> {t.home}
+            </NavLink>
+          </div>
+        </div>
+      </Page>
+    );
+  }
+
+  // ── IN PROGRESS ────────────────────────────────────────────────────────
+  if (!session || !questions[current]) return null;
+
+  return (
+    <Page width="full" flush>
+      <ExamRunner
+        questions={questions}
+        answers={answers}
+        flagged={flaggedIds}
+        current={current}
+        totalQuestions={totalQuestions}
+        secondsLeft={secondsLeft}
+        examLang={examLang}
+        appLang={appLang}
+        provenance={session.resumed ? t.resumed : t.oneRead}
+        onAnswer={setAnswer}
+        onToggleFlag={toggleFlag}
+        onGoTo={goTo}
+        onSubmit={finish}
+      />
+    </Page>
+  );
+}

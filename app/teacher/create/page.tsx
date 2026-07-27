@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight, Bot, PenTool, Image as ImageIcon, School, Award, GraduationCap, Zap, FileText, Calculator, Database, HelpCircle, Blocks } from "lucide-react";
+import { ArrowRight, Bot, PenTool, Image as ImageIcon, School, Award, GraduationCap, Zap, FileText, Calculator, Database, HelpCircle, Blocks, Target } from "lucide-react";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import { motion, Variants } from "framer-motion";
 
@@ -25,6 +25,7 @@ const HUB_TRANSLATIONS: Record<string, any> = {
     custom: { badge: "Qo'l Mehnati", title: "Oq Qog'oz", desc: "Matematik klaviatura yordamida o'z savollaringizni noldan yozing.", btn: "Ochish" },
     question: { badge: "Bitta Savol", title: "Savol Yaratish", desc: "Rasm yoki matnli savol; javob ochiq yoki variantli bo'lishi mumkin.", btn: "Yaratish" },
     block: { badge: "Blok", title: "Ko'p savolli test", desc: "Bitta shart ostida bir nechta savol — yopiq (umumiy variantli) yoki ochiq (yozma javob).", btn: "Yaratish" },
+    rasch: { badge: "Rasch · 45", title: "Rasch varianti", desc: "45 ta savollik variant tuzing — savollarni bazadan tanlang yoki o'zingiz yozing. O'quvchi 6 xonali maxfiy kod bilan ochadi.", btn: "Tuzish" },
   },
   en: {
     heroBadge: "Studio 2.0 ✨", title: "Creation Hub", subtitle: "Select the fastest workflow for your teaching goals.",
@@ -40,6 +41,7 @@ const HUB_TRANSLATIONS: Record<string, any> = {
     custom: { badge: "Manual", title: "Blank Canvas", desc: "Write questions from scratch using our built-in math keyboard.", btn: "Open" },
     question: { badge: "Single", title: "Create Question", desc: "One question from an image or text; open or multiple-choice answer.", btn: "Create" },
     block: { badge: "Block", title: "Multi-question test", desc: "Several questions under one stem — closed (shared A–F variants) or open (written answers).", btn: "Create" },
+    rasch: { badge: "Rasch · 45", title: "Rasch paper", desc: "Build a 45-question paper — pick from the banks or write your own. Students open it with a private 6-digit code.", btn: "Build" },
   },
   ru: {
     heroBadge: "Студия 2.0 ✨", title: "Центр Создания", subtitle: "Выберите самый быстрый способ для ваших целей.",
@@ -55,6 +57,7 @@ const HUB_TRANSLATIONS: Record<string, any> = {
     custom: { badge: "Вручную", title: "Чистый Лист", desc: "Создавайте тесты с нуля, используя математическую клавиатуру.", btn: "Открыть" },
     question: { badge: "Один вопрос", title: "Создать Вопрос", desc: "Вопрос из картинки или текста; открытый ответ или варианты.", btn: "Создать" },
     block: { badge: "Блок", title: "Тест с несколькими вопросами", desc: "Несколько вопросов под одним условием — закрытый (общие варианты A–F) или открытый (письменные ответы).", btn: "Создать" },
+    rasch: { badge: "Rasch · 45", title: "Вариант Rasch", desc: "Соберите вариант из 45 вопросов — выберите из баз или напишите свои. Ученик открывает 6-значным секретным кодом.", btn: "Собрать" },
   }
 };
 
@@ -92,6 +95,10 @@ export default function CreateHubPage() {
         { id: 'maktab', icon: School, tone: 'secondary', href: '/teacher/create/maktab', data: t.maktab },
         { id: 'ixtisos', icon: Award, tone: 'tertiary', href: '/teacher/create/ixtisoslashtirilgan_maktab', data: t.ixtisos },
         { id: 'abiturient', icon: GraduationCap, tone: 'primary', href: '/teacher/create/abiturient', data: t.abiturient },
+        // The Rasch paper: 45 questions, opened by a private 6-digit code and
+        // scored on the same ability scale as the student mock exam.
+        // See docs/RASCH_QUIZ.md.
+        { id: 'rasch', icon: Target, tone: 'secondary', href: '/teacher/create/rasch', data: t.rasch },
       ]
     },
     {

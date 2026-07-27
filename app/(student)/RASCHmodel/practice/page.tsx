@@ -3,9 +3,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  AlertCircle, ArrowLeft, CheckCircle2, ChevronRight, Home, Play, Rocket, Target, XCircle,
+  AlertCircle, CheckCircle2, ChevronRight, Play, Rocket, Target, XCircle,
 } from 'lucide-react';
 
 import LatexRenderer from '@/components/LatexRenderer';
@@ -13,8 +14,15 @@ import { useAuth } from '@/lib/AuthContext';
 import { useStudentLanguage } from '../../layout';
 import { diagnosticsFor, getRASCHLevels, savePracticeResult } from '@/services/RASCHProgressService';
 import { weakestSpots } from '@/lib/RASCHdiagnosis';
-import { buildPractice } from '@/lib/Examquestions';
+import { buildPractice, buildSkillPractice } from '@/lib/Examquestions';
 import { topicForChapter } from '@/lib/Examblueprint';
+import { getMathTopics } from '@/lib/Mathstructure';
+import RaschNav from '../_components/RaschNav';
+import { archivePractice, setSolvedUser } from '@/lib/RASCHsolved';
+import {
+  chaptersForSkill, skillFor, skill as skillMeta, SKILL_KEYS, type SkillKey,
+} from '@/lib/RASCHskills';
+import { TOPIC_KEYS, type TopicKey } from '@/lib/RASCHtopics';
 import {
   Banner, Button, Card, Chip, EmptyState, ListGroup, ListRow, LoadingState, Page, cn,
   MOTION_ON, springTransition,
@@ -24,6 +32,18 @@ import type { DifficultyId, Lang, OptionKey, QuestionDoc } from '@/types/Math';
 import type { ItemResponse, RASCHLevels } from '@/types/RASCH';
 
 const PRACTICE_SIZE = 10;
+
+/** The chapter names a skill drill will draw from — shown so the student knows
+ *  which content a content-free skill is about to be practised through. */
+function chapterNamesFor(key: SkillKey, dim: TopicKey | null): string[] {
+  const wanted = new Set(
+    chaptersForSkill(key, dim ?? undefined).map((c) => `${c.topicId}:${c.chapterId}`),
+  );
+  return getMathTopics()
+    .flatMap((t) => t.chapters.map((c) => ({ key: `${t.topicId}:${c.chapterId}`, name: c.name })))
+    .filter((c) => wanted.has(c.key))
+    .map((c) => c.name);
+}
 
 const UI: Record<Lang, Record<string, string>> = {
   uz: {
@@ -43,6 +63,7 @@ const UI: Record<Lang, Record<string, string>> = {
     error: "Savollarni yuklab bo'lmadi",
     correctAnswer: "To'g'ri javob",
     reads: 'ta savol o‘qildi',
+    onSkill: "shu ko'nikma bo'yicha",
   },
   ru: {
     title: 'Целевая тренировка',
@@ -61,6 +82,7 @@ const UI: Record<Lang, Record<string, string>> = {
     error: 'Не удалось загрузить вопросы',
     correctAnswer: 'Правильный ответ',
     reads: 'вопросов прочитано',
+    onSkill: 'по этому навыку',
   },
   en: {
     title: 'Targeted practice',
@@ -79,6 +101,7 @@ const UI: Record<Lang, Record<string, string>> = {
     error: 'Could not load questions',
     correctAnswer: 'Correct answer',
     reads: 'questions read',
+    onSkill: 'on this skill',
   },
 };
 
@@ -108,6 +131,8 @@ export default function PracticePage() {
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionDoc[]>([]);
   const [docsRead, setDocsRead] = useState(0);
+  /** How many of the drawn questions actually exercise the targeted skill. */
+  const [onSkill, setOnSkill] = useState(0);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [seconds, setSeconds] = useState<Record<string, number>>({});
@@ -116,6 +141,12 @@ export default function PracticePage() {
 
   const clock = useRef<{ id: string; since: number } | null>(null);
   const startedAt = useRef<number>(0);
+
+  // The solved archive is namespaced per account (a shared browser must never
+  // show one student's work to another), so point it at this student before the
+  // drill can be filed. Without this the questions land in the 'anon' bucket and
+  // the review on the progress page never sees them.
+  useEffect(() => { setSolvedUser(user?.uid ?? ''); }, [user?.uid]);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -128,6 +159,22 @@ export default function PracticePage() {
       });
     return () => { cancelled = true; };
   }, [user, authLoading, t.error]);
+
+  // ── Targeted mode ──────────────────────────────────────────────────────────
+  // `?skill=eq-inequality&dim=algebraic` drills ONE skill inside ONE dimension.
+  // Without it the page keeps its original behaviour: the weakest chapters from
+  // the exam record. The params are validated against the vocabularies rather
+  // than trusted, so a stale or hand-edited link degrades to the default mode
+  // instead of building an empty drill.
+  const search = useSearchParams();
+  const targetSkill = useMemo<SkillKey | null>(() => {
+    const raw = search.get('skill');
+    return raw && (SKILL_KEYS as string[]).includes(raw) ? (raw as SkillKey) : null;
+  }, [search]);
+  const targetDim = useMemo<TopicKey | null>(() => {
+    const raw = search.get('dim');
+    return raw && (TOPIC_KEYS as string[]).includes(raw) ? (raw as TopicKey) : null;
+  }, [search]);
 
   // What to practise comes from the EXAM record, not from practice itself —
   // otherwise drilling a topic would make it look weak forever and the practice
@@ -149,19 +196,34 @@ export default function PracticePage() {
   };
 
   async function start() {
-    if (weakChapters.length === 0) return;
+    if (!targetSkill && weakChapters.length === 0) return;
     setStage('loading');
     setError(null);
     try {
-      const chapters: ChapterRef[] = weakChapters.map((s) => ({
-        topicId: s.topicId,
-        chapterId: s.chapterId,
-      }));
-      const { questions: qs, docsRead: reads } = await buildPractice({
-        chapters,
-        difficultyId,
-        count: PRACTICE_SIZE,
-      });
+      // Targeted: the chapters that feed this skill INSIDE this dimension, then
+      // filtered to the skill's own subtopics (the bank cannot be queried by
+      // skill — see buildSkillPractice).
+      // A thin skill can come back part-filled with same-chapter questions (see
+      // buildSkillPractice's read ceiling), so `onSkill` travels with the set.
+      // buildPractice has no skill notion — its whole set counts as on target.
+      const built: { questions: QuestionDoc[]; docsRead: number; onSkill: number } = targetSkill
+        ? await buildSkillPractice({
+            chapters: chaptersForSkill(targetSkill, targetDim ?? undefined),
+            matches: (q) => skillFor(q.topicId, q.chapterId, q.subtopicId) === targetSkill,
+            difficultyId,
+            count: PRACTICE_SIZE,
+          })
+        : await buildPractice({
+            chapters: weakChapters.map((s): ChapterRef => ({
+              topicId: s.topicId,
+              chapterId: s.chapterId,
+            })),
+            difficultyId,
+            count: PRACTICE_SIZE,
+          }).then((r) => ({ ...r, onSkill: r.questions.length }));
+
+      const { questions: qs, docsRead: reads } = built;
+      setOnSkill(built.onSkill);
       if (qs.length === 0) {
         setError(t.error);
         setStage('intro');
@@ -235,6 +297,12 @@ export default function PracticePage() {
           topic: topicForChapter(item.topicId, item.chapterId),
         }));
 
+        // Keep the questions locally too, so the per-skill review on the
+        // progress page can show the drill. Only exams used to be archived,
+        // which meant the work done right after seeing a weakness — the work
+        // most worth reviewing — was invisible there.
+        archivePractice({ questions, answers, lang, at: Date.now() });
+
         const next = await savePracticeResult({
           uid: user.uid,
           examLang: lang,
@@ -281,18 +349,7 @@ export default function PracticePage() {
   return (
     <Page className="flex flex-col gap-s-gap-lg">
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href="/RASCHmodel/diagnosis">
-          <Button variant="outlined" size="sm" icon={<ArrowLeft size={14} strokeWidth={3} />}>
-            {t.back}
-          </Button>
-        </Link>
-        <Link href="/RASCHmodel">
-          <Button variant="outlined" size="sm" icon={<Home size={14} strokeWidth={3} />}>
-            {t.home}
-          </Button>
-        </Link>
-      </div>
+      <RaschNav lang={lang} />
 
       {error && (
         <Banner status="error" title={error} icon={<AlertCircle size={16} strokeWidth={3} />} />
@@ -304,7 +361,7 @@ export default function PracticePage() {
           <h1 className="s-display text-2xl font-bold tracking-tight md:text-3xl">{t.title}</h1>
           <p className="mb-6 mt-1 text-[14px] font-bold text-on-surface-variant">{t.subtitle}</p>
 
-          {weakChapters.length === 0 ? (
+          {!targetSkill && weakChapters.length === 0 ? (
             <EmptyState
               title={t.needData}
               action={
@@ -320,15 +377,30 @@ export default function PracticePage() {
               <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-on-surface-variant">
                 {t.focus}
               </p>
-              <ListGroup className="mb-5">
-                {weakChapters.map((spot) => (
-                  <ListRow
-                    key={spot.key}
-                    title={spot.chapterName}
-                    trailing={<span className="s-num shrink-0 text-[12px] font-black text-on-surface-variant">{spot.correct}/{spot.seen}</span>}
-                  />
-                ))}
-              </ListGroup>
+              {targetSkill ? (
+                // Targeted mode names the SKILL and the chapters it will be
+                // drilled from — the student should see which content a
+                // content-free skill is about to be practised through.
+                <div className="mb-5 rounded-m3-md border-[1.5px] border-primary bg-primary-container px-4 py-3 text-on-primary-container">
+                  <p className="text-[14px] font-black">{skillMeta(targetSkill)?.label[lang]}</p>
+                  <p className="mt-0.5 text-[12px] font-bold opacity-85">
+                    {skillMeta(targetSkill)?.blurb[lang]}
+                  </p>
+                  <p className="s-num mt-2 text-[11px] font-black opacity-75">
+                    {chapterNamesFor(targetSkill, targetDim).join(' · ')}
+                  </p>
+                </div>
+              ) : (
+                <ListGroup className="mb-5">
+                  {weakChapters.map((spot) => (
+                    <ListRow
+                      key={spot.key}
+                      title={spot.chapterName}
+                      trailing={<span className="s-num shrink-0 text-[12px] font-black text-on-surface-variant">{spot.correct}/{spot.seen}</span>}
+                    />
+                  ))}
+                </ListGroup>
+              )}
 
               <div className="mb-6 flex items-center justify-between gap-3 rounded-m3-md bg-primary-container px-4 py-2.5 text-on-primary-container">
                 <span className="text-[12px] font-black uppercase tracking-wider">{t.difficulty}</span>
@@ -357,7 +429,16 @@ export default function PracticePage() {
             <span className="s-num text-[13px] font-black text-on-surface">
               {t.question} {current + 1}/{questions.length}
             </span>
-            <span className="s-num text-[11px] font-bold text-on-surface-variant">{docsRead} {t.reads}</span>
+            <span className="s-num flex items-center gap-2 text-[11px] font-bold text-on-surface-variant">
+              {/* Only shown when the set is NOT a clean skill drill — a silent
+                  shortfall would read as "these are all inequality questions". */}
+              {targetSkill && onSkill < questions.length && (
+                <span className="text-warning">
+                  {onSkill}/{questions.length} {t.onSkill}
+                </span>
+              )}
+              <span>{docsRead} {t.reads}</span>
+            </span>
           </div>
 
           <motion.div
