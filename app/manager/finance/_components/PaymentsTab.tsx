@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { ArrowDownLeft, ArrowUpRight, Plus, ReceiptText, Undo2 } from "lucide-react";
 import type { Payment } from "@/types/finance";
-import { PAYMENT_METHOD_LABELS } from "@/types/finance";
 import { cancelPaymentApi } from "@/services/financeService";
 import { formatUZS } from "@/lib/finance/money";
 import { getTodayKey } from "@/lib/dateUtils";
-import { dayLabelOf } from "./financeFormat";
+import { Button, EmptyState, StatusChip } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
+import { dayLabelOf, PAYMENT_METHOD_T } from "./financeFormat";
 import ReasonDialog from "./ReasonDialog";
 import SearchInput from "../../_components/SearchInput";
 
@@ -18,8 +19,69 @@ interface Props {
   onChanged: () => void;
 }
 
+const T_UZ = {
+  searchPlaceholder: "O'quvchini qidiring...",
+  recentOps: (n: number) => `So'nggi amaliyotlar · ${n} ta`,
+  opsHistory: "Amaliyotlar tarixi",
+  recordPayment: "To'lov qabul qilish",
+  emptySearchTitle: "Hech narsa topilmadi",
+  emptyTitle: "Hali to'lovlar yo'q",
+  emptySearchDesc: "Qidiruvni o'zgartirib ko'ring",
+  emptyDesc: "O'quvchi pul olib kelganda «To'lov qabul qilish» tugmasini bosing",
+  refundTag: "qaytarim",
+  cancelledChip: "Bekor qilingan",
+  cancelPaymentTitle: "To'lovni bekor qilish",
+  cancelMessage: (name: string, amount: string) =>
+    `${name} — ${amount}. To'lov o'chirilmaydi, "bekor qilingan" deb belgilanadi va qarzdorlik qayta hisoblanadi.`,
+  cancelConfirm: "Bekor qilish",
+  cancelled: "To'lov bekor qilindi.",
+  genericError: "Xatolik yuz berdi.",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    searchPlaceholder: "Search for a student...",
+    recentOps: (n: number) => `Recent transactions · ${n}`,
+    opsHistory: "Transaction history",
+    recordPayment: "Record payment",
+    emptySearchTitle: "Nothing found",
+    emptyTitle: "No payments yet",
+    emptySearchDesc: "Try changing your search",
+    emptyDesc: "When a student brings money, press the “Record payment” button",
+    refundTag: "refund",
+    cancelledChip: "Cancelled",
+    cancelPaymentTitle: "Cancel payment",
+    cancelMessage: (name: string, amount: string) =>
+      `${name} — ${amount}. The payment is not deleted — it is marked "cancelled" and the debt is recalculated.`,
+    cancelConfirm: "Cancel payment",
+    cancelled: "Payment cancelled.",
+    genericError: "Something went wrong.",
+  },
+  ru: {
+    searchPlaceholder: "Поиск ученика...",
+    recentOps: (n: number) => `Последние операции · ${n}`,
+    opsHistory: "История операций",
+    recordPayment: "Принять платёж",
+    emptySearchTitle: "Ничего не найдено",
+    emptyTitle: "Платежей пока нет",
+    emptySearchDesc: "Попробуйте изменить запрос",
+    emptyDesc: "Когда ученик приносит деньги, нажмите кнопку «Принять платёж»",
+    refundTag: "возврат",
+    cancelledChip: "Отменён",
+    cancelPaymentTitle: "Отменить платёж",
+    cancelMessage: (name: string, amount: string) =>
+      `${name} — ${amount}. Платёж не удаляется — он помечается как «отменён», и задолженность пересчитывается.`,
+    cancelConfirm: "Отменить",
+    cancelled: "Платёж отменён.",
+    genericError: "Произошла ошибка.",
+  },
+};
+
 /** Recent payments feed (grouped by day, MD3 list items) + entry point for recording a new one. */
 export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [cancelTarget, setCancelTarget] = useState<Payment | null>(null);
   const [search, setSearch] = useState("");
   const todayKey = useMemo(() => getTodayKey(), []);
@@ -52,33 +114,24 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         {payments.length > 5 ? (
-          <SearchInput value={search} onChange={setSearch} placeholder="O'quvchini qidiring..." />
+          <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
         ) : (
-          <p className="text-[13px] text-slate-500">
-            {payments.length > 0 ? `So'nggi amaliyotlar · ${payments.length} ta` : "Amaliyotlar tarixi"}
+          <p className="text-[13px] text-on-surface-variant">
+            {payments.length > 0 ? t.recentOps(payments.length) : t.opsHistory}
           </p>
         )}
-        <button
-          onClick={onOpenModal}
-          className="flex items-center gap-1.5 pl-4 pr-5 py-3 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-sm rounded-full transition-all shadow-sm shadow-brand-600/25"
-        >
-          <Plus size={16} /> To&apos;lov qabul qilish
-        </button>
+        <Button icon={<Plus />} onClick={onOpenModal}>
+          {t.recordPayment}
+        </Button>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white border border-brand-line rounded-3xl py-14 px-6 text-center">
-          <div className="w-12 h-12 mx-auto rounded-full bg-brand-50 text-brand-700 flex items-center justify-center">
-            <ReceiptText size={22} />
-          </div>
-          <p className="text-sm font-bold text-slate-800 mt-3">
-            {search ? "Hech narsa topilmadi" : "Hali to'lovlar yo'q"}
-          </p>
-          <p className="text-[13px] text-slate-400 mt-1">
-            {search
-              ? "Qidiruvni o'zgartirib ko'ring"
-              : "O'quvchi pul olib kelganda «To'lov qabul qilish» tugmasini bosing"}
-          </p>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl">
+          <EmptyState
+            icon={<ReceiptText />}
+            title={search ? t.emptySearchTitle : t.emptyTitle}
+            description={search ? t.emptySearchDesc : t.emptyDesc}
+          />
         </div>
       ) : (
         dayGroups.map(([dateKey, items]) => {
@@ -86,30 +139,30 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
           return (
             <section key={dateKey}>
               <div className="flex items-baseline justify-between px-1.5 mb-1.5">
-                <h3 className="text-[12.5px] font-bold text-slate-500">{dayLabelOf(dateKey, todayKey)}</h3>
+                <h3 className="text-[12.5px] font-bold text-on-surface-variant">{dayLabelOf(dateKey, todayKey, lang)}</h3>
                 <p
                   className={`text-[12px] font-bold tabular-nums ${
-                    total >= 0 ? "text-brand-700" : "text-rose-600"
+                    total >= 0 ? "text-success" : "text-error"
                   }`}
                 >
                   {total >= 0 ? "+" : "−"}
                   {formatUZS(Math.abs(total))}
                 </p>
               </div>
-              <div className="bg-white border border-brand-line rounded-3xl divide-y divide-slate-100 overflow-hidden">
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl divide-y divide-outline-variant overflow-hidden">
                 {items.map((p) => {
                   const cancelled = p.status === "cancelled";
                   const isRefund = p.type === "refund";
                   const DirIcon = isRefund ? ArrowUpRight : ArrowDownLeft;
                   return (
-                    <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-brand-25 transition-colors">
+                    <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-state-hover transition-colors">
                       <div
                         className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                           cancelled
-                            ? "bg-slate-100 text-slate-400"
+                            ? "bg-surface-container-highest text-on-surface-variant"
                             : isRefund
-                            ? "bg-rose-50 text-rose-600"
-                            : "bg-brand-100 text-brand-700"
+                            ? "bg-error-container text-on-error-container"
+                            : "bg-success-container text-on-success-container"
                         }`}
                       >
                         <DirIcon size={18} strokeWidth={2.2} />
@@ -117,25 +170,25 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
                       <div className="flex-1 min-w-0">
                         <p
                           className={`text-[14.5px] font-semibold truncate ${
-                            cancelled ? "text-slate-400 line-through" : "text-slate-900"
+                            cancelled ? "text-on-surface-variant line-through" : "text-on-surface"
                           }`}
                         >
                           {p.studentName}
                         </p>
-                        <p className="text-[12.5px] text-slate-500 mt-0.5 truncate">
-                          {PAYMENT_METHOD_LABELS[p.method] || p.method}
-                          {isRefund && " · qaytarim"}
+                        <p className="text-[12.5px] text-on-surface-variant mt-0.5 truncate">
+                          {PAYMENT_METHOD_T[lang][p.method] || p.method}
+                          {isRefund && ` · ${t.refundTag}`}
                           {p.note && ` · ${p.note}`}
                         </p>
                       </div>
                       {cancelled && (
-                        <span className="px-2.5 py-1 bg-slate-100 text-slate-400 rounded-full text-[11px] font-bold shrink-0">
-                          Bekor qilingan
-                        </span>
+                        <StatusChip tone="muted" noDot className="shrink-0">
+                          {t.cancelledChip}
+                        </StatusChip>
                       )}
                       <p
                         className={`text-[14.5px] font-bold tabular-nums shrink-0 ${
-                          cancelled ? "text-slate-300 line-through" : isRefund ? "text-rose-600" : "text-brand-700"
+                          cancelled ? "text-on-surface-variant line-through" : isRefund ? "text-error" : "text-success"
                         }`}
                       >
                         {isRefund ? "−" : "+"}
@@ -144,8 +197,8 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
                       {!cancelled && (
                         <button
                           onClick={() => setCancelTarget(p)}
-                          title="To'lovni bekor qilish"
-                          className="w-9 h-9 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 flex items-center justify-center transition-colors shrink-0"
+                          title={t.cancelPaymentTitle}
+                          className="w-9 h-9 rounded-full hover:bg-error-container text-on-surface-variant hover:text-error flex items-center justify-center transition-colors shrink-0"
                         >
                           <Undo2 size={15} />
                         </button>
@@ -161,18 +214,18 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
 
       {cancelTarget && (
         <ReasonDialog
-          title="To'lovni bekor qilish"
-          message={`${cancelTarget.studentName} — ${formatUZS(cancelTarget.amount)}. To'lov o'chirilmaydi, "bekor qilingan" deb belgilanadi va qarzdorlik qayta hisoblanadi.`}
-          confirmLabel="Bekor qilish"
+          title={t.cancelPaymentTitle}
+          message={t.cancelMessage(cancelTarget.studentName, formatUZS(cancelTarget.amount))}
+          confirmLabel={t.cancelConfirm}
           onClose={() => setCancelTarget(null)}
           onConfirm={async (reason) => {
             try {
               await cancelPaymentApi(cancelTarget.id, reason);
-              toast.success("To'lov bekor qilindi.");
+              toast.success(t.cancelled);
               setCancelTarget(null);
               onChanged();
             } catch (e: any) {
-              toast.error(e.message || "Xatolik yuz berdi.");
+              toast.error(e.message || t.genericError);
             }
           }}
         />

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { BadgePercent, Loader2, Snowflake, Wallet } from "lucide-react";
 import type { Charge, Payment, StudentFinanceProfile } from "@/types/finance";
-import { CHARGE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@/types/finance";
 import {
   fetchStudentCharges,
   fetchStudentFinanceProfile,
@@ -12,19 +11,85 @@ import {
   patchStudentFinanceApi,
 } from "@/services/financeService";
 import { formatUZS } from "@/lib/finance/money";
-import { periodLabelOf, shortDateLabel } from "./financeFormat";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
+import { CHARGE_STATUS_T, PAYMENT_METHOD_T, periodLabelOf, shortDateLabel } from "./financeFormat";
 
 interface Props {
   centerId: string;
   studentUid: string;
 }
 
+const T_UZ = {
+  activated: "O'quvchi aktivlashtirildi.",
+  frozenToast: "O'quvchi muzlatildi — yangi hisoblar yaratilmaydi.",
+  genericError: "Xatolik yuz berdi.",
+  discountRange: "Chegirma 0–100% oralig'ida bo'lishi kerak.",
+  discountSaved: "Chegirma saqlandi. Keyingi hisoblarga qo'llanadi.",
+  sectionTitle: "Moliya",
+  balance: "Balans",
+  unfreeze: "Muzlatilgan — aktivlashtirish",
+  freeze: "Muzlatish",
+  ok: "OK",
+  cancelShort: "Bekor",
+  discount: (n: number) => `Chegirma ${n}%`,
+  addDiscount: "Chegirma qo'shish",
+  chargesTitle: "Hisoblar",
+  noCharges: "Hisoblar hali yaratilmagan.",
+  paymentsTitle: "So'nggi to'lovlar",
+  noPayments: "To'lovlar yo'q.",
+  refundTag: "qaytarim",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    activated: "Student reactivated.",
+    frozenToast: "Student frozen — no new charges will be created.",
+    genericError: "Something went wrong.",
+    discountRange: "The discount must be between 0 and 100%.",
+    discountSaved: "Discount saved. It applies to future charges.",
+    sectionTitle: "Finance",
+    balance: "Balance",
+    unfreeze: "Frozen — reactivate",
+    freeze: "Freeze",
+    ok: "OK",
+    cancelShort: "Cancel",
+    discount: (n: number) => `Discount ${n}%`,
+    addDiscount: "Add discount",
+    chargesTitle: "Charges",
+    noCharges: "No charges have been created yet.",
+    paymentsTitle: "Recent payments",
+    noPayments: "No payments.",
+    refundTag: "refund",
+  },
+  ru: {
+    activated: "Ученик снова активен.",
+    frozenToast: "Ученик заморожен — новые начисления создаваться не будут.",
+    genericError: "Произошла ошибка.",
+    discountRange: "Скидка должна быть в диапазоне 0–100%.",
+    discountSaved: "Скидка сохранена. Применяется к следующим начислениям.",
+    sectionTitle: "Финансы",
+    balance: "Баланс",
+    unfreeze: "Заморожен — активировать",
+    freeze: "Заморозить",
+    ok: "OK",
+    cancelShort: "Отмена",
+    discount: (n: number) => `Скидка ${n}%`,
+    addDiscount: "Добавить скидку",
+    chargesTitle: "Начисления",
+    noCharges: "Начисления ещё не созданы.",
+    paymentsTitle: "Последние платежи",
+    noPayments: "Платежей нет.",
+    refundTag: "возврат",
+  },
+};
+
 const STATUS_CLS: Record<string, string> = {
-  pending: "bg-rose-50 text-rose-600",
-  partial: "bg-amber-50 text-amber-600",
-  paid: "bg-brand-100 text-brand-800",
-  waived: "bg-violet-50 text-violet-500",
-  cancelled: "bg-slate-100 text-slate-400",
+  pending: "bg-error-container text-on-error-container",
+  partial: "bg-warning-container text-on-warning-container",
+  paid: "bg-success-container text-on-success-container",
+  waived: "bg-tertiary-container text-on-tertiary-container",
+  cancelled: "bg-surface-container-highest text-on-surface-variant",
 };
 
 /**
@@ -32,6 +97,8 @@ const STATUS_CLS: Record<string, string> = {
  * recent charges + payments. Read-mostly; mutations go through the finance API.
  */
 export default function StudentFinanceSection({ centerId, studentUid }: Props) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [profile, setProfile] = useState<StudentFinanceProfile | null>(null);
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -70,10 +137,10 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
     setBusy(true);
     try {
       await patchStudentFinanceApi(studentUid, { financeStatus: frozen ? "active" : "frozen" });
-      toast.success(frozen ? "O'quvchi aktivlashtirildi." : "O'quvchi muzlatildi — yangi hisoblar yaratilmaydi.");
+      toast.success(frozen ? t.activated : t.frozenToast);
       await reload();
     } catch (e: any) {
-      toast.error(e.message || "Xatolik yuz berdi.");
+      toast.error(e.message || t.genericError);
     } finally {
       setBusy(false);
     }
@@ -82,30 +149,30 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
   const saveDiscount = async () => {
     const v = discountInput.trim() === "" ? 0 : parseInt(discountInput, 10);
     if (!Number.isInteger(v) || v < 0 || v > 100) {
-      toast.error("Chegirma 0–100% oralig'ida bo'lishi kerak.");
+      toast.error(t.discountRange);
       return;
     }
     setBusy(true);
     try {
       await patchStudentFinanceApi(studentUid, { discountPercent: v === 0 ? null : v });
-      toast.success("Chegirma saqlandi. Keyingi hisoblarga qo'llanadi.");
+      toast.success(t.discountSaved);
       setEditingDiscount(false);
       await reload();
     } catch (e: any) {
-      toast.error(e.message || "Xatolik yuz berdi.");
+      toast.error(e.message || t.genericError);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60">
-      <h3 className="text-[12px] font-black text-brand-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
-        <Wallet size={14} /> Moliya
+    <div className="bg-surface-container-lowest p-6 rounded-m3-xl shadow-elev-1 border border-outline-variant">
+      <h3 className="text-[12px] font-black text-primary uppercase tracking-widest mb-4 flex items-center gap-1.5">
+        <Wallet size={14} /> {t.sectionTitle}
       </h3>
 
       {loading ? (
-        <div className="flex justify-center py-8 text-slate-300">
+        <div className="flex justify-center py-8 text-on-surface-variant">
           <Loader2 size={22} className="animate-spin" />
         </div>
       ) : (
@@ -113,12 +180,22 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
           {/* Balance + actions */}
           <div className="flex flex-wrap items-center gap-3">
             <div
-              className={`px-4 py-3 rounded-xl border ${
-                balance < 0 ? "bg-rose-50 border-rose-100" : "bg-brand-50 border-brand-100"
+              className={`px-4 py-3 rounded-m3-md ${
+                balance < 0 ? "bg-error-container" : "bg-success-container"
               }`}
             >
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Balans</p>
-              <p className={`text-[16px] font-black tabular-nums ${balance < 0 ? "text-rose-600" : "text-brand-700"}`}>
+              <p
+                className={`text-[10px] font-bold uppercase tracking-wider ${
+                  balance < 0 ? "text-on-error-container" : "text-on-success-container"
+                }`}
+              >
+                {t.balance}
+              </p>
+              <p
+                className={`text-[16px] font-black tabular-nums ${
+                  balance < 0 ? "text-on-error-container" : "text-on-success-container"
+                }`}
+              >
                 {formatUZS(balance)}
               </p>
             </div>
@@ -126,14 +203,14 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
             <button
               onClick={toggleFreeze}
               disabled={busy}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[12.5px] font-bold border transition-colors disabled:opacity-50 ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-m3-md text-[12.5px] font-bold border transition-colors disabled:opacity-50 ${
                 frozen
-                  ? "bg-sky-50 text-sky-600 border-sky-200 hover:bg-sky-100"
-                  : "bg-white text-slate-600 border-brand-line hover:border-brand-200"
+                  ? "bg-tertiary-container text-on-tertiary-container border-transparent"
+                  : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-primary"
               }`}
             >
               <Snowflake size={14} />
-              {frozen ? "Muzlatilgan — aktivlashtirish" : "Muzlatish"}
+              {frozen ? t.unfreeze : t.freeze}
             </button>
 
             {editingDiscount ? (
@@ -145,20 +222,20 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
                   value={discountInput}
                   onChange={(e) => setDiscountInput(e.target.value)}
                   placeholder="%"
-                  className="w-16 px-2.5 py-2 border border-brand-line rounded-xl text-[13px] font-bold text-center focus:outline-none focus:ring-2 focus:ring-brand-200"
+                  className="w-16 px-2.5 py-2 bg-transparent border border-outline-variant rounded-m3-md text-[13px] font-bold text-on-surface text-center focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
                 <button
                   onClick={saveDiscount}
                   disabled={busy}
-                  className="px-3 py-2 bg-brand-600 text-white rounded-xl text-[12px] font-bold disabled:opacity-50"
+                  className="px-3 py-2 bg-primary text-on-primary rounded-m3-md text-[12px] font-bold disabled:opacity-50"
                 >
-                  OK
+                  {t.ok}
                 </button>
                 <button
                   onClick={() => setEditingDiscount(false)}
-                  className="px-2 py-2 text-slate-400 text-[12px] font-bold"
+                  className="px-2 py-2 text-on-surface-variant text-[12px] font-bold"
                 >
-                  Bekor
+                  {t.cancelShort}
                 </button>
               </div>
             ) : (
@@ -167,30 +244,30 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
                   setDiscountInput(profile?.discountPercent ? String(profile.discountPercent) : "");
                   setEditingDiscount(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[12.5px] font-bold border bg-white text-slate-600 border-brand-line hover:border-brand-200 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-m3-md text-[12.5px] font-bold border bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-primary transition-colors"
               >
                 <BadgePercent size={14} />
-                {profile?.discountPercent ? `Chegirma ${profile.discountPercent}%` : "Chegirma qo'shish"}
+                {profile?.discountPercent ? t.discount(profile.discountPercent) : t.addDiscount}
               </button>
             )}
           </div>
 
           {/* Charges history */}
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Hisoblar</p>
+            <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">{t.chargesTitle}</p>
             {charges.length === 0 ? (
-              <p className="text-[13px] text-slate-400">Hisoblar hali yaratilmagan.</p>
+              <p className="text-[13px] text-on-surface-variant">{t.noCharges}</p>
             ) : (
               <div className="space-y-1">
                 {charges.map((c) => (
                   <div key={c.id} className="flex items-center gap-2 text-[12.5px] py-1">
-                    <span className="text-slate-600 truncate flex-1">
-                      {periodLabelOf(c)} · {c.classTitle}
+                    <span className="text-on-surface-variant truncate flex-1">
+                      {periodLabelOf(c, lang)} · {c.classTitle}
                     </span>
                     <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-bold shrink-0 ${STATUS_CLS[c.status]}`}>
-                      {CHARGE_STATUS_LABELS[c.status]}
+                      {CHARGE_STATUS_T[lang][c.status]}
                     </span>
-                    <span className="font-bold text-slate-700 tabular-nums shrink-0">{formatUZS(c.amount)}</span>
+                    <span className="font-bold text-on-surface tabular-nums shrink-0">{formatUZS(c.amount)}</span>
                   </div>
                 ))}
               </div>
@@ -199,20 +276,20 @@ export default function StudentFinanceSection({ centerId, studentUid }: Props) {
 
           {/* Recent payments */}
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">So&apos;nggi to&apos;lovlar</p>
+            <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">{t.paymentsTitle}</p>
             {payments.length === 0 ? (
-              <p className="text-[13px] text-slate-400">To&apos;lovlar yo&apos;q.</p>
+              <p className="text-[13px] text-on-surface-variant">{t.noPayments}</p>
             ) : (
               <div className="space-y-1">
                 {payments.map((p) => (
                   <div key={p.id} className="flex items-center gap-2 text-[12.5px] py-1">
-                    <span className={`truncate flex-1 ${p.status === "cancelled" ? "text-slate-300 line-through" : "text-slate-600"}`}>
-                      {shortDateLabel(p.paidAt)} · {PAYMENT_METHOD_LABELS[p.method] || p.method}
-                      {p.type === "refund" && " · qaytarim"}
+                    <span className={`truncate flex-1 ${p.status === "cancelled" ? "text-on-surface-variant line-through" : "text-on-surface-variant"}`}>
+                      {shortDateLabel(p.paidAt, lang)} · {PAYMENT_METHOD_T[lang][p.method] || p.method}
+                      {p.type === "refund" && ` · ${t.refundTag}`}
                     </span>
                     <span
                       className={`font-bold tabular-nums shrink-0 ${
-                        p.status === "cancelled" ? "text-slate-300 line-through" : p.type === "refund" ? "text-rose-600" : "text-brand-700"
+                        p.status === "cancelled" ? "text-on-surface-variant line-through" : p.type === "refund" ? "text-error" : "text-success"
                       }`}
                     >
                       {p.type === "refund" ? "−" : "+"}

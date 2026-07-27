@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowDown } from 'lucide-react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 interface QuestionRendererProps {
   qb: any;
@@ -9,7 +10,32 @@ interface QuestionRendererProps {
   handleAnswerChange: (qNum: number, value: any) => void;
 }
 
+// UI-chrome strings only. Exam-paper wording (e.g. "Questions 14–20",
+// "List of Headings", "Paragraph") is exam content and stays English.
+const TRANSLATIONS = {
+  uz: {
+    select: "Tanlang...",
+    answerPlaceholder: (n: number) => `Javob ${n}...`,
+    diagramPlaceholder: "[Diagramma rasmi joyi]",
+    diagramAlt: "Diagramma",
+  },
+  en: {
+    select: "Select...",
+    answerPlaceholder: (n: number) => `Answer ${n}...`,
+    diagramPlaceholder: "[Diagram Image Placeholder]",
+    diagramAlt: "Diagram",
+  },
+  ru: {
+    select: "Выберите...",
+    answerPlaceholder: (n: number) => `Ответ ${n}...`,
+    diagramPlaceholder: "[Место для изображения диаграммы]",
+    diagramAlt: "Диаграмма",
+  },
+};
+
 export default function QuestionRenderer({ qb, idx, answers, handleAnswerChange }: QuestionRendererProps) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   // Only trigger the shared word bank for specific completion types,
   // NOT for matching, multiple choice, or true/false which use options differently.
   const wordBankTypes = [  'flowchart_completion'];
@@ -821,12 +847,12 @@ export default function QuestionRenderer({ qb, idx, answers, handleAnswerChange 
             {qb.diagram_url ? (
               <img
                 src={qb.diagram_url}
-                alt={qb.diagram_alt_text || "Diagram"}
+                alt={qb.diagram_alt_text || t.diagramAlt}
                 className="max-h-[400px] w-auto object-contain rounded-m3-sm"
               />
             ) : (
               <div className="h-48 w-full max-w-md flex items-center justify-center text-on-surface-variant border-2 border-dashed border-outline rounded-m3-sm text-[0.95em]">
-                [Diagram Image Placeholder]
+                {t.diagramPlaceholder}
               </div>
             )}
           </div>
@@ -850,7 +876,7 @@ export default function QuestionRenderer({ qb, idx, answers, handleAnswerChange 
                       onChange={(e) => handleAnswerChange(q.question_number, e.target.value)}
                       className="min-w-[6em] h-[2.2em] border-b-[2.5px] border-outline font-bold bg-transparent outline-none focus:border-primary cursor-pointer text-center text-[1em] text-primary transition-colors px-2"
                     >
-                      <option value="">Select...</option>
+                      <option value="">{t.select}</option>
                       {qb.options.map((opt: any, optIdx: number) => (
                         <option key={optIdx} value={opt.id}>{opt.id}</option>
                       ))}
@@ -861,7 +887,7 @@ export default function QuestionRenderer({ qb, idx, answers, handleAnswerChange 
                       value={answers[q.question_number] || ''}
                       onChange={(e) => handleAnswerChange(q.question_number, e.target.value)}
                       className="min-w-[12em] h-[2.2em] border-b-[2.5px] border-outline font-bold bg-transparent outline-none focus:border-primary placeholder:text-on-surface-variant text-[1em] text-primary transition-colors px-2"
-                      placeholder={`Answer ${q.question_number}...`}
+                      placeholder={t.answerPlaceholder(q.question_number)}
                     />
                   )}
 

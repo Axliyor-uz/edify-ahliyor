@@ -25,6 +25,7 @@ This directory is the **source of truth** for how Edify works. The workflow cont
 | IELTS (groups, reading tests) — student or teacher side | [IELTS.md](IELTS.md) |
 | Teacher UI kit / design tokens — `components/ui/*`, `--m3-*` vars (`theme.css`), `tailwind.config.ts` token mapping, restyling `app/teacher/*` pages | [UI_KIT.md](UI_KIT.md) |
 | Student design system — **`design.config.ts`** (the one-word switchboard), `components/student-ui/*`, M3 palettes, restyling `app/(student)/*` pages | [STUDENT_UI.md](STUDENT_UI.md) |
+| Manager design system — **`design.manager.config.ts`** (the one-word switchboard), `components/manager-ui/*`, restyling `app/manager/*` pages | [MANAGER_UI.md](MANAGER_UI.md) |
 | Android APK distribution — `public/app/version.json` + `edify-manager.apk`, `/app` download page, release/rollback procedure | [APP_DISTRIBUTION.md](APP_DISTRIBUTION.md) |
 
 Historical (design rationale only, drifted — do not trust for current state): [ADMIN_CENTERS_PLAN.md](ADMIN_CENTERS_PLAN.md).

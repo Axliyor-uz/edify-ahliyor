@@ -2,9 +2,48 @@
 
 import { Plus, Trash2, X, ChevronDown, ChevronUp, Edit3, Wand2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 import { Button } from '@/components/ui';
 
+const TRANSLATIONS = {
+  uz: {
+    instructionsPh: "Yo'riqnoma... (Avtomatik tuzish uchun to'liq matn blokini shu yerga joylashtiring!)",
+    hideCategories: "Kategoriyalarni yashirish (masalan: Researchers, Cities)",
+    editCategories: "Kategoriyalarni tahrirlash (masalan: Researchers, Cities)",
+    categoryPh: "Kategoriya (masalan: City authorities)...",
+    addCategory: "Kategoriya qo'shish",
+    statementPh: "Tasdiq matni... (Ro'yxatni joylashtirib ko'ring!)",
+    matches: "Mosligi:",
+    refPh: "Ref (ixt)",
+    addStatement: "Tasdiq qo'shish",
+  },
+  en: {
+    instructionsPh: "Instructions... (Paste full block of text here to auto-build!)",
+    hideCategories: "Hide Categories (e.g. Researchers, Cities)",
+    editCategories: "Edit Categories (e.g. Researchers, Cities)",
+    categoryPh: "Category (e.g. City authorities)...",
+    addCategory: "Add Category",
+    statementPh: "Statement text... (Try pasting a list!)",
+    matches: "Matches:",
+    refPh: "Ref (opt)",
+    addStatement: "Add Statement",
+  },
+  ru: {
+    instructionsPh: "Инструкция... (Вставьте сюда полный блок текста для автосборки!)",
+    hideCategories: "Скрыть категории (напр.: Researchers, Cities)",
+    editCategories: "Редактировать категории (напр.: Researchers, Cities)",
+    categoryPh: "Категория (напр.: City authorities)...",
+    addCategory: "Добавить категорию",
+    statementPh: "Текст утверждения... (Попробуйте вставить список!)",
+    matches: "Соответствие:",
+    refPh: "Ref (необяз.)",
+    addStatement: "Добавить утверждение",
+  },
+};
+
 export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [showOptions, setShowOptions] = useState(true);
 
   // ==========================================================================
@@ -175,7 +214,7 @@ export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBl
         <div className="relative mb-2">
           <input
             type="text"
-            placeholder="Instructions... (Paste full block of text here to auto-build!)"
+            placeholder={t.instructionsPh}
             value={qb.instructions}
             onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
             onPaste={handleOmniPaste}
@@ -187,7 +226,7 @@ export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBl
         {/* 2. CATEGORIES EDITOR (A, B, C) */}
         <div className="mb-4 bg-surface-container p-2 rounded-m3-sm border border-outline-variant transition-colors hover:border-outline">
           <button onClick={() => setShowOptions(!showOptions)} className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant hover:text-primary uppercase tracking-wider mb-2 transition-colors">
-            <Edit3 size={10} /> {showOptions ? 'Hide Categories (e.g. Researchers, Cities)' : 'Edit Categories (e.g. Researchers, Cities)'} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            <Edit3 size={10} /> {showOptions ? t.hideCategories : t.editCategories} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
           </button>
 
           {showOptions && (
@@ -196,7 +235,7 @@ export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBl
                 <div key={oIdx} className="flex items-center gap-2">
                   <span className="w-6 text-center text-[11px] font-black text-on-surface-variant">{opt.id}.</span>
                   <input
-                    type="text" value={opt.text} placeholder="Category (e.g. City authorities)..."
+                    type="text" value={opt.text} placeholder={t.categoryPh}
                     onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }}
                     onPaste={e => handlePasteOptions(e, oIdx)}
                     className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-sm py-1.5 px-2 text-[11px] font-medium text-on-surface-variant outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:text-on-surface-variant"
@@ -205,7 +244,7 @@ export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBl
                 </div>
               ))}
               <Button variant="text" size="sm" icon={<Plus />} onClick={addOption} className="mt-2 ml-8">
-                Add Category
+                {t.addCategory}
               </Button>
             </div>
           )}
@@ -220,7 +259,7 @@ export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBl
               </span>
 
               <input
-                type="text" placeholder="Statement text... (Try pasting a list!)"
+                type="text" placeholder={t.statementPh}
                 value={row.statement}
                 onChange={e => updateRow(rIdx, 'statement', e.target.value)}
                 onPaste={e => handlePasteStatements(e, rIdx)}
@@ -230,7 +269,7 @@ export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBl
 
               {/* DROPDOWN (Saves to JSON as an Array!) */}
               <div className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 shrink-0">
-                <span className="text-[10px] font-bold text-on-surface-variant uppercase">Matches:</span>
+                <span className="text-[10px] font-bold text-on-surface-variant uppercase">{t.matches}</span>
                 <select
                   value={row.correct_answer[0] || ''}
                   onChange={e => updateRow(rIdx, 'correct_answer', [e.target.value])}
@@ -243,7 +282,7 @@ export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBl
 
               {/* GHOST REFERENCE INPUT */}
               <input
-                type="text" placeholder="Ref (opt)"
+                type="text" placeholder={t.refPh}
                 value={row.passage_reference || ''}
                 onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())}
                 className={`w-14 h-7 text-[10px] text-center font-bold rounded-m3-sm outline-none uppercase shrink-0 transition-colors
@@ -258,7 +297,7 @@ export default function MatchingFeaturesBlock({ qb, qbIdx, updateBlock, deleteBl
         </div>
 
         <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
-          Add Statement
+          {t.addStatement}
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "./cn";
+import { TEACHER_DESIGN } from "./config";
 
 export interface ListItemProps {
   /** Left slot — usually an <Avatar> or an icon in a tinted square. */
@@ -24,7 +25,17 @@ export function ListItem({ leading, title, subtitle, trailing, onClick, classNam
       {trailing && <span className="flex flex-none items-center gap-2">{trailing}</span>}
     </>
   );
-  const classes = cn("flex w-full items-center gap-3.5 rounded-m3-sm px-2.5 py-2.5 text-left", onClick && "m3-interactive", className);
+  // List_style 'divided' keeps the classic row (pages supply the container +
+  // divide-y). 'cards' makes each row its own floating card; `[&+&]` spaces
+  // adjacent ListItems so sibling lists look right without a container change.
+  const classes = cn(
+    "flex min-h-t-row w-full items-center gap-3.5 px-2.5 py-2.5 text-left",
+    TEACHER_DESIGN.List_style === "cards"
+      ? "rounded-m3-md bg-surface-container-lowest px-3.5 shadow-elev-1 [&+&]:mt-t-gap"
+      : "rounded-m3-sm",
+    onClick && "m3-interactive",
+    className,
+  );
   if (onClick) {
     return (
       <button type="button" onClick={onClick} className={classes}>

@@ -2,10 +2,46 @@
 
 import { Plus, Trash2, X, Repeat, ChevronDown, ChevronUp, Edit3 } from 'lucide-react';
 import { useState } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
 
+const TRANSLATIONS = {
+  uz: {
+    toggleVariant: "YES/NO/NOT GIVEN turiga o'zgartirish",
+    instructionsPh: "Yo'riqnoma (masalan: Do the following statements agree...)",
+    hideOptions: "Variant tavsiflarini yashirish",
+    editOptions: "Variant tavsiflarini tahrirlash",
+    optionDescPh: "Ushbu variantning tavsifi...",
+    statementPh: "Tasdiq matni...",
+    refPh: "Ref",
+    addRow: "Qator qo'shish",
+  },
+  en: {
+    toggleVariant: "Change to YES/NO/NOT GIVEN",
+    instructionsPh: "Instructions (e.g. Do the following statements agree...)",
+    hideOptions: "Hide option descriptions",
+    editOptions: "Edit option descriptions",
+    optionDescPh: "Description of this option...",
+    statementPh: "Statement text...",
+    refPh: "Ref",
+    addRow: "Add Row",
+  },
+  ru: {
+    toggleVariant: "Переключить на YES/NO/NOT GIVEN",
+    instructionsPh: "Инструкция (например: Do the following statements agree...)",
+    hideOptions: "Скрыть описания вариантов",
+    editOptions: "Редактировать описания вариантов",
+    optionDescPh: "Описание этого варианта...",
+    statementPh: "Текст утверждения...",
+    refPh: "Ref",
+    addRow: "Добавить строку",
+  },
+};
+
 export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   
   // UX State: Hide the bulky options template by default to keep the UI clean
   const [showOptions, setShowOptions] = useState(false);
@@ -99,7 +135,7 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
             <span className="text-[9px] font-black uppercase tracking-wider">
               {isYesNo ? 'YNNG' : 'TFNG'}
             </span>
-            <button onClick={toggleVariant} className="hover:text-primary transition-colors" title="Change to YES/NO/NOT GIVEN">
+            <button onClick={toggleVariant} className="hover:text-primary transition-colors" title={t.toggleVariant}>
               <Repeat size={10} strokeWidth={3} />
             </button>
           </div>
@@ -128,7 +164,7 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
         <div className="mb-4 bg-surface-container p-2 rounded-m3-sm border border-transparent hover:border-outline-variant transition-colors">
           
           <textarea 
-            placeholder="Instructions (e.g. Do the following statements agree...)" value={qb.instructions} 
+            placeholder={t.instructionsPh} value={qb.instructions}
             onChange={e => {
               updateBlock(qbIdx, 'instructions', e.target.value);
               e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px";
@@ -140,7 +176,7 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
             onClick={() => setShowOptions(!showOptions)}
             className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant hover:text-primary uppercase tracking-wider mt-1 transition-colors"
           >
-            <Edit3 size={10} /> {showOptions ? 'Hide option descriptions' : 'Edit option descriptions'}
+            <Edit3 size={10} /> {showOptions ? t.hideOptions : t.editOptions}
             {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
           </button>
 
@@ -159,7 +195,7 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
                       updateBlock(qbIdx, 'options', newOptions);
                     }}
                     className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-xs py-1 px-2 text-[11px] font-medium text-on-surface-variant outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary transition-colors"
-                    placeholder="Description of this option..."
+                    placeholder={t.optionDescPh}
                   />
                 </div>
               ))}
@@ -176,7 +212,7 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
               </span>
 
               <input
-                type="text" placeholder="Statement text..."
+                type="text" placeholder={t.statementPh}
                 value={row.statement}
                 onChange={e => updateRow(rIdx, 'statement', e.target.value)}
                 onPaste={e => handlePaste(e, rIdx)}
@@ -196,8 +232,8 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
               </select>
               
               <input 
-                type="text" placeholder="Ref" 
-                value={row.passage_reference} 
+                type="text" placeholder={t.refPh}
+                value={row.passage_reference}
                 onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
                 onKeyDown={e => handleKeyDown(e, rIdx)}
                 className="w-10 h-7 text-[10px] text-center font-bold bg-surface-container-lowest border border-outline-variant rounded-m3-xs outline-none placeholder:text-outline uppercase focus:border-primary shrink-0"
@@ -211,7 +247,7 @@ export default function TFNGBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) 
         </div>
 
         <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
-          Add Row
+          {t.addRow}
         </Button>
       </div>
     </div>

@@ -2,10 +2,55 @@
 
 import { Plus, X, GripVertical, AlignLeft, Type } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
 
+const TRANSLATIONS = {
+  uz: {
+    words: "ta so'z",
+    easy: "OSON",
+    medium: "O'RTA",
+    hard: "QIYIN",
+    instructionsPh: "Yo'riqnoma (masalan: You should spend about 20 minutes...)",
+    titlePh: "Matn sarlavhasi...",
+    subtitlePh: "Kichik sarlavha (ixtiyoriy)...",
+    pastePh: "Matnni shu yerga joylashtiring...",
+    removeLabel: "Belgini olib tashlash",
+    addLabel: "Belgi qo'shish (A, B, C...)",
+    addParagraph: "Paragraf qo'shish",
+  },
+  en: {
+    words: "words",
+    easy: "EASY",
+    medium: "MEDIUM",
+    hard: "HARD",
+    instructionsPh: "Instructions (e.g. You should spend about 20 minutes...)",
+    titlePh: "Passage Title...",
+    subtitlePh: "Subtitle (Optional)...",
+    pastePh: "Paste text here...",
+    removeLabel: "Remove Label",
+    addLabel: "Add Label (A, B, C...)",
+    addParagraph: "Add Paragraph",
+  },
+  ru: {
+    words: "слов",
+    easy: "ЛЁГКИЙ",
+    medium: "СРЕДНИЙ",
+    hard: "СЛОЖНЫЙ",
+    instructionsPh: "Инструкция (например: You should spend about 20 minutes...)",
+    titlePh: "Заголовок текста...",
+    subtitlePh: "Подзаголовок (необязательно)...",
+    pastePh: "Вставьте текст сюда...",
+    removeLabel: "Убрать метку",
+    addLabel: "Добавить метку (A, B, C...)",
+    addParagraph: "Добавить абзац",
+  },
+};
+
 export default function PassagePane({ passage, update }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -121,16 +166,16 @@ export default function PassagePane({ passage, update }: any) {
       {/* ===================================================================== */}
       <div className="flex justify-end items-center gap-3 mb-6 opacity-60 hover:opacity-100 transition-opacity">
         <span className={`text-[10px] font-bold uppercase tracking-widest ${totalWords < 700 ? 'text-warning' : totalWords > 950 ? 'text-error' : 'text-success'}`}>
-          {totalWords} words
+          {totalWords} {t.words}
         </span>
         <select
           value={passage.difficulty || 'medium'}
           onChange={e => update('difficulty', e.target.value)}
           className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-on-surface-variant p-0 outline-none cursor-pointer appearance-none text-right"
         >
-          <option value="easy">EASY</option>
-          <option value="medium">MEDIUM</option>
-          <option value="hard">HARD</option>
+          <option value="easy">{t.easy}</option>
+          <option value="medium">{t.medium}</option>
+          <option value="hard">{t.hard}</option>
         </select>
       </div>
 
@@ -139,21 +184,21 @@ export default function PassagePane({ passage, update }: any) {
       {/* ===================================================================== */}
       <div className="flex flex-col items-center space-y-3 mb-10">
         <textarea 
-          placeholder="Instructions (e.g. You should spend about 20 minutes...)" 
+          placeholder={t.instructionsPh}
           value={passage.instruction} 
           onChange={e => { update('instruction', e.target.value); autoResize(e.target); }} 
           className="w-full text-center text-[13px] font-medium text-on-surface-variant bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden italic leading-relaxed placeholder:text-outline"
           rows={1}
         />
         <textarea
-          placeholder="Passage Title..."
+          placeholder={t.titlePh}
           value={passage.title}
           onChange={e => { update('title', e.target.value); autoResize(e.target); }}
           className="w-full text-center text-[26px] sm:text-[32px] font-black tracking-tight bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden placeholder:text-outline-variant text-on-surface leading-tight"
           rows={1}
         />
         <textarea
-          placeholder="Subtitle (Optional)..."
+          placeholder={t.subtitlePh}
           value={passage.subtitle || ''}
           onChange={e => { update('subtitle', e.target.value); autoResize(e.target); }}
           className="w-full text-center text-[14.5px] font-serif italic bg-transparent border-none focus:ring-0 p-0 outline-none resize-none overflow-hidden placeholder:text-outline text-on-surface-variant leading-relaxed"
@@ -182,12 +227,12 @@ export default function PassagePane({ passage, update }: any) {
                       className="w-6 text-center bg-transparent border-none focus:ring-0 p-0 outline-none font-bold text-[14px] text-on-surface uppercase"
                       maxLength={2}
                     />
-                    <button onClick={() => toggleLabel(idx)} className="absolute -left-4 top-1 opacity-0 group-hover/label:opacity-100 text-outline hover:text-error" title="Remove Label">
+                    <button onClick={() => toggleLabel(idx)} className="absolute -left-4 top-1 opacity-0 group-hover/label:opacity-100 text-outline hover:text-error" title={t.removeLabel}>
                       <X size={12} />
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => toggleLabel(idx)} className="opacity-0 group-hover:opacity-100 text-outline hover:text-primary transition-opacity mt-0.5" title="Add Label (A, B, C...)">
+                  <button onClick={() => toggleLabel(idx)} className="opacity-0 group-hover:opacity-100 text-outline hover:text-primary transition-opacity mt-0.5" title={t.addLabel}>
                     <Type size={14} />
                   </button>
                 )}
@@ -196,7 +241,7 @@ export default function PassagePane({ passage, update }: any) {
               {/* SEAMLESS CONTENT EDITOR */}
               <div className="flex-1 relative">
                 <textarea 
-                  placeholder="Paste text here..." 
+                  placeholder={t.pastePh}
                   value={block.content} 
                   onFocus={() => setFocusedIndex(idx)}
                   onBlur={() => setFocusedIndex(null)}
@@ -227,7 +272,7 @@ export default function PassagePane({ passage, update }: any) {
       {/* ADD PARAGRAPH BUTTON */}
       <div className="pt-6 pb-20 flex justify-start ml-8 sm:ml-10">
         <Button variant="text" size="sm" icon={<AlignLeft />} onClick={addParagraph}>
-          Add Paragraph
+          {t.addParagraph}
         </Button>
       </div>
       

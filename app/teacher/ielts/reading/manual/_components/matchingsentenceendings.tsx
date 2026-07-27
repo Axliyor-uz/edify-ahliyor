@@ -2,10 +2,49 @@
 
 import { Plus, Trash2, X, ChevronDown, ChevronUp, Edit3, Wand2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
 
+const TRANSLATIONS = {
+  uz: {
+    instructionsPh: "Yo'riqnoma... (Avtomatik tuzish uchun to'liq matn blokini istalgan joyga joylashtiring!)",
+    hideEndings: "Tugallanmalarni yashirish",
+    editEndings: "Tugallanmalarni tahrirlash",
+    endingPh: "Tugallanma matni...",
+    addEnding: "Tugallanma qo'shish",
+    sentenceStartPh: "Gap boshlanishi...",
+    matches: "Mosligi:",
+    refPh: "Ref (ixt)",
+    addSentenceStart: "Gap boshlanishini qo'shish",
+  },
+  en: {
+    instructionsPh: "Instructions... (Paste full block of text anywhere to auto-build!)",
+    hideEndings: "Hide Endings",
+    editEndings: "Edit Endings",
+    endingPh: "Ending text...",
+    addEnding: "Add Ending",
+    sentenceStartPh: "Sentence start...",
+    matches: "Matches:",
+    refPh: "Ref (opt)",
+    addSentenceStart: "Add Sentence Start",
+  },
+  ru: {
+    instructionsPh: "Инструкция... (Вставьте полный блок текста в любое поле для автосборки!)",
+    hideEndings: "Скрыть окончания",
+    editEndings: "Редактировать окончания",
+    endingPh: "Текст окончания...",
+    addEnding: "Добавить окончание",
+    sentenceStartPh: "Начало предложения...",
+    matches: "Соответствие:",
+    refPh: "Ref (необяз.)",
+    addSentenceStart: "Добавить начало предложения",
+  },
+};
+
 export default function MatchingSentenceEndingsBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [showOptions, setShowOptions] = useState(true);
 
   // ==========================================================================
@@ -128,7 +167,7 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
         <div className="relative mb-2">
           <input 
             type="text" 
-            placeholder="Instructions... (Paste full block of text anywhere to auto-build!)" 
+            placeholder={t.instructionsPh}
             value={qb.instructions} 
             onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
             onPaste={e => handleUniversalPaste(e, 'instructions')}
@@ -140,7 +179,7 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
         {/* OPTIONS EDITOR */}
         <div className="mb-4 bg-surface-container p-2 rounded-m3-sm border border-outline-variant transition-colors hover:border-outline">
           <button onClick={() => setShowOptions(!showOptions)} className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant hover:text-tertiary uppercase tracking-wider mb-2 transition-colors">
-            <Edit3 size={10} /> {showOptions ? 'Hide Endings' : 'Edit Endings'} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            <Edit3 size={10} /> {showOptions ? t.hideEndings : t.editEndings} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
           </button>
           
           {showOptions && (
@@ -149,7 +188,7 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
                 <div key={oIdx} className="flex items-center gap-2">
                   <span className="w-6 text-center text-[11px] font-black text-on-surface-variant">{opt.id}.</span>
                   <input
-                    type="text" value={opt.text} placeholder="Ending text..."
+                    type="text" value={opt.text} placeholder={t.endingPh}
                     onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }}
                     onPaste={e => handleUniversalPaste(e, 'options', oIdx)}
                     className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-xs py-1.5 px-2 text-[11px] font-medium text-on-surface-variant outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:text-on-surface-variant"
@@ -158,7 +197,7 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
                 </div>
               ))}
               <Button variant="text" size="sm" icon={<Plus />} onClick={addOption} className="mt-2 ml-5">
-                Add Ending
+                {t.addEnding}
               </Button>
             </div>
           )}
@@ -174,7 +213,7 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
               </span>
               
               <textarea 
-                placeholder="Sentence start..." 
+                placeholder={t.sentenceStartPh}
                 value={row.sentence_start} 
                 onChange={e => {
                   updateRow(rIdx, 'sentence_start', e.target.value);
@@ -196,7 +235,7 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
 
               {/* DROPDOWN */}
               <div className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 shrink-0 mt-0.5 h-7">
-                <span className="text-[10px] font-bold text-on-surface-variant uppercase">Matches:</span>
+                <span className="text-[10px] font-bold text-on-surface-variant uppercase">{t.matches}</span>
                 <select
                   value={row.correct_answer[0] || ''}
                   onChange={e => updateRow(rIdx, 'correct_answer', [e.target.value])}
@@ -209,8 +248,8 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
 
               {/* GHOST REFERENCE */}
               <input 
-                type="text" placeholder="Ref (opt)" 
-                value={row.passage_reference || ''} 
+                type="text" placeholder={t.refPh}
+                value={row.passage_reference || ''}
                 onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
                 className={`w-14 h-7 mt-0.5 text-[10px] text-center font-bold rounded-m3-xs outline-none uppercase shrink-0 transition-colors
                   ${row.passage_reference ? 'bg-tertiary-container border border-transparent text-on-tertiary-container focus:border-primary' : 'bg-transparent border border-dashed border-outline text-on-surface-variant hover:border-on-surface-variant focus:border-primary focus:bg-surface-container-lowest'}`}
@@ -222,7 +261,7 @@ const hasQuestions = lines.some((l: string) => questionRegex.test(l));
         </div>
         
         <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
-          Add Sentence Start
+          {t.addSentenceStart}
         </Button>
       </div>
     </div>

@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigurationModal";
 import TopicAssignModal from "@/app/teacher/create/_components/TopicAssignModal";
+import { useTeacherLanguage } from "@/app/teacher/layout";
 
 import { Button, Skeleton } from "@/components/ui";
 
@@ -34,6 +35,148 @@ const UZB_SUBJECTS = [
   { id: "Informatika", icon: Bot, color: "text-on-secondary-container", bg: "bg-secondary-container", border: "border-secondary" },
   { id: "Huquqshunoslik", icon: Gavel, color: "text-on-tertiary-container", bg: "bg-tertiary-container", border: "border-tertiary" }
 ];
+
+// --- TRANSLATION DICTIONARY ---
+const AI_TRANSLATIONS: Record<string, any> = {
+  uz: {
+    thinkingTitle: "AI Studiya ishlamoqda",
+    thinkingPhrases: [
+      "Mavzu tahlil qilinmoqda...",
+      "Qiyinlik darajasi moslashtirilmoqda...",
+      "Savollar va javoblar yozilmoqda...",
+      "Formula va chizmalar tekshirilmoqda..."
+    ],
+    hideSolution: "Yechimni yashirish", aiSolution: "AI Yechim", aiSolutionLogic: "AI Yechim Mantiqi",
+    difficulties: { easy: "Oson", medium: "O'rtacha", hard: "Murakkab", olympiad: "Olimpiada" },
+    subjects: {
+      "Matematika": "Matematika", "Fizika": "Fizika", "Kimyo": "Kimyo", "Biologiya": "Biologiya",
+      "Ona tili va adabiyot": "Ona tili va adabiyot", "Tarix": "Tarix", "Geografiya": "Geografiya",
+      "Informatika": "Informatika", "Huquqshunoslik": "Huquqshunoslik"
+    },
+    toasts: {
+      errSelectSubjectTopic: "Iltimos, fan va mavzuni kiriting.",
+      added: (n: number) => `${n} savol qo'shildi!`,
+      errGeneric: "Xatolik yuz berdi.",
+      errCreateFirst: "Oldin savol yarating.",
+      errPickTopic: "Iltimos, savollar uchun mavzu tanlang.",
+      savedToBank: "Savollar bazangizga muvaffaqiyatli saqlandi!",
+      errSaveBank: "Bazaga saqlashda xatolik yuz berdi.",
+      errEnterTitle: "Test nomini kiriting.",
+      published: "Test muvaffaqiyatli nashr qilindi!",
+      errPublish: "Nashr qilishda xatolik."
+    },
+    limitLeftDetailed: (n: number) => `Sizda oylik limitdan ${n} ta savol qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`,
+    limitReached: "Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.",
+    limitLeftGenerate: (n: number) => `Sizda ${n} ta savol yaratish uchun limit qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`,
+    premiumFeature: "Premium Xususiyat", viewPlans: "Tariflarni ko'rish", goBack: "Orqaga qaytish",
+    titleModal: { title: "Test nomini kiriting", desc: "Yaratilgan testni saqlashdan oldin nom bering.", placeholder: "Masalan: Olimpiada tayyorgarligi", cancel: "Bekor qilish", next: "Keyingi Qadam" },
+    subjectModal: { title: "Fanni tanlang", desc: "Barcha fanlar ruyxati" },
+    topBarTitle: "AI Studiya", sidebarTitle: "Smart AI Studiya",
+    step1: "1. Fanni tanlang", selectedSubject: "Tanlangan Fan", selectSubjectPlaceholder: "Fanni tanlang...",
+    step2: "2. O'quv mavzusi", topicPlaceholder: "Mavzu nomini yozing... (masalan: Kvadrat ildizlar)",
+    step3: "3. Qiyinlik darajasi", step4: "4. Savollar soni",
+    lowLimitWarning: (n: number) => <>Sizda oylik limitdan faqatgina <span className="font-black">{n} ta</span> savol qoldi.</>,
+    generating: "Yaratilmoqda...", generateBtn: "Savol Yaratish",
+    draftTitle: "AI Qoralama", questionCountBadge: (n: number) => `${n} Savol`,
+    saveToBank: "Bazaga Saqlash", publish: "Nashr qilish",
+    emptyTitle: "Yaratishga tayyor.", emptyDesc: "Chap tomondan fanni tanlang va mavzu nomini yozib savollar yarating.",
+    mobileCount: (n: number) => `${n} ta savol`,
+    morePrompt: "Yana savol qo'shmoqchimisiz?", morePromptDesc: "Mavzuni o'zgartirib 'Yaratish' tugmasini yana bir bor bosing.",
+    mobileSave: "Saqlash", mobilePublish: "Nashr Qilish"
+  },
+  en: {
+    thinkingTitle: "AI Studio is working",
+    thinkingPhrases: [
+      "Analyzing the topic...",
+      "Adjusting the difficulty level...",
+      "Writing questions and answers...",
+      "Checking formulas and diagrams..."
+    ],
+    hideSolution: "Hide solution", aiSolution: "AI Solution", aiSolutionLogic: "AI Solution Logic",
+    difficulties: { easy: "Easy", medium: "Medium", hard: "Hard", olympiad: "Olympiad" },
+    subjects: {
+      "Matematika": "Mathematics", "Fizika": "Physics", "Kimyo": "Chemistry", "Biologiya": "Biology",
+      "Ona tili va adabiyot": "Native language & literature", "Tarix": "History", "Geografiya": "Geography",
+      "Informatika": "Computer science", "Huquqshunoslik": "Law"
+    },
+    toasts: {
+      errSelectSubjectTopic: "Please select a subject and enter a topic.",
+      added: (n: number) => `${n} questions added!`,
+      errGeneric: "An error occurred.",
+      errCreateFirst: "Generate questions first.",
+      errPickTopic: "Please select a topic for the questions.",
+      savedToBank: "Questions saved to your bank successfully!",
+      errSaveBank: "Error saving to the bank.",
+      errEnterTitle: "Enter a test title.",
+      published: "Test published successfully!",
+      errPublish: "Error publishing the test."
+    },
+    limitLeftDetailed: (n: number) => `You have ${n} questions left in your monthly limit. Please reduce the requested amount or upgrade your plan.`,
+    limitReached: "Your monthly AI limit is not enough. Upgrade your plan or wait for next month.",
+    limitLeftGenerate: (n: number) => `You have a limit of ${n} questions left to generate. Please reduce the requested amount or upgrade your plan.`,
+    premiumFeature: "Premium Feature", viewPlans: "View plans", goBack: "Go back",
+    titleModal: { title: "Enter a test title", desc: "Name the generated test before saving it.", placeholder: "E.g.: Olympiad preparation", cancel: "Cancel", next: "Next Step" },
+    subjectModal: { title: "Select a subject", desc: "List of all subjects" },
+    topBarTitle: "AI Studio", sidebarTitle: "Smart AI Studio",
+    step1: "1. Select a subject", selectedSubject: "Selected Subject", selectSubjectPlaceholder: "Select a subject...",
+    step2: "2. Study topic", topicPlaceholder: "Type the topic name... (e.g.: Square roots)",
+    step3: "3. Difficulty level", step4: "4. Number of questions",
+    lowLimitWarning: (n: number) => <>You only have <span className="font-black">{n}</span> questions left in your monthly limit.</>,
+    generating: "Generating...", generateBtn: "Generate Questions",
+    draftTitle: "AI Draft", questionCountBadge: (n: number) => `${n} Questions`,
+    saveToBank: "Save to Bank", publish: "Publish",
+    emptyTitle: "Ready to generate.", emptyDesc: "Select a subject on the left and type a topic name to generate questions.",
+    mobileCount: (n: number) => `${n} questions`,
+    morePrompt: "Want to add more questions?", morePromptDesc: "Change the topic and press 'Generate' once again.",
+    mobileSave: "Save", mobilePublish: "Publish"
+  },
+  ru: {
+    thinkingTitle: "AI Студия работает",
+    thinkingPhrases: [
+      "Анализ темы...",
+      "Настройка уровня сложности...",
+      "Составление вопросов и ответов...",
+      "Проверка формул и схем..."
+    ],
+    hideSolution: "Скрыть решение", aiSolution: "AI Решение", aiSolutionLogic: "Логика AI Решения",
+    difficulties: { easy: "Лёгкий", medium: "Средний", hard: "Сложный", olympiad: "Олимпиадный" },
+    subjects: {
+      "Matematika": "Математика", "Fizika": "Физика", "Kimyo": "Химия", "Biologiya": "Биология",
+      "Ona tili va adabiyot": "Родной язык и литература", "Tarix": "История", "Geografiya": "География",
+      "Informatika": "Информатика", "Huquqshunoslik": "Правоведение"
+    },
+    toasts: {
+      errSelectSubjectTopic: "Пожалуйста, выберите предмет и введите тему.",
+      added: (n: number) => `Добавлено вопросов: ${n}!`,
+      errGeneric: "Произошла ошибка.",
+      errCreateFirst: "Сначала создайте вопросы.",
+      errPickTopic: "Пожалуйста, выберите тему для вопросов.",
+      savedToBank: "Вопросы успешно сохранены в вашу базу!",
+      errSaveBank: "Ошибка при сохранении в базу.",
+      errEnterTitle: "Введите название теста.",
+      published: "Тест успешно опубликован!",
+      errPublish: "Ошибка при публикации."
+    },
+    limitLeftDetailed: (n: number) => `В вашем месячном лимите осталось ${n} вопросов. Пожалуйста, уменьшите запрашиваемое количество или повысьте тариф.`,
+    limitReached: "Вашего месячного AI-лимита недостаточно. Повысьте тариф или дождитесь следующего месяца.",
+    limitLeftGenerate: (n: number) => `У вас остался лимит на создание ${n} вопросов. Пожалуйста, уменьшите запрашиваемое количество или повысьте тариф.`,
+    premiumFeature: "Премиум-функция", viewPlans: "Посмотреть тарифы", goBack: "Вернуться назад",
+    titleModal: { title: "Введите название теста", desc: "Дайте название созданному тесту перед сохранением.", placeholder: "Например: Подготовка к олимпиаде", cancel: "Отмена", next: "Следующий шаг" },
+    subjectModal: { title: "Выберите предмет", desc: "Список всех предметов" },
+    topBarTitle: "AI Студия", sidebarTitle: "Smart AI Студия",
+    step1: "1. Выберите предмет", selectedSubject: "Выбранный предмет", selectSubjectPlaceholder: "Выберите предмет...",
+    step2: "2. Учебная тема", topicPlaceholder: "Введите название темы... (например: Квадратные корни)",
+    step3: "3. Уровень сложности", step4: "4. Количество вопросов",
+    lowLimitWarning: (n: number) => <>В вашем месячном лимите осталось всего <span className="font-black">{n}</span> вопросов.</>,
+    generating: "Создание...", generateBtn: "Создать вопросы",
+    draftTitle: "AI Черновик", questionCountBadge: (n: number) => `${n} Вопросов`,
+    saveToBank: "Сохранить в базу", publish: "Опубликовать",
+    emptyTitle: "Готово к созданию.", emptyDesc: "Выберите предмет слева и введите название темы, чтобы создать вопросы.",
+    mobileCount: (n: number) => `Вопросов: ${n}`,
+    morePrompt: "Хотите добавить ещё вопросы?", morePromptDesc: "Измените тему и нажмите «Создать» ещё раз.",
+    mobileSave: "Сохранить", mobilePublish: "Опубликовать"
+  }
+};
 
 interface AIQuestion {
   id: string;
@@ -78,12 +221,9 @@ const sharedName = (paths: TopicPath[], key: "subjectName" | "topicName" | "subt
 };
 
 const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
-  const phrases = [
-    "Mavzu tahlil qilinmoqda...",
-    "Qiyinlik darajasi moslashtirilmoqda...",
-    "Savollar va javoblar yozilmoqda...",
-    "Formula va chizmalar tekshirilmoqda..."
-  ];
+  const { lang } = useTeacherLanguage();
+  const t = AI_TRANSLATIONS[lang] || AI_TRANSLATIONS['uz'];
+  const phrases: string[] = t.thinkingPhrases;
   const [phraseIndex, setPhraseIndex] = useState(0);
 
   useEffect(() => {
@@ -109,7 +249,7 @@ const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
                 <Sparkles size={16} className="absolute -top-2 -right-2 text-warning animate-pulse md:w-5 md:h-5 md:-top-3 md:-right-3" />
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
+            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">{t.thinkingTitle}</h3>
             <div className="h-5 md:h-6 relative z-10 overflow-hidden flex items-center justify-center w-full">
               <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[12px] md:text-[14px] font-medium text-on-surface-variant absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
             </div>
@@ -154,6 +294,8 @@ const FormattedText = ({ text }: { text: any }) => {
 };
 
 const AIQuestionCard = ({ q, idx, onRemove }: { q: AIQuestion, idx: number, onRemove: (id: string) => void }) => {
+  const { lang } = useTeacherLanguage();
+  const t = AI_TRANSLATIONS[lang] || AI_TRANSLATIONS['uz'];
   const [showOptions, setShowOptions] = useState(true);
   const [showExplanation, setShowExplanation] = useState(false);
 
@@ -211,14 +353,14 @@ const AIQuestionCard = ({ q, idx, onRemove }: { q: AIQuestion, idx: number, onRe
         <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-outline-variant flex justify-start">
           <button onClick={() => setShowExplanation(!showExplanation)} className={`m3-interactive flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-m3-sm md:rounded-m3-md text-[11px] md:text-[12px] font-bold transition-all duration-300 ${showExplanation ? 'bg-primary-container text-on-primary-container shadow-elev-1' : 'bg-surface-container-lowest ring-1 ring-inset ring-outline-variant text-on-surface-variant hover:text-on-surface'}`}>
             <Sparkles size={12} className="md:w-3.5 md:h-3.5" />
-            {showExplanation ? "Yechimni yashirish" : "AI Yechim"}
+            {showExplanation ? t.hideSolution : t.aiSolution}
           </button>
         </div>
       )}
 
       {showExplanation && getText(q.explanation).trim().length > 0 && (
         <div className="bg-surface-container border border-outline-variant p-3.5 md:p-4 rounded-m3-md md:rounded-m3-lg mt-3 md:mt-4 animate-in fade-in slide-in-from-top-2">
-          <p className="text-[10px] md:text-[11px] font-black text-primary uppercase tracking-widest mb-1.5 md:mb-2 flex items-center gap-1.5"><Sparkles size={12} className="text-primary md:w-3.5 md:h-3.5" /> AI Yechim Mantiqi</p>
+          <p className="text-[10px] md:text-[11px] font-black text-primary uppercase tracking-widest mb-1.5 md:mb-2 flex items-center gap-1.5"><Sparkles size={12} className="text-primary md:w-3.5 md:h-3.5" /> {t.aiSolutionLogic}</p>
           <p className="text-[12px] md:text-[13px] text-on-surface leading-relaxed font-medium">
             <FormattedText text={getText(q.explanation)} />
           </p>
@@ -233,15 +375,17 @@ export default function GeneralAIGeneratorPage() {
   const router = useRouter();
   const { user } = useAuth();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { lang } = useTeacherLanguage();
+  const t = AI_TRANSLATIONS[lang] || AI_TRANSLATIONS['uz'];
 
   // 🟢 NEW: Fetching the monthly limits instead of daily
   const aiData = useMonthlyLimit();
 
   const difficulties = [
-    { id: "easy", label: "Oson", color: "hover:border-success hover:bg-state-hover", active: "border-success bg-success-container text-on-success-container" },
-    { id: "medium", label: "O'rtacha", color: "hover:border-primary hover:bg-state-hover", active: "border-primary bg-primary-container text-on-primary-container" },
-    { id: "hard", label: "Murakkab", color: "hover:border-warning hover:bg-state-hover", active: "border-warning bg-warning-container text-on-warning-container" },
-    { id: "olympiad", label: "Olimpiada", color: "hover:border-tertiary hover:bg-state-hover", active: "border-tertiary bg-tertiary-container text-on-tertiary-container" }
+    { id: "easy", label: t.difficulties.easy, color: "hover:border-success hover:bg-state-hover", active: "border-success bg-success-container text-on-success-container" },
+    { id: "medium", label: t.difficulties.medium, color: "hover:border-primary hover:bg-state-hover", active: "border-primary bg-primary-container text-on-primary-container" },
+    { id: "hard", label: t.difficulties.hard, color: "hover:border-warning hover:bg-state-hover", active: "border-warning bg-warning-container text-on-warning-container" },
+    { id: "olympiad", label: t.difficulties.olympiad, color: "hover:border-tertiary hover:bg-state-hover", active: "border-tertiary bg-tertiary-container text-on-tertiary-container" }
   ];
 
   const [selectedSubject, setSelectedSubject] = useState("");
@@ -275,11 +419,11 @@ export default function GeneralAIGeneratorPage() {
   }, [generatedQuestions, isGenerating]);
 
   const handleGenerate = async () => {
-    if (!isReadyToGenerate) return toast.error("Iltimos, fan va mavzuni kiriting.");
+    if (!isReadyToGenerate) return toast.error(t.toasts.errSelectSubjectTopic);
 
     // 🟢 NEW: Pre-check monthly limits
     if (!aiData.isUnlimited && aiData.remaining < count) {
-      setLimitModalMessage(`Sizda oylik limitdan ${aiData.remaining} ta savol qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`);
+      setLimitModalMessage(t.limitLeftDetailed(aiData.remaining));
       setIsLimitModalOpen(true);
       return;
     }
@@ -306,7 +450,7 @@ export default function GeneralAIGeneratorPage() {
       // 🟢 NEW: Gatekeeper error handling
       if (!response.ok) {
         if (data.code === 'LIMIT_REACHED') {
-          setLimitModalMessage("Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.");
+          setLimitModalMessage(t.limitReached);
           setIsLimitModalOpen(true);
           return;
         }
@@ -330,9 +474,9 @@ export default function GeneralAIGeneratorPage() {
       }));
 
       setGeneratedQuestions(prev => [...prev, ...enrichedQuestions]);
-      toast.success(`${count} savol qo'shildi!`);
+      toast.success(t.toasts.added(count));
     } catch (error: any) {
-      toast.error(error.message || "Xatolik yuz berdi.");
+      toast.error(error.message || t.toasts.errGeneric);
     } finally {
       setIsGenerating(false);
     }
@@ -342,7 +486,7 @@ export default function GeneralAIGeneratorPage() {
 
   // --- TOPIC GATE (runs before BOTH save paths) ---
   const openTopicModal = (intent: "bank" | "publish") => {
-    if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
+    if (generatedQuestions.length === 0) return toast.error(t.toasts.errCreateFirst);
     setIsSidebarOpen(false); // the mobile sidebar overlay would sit on top of the dialog
     setTopicIntent(intent);
     setIsTopicModalOpen(true);
@@ -361,13 +505,13 @@ export default function GeneralAIGeneratorPage() {
 
   /** Defensive: toQuestionV1 should never throw once the modal is wired. */
   const onInvalidTopic = (intent: "bank" | "publish") => {
-    toast.error("Iltimos, savollar uchun mavzu tanlang.");
+    toast.error(t.toasts.errPickTopic);
     setTopicIntent(intent);
     setIsTopicModalOpen(true);
   };
 
   const handleSaveToBank = async (paths: TopicPath[]) => {
-    if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
+    if (generatedQuestions.length === 0) return toast.error(t.toasts.errCreateFirst);
     if (!user) return;
 
     setIsSavingToBank(true);
@@ -401,7 +545,7 @@ export default function GeneralAIGeneratorPage() {
 
       await batch.commit();
       setIsTopicModalOpen(false);
-      toast.success("Savollar bazangizga muvaffaqiyatli saqlandi!");
+      toast.success(t.toasts.savedToBank);
       setGeneratedQuestions([]);
       router.push('/teacher/create/my_questions');
     } catch (error) {
@@ -410,14 +554,14 @@ export default function GeneralAIGeneratorPage() {
         return;
       }
       console.error("Save to bank error:", error);
-      toast.error("Bazaga saqlashda xatolik yuz berdi.");
+      toast.error(t.toasts.errSaveBank);
     } finally {
       setIsSavingToBank(false);
     }
   };
 
   const handleTitleSubmit = () => {
-    if (!testTitle.trim()) return toast.error("Test nomini kiriting.");
+    if (!testTitle.trim()) return toast.error(t.toasts.errEnterTitle);
     setIsTitleModalOpen(false);
     setIsConfigModalOpen(true);
   };
@@ -477,7 +621,7 @@ export default function GeneralAIGeneratorPage() {
       });
 
       await batch.commit();
-      toast.success("Test muvaffaqiyatli nashr qilindi!");
+      toast.success(t.toasts.published);
       router.push("/teacher/dashboard");
     } catch (error) {
       if (error instanceof InvalidTopicError) {
@@ -485,7 +629,7 @@ export default function GeneralAIGeneratorPage() {
         onInvalidTopic("publish");
         return;
       }
-      toast.error("Nashr qilishda xatolik.");
+      toast.error(t.toasts.errPublish);
     } finally {
       setIsPublishing(false);
     }
@@ -506,8 +650,8 @@ export default function GeneralAIGeneratorPage() {
 
                 <div className="p-4 md:p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container shrink-0">
                   <div>
-                    <h3 className="text-[18px] md:text-xl font-black text-on-surface">Fanni tanlang</h3>
-                    <p className="text-on-surface-variant text-[11px] md:text-sm mt-0.5 md:mt-1">Barcha fanlar ruyxati</p>
+                    <h3 className="text-[18px] md:text-xl font-black text-on-surface">{t.subjectModal.title}</h3>
+                    <p className="text-on-surface-variant text-[11px] md:text-sm mt-0.5 md:mt-1">{t.subjectModal.desc}</p>
                   </div>
                   <button onClick={() => setIsSubjectModalOpen(false)} className="p-1.5 md:p-2 bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-full transition-colors"><X size={18} className="md:w-5 md:h-5"/></button>
                 </div>
@@ -526,7 +670,7 @@ export default function GeneralAIGeneratorPage() {
                           <Icon size={24} className={`md:w-7 md:h-7 transition-colors ${isSelected ? s.color : 'text-on-surface-variant group-hover:text-on-surface'}`} strokeWidth={isSelected ? 2.5 : 2} />
                         </div>
                         <span className={`text-[12px] md:text-[14px] font-bold capitalize leading-tight ${isSelected ? 'text-on-surface' : 'text-on-surface-variant'}`}>
-                          {s.id}
+                          {t.subjects[s.id] || s.id}
                         </span>
                       </button>
                     );
@@ -551,17 +695,17 @@ export default function GeneralAIGeneratorPage() {
                 <Crown size={28} className="text-warning" />
               </div>
 
-              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">Premium Xususiyat</h3>
+              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">{t.premiumFeature}</h3>
               <p className="text-[13px] md:text-[14px] text-on-surface-variant mb-6 font-medium leading-relaxed">
                 {limitModalMessage}
               </p>
 
               <div className="w-full flex flex-col gap-2">
                 <Button variant="filled" className="w-full" onClick={() => router.push('/teacher/subscription')}>
-                  Tariflarni ko'rish <ArrowLeft className="rotate-180" />
+                  {t.viewPlans} <ArrowLeft className="rotate-180" />
                 </Button>
                 <Button variant="outlined" className="w-full" onClick={() => setIsLimitModalOpen(false)}>
-                  Orqaga qaytish
+                  {t.goBack}
                 </Button>
               </div>
             </motion.div>
@@ -576,13 +720,13 @@ export default function GeneralAIGeneratorPage() {
             <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
               <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-md shadow-elev-3 z-10">
-                <h3 className="text-[18px] md:text-xl font-black text-on-surface mb-1.5 md:mb-2">Test nomini kiriting</h3>
-                <p className="text-[12px] md:text-[14px] text-on-surface-variant mb-5 md:mb-6 font-medium">Yaratilgan testni saqlashdan oldin nom bering.</p>
-                <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder="Masalan: Olimpiada tayyorgarligi" className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
+                <h3 className="text-[18px] md:text-xl font-black text-on-surface mb-1.5 md:mb-2">{t.titleModal.title}</h3>
+                <p className="text-[12px] md:text-[14px] text-on-surface-variant mb-5 md:mb-6 font-medium">{t.titleModal.desc}</p>
+                <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder={t.titleModal.placeholder} className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
                 <div className="flex flex-col-reverse sm:flex-row gap-2 md:gap-3">
-                  <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>Bekor qilish</Button>
+                  <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>{t.titleModal.cancel}</Button>
                   <Button variant="filled" className="w-full" onClick={handleTitleSubmit}>
-                    Keyingi Qadam <ChevronRight strokeWidth={2.5}/>
+                    {t.titleModal.next} <ChevronRight strokeWidth={2.5}/>
                   </Button>
                 </div>
               </motion.div>
@@ -608,7 +752,7 @@ export default function GeneralAIGeneratorPage() {
       {/* 🟢 TOP BAR (Mobile) */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant z-[90000] flex items-center justify-between px-3 shadow-elev-1">
         <button onClick={() => router.push('/teacher/create')} className="p-2 -ml-1 text-on-surface-variant rounded-m3-sm"><ArrowLeft size={18} /></button>
-        <span className="font-black text-on-surface text-[14px]">AI Studiya</span>
+        <span className="font-black text-on-surface text-[14px]">{t.topBarTitle}</span>
         <button onClick={() => setIsSidebarOpen(true)} className="p-2 -mr-1 bg-primary-container text-on-primary-container rounded-m3-sm shadow-elev-1"><Menu size={18} /></button>
       </div>
 
@@ -622,7 +766,7 @@ export default function GeneralAIGeneratorPage() {
             <div className="flex justify-between items-center p-3 md:p-5 border-b border-outline-variant bg-surface-container-low shrink-0 sticky top-0 z-10">
               <div className="flex items-center gap-2 md:gap-3">
                 <button onClick={() => router.push('/teacher/create')} className="hidden lg:flex p-1.5 -ml-1.5 text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-m3-sm transition-all"><ArrowLeft size={18} /></button>
-                <h2 className="font-bold text-[14px] md:text-[16px] text-on-surface tracking-tight flex items-center gap-2"><Layers size={16} className="text-primary md:w-[18px] md:h-[18px]"/> Smart AI Studiya</h2>
+                <h2 className="font-bold text-[14px] md:text-[16px] text-on-surface tracking-tight flex items-center gap-2"><Layers size={16} className="text-primary md:w-[18px] md:h-[18px]"/> {t.sidebarTitle}</h2>
               </div>
               <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1.5 bg-surface-container text-on-surface-variant hover:bg-state-hover hover:text-on-surface rounded-full border border-outline-variant transition-colors"><X size={16} strokeWidth={2.5}/></button>
             </div>
@@ -630,7 +774,7 @@ export default function GeneralAIGeneratorPage() {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 md:p-5 pb-24 md:pb-32 flex flex-col space-y-4 md:space-y-7 relative bg-surface-container-low">
 
               <div className="space-y-2 md:space-y-3">
-                <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1 block">1. Fanni tanlang</label>
+                <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1 block">{t.step1}</label>
                 <button
                   onClick={() => setIsSubjectModalOpen(true)}
                   className="w-full bg-surface-container hover:bg-state-hover border border-outline-variant hover:border-primary p-3 md:p-4 rounded-m3-md text-left transition-all group flex items-center justify-between shadow-elev-1"
@@ -645,12 +789,12 @@ export default function GeneralAIGeneratorPage() {
                         })()}
                       </div>
                       <div>
-                        <div className="text-[9px] md:text-[11px] font-black text-primary uppercase tracking-widest mb-0.5">Tanlangan Fan</div>
-                        <div className="text-[12px] md:text-[14px] font-bold text-on-surface capitalize leading-snug">{selectedSubject}</div>
+                        <div className="text-[9px] md:text-[11px] font-black text-primary uppercase tracking-widest mb-0.5">{t.selectedSubject}</div>
+                        <div className="text-[12px] md:text-[14px] font-bold text-on-surface capitalize leading-snug">{t.subjects[selectedSubject] || selectedSubject}</div>
                       </div>
                     </div>
                   ) : (
-                    <span className="text-[12px] md:text-[14px] font-bold text-on-surface-variant pl-1 md:pl-2">Fanni tanlang...</span>
+                    <span className="text-[12px] md:text-[14px] font-bold text-on-surface-variant pl-1 md:pl-2">{t.selectSubjectPlaceholder}</span>
                   )}
                   <ChevronRight size={16} className="text-on-surface-variant group-hover:text-primary transition-colors md:w-[18px] md:h-[18px]" />
                 </button>
@@ -658,20 +802,20 @@ export default function GeneralAIGeneratorPage() {
 
               <div className={`space-y-2 md:space-y-3 ${!selectedSubject ? 'opacity-40 pointer-events-none grayscale transition-all' : 'transition-all'}`}>
                 <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1 block">
-                  2. O'quv mavzusi
+                  {t.step2}
                 </label>
                 <div className="relative">
                   <textarea
                     value={topicInput}
                     onChange={(e) => setTopicInput(e.target.value)}
-                    placeholder="Mavzu nomini yozing... (masalan: Kvadrat ildizlar)"
+                    placeholder={t.topicPlaceholder}
                     className="w-full bg-surface-container border border-outline-variant hover:border-primary focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_12%,transparent)] p-3 md:p-4 rounded-m3-md text-[13px] md:text-[14px] font-medium text-on-surface outline-none transition-all shadow-elev-1 min-h-[80px] md:min-h-[100px] resize-none custom-scrollbar"
                   />
                 </div>
               </div>
 
               <div className={`space-y-2 md:space-y-3 ${!isReadyToGenerate ? 'opacity-40 pointer-events-none grayscale transition-all' : 'transition-all'}`}>
-                <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1 block">3. Qiyinlik darajasi</label>
+                <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1 block">{t.step3}</label>
                 <div className="grid grid-cols-2 gap-1.5 md:gap-2 p-1 md:p-1.5 bg-surface-container rounded-m3-sm md:rounded-m3-md border border-outline-variant shadow-inner">
                   {difficulties.map(diff => {
                     const isSelected = difficulty === diff.id;
@@ -688,7 +832,7 @@ export default function GeneralAIGeneratorPage() {
               </div>
 
               <div className={`space-y-2 md:space-y-3 ${!isReadyToGenerate ? 'opacity-40 pointer-events-none grayscale transition-all' : 'transition-all'}`}>
-                <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1 block">4. Savollar soni</label>
+                <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1 block">{t.step4}</label>
                 <div className="flex items-center bg-surface-container p-1 rounded-m3-sm md:rounded-m3-md border border-outline-variant shadow-inner h-[36px] md:h-[46px]">
                   <button onClick={() => setCount(prev => Math.max(1, prev - 1))} className="w-8 md:w-10 h-full flex items-center justify-center rounded-m3-xs md:rounded-m3-sm text-on-surface-variant hover:bg-surface-container-lowest hover:text-on-surface hover:shadow-elev-1 transition-all disabled:text-disabled-fg" disabled={count <= 1}>
                     <Minus size={14} className="md:w-4 md:h-4" strokeWidth={2.5} />
@@ -712,7 +856,7 @@ export default function GeneralAIGeneratorPage() {
                 <div className="bg-warning-container rounded-m3-sm md:rounded-m3-md p-2 md:p-3 flex gap-2 md:gap-3 items-start">
                   <Zap size={14} className="text-on-warning-container shrink-0 mt-0.5 md:w-4 md:h-4" />
                   <p className="text-[9px] md:text-[11px] font-bold text-on-warning-container leading-snug">
-                    Sizda oylik limitdan faqatgina <span className="font-black">{aiData.remaining} ta</span> savol qoldi.
+                    {t.lowLimitWarning(aiData.remaining)}
                   </p>
                 </div>
               )}
@@ -730,7 +874,7 @@ export default function GeneralAIGeneratorPage() {
                 onClick={() => {
                   // 🟢 NEW: Pre-check monthly limits
                   if (!aiData.isUnlimited && aiData.remaining < count) {
-                    setLimitModalMessage(`Sizda ${aiData.remaining} ta savol yaratish uchun limit qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`);
+                    setLimitModalMessage(t.limitLeftGenerate(aiData.remaining));
                     setIsLimitModalOpen(true);
                     return;
                   }
@@ -738,7 +882,7 @@ export default function GeneralAIGeneratorPage() {
                 }}
                 disabled={isGenerating || !isReadyToGenerate}
               >
-                {isGenerating ? "Yaratilmoqda..." : "Savol Yaratish"}
+                {isGenerating ? t.generating : t.generateBtn}
               </Button>
             </div>
           </aside>
@@ -749,11 +893,11 @@ export default function GeneralAIGeneratorPage() {
 
         <div className="hidden lg:flex sticky top-0 z-20 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant px-8 py-3 justify-between items-center shadow-elev-1">
           <div className="flex items-center gap-4">
-            <h1 className="text-[16px] font-bold text-on-surface tracking-tight">AI Qoralama</h1>
+            <h1 className="text-[16px] font-bold text-on-surface tracking-tight">{t.draftTitle}</h1>
             {generatedQuestions.length > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-container rounded-full animate-in fade-in">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-                <span className="text-[11px] font-bold text-on-primary-container tracking-wide uppercase">{generatedQuestions.length} Savol</span>
+                <span className="text-[11px] font-bold text-on-primary-container tracking-wide uppercase">{t.questionCountBadge(generatedQuestions.length)}</span>
               </div>
             )}
           </div>
@@ -770,7 +914,7 @@ export default function GeneralAIGeneratorPage() {
               onClick={() => openTopicModal("bank")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
-              Bazaga Saqlash
+              {t.saveToBank}
             </Button>
 
             <Button
@@ -780,7 +924,7 @@ export default function GeneralAIGeneratorPage() {
               onClick={() => openTopicModal("publish")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
-              Nashr qilish
+              {t.publish}
             </Button>
           </div>
         </div>
@@ -789,13 +933,13 @@ export default function GeneralAIGeneratorPage() {
           {generatedQuestions.length === 0 && !isGenerating ? (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="h-[60vh] flex flex-col items-center justify-center text-on-surface-variant border-2 border-dashed border-outline-variant rounded-m3-lg bg-surface-container-low lg:mt-6 p-4 md:p-6 text-center shadow-elev-1 mx-1 lg:mx-0">
               <div className="w-12 h-12 md:w-14 md:h-14 bg-primary-container rounded-m3-md flex items-center justify-center mb-3 md:mb-4"><Sparkles size={24} className="text-on-primary-container md:w-6 md:h-6" /></div>
-              <p className="font-bold text-on-surface text-[14px] md:text-[16px]">Yaratishga tayyor.</p>
-              <p className="text-[11px] md:text-[14px] text-on-surface-variant mt-1 max-w-[300px]">Chap tomondan fanni tanlang va mavzu nomini yozib savollar yarating.</p>
+              <p className="font-bold text-on-surface text-[14px] md:text-[16px]">{t.emptyTitle}</p>
+              <p className="text-[11px] md:text-[14px] text-on-surface-variant mt-1 max-w-[300px]">{t.emptyDesc}</p>
             </motion.div>
           ) : (
             <div className="space-y-4 md:space-y-6 lg:pb-12">
               <div className="lg:hidden flex items-center justify-between mb-1 px-1">
-                <span className="text-[10px] md:text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">{generatedQuestions.length} ta savol</span>
+                <span className="text-[10px] md:text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">{t.mobileCount(generatedQuestions.length)}</span>
                 {/* 🟢 NEW: Mobile Monthly Limit Card */}
                 <AiMonthlyLimitCard aiData={aiData} />
               </div>
@@ -816,8 +960,8 @@ export default function GeneralAIGeneratorPage() {
               {!isGenerating && generatedQuestions.length > 0 && (
                 <div className="py-8 md:py-10 flex flex-col items-center justify-center text-center animate-in fade-in duration-700">
                   <div className="w-10 h-10 bg-surface-container-high text-on-surface-variant rounded-full flex items-center justify-center mb-2.5 md:mb-3"><Layers size={16} className="md:w-[18px] md:h-[18px]" /></div>
-                  <p className="text-[13px] md:text-[14px] font-bold text-on-surface">Yana savol qo'shmoqchimisiz?</p>
-                  <p className="text-[11px] md:text-[13px] text-on-surface-variant mt-1 max-w-[280px] mb-4 md:mb-5">Mavzuni o'zgartirib 'Yaratish' tugmasini yana bir bor bosing.</p>
+                  <p className="text-[13px] md:text-[14px] font-bold text-on-surface">{t.morePrompt}</p>
+                  <p className="text-[11px] md:text-[13px] text-on-surface-variant mt-1 max-w-[280px] mb-4 md:mb-5">{t.morePromptDesc}</p>
                 </div>
               )}
 
@@ -848,7 +992,7 @@ export default function GeneralAIGeneratorPage() {
               disabled={isSavingToBank || isPublishing || isGenerating}
               className="flex-1 h-[52px] rounded-m3-lg"
             >
-              Saqlash
+              {t.mobileSave}
             </Button>
 
             <Button
@@ -859,7 +1003,7 @@ export default function GeneralAIGeneratorPage() {
               disabled={isPublishing || isSavingToBank || isGenerating}
               className="flex-1 h-[52px] rounded-m3-lg shadow-elev-2"
             >
-              Nashr Qilish
+              {t.mobilePublish}
             </Button>
           </div>
         </div>,

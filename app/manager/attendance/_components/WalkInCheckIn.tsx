@@ -14,6 +14,107 @@ import {
   buildCenterRoster, computeTodayLessons, boardStatusOf, checkInStudent,
   type RosterStudent, type TodayLesson, type TodayBoardStatus,
 } from "@/services/checkInService";
+import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+
+const TRANSLATIONS = {
+  uz: {
+    loadError: "Ma'lumotlarni yuklashda xatolik.",
+    saveError: "Saqlashda xatolik. Qayta urinib ko'ring.",
+    markedToast: (name: string, n: number) => `${name} — ${n} ta dars belgilandi`,
+    emptyTitle: "O'quvchilar yo'q",
+    emptyDesc: "Markazingiz guruhlariga hali o'quvchi qo'shilmagan.",
+    progressTitle: "Bugungi davomat",
+    progress1: "Bugun darsi bor ",
+    progress2: " o'quvchidan ",
+    progress3: " tasi belgilandi",
+    pendingLeft: (n: number) => `${n} ta qoldi`,
+    searchPlaceholder: "O'quvchi ismini yozing...",
+    clear: "Tozalash",
+    filterAll: "Hammasi",
+    filterPending: "Kutilmoqda",
+    filterDone: "Belgilangan",
+    notFound: (q: string) => `«${q}» bo'yicha o'quvchi topilmadi`,
+    emptyList: "Bu ro'yxat bo'sh",
+    groupCount: (n: number) => `${n} guruh`,
+    noLessonTitle: "Bugun dars yo'q",
+    noLessonDesc: "Bu o'quvchida bugun uchun rejalashtirilgan dars mavjud emas.",
+    close: "Yopish",
+    statusLabel: "Holat:",
+    present: "Keldi",
+    late: "Kech qoldi",
+    makeup: "qo'shimcha",
+    alreadyMarked: "belgilangan",
+    markAs: (label: string) => `${label} deb belgilash`,
+    lessonsSuffix: (n: number) => ` (${n} ta dars)`,
+    rowDone: "Belgilandi",
+    rowPending: (n: number) => `${n} dars · kutilmoqda`,
+  },
+  en: {
+    loadError: "Failed to load data.",
+    saveError: "Failed to save. Please try again.",
+    markedToast: (name: string, n: number) => `${name} — ${n} lessons marked`,
+    emptyTitle: "No students",
+    emptyDesc: "No students have been added to your center's groups yet.",
+    progressTitle: "Today's attendance",
+    progress1: "Of ",
+    progress2: " students with lessons today, ",
+    progress3: " marked",
+    pendingLeft: (n: number) => `${n} left`,
+    searchPlaceholder: "Type a student's name...",
+    clear: "Clear",
+    filterAll: "All",
+    filterPending: "Pending",
+    filterDone: "Marked",
+    notFound: (q: string) => `No students found for «${q}»`,
+    emptyList: "This list is empty",
+    groupCount: (n: number) => `${n} groups`,
+    noLessonTitle: "No lessons today",
+    noLessonDesc: "This student has no scheduled lessons for today.",
+    close: "Close",
+    statusLabel: "Status:",
+    present: "Present",
+    late: "Late",
+    makeup: "make-up",
+    alreadyMarked: "marked",
+    markAs: (label: string) => `Mark as ${label.toLowerCase()}`,
+    lessonsSuffix: (n: number) => ` (${n} lessons)`,
+    rowDone: "Marked",
+    rowPending: (n: number) => `${n} lessons · pending`,
+  },
+  ru: {
+    loadError: "Ошибка при загрузке данных.",
+    saveError: "Ошибка при сохранении. Попробуйте ещё раз.",
+    markedToast: (name: string, n: number) => `${name} — отмечено занятий: ${n}`,
+    emptyTitle: "Учеников нет",
+    emptyDesc: "В группы вашего центра пока не добавлены ученики.",
+    progressTitle: "Сегодняшняя посещаемость",
+    progress1: "Из ",
+    progress2: " учеников с занятиями сегодня отмечено ",
+    progress3: "",
+    pendingLeft: (n: number) => `осталось ${n}`,
+    searchPlaceholder: "Введите имя ученика...",
+    clear: "Очистить",
+    filterAll: "Все",
+    filterPending: "Ожидают",
+    filterDone: "Отмечены",
+    notFound: (q: string) => `По запросу «${q}» ученики не найдены`,
+    emptyList: "Этот список пуст",
+    groupCount: (n: number) => `${n} групп`,
+    noLessonTitle: "Сегодня занятий нет",
+    noLessonDesc: "У этого ученика нет запланированных занятий на сегодня.",
+    close: "Закрыть",
+    statusLabel: "Статус:",
+    present: "Пришёл",
+    late: "Опоздал",
+    makeup: "доп. занятие",
+    alreadyMarked: "отмечено",
+    markAs: (label: string) => `Отметить: ${label}`,
+    lessonsSuffix: (n: number) => ` (${n} занятий)`,
+    rowDone: "Отмечен",
+    rowPending: (n: number) => `${n} занятий · ожидает`,
+  },
+};
+type WalkInT = typeof TRANSLATIONS.uz;
 
 interface Props {
   centerId: string;
@@ -29,9 +130,10 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-const STATUS_UI: Record<"present" | "late", { label: string; chip: string; Icon: React.ElementType }> = {
-  present: { label: "Keldi", chip: "bg-brand-100 text-brand-800", Icon: Check },
-  late: { label: "Kech qoldi", chip: "bg-amber-100 text-amber-700", Icon: Clock },
+// Labels come from the TRANSLATIONS dict (t.present / t.late) — keyed by status.
+const STATUS_UI: Record<"present" | "late", { chip: string; Icon: React.ElementType }> = {
+  present: { chip: "bg-success-container text-on-success-container", Icon: Check },
+  late: { chip: "bg-warning-container text-on-warning-container", Icon: Clock },
 };
 
 type Filter = "all" | "pending" | "done";
@@ -41,13 +143,9 @@ const STATUS_RANK: Record<TodayBoardStatus, number> = { pending: 0, done: 1, non
 
 // Deterministic avatar tint so rows feel distinct at a glance.
 const AVATAR_TINTS = [
-  "from-indigo-100 to-indigo-200 text-indigo-700",
-  "from-violet-100 to-violet-200 text-violet-700",
-  "from-teal-100 to-teal-200 text-teal-700",
-  "from-amber-100 to-amber-200 text-amber-700",
-  "from-rose-100 to-rose-200 text-rose-700",
-  "from-sky-100 to-sky-200 text-sky-700",
-  "from-emerald-100 to-emerald-200 text-emerald-700",
+  "bg-primary-container text-on-primary-container",
+  "bg-secondary-container text-on-secondary-container",
+  "bg-tertiary-container text-on-tertiary-container",
 ];
 function tintFor(id: string) {
   let h = 0;
@@ -62,7 +160,7 @@ interface Enriched {
 }
 
 function Avatar({ student, size = 40 }: { student: RosterStudent; size?: number }) {
-  const cls = `shrink-0 rounded-full overflow-hidden flex items-center justify-center font-bold bg-gradient-to-br ${tintFor(student.uid)}`;
+  const cls = `shrink-0 rounded-full overflow-hidden flex items-center justify-center font-bold ${tintFor(student.uid)}`;
   const style = { width: size, height: size, fontSize: size * 0.34 };
   if (student.photoURL) {
     return (
@@ -74,6 +172,8 @@ function Avatar({ student, size = 40 }: { student: RosterStudent; size?: number 
 }
 
 export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
+  const { lang } = useManagerLanguage();
+  const t: WalkInT = TRANSLATIONS[lang];
   const today = useMemo(() => getTodayKey(), []);
   const todayWeekday = useMemo(() => parseDateKey(today).getDay(), [today]);
 
@@ -106,7 +206,7 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
         setSessionByClass(new Map(sessions.map((s) => [s.classId, s])));
       } catch (err) {
         console.error(err);
-        if (mounted) toast.error("Ma'lumotlarni yuklashda xatolik.");
+        if (mounted) toast.error(t.loadError);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -196,16 +296,16 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
         }
         return next;
       });
-      toast.success(`${student.displayName} — ${selectedLessons.length} ta dars belgilandi`);
+      toast.success(t.markedToast(student.displayName, selectedLessons.length));
       setDialog(null);
       searchRef.current?.focus();
     } catch (err) {
       console.error(err);
-      toast.error("Saqlashda xatolik. Qayta urinib ko'ring.");
+      toast.error(t.saveError);
     } finally {
       setSaving(false);
     }
-  }, [dialog, selectedLessons, centerId, markStatus, markedBy, today, todayWeekday]);
+  }, [dialog, selectedLessons, centerId, markStatus, markedBy, today, todayWeekday, t]);
 
   // Esc closes the dialog.
   useEffect(() => {
@@ -216,15 +316,15 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
   }, [dialog]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-slate-400" size={30} /></div>;
+    return <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-on-surface-variant" size={30} /></div>;
   }
 
   if (roster.length === 0) {
     return (
-      <div className="bg-white border border-brand-line rounded-3xl p-14 flex flex-col items-center justify-center text-center">
-        <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3"><UserRound size={26} /></div>
-        <h3 className="text-[15px] font-semibold text-slate-800">O&apos;quvchilar yo&apos;q</h3>
-        <p className="text-sm text-slate-500 mt-1 max-w-[260px]">Markazingiz guruhlariga hali o&apos;quvchi qo&apos;shilmagan.</p>
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl p-14 flex flex-col items-center justify-center text-center">
+        <div className="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container mb-3"><UserRound size={26} /></div>
+        <h3 className="text-[15px] font-semibold text-on-surface">{t.emptyTitle}</h3>
+        <p className="text-sm text-on-surface-variant mt-1 max-w-[260px]">{t.emptyDesc}</p>
       </div>
     );
   }
@@ -234,40 +334,40 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       {/* Progress summary */}
-      <div className="bg-white border border-brand-line rounded-3xl p-4 flex items-center gap-4">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl p-4 flex items-center gap-4">
         <div className="relative w-14 h-14 shrink-0">
           <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
-            <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f1f5f9" strokeWidth="4" />
-            <circle cx="18" cy="18" r="15.5" fill="none" stroke="#0BA360" strokeWidth="4" strokeLinecap="round"
+            <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--m3-surface-container-highest)" strokeWidth="4" />
+            <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--m3-success)" strokeWidth="4" strokeLinecap="round"
               strokeDasharray={`${(pct / 100) * 97.4} 97.4`} />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-[12px] font-black text-slate-700 tabular-nums">{pct}%</span>
+          <span className="absolute inset-0 flex items-center justify-center text-[12px] font-black text-on-surface tabular-nums">{pct}%</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-bold text-slate-900">Bugungi davomat</p>
-          <p className="text-[12.5px] text-slate-500 mt-0.5">
-            Bugun darsi bor <b className="text-slate-700 tabular-nums">{counts.withLesson}</b> o&apos;quvchidan{" "}
-            <b className="text-brand-700 tabular-nums">{counts.done}</b> tasi belgilandi
+          <p className="text-[14px] font-bold text-on-surface">{t.progressTitle}</p>
+          <p className="text-[12.5px] text-on-surface-variant mt-0.5">
+            {t.progress1}<b className="text-on-surface tabular-nums">{counts.withLesson}</b>{t.progress2}
+            <b className="text-success tabular-nums">{counts.done}</b>{t.progress3}
           </p>
         </div>
         {counts.pending > 0 && (
-          <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-[12px] font-bold">
-            <CircleDashed size={14} /> {counts.pending} ta qoldi
+          <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning-container text-on-warning-container text-[12px] font-bold">
+            <CircleDashed size={14} /> {t.pendingLeft(counts.pending)}
           </span>
         )}
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
         <input
           ref={searchRef} type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="O'quvchi ismini yozing..."
-          className="w-full pl-11 pr-10 py-3.5 text-[15px] bg-white border border-slate-200 rounded-full outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 transition-all"
+          placeholder={t.searchPlaceholder}
+          className="w-full pl-11 pr-10 py-3.5 text-[15px] bg-surface-container-lowest text-on-surface border border-outline-variant rounded-full outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
         />
         {search && (
-          <button onClick={() => setSearch("")} aria-label="Tozalash"
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+          <button onClick={() => setSearch("")} aria-label={t.clear}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-m3-md text-on-surface-variant hover:bg-state-hover hover:text-on-surface transition-colors">
             <X size={15} />
           </button>
         )}
@@ -276,28 +376,28 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
       {/* Filter chips */}
       <div className="flex items-center gap-1.5">
         {([
-          { id: "all" as Filter, label: "Hammasi", n: counts.total },
-          { id: "pending" as Filter, label: "Kutilmoqda", n: counts.pending },
-          { id: "done" as Filter, label: "Belgilangan", n: counts.done },
+          { id: "all" as Filter, label: t.filterAll, n: counts.total },
+          { id: "pending" as Filter, label: t.filterPending, n: counts.pending },
+          { id: "done" as Filter, label: t.filterDone, n: counts.done },
         ]).map((f) => {
           const active = filter === f.id;
           return (
             <button key={f.id} onClick={() => setFilter(f.id)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-bold transition-colors ${
-                active ? "bg-brand-600 text-white" : "bg-white border border-brand-line text-slate-500 hover:border-brand-600 hover:text-brand-800"
+                active ? "bg-primary text-on-primary" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary"
               }`}>
               {f.label}
-              <span className={`tabular-nums ${active ? "text-white/70" : "text-slate-400"}`}>{f.n}</span>
+              <span className={`tabular-nums ${active ? "text-on-primary opacity-70" : "text-on-surface-variant"}`}>{f.n}</span>
             </button>
           );
         })}
       </div>
 
       {/* List */}
-      <div className="bg-white border border-brand-line rounded-3xl overflow-hidden divide-y divide-slate-100">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl overflow-hidden divide-y divide-outline-variant">
         {visible.length === 0 ? (
-          <p className="py-12 text-center text-[13px] text-slate-400">
-            {search ? <>&laquo;{search}&raquo; bo&apos;yicha o&apos;quvchi topilmadi</> : "Bu ro'yxat bo'sh"}
+          <p className="py-12 text-center text-[13px] text-on-surface-variant">
+            {search ? t.notFound(search) : t.emptyList}
           </p>
         ) : (
           visible.map((e, i) => <StudentRow key={e.student.uid} n={i + 1} e={e} onOpen={() => openDialog(e.student)} />)
@@ -307,42 +407,42 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
       {/* ── Check-in dialog ── */}
       {dialog && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={closeDialog} />
-          <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col animate-[slideUp_.18s_ease-out]">
+          <div className="absolute inset-0 bg-scrim backdrop-blur-[2px]" onClick={closeDialog} />
+          <div className="relative w-full sm:max-w-md bg-surface-container-lowest rounded-t-m3-xl sm:rounded-m3-xl shadow-elev-3 max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="flex items-start gap-3 px-5 py-4 border-b border-slate-100">
+            <div className="flex items-start gap-3 px-5 py-4 border-b border-outline-variant">
               <Avatar student={dialog} size={48} />
               <div className="min-w-0 flex-1">
-                <p className="text-[16px] font-bold text-slate-900 truncate">{dialog.displayName}</p>
-                <div className="flex items-center gap-3 mt-0.5 text-[12px] text-slate-400">
+                <p className="text-[16px] font-bold text-on-surface truncate">{dialog.displayName}</p>
+                <div className="flex items-center gap-3 mt-0.5 text-[12px] text-on-surface-variant">
                   {dialog.username && <span className="truncate">@{dialog.username}</span>}
                   {dialog.phone && <span className="inline-flex items-center gap-1 shrink-0"><Phone size={11} /> {dialog.phone}</span>}
-                  <span className="inline-flex items-center gap-1 shrink-0"><Users2 size={11} /> {dialog.classIds.length} guruh</span>
+                  <span className="inline-flex items-center gap-1 shrink-0"><Users2 size={11} /> {t.groupCount(dialog.classIds.length)}</span>
                 </div>
               </div>
-              <button onClick={closeDialog} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"><X size={18} /></button>
+              <button onClick={closeDialog} className="w-8 h-8 rounded-m3-md flex items-center justify-center text-on-surface-variant hover:bg-state-hover hover:text-on-surface transition-colors"><X size={18} /></button>
             </div>
 
             {dialogLessons.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-12 px-6">
-                <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3"><CalendarX2 size={26} /></div>
-                <h4 className="text-[15px] font-semibold text-slate-700">Bugun dars yo&apos;q</h4>
-                <p className="text-[13px] text-slate-500 mt-1 max-w-[280px]">Bu o&apos;quvchida bugun uchun rejalashtirilgan dars mavjud emas.</p>
-                <button onClick={closeDialog} className="mt-4 px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-bold hover:bg-slate-200 transition-colors">Yopish</button>
+                <div className="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant mb-3"><CalendarX2 size={26} /></div>
+                <h4 className="text-[15px] font-semibold text-on-surface">{t.noLessonTitle}</h4>
+                <p className="text-[13px] text-on-surface-variant mt-1 max-w-[280px]">{t.noLessonDesc}</p>
+                <button onClick={closeDialog} className="mt-4 px-5 py-2.5 rounded-m3-md bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-[13px] font-bold transition-colors">{t.close}</button>
               </div>
             ) : (
               <>
                 {/* Status toggle */}
                 <div className="flex items-center gap-2 px-5 pt-4">
-                  <span className="text-[12px] font-semibold text-slate-500">Holat:</span>
+                  <span className="text-[12px] font-semibold text-on-surface-variant">{t.statusLabel}</span>
                   {(["present", "late"] as const).map((s) => {
                     const cfg = STATUS_UI[s]; const active = markStatus === s; const Ico = cfg.Icon;
                     return (
                       <button key={s} onClick={() => setMarkStatus(s)}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-bold transition-all ${
-                          active ? cfg.chip + " ring-1 ring-inset ring-black/5" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                          active ? cfg.chip : "bg-surface-container-low text-on-surface-variant hover:bg-state-hover"
                         }`}>
-                        <Ico size={14} strokeWidth={2.5} /> {cfg.label}
+                        <Ico size={14} strokeWidth={2.5} /> {t[s]}
                       </button>
                     );
                   })}
@@ -354,27 +454,27 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
                     const on = !!checked[l.classId];
                     return (
                       <button key={l.classId} onClick={() => setChecked((p) => ({ ...p, [l.classId]: !p[l.classId] }))}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border text-left transition-all ${
-                          on ? "border-brand-200 bg-brand-25" : "border-slate-200 bg-white hover:bg-slate-50"
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-m3-lg border text-left transition-all ${
+                          on ? "border-primary bg-t-primary-soft" : "border-outline-variant bg-surface-container-lowest hover:bg-state-hover"
                         }`}>
-                        <span className={`w-5 h-5 shrink-0 rounded-md flex items-center justify-center transition-colors ${on ? "bg-brand-600 text-white" : "border border-slate-300 text-transparent"}`}>
+                        <span className={`w-5 h-5 shrink-0 rounded-md flex items-center justify-center transition-colors ${on ? "bg-primary text-on-primary" : "border border-outline text-transparent"}`}>
                           <Check size={13} strokeWidth={3} />
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-[14px] font-bold text-slate-900 truncate">{l.title}</p>
+                            <p className="text-[14px] font-bold text-on-surface truncate">{l.title}</p>
                             {l.lessonStatus === "makeup" && (
-                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded-full"><CalendarPlus size={10} /> qo&apos;shimcha</span>
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-on-tertiary-container bg-tertiary-container px-1.5 py-0.5 rounded-full"><CalendarPlus size={10} /> {t.makeup}</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5 text-[12px] text-slate-500">
+                          <div className="flex items-center gap-2 mt-0.5 text-[12px] text-on-surface-variant">
                             {l.time && <span className="tabular-nums font-medium">{l.time}</span>}
                             {l.teacherName && <span className="truncate">· {l.teacherName}</span>}
                           </div>
                         </div>
                         {l.currentStatus && (
-                          <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold ${l.currentStatus === "late" ? "bg-amber-100 text-amber-700" : l.currentStatus === "absent" ? "bg-rose-100 text-rose-700" : l.currentStatus === "excused" ? "bg-sky-100 text-sky-700" : "bg-brand-100 text-brand-800"}`}>
-                            <CheckCircle2 size={11} /> belgilangan
+                          <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold ${l.currentStatus === "late" ? "bg-warning-container text-on-warning-container" : l.currentStatus === "absent" ? "bg-error-container text-on-error-container" : l.currentStatus === "excused" ? "bg-tertiary-container text-on-tertiary-container" : "bg-success-container text-on-success-container"}`}>
+                            <CheckCircle2 size={11} /> {t.alreadyMarked}
                           </span>
                         )}
                       </button>
@@ -383,12 +483,12 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
                 </div>
 
                 {/* Confirm */}
-                <div className="px-5 pb-5 pt-1 border-t border-slate-100">
+                <div className="px-5 pb-5 pt-1 border-t border-outline-variant">
                   <button onClick={submit} disabled={saving || selectedLessons.length === 0}
-                    className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-bold text-[14px] transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-brand-600/30">
+                    className="m3-interactive w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-primary text-on-primary font-bold text-[14px] transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed shadow-elev-1">
                     {saving ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} strokeWidth={2.75} />}
-                    {STATUS_UI[markStatus].label} deb belgilash
-                    {selectedLessons.length > 0 && ` (${selectedLessons.length} ta dars)`}
+                    {t.markAs(t[markStatus])}
+                    {selectedLessons.length > 0 && t.lessonsSuffix(selectedLessons.length)}
                   </button>
                 </div>
               </>
@@ -396,32 +496,30 @@ export default function WalkInCheckIn({ centerId, classes, markedBy }: Props) {
           </div>
         </div>
       )}
-
-      <style jsx global>{`
-        @keyframes slideUp { from { transform: translateY(12px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-      `}</style>
     </div>
   );
 }
 
 // ── Row ────────────────────────────────────────────────────────────────────
 function StudentRow({ n, e, onOpen }: { n: number; e: Enriched; onOpen: () => void }) {
+  const { lang } = useManagerLanguage();
+  const t: WalkInT = TRANSLATIONS[lang];
   const { student, lessons, status } = e;
   const badge =
-    status === "done" ? { cls: "bg-brand-100 text-brand-800", Icon: CheckCircle2, label: "Belgilandi" } :
-    status === "pending" ? { cls: "bg-amber-100 text-amber-700", Icon: CircleDashed, label: `${lessons.length} dars · kutilmoqda` } :
-    { cls: "bg-slate-100 text-slate-400", Icon: CalendarX2, label: "Bugun dars yo'q" };
+    status === "done" ? { cls: "bg-success-container text-on-success-container", Icon: CheckCircle2, label: t.rowDone } :
+    status === "pending" ? { cls: "bg-warning-container text-on-warning-container", Icon: CircleDashed, label: t.rowPending(lessons.length) } :
+    { cls: "bg-surface-container text-on-surface-variant", Icon: CalendarX2, label: t.noLessonTitle };
   const BIcon = badge.Icon;
   const noLesson = status === "none";
 
   return (
     <button onClick={onOpen} disabled={noLesson}
-      className={`w-full flex items-center gap-3 px-3 sm:px-4 py-3 text-left transition-colors group ${noLesson ? "opacity-60 cursor-default" : "hover:bg-brand-25"}`}>
-      <span className="w-6 shrink-0 text-center text-[12px] font-bold text-slate-300 tabular-nums">{n}</span>
+      className={`w-full flex items-center gap-3 px-3 sm:px-4 py-3 text-left transition-colors group ${noLesson ? "opacity-60 cursor-default" : "hover:bg-state-hover"}`}>
+      <span className="w-6 shrink-0 text-center text-[12px] font-bold text-on-surface-variant opacity-60 tabular-nums">{n}</span>
       <Avatar student={student} size={42} />
       <div className="min-w-0 flex-1">
-        <p className={`text-[14px] font-semibold text-slate-900 truncate ${noLesson ? "" : "group-hover:text-brand-700"} transition-colors`}>{student.displayName}</p>
-        <div className="flex items-center gap-2 mt-0.5 text-[12px] text-slate-400">
+        <p className={`text-[14px] font-semibold text-on-surface truncate ${noLesson ? "" : "group-hover:text-primary"} transition-colors`}>{student.displayName}</p>
+        <div className="flex items-center gap-2 mt-0.5 text-[12px] text-on-surface-variant">
           {student.username && <span className="truncate">@{student.username}</span>}
           <span className="inline-flex items-center gap-1 shrink-0"><Users2 size={11} /> {student.classIds.length}</span>
         </div>

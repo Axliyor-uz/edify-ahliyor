@@ -2,11 +2,44 @@
 
 import { Plus, Trash2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
 
+const TRANSLATIONS = {
+  uz: {
+    instructionsPh: "Yo'riqnoma (masalan: Choose TWO letters, A-E)...",
+    promptPh: "Savol matni... (Savol + variantlarni shu yerga joylashtirib ko'ring!)",
+    optionPh: (id: string) => `Variant ${id}...`,
+    addChoice: "Variant qo'shish",
+    correctAnswers: "To'g'ri javoblar:",
+    answersPh: "masalan: B, D",
+    refPh: "Matn manbasi (ixt)",
+  },
+  en: {
+    instructionsPh: "Instructions (e.g. Choose TWO letters, A-E)...",
+    promptPh: "Question prompt... (Try pasting question + options here!)",
+    optionPh: (id: string) => `Option ${id}...`,
+    addChoice: "Add Choice",
+    correctAnswers: "Correct Answers:",
+    answersPh: "e.g. B, D",
+    refPh: "Passage Ref (opt)",
+  },
+  ru: {
+    instructionsPh: "Инструкция (например: Choose TWO letters, A-E)...",
+    promptPh: "Текст вопроса... (Попробуйте вставить сюда вопрос с вариантами!)",
+    optionPh: (id: string) => `Вариант ${id}...`,
+    addChoice: "Добавить вариант",
+    correctAnswers: "Правильные ответы:",
+    answersPh: "напр.: B, D",
+    refPh: "Ссылка на текст (необяз.)",
+  },
+};
+
 export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
-  
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+
   // List Selection usually has exactly 1 "question" object that covers multiple numbers.
   const row = qb.questions[0]; 
 
@@ -116,7 +149,7 @@ export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock
 
       <div className="p-3">
         <input
-          type="text" placeholder="Instructions (e.g. Choose TWO letters, A-E)..."
+          type="text" placeholder={t.instructionsPh}
           value={qb.instructions}
           onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
           className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none mb-3 p-0"
@@ -127,7 +160,7 @@ export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock
           {/* QUESTION TEXT */}
           <div className="flex gap-2 mb-3">
             <input
-              type="text" placeholder="Question prompt... (Try pasting question + options here!)"
+              type="text" placeholder={t.promptPh}
               value={row.question_text}
               onChange={e => updateField('question_text', e.target.value)}
               onPaste={handleSmartPaste}
@@ -141,7 +174,7 @@ export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock
               <div key={opt.id} className="flex items-center gap-2">
                 <span className="text-[10px] font-black text-on-surface-variant w-4">{opt.id}.</span>
                 <input
-                  type="text" placeholder={`Option ${opt.id}...`}
+                  type="text" placeholder={t.optionPh(opt.id)}
                   value={opt.text}
                   onChange={e => updateOption(oIdx, e.target.value)}
                   className="flex-1 h-7 text-[12px] bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary"
@@ -156,16 +189,16 @@ export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock
               </div>
             ))}
             <Button variant="text" size="sm" icon={<Plus />} onClick={addOption} className="mt-2">
-              Add Choice
+              {t.addChoice}
             </Button>
           </div>
 
           {/* BOTTOM BAR (ANSWERS & REFERENCE) */}
           <div className="flex items-center gap-3 bg-surface-container-lowest p-2 border border-outline-variant rounded-m3-sm">
-            <span className="text-[10px] font-bold text-on-surface-variant uppercase">Correct Answers:</span>
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase">{t.correctAnswers}</span>
 
             <input
-              type="text" placeholder="e.g. B, D"
+              type="text" placeholder={t.answersPh}
               value={ansText}
               onChange={e => setAnsText(e.target.value)}
               onBlur={handleAnsBlur}
@@ -175,7 +208,7 @@ export default function ListSelectionBlock({ qb, qbIdx, updateBlock, deleteBlock
 
             <div className="flex-1 border-l border-outline-variant pl-3">
               <input
-                type="text" placeholder="Passage Ref (opt)"
+                type="text" placeholder={t.refPh}
                 value={row.passage_reference || ''}
                 onChange={e => updateField('passage_reference', e.target.value.toUpperCase())}
                 className={`w-full h-7 text-[10px] font-bold rounded-m3-sm outline-none uppercase transition-colors px-2

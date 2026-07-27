@@ -71,7 +71,7 @@ const usesSharedPool = (q: NormalizedQuestion): boolean =>
 // --- TRANSLATIONS ---
 const TEST_TRANSLATIONS: any = {
   uz: {
-    loading: "Test yuklanmoqda...", error: "Testni yuklashda xatolik", back: "Ortga qaytish", grading: "Javoblar tekshirilmoqda...",
+    loading: "Test yuklanmoqda...", error: "Testni yuklashda xatolik", back: "Ortga qaytish", grading: "Javoblar tekshirilmoqda...", pleaseWait: "Iltimos, kuting",
     lobby: { questions: "Savollar", minutes: "Daqiqa", instructions: "Ko'rsatmalar:", rule1: "Chiqib ketsangiz ham vaqt davom etadi.", rule2: "Sahifani keraksiz yangilamang.", rule3: "Tab almashtirish yozib boriladi va ballni pasaytiradi.", startBtn: "Testni Boshlash", cancel: "Bekor qilish" },
     header: { question: "Savol", focus: "Diqqat", locked: "Qulflangan" },
     actions: { flagged: "Belgilangan", flag: "Belgilash", prev: "Oldingi", next: "Keyingi", finish: "Yakunlash", submit: "Topshirish", viewResults: "Natijani Ko'rish", returnClass: "Sinfga Qaytish" },
@@ -79,11 +79,11 @@ const TEST_TRANSLATIONS: any = {
     block: { pool: "Umumiy variantlar", parts: "Savol qismlari", hint: "Har bir qismga alohida javob bering." },
     modal: { title: "Testni Yakunlaysizmi?", answered: "Javob berildi", unanswered: "Javobsiz Savollar", back: "Qaytish" },
     focusModal: { title: "Diqqat yo'qotildi!", desc: "Siz test oynasidan chiqdingiz yoki boshqa oynaga o'tdingiz. Bu holat yozib olindi va natijangizga ta'sir qilishi mumkin.", btn: "Tushundim, davom etish" },
-    result: { submitted: "Topshirildi!", saved: "Javoblaringiz saqlandi.", score: "Ball", hidden: "Natijalar hozircha yashirin.", xpEarned: "XP Qo'lga kiritildi!", breakdown: "Ballar taqsimoti" },
+    result: { submitted: "Topshirildi!", saved: "Javoblaringiz saqlandi.", score: "Ball", accuracy: "Aniqlik", hidden: "Natijalar hozircha yashirin.", xpEarned: "XP Qo'lga kiritildi!", breakdown: "Ballar taqsimoti" },
     toasts: { deadline: "Muddat tugagan.", maxAttempts: "Urinishlar limiti tugagan.", expired: "Sessiya muddati tugagan.", restored: "Sessiya tiklandi!", focusWarn: "Diqqat yo'qotildi!", timeUp: "Vaqt tugadi! Topshirilmoqda...", missedQ: "Savolni o'tkazib yubordingiz!", success: "Topshirildi!", fail: "Xatolik." }
   },
   en: {
-    loading: "Loading Test...", error: "Error loading test", back: "Go Back", grading: "Grading your answers...",
+    loading: "Loading Test...", error: "Error loading test", back: "Go Back", grading: "Grading your answers...", pleaseWait: "Please wait",
     lobby: { questions: "Questions", minutes: "Minutes", instructions: "Instructions:", rule1: "Timer continues if you leave.", rule2: "Do not refresh unnecessarily.", rule3: "Tab switching is recorded and may penalize your score.", startBtn: "Start Test Now", cancel: "Cancel" },
     header: { question: "Q", focus: "Focus", locked: "Locked" },
     actions: { flagged: "Flagged", flag: "Flag", prev: "Previous", next: "Next", finish: "Finish Test", submit: "Submit", viewResults: "View Results", returnClass: "Return to Class" },
@@ -91,11 +91,11 @@ const TEST_TRANSLATIONS: any = {
     block: { pool: "Shared Options", parts: "Sub-questions", hint: "Answer every part separately." },
     modal: { title: "Finish Test?", answered: "Answered", unanswered: "Unanswered Questions", back: "Back" },
     focusModal: { title: "Focus Lost!", desc: "You left the test window or switched tabs. This action has been recorded and may affect your final score.", btn: "I Understand, Resume" },
-    result: { submitted: "Submitted!", saved: "Your answers are recorded.", score: "Score", hidden: "Results are currently hidden.", xpEarned: "XP Earned!", breakdown: "Point Breakdown" },
+    result: { submitted: "Submitted!", saved: "Your answers are recorded.", score: "Score", accuracy: "Accuracy", hidden: "Results are currently hidden.", xpEarned: "XP Earned!", breakdown: "Point Breakdown" },
     toasts: { deadline: "Deadline passed.", maxAttempts: "Max attempts reached.", expired: "Session expired.", restored: "Session restored!", focusWarn: "Warning: Focus lost!", timeUp: "Time is up! Submitting...", missedQ: "You missed a question!", success: "Submitted!", fail: "Submission failed." }
   },
   ru: {
-    loading: "Загрузка теста...", error: "Ошибка загрузки", back: "Назад", grading: "Проверка ответов...",
+    loading: "Загрузка теста...", error: "Ошибка загрузки", back: "Назад", grading: "Проверка ответов...", pleaseWait: "Пожалуйста, подождите",
     lobby: { questions: "Вопросов", minutes: "Минут", instructions: "Инструкции:", rule1: "Таймер продолжается при выходе.", rule2: "Не обновляйте без нужды.", rule3: "Переключение вкладок фиксируется и снижает балл.", startBtn: "Начать Тест", cancel: "Отмена" },
     header: { question: "Вопрос", focus: "Фокус", locked: "Заблокировано" },
     actions: { flagged: "Отмечено", flag: "Отметить", prev: "Назад", next: "Далее", finish: "Завершить", submit: "Сдать", viewResults: "Результаты", returnClass: "Вернуться в класс" },
@@ -103,7 +103,7 @@ const TEST_TRANSLATIONS: any = {
     block: { pool: "Общие варианты", parts: "Подвопросы", hint: "Ответьте на каждую часть отдельно." },
     modal: { title: "Завершить тест?", answered: "Отвечено", unanswered: "Есть пропущенные вопросы", back: "Назад" },
     focusModal: { title: "Фокус потерян!", desc: "Вы покинули окно теста или переключили вкладку. Это действие записано и может повлиять на ваш балл.", btn: "Понятно, продолжить" },
-    result: { submitted: "Сдано!", saved: "Ваши ответы сохранены.", score: "Балл", hidden: "Результаты скрыты.", xpEarned: "Получено XP!", breakdown: "Детализация" },
+    result: { submitted: "Сдано!", saved: "Ваши ответы сохранены.", score: "Балл", accuracy: "Точность", hidden: "Результаты скрыты.", xpEarned: "Получено XP!", breakdown: "Детализация" },
     toasts: { deadline: "Срок истек.", maxAttempts: "Лимит попыток исчерпан.", expired: "Сессия истекла.", restored: "Сессия восстановлена!", focusWarn: "Потеря фокуса!", timeUp: "Время вышло!", missedQ: "Вы пропустили вопрос!", success: "Сдано!", fail: "Ошибка отправки." }
   }
 };
@@ -704,7 +704,7 @@ export default function TestRunnerPage() {
 
                {/* 🟢 ACCURACY CARD */}
                <motion.div variants={item} className="flex flex-col items-center justify-center rounded-m3-lg border border-outline-variant bg-surface p-5">
-                  <span className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">Accuracy</span>
+                  <span className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.result.accuracy}</span>
                   <span className={cn('s-display s-num text-[30px] font-bold', accuracy >= 80 ? 'text-success' : accuracy >= 60 ? 'text-gold' : 'text-error')}>
                     <AnimatedNumber value={accuracy} suffix="%" />
                   </span>
@@ -765,7 +765,7 @@ export default function TestRunnerPage() {
            <Spinner size={56} label={t.grading} />
            <div className="text-center">
              <h2 className="s-display text-[22px] font-bold text-on-surface">{t.grading || "Grading your answers..."}</h2>
-             <p className="mt-2 text-[13px] font-black uppercase tracking-[0.12em] text-on-surface-variant">Please wait</p>
+             <p className="mt-2 text-[13px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.pleaseWait}</p>
            </div>
         </div>
       )}

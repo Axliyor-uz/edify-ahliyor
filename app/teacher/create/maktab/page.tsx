@@ -24,6 +24,110 @@ import AiMonthlyLimitCard from "@/app/teacher/create/_components/AiMonthlyLimitC
 
 import GeneratorControlPanel from "./_components/GeneratorControlPanel";
 import structureMap from "@/data/maktab/structure.json";
+import { useTeacherLanguage } from "@/app/teacher/layout";
+
+// --- TRANSLATION DICTIONARY ---
+const MAKTAB_TRANSLATIONS: Record<string, any> = {
+  uz: {
+    thinkingTitle: "AI Studiya ishlamoqda",
+    thinkingPhrases: ["Mavzu tahlil qilinmoqda...", "Maktab dasturi tekshirilmoqda...", "Konteks o'qilmoqda...", "Qiyinlik darajasi moslashtirilmoqda...", "Savollar va javoblar yozilmoqda..."],
+    hideSolution: "Yechimni yashirish", showSolution: "AI Yechimni ko'rish", aiSolutionLogic: "AI Yechim Mantiqi",
+    toasts: {
+      syllabusNotFound: "Syllabus topilmadi!",
+      selectAllFields: "Iltimos, barcha maydonlarni tanlang.",
+      added: (n: number) => `${n} ta savol qo'shildi!`,
+      errGeneric: "Xatolik yuz berdi.",
+      errCreateFirst: "Oldin savol yarating.",
+      errPickTopic: "Iltimos, savollar uchun mavzu tanlang.",
+      savedToBank: "Savollar bazangizga muvaffaqiyatli saqlandi!",
+      errSaveBank: "Bazaga saqlashda xatolik yuz berdi.",
+      errEnterTitle: "Test nomini kiriting.",
+      published: "Test muvaffaqiyatli nashr qilindi!",
+      errPublish: "Nashr qilishda xatolik."
+    },
+    limitLeft: (n: number) => `Sizda oylik limitdan faqatgina ${n} ta savol qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`,
+    limitReached: "Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.",
+    topBarTitle: "Savol Yaratish", sidebarTitle: "Maktab Dasturi",
+    draftTitle: "AI Qoralama", questionCountBadge: (n: number) => `${n} Savol`,
+    saveToBank: "Bazaga Saqlash", publish: "Nashr Qilish",
+    emptyTitle: "Hozircha bo'sh", emptyDesc: "Chap paneldan parametrlarni tanlang va AI savol yozib beradi.",
+    selectParams: "Parametrlarni tanlash", openParams: "Parametrlarni ochish",
+    mobileCount: (n: number) => `${n} ta savol`,
+    morePrompt: "Yana savol qo'shmoqchimisiz?", morePromptDesc: 'Parametrlarni o\'zgartirib yana "Yaratish" tugmasini bosing.',
+    mobileSave: "Saqlash",
+    premiumFeature: "Premium Xususiyat", viewPlans: "Tariflarni ko'rish", goBack: "Orqaga qaytish",
+    classModalTitle: "Sinfni tanlang", subjectModalTitle: "Fanni tanlang",
+    syllabusModalTitle: "Mavzuni tanlang", searchPlaceholder: "Mavzu nomini qidiring...",
+    topicIndex: (i: any) => `Mavzu ${i}`, notFound: (q: string) => `"${q}" topilmadi`,
+    titleModal: { title: "Hujjat nomi", desc: "O'quvchilarga ko'rinadigan rasmiy nomni yozing.", placeholder: "Masalan: 1-chorak nazorati", cancel: "Bekor qilish", next: "Keyingi Qadam" }
+  },
+  en: {
+    thinkingTitle: "AI Studio is working",
+    thinkingPhrases: ["Analyzing the topic...", "Checking the school curriculum...", "Reading the context...", "Adjusting the difficulty level...", "Writing questions and answers..."],
+    hideSolution: "Hide solution", showSolution: "View AI Solution", aiSolutionLogic: "AI Solution Logic",
+    toasts: {
+      syllabusNotFound: "Syllabus not found!",
+      selectAllFields: "Please select all fields.",
+      added: (n: number) => `${n} questions added!`,
+      errGeneric: "An error occurred.",
+      errCreateFirst: "Generate questions first.",
+      errPickTopic: "Please select a topic for the questions.",
+      savedToBank: "Questions saved to your bank successfully!",
+      errSaveBank: "Error saving to the bank.",
+      errEnterTitle: "Enter a test title.",
+      published: "Test published successfully!",
+      errPublish: "Error publishing the test."
+    },
+    limitLeft: (n: number) => `You only have ${n} questions left in your monthly limit. Please reduce the requested amount or upgrade your plan.`,
+    limitReached: "Your monthly AI limit is not enough. Upgrade your plan or wait for next month.",
+    topBarTitle: "Create Questions", sidebarTitle: "School Curriculum",
+    draftTitle: "AI Draft", questionCountBadge: (n: number) => `${n} Questions`,
+    saveToBank: "Save to Bank", publish: "Publish",
+    emptyTitle: "Empty for now", emptyDesc: "Select parameters in the left panel and the AI will write questions.",
+    selectParams: "Select parameters", openParams: "Open parameters",
+    mobileCount: (n: number) => `${n} questions`,
+    morePrompt: "Want to add more questions?", morePromptDesc: 'Change the parameters and press "Generate" again.',
+    mobileSave: "Save",
+    premiumFeature: "Premium Feature", viewPlans: "View plans", goBack: "Go back",
+    classModalTitle: "Select a grade", subjectModalTitle: "Select a subject",
+    syllabusModalTitle: "Select a topic", searchPlaceholder: "Search a topic name...",
+    topicIndex: (i: any) => `Topic ${i}`, notFound: (q: string) => `"${q}" not found`,
+    titleModal: { title: "Document title", desc: "Write the official name visible to students.", placeholder: "E.g.: Quarter 1 assessment", cancel: "Cancel", next: "Next Step" }
+  },
+  ru: {
+    thinkingTitle: "AI Студия работает",
+    thinkingPhrases: ["Анализ темы...", "Проверка школьной программы...", "Чтение контекста...", "Настройка уровня сложности...", "Составление вопросов и ответов..."],
+    hideSolution: "Скрыть решение", showSolution: "Посмотреть AI Решение", aiSolutionLogic: "Логика AI Решения",
+    toasts: {
+      syllabusNotFound: "Учебная программа не найдена!",
+      selectAllFields: "Пожалуйста, выберите все поля.",
+      added: (n: number) => `Добавлено вопросов: ${n}!`,
+      errGeneric: "Произошла ошибка.",
+      errCreateFirst: "Сначала создайте вопросы.",
+      errPickTopic: "Пожалуйста, выберите тему для вопросов.",
+      savedToBank: "Вопросы успешно сохранены в вашу базу!",
+      errSaveBank: "Ошибка при сохранении в базу.",
+      errEnterTitle: "Введите название теста.",
+      published: "Тест успешно опубликован!",
+      errPublish: "Ошибка при публикации."
+    },
+    limitLeft: (n: number) => `В вашем месячном лимите осталось всего ${n} вопросов. Пожалуйста, уменьшите запрашиваемое количество или повысьте тариф.`,
+    limitReached: "Вашего месячного AI-лимита недостаточно. Повысьте тариф или дождитесь следующего месяца.",
+    topBarTitle: "Создание вопросов", sidebarTitle: "Школьная программа",
+    draftTitle: "AI Черновик", questionCountBadge: (n: number) => `${n} Вопросов`,
+    saveToBank: "Сохранить в базу", publish: "Опубликовать",
+    emptyTitle: "Пока пусто", emptyDesc: "Выберите параметры на левой панели, и AI составит вопросы.",
+    selectParams: "Выбрать параметры", openParams: "Открыть параметры",
+    mobileCount: (n: number) => `Вопросов: ${n}`,
+    morePrompt: "Хотите добавить ещё вопросы?", morePromptDesc: 'Измените параметры и нажмите «Создать» ещё раз.',
+    mobileSave: "Сохранить",
+    premiumFeature: "Премиум-функция", viewPlans: "Посмотреть тарифы", goBack: "Вернуться назад",
+    classModalTitle: "Выберите класс", subjectModalTitle: "Выберите предмет",
+    syllabusModalTitle: "Выберите тему", searchPlaceholder: "Поиск по названию темы...",
+    topicIndex: (i: any) => `Тема ${i}`, notFound: (q: string) => `«${q}» не найдено`,
+    titleModal: { title: "Название документа", desc: "Напишите официальное название, видимое ученикам.", placeholder: "Например: Контроль за 1 четверть", cancel: "Отмена", next: "Следующий шаг" }
+  }
+};
 
 interface AIQuestion {
   id: string; uiDifficulty: string;
@@ -70,7 +174,9 @@ const formatSubjectName = (rawSubject: string) => {
 };
 
 const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
-  const phrases = ["Mavzu tahlil qilinmoqda...", "Maktab dasturi tekshirilmoqda...", "Konteks o'qilmoqda...", "Qiyinlik darajasi moslashtirilmoqda...", "Savollar va javoblar yozilmoqda..."];
+  const { lang } = useTeacherLanguage();
+  const t = MAKTAB_TRANSLATIONS[lang] || MAKTAB_TRANSLATIONS['uz'];
+  const phrases: string[] = t.thinkingPhrases;
   const [phraseIndex, setPhraseIndex] = useState(0);
   useEffect(() => {
     if (!isVisible) return;
@@ -93,7 +199,7 @@ const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
                 <Sparkles size={16} className="absolute -top-2 -right-2 text-warning animate-pulse md:w-5 md:h-5 md:-top-3 md:-right-3" />
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
+            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">{t.thinkingTitle}</h3>
             <div className="h-5 md:h-6 relative z-10 overflow-hidden flex items-center justify-center w-full">
               <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[12px] md:text-[14px] font-medium text-on-surface-variant absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
             </div>
@@ -132,6 +238,8 @@ const FormattedText = ({ text }: { text: any }) => {
 };
 
 const AIQuestionCard = ({ q, idx, onRemove }: { q: AIQuestion, idx: number, onRemove: (id: string) => void }) => {
+  const { lang } = useTeacherLanguage();
+  const t = MAKTAB_TRANSLATIONS[lang] || MAKTAB_TRANSLATIONS['uz'];
   const [showOptions, setShowOptions] = useState(true);
   const [showExplanation, setShowExplanation] = useState(false);
   const getText = (field: any): string => {
@@ -183,14 +291,14 @@ const AIQuestionCard = ({ q, idx, onRemove }: { q: AIQuestion, idx: number, onRe
         <div className="mt-2.5 md:mt-4 pt-2.5 md:pt-4 border-t border-outline-variant flex justify-start">
           <button onClick={() => setShowExplanation(!showExplanation)} className={`m3-interactive flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-m3-sm md:rounded-m3-md text-[11px] md:text-[13px] font-bold transition-all duration-300 ${showExplanation ? 'bg-primary-container text-on-primary-container shadow-elev-1' : 'bg-surface-container-lowest ring-1 ring-inset ring-outline-variant text-primary'}`}>
             <Sparkles size={12} className="md:w-4 md:h-4" />
-            {showExplanation ? "Yechimni yashirish" : "AI Yechimni ko'rish"}
+            {showExplanation ? t.hideSolution : t.showSolution}
           </button>
         </div>
       )}
 
       {showExplanation && getText(q.explanation).trim().length > 0 && (
         <div className="bg-surface-container border border-outline-variant p-2.5 md:p-4.5 rounded-m3-md md:rounded-m3-lg mt-2.5 md:mt-4 animate-in fade-in slide-in-from-top-2">
-          <p className="text-[9px] md:text-[11px] font-black text-primary uppercase tracking-widest mb-1.5 md:mb-2 flex items-center gap-1 md:gap-1.5"><Sparkles size={10} className="text-primary md:w-[14px] md:h-[14px]" /> AI Yechim Mantiqi</p>
+          <p className="text-[9px] md:text-[11px] font-black text-primary uppercase tracking-widest mb-1.5 md:mb-2 flex items-center gap-1 md:gap-1.5"><Sparkles size={10} className="text-primary md:w-[14px] md:h-[14px]" /> {t.aiSolutionLogic}</p>
           <p className="text-[11px] md:text-[14px] text-on-surface leading-relaxed font-medium"><FormattedText text={getText(q.explanation)} /></p>
         </div>
       )}
@@ -201,6 +309,8 @@ const AIQuestionCard = ({ q, idx, onRemove }: { q: AIQuestion, idx: number, onRe
 export default function MaktabGeneratorPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang } = useTeacherLanguage();
+  const t = MAKTAB_TRANSLATIONS[lang] || MAKTAB_TRANSLATIONS['uz'];
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 🟢 NEW: Fetching the monthly limits instead of daily
@@ -252,7 +362,7 @@ export default function MaktabGeneratorPage() {
       fetch(`/api/syllabus?track=maktab&class=${selectedClass}&subject=${selectedSubject}`)
         .then((res) => res.ok ? res.json() : null)
         .then((data) => { if (data && data[0]) setSyllabusData(data[0]); })
-        .catch(() => toast.error("Syllabus topilmadi!"))
+        .catch(() => toast.error(t.toasts.syllabusNotFound))
         .finally(() => setIsLoadingSyllabus(false));
     }
   }, [selectedClass, selectedSubject]);
@@ -285,11 +395,11 @@ export default function MaktabGeneratorPage() {
   };
 
   const handleGenerate = async () => {
-    if (!isReadyToGenerate) return toast.error("Iltimos, barcha maydonlarni tanlang.");
+    if (!isReadyToGenerate) return toast.error(t.toasts.selectAllFields);
 
     // 🟢 NEW: Pre-check monthly limits
     if (!aiData.isUnlimited && aiData.remaining < count) {
-      setLimitModalMessage(`Sizda oylik limitdan faqatgina ${aiData.remaining} ta savol qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`);
+      setLimitModalMessage(t.limitLeft(aiData.remaining));
       setIsLimitModalOpen(true);
       return;
     }
@@ -308,7 +418,7 @@ export default function MaktabGeneratorPage() {
       // 🟢 NEW: Gatekeeper Error Handling
       if (!response.ok) {
         if (data.code === 'LIMIT_REACHED') {
-          setLimitModalMessage("Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.");
+          setLimitModalMessage(t.limitReached);
           setIsLimitModalOpen(true);
           return;
         }
@@ -329,9 +439,9 @@ export default function MaktabGeneratorPage() {
       }));
 
       setGeneratedQuestions(prev => [...prev, ...enrichedQuestions]);
-      toast.success(`${count} ta savol qo'shildi!`);
+      toast.success(t.toasts.added(count));
     } catch (error: any) {
-      toast.error(error.message || "Xatolik yuz berdi.");
+      toast.error(error.message || t.toasts.errGeneric);
     } finally {
       setIsGenerating(false);
     }
@@ -341,7 +451,7 @@ export default function MaktabGeneratorPage() {
 
   // --- TOPIC GATE (runs before BOTH save paths) ---
   const openTopicModal = (intent: "bank" | "publish") => {
-    if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
+    if (generatedQuestions.length === 0) return toast.error(t.toasts.errCreateFirst);
     setIsSidebarOpen(false); // the mobile sidebar overlay would sit on top of the dialog
     setTopicIntent(intent);
     setIsTopicModalOpen(true);
@@ -360,7 +470,7 @@ export default function MaktabGeneratorPage() {
 
   /** Defensive: toQuestionV1 should never throw once the modal is wired. */
   const onInvalidTopic = (intent: "bank" | "publish") => {
-    toast.error("Iltimos, savollar uchun mavzu tanlang.");
+    toast.error(t.toasts.errPickTopic);
     setTopicIntent(intent);
     setIsTopicModalOpen(true);
   };
@@ -373,7 +483,7 @@ export default function MaktabGeneratorPage() {
   ];
 
   const handleSaveToBank = async (paths: TopicPath[]) => {
-    if (generatedQuestions.length === 0) return toast.error("Oldin savol yarating.");
+    if (generatedQuestions.length === 0) return toast.error(t.toasts.errCreateFirst);
     if (!user) return;
 
     setIsSavingToBank(true);
@@ -410,7 +520,7 @@ export default function MaktabGeneratorPage() {
 
       await batch.commit();
       setIsTopicModalOpen(false);
-      toast.success("Savollar bazangizga muvaffaqiyatli saqlandi!");
+      toast.success(t.toasts.savedToBank);
       setGeneratedQuestions([]);
       router.push('/teacher/create/my_questions');
     } catch (error) {
@@ -419,14 +529,14 @@ export default function MaktabGeneratorPage() {
         return;
       }
       console.error("Save to bank error:", error);
-      toast.error("Bazaga saqlashda xatolik yuz berdi.");
+      toast.error(t.toasts.errSaveBank);
     } finally {
       setIsSavingToBank(false);
     }
   };
 
   const handleTitleSubmit = () => {
-    if (!testTitle.trim()) return toast.error("Test nomini kiriting.");
+    if (!testTitle.trim()) return toast.error(t.toasts.errEnterTitle);
     setIsTitleModalOpen(false);
     setIsConfigModalOpen(true);
   };
@@ -478,7 +588,7 @@ export default function MaktabGeneratorPage() {
       });
 
       await batch.commit();
-      toast.success("Test muvaffaqiyatli nashr qilindi!");
+      toast.success(t.toasts.published);
       router.push("/teacher/library/tests");
     } catch (error) {
       if (error instanceof InvalidTopicError) {
@@ -486,7 +596,7 @@ export default function MaktabGeneratorPage() {
         onInvalidTopic("publish");
         return;
       }
-      toast.error("Nashr qilishda xatolik.");
+      toast.error(t.toasts.errPublish);
     } finally {
       setIsPublishing(false);
     }
@@ -507,7 +617,7 @@ export default function MaktabGeneratorPage() {
 
       <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant z-[100000] flex items-center justify-between px-3 shadow-elev-1">
         <button onClick={() => router.push('/teacher/create')} className="p-2 -ml-1 text-on-surface-variant rounded-m3-sm"><ArrowLeft size={18} /></button>
-        <span className="font-black text-on-surface text-[14px]">Savol Yaratish</span>
+        <span className="font-black text-on-surface text-[14px]">{t.topBarTitle}</span>
         <button onClick={() => setIsSidebarOpen(true)} className="p-2 -mr-1 bg-primary-container text-on-primary-container rounded-m3-sm shadow-elev-1"><Menu size={18} /></button>
       </div>
 
@@ -525,7 +635,7 @@ export default function MaktabGeneratorPage() {
                   <ArrowLeft size={18} />
                 </button>
                 <h2 className="font-bold text-[14px] md:text-[16px] text-on-surface tracking-tight flex items-center gap-2">
-                  <Layers size={16} className="text-primary md:w-[18px] md:h-[18px]"/> Maktab Dasturi
+                  <Layers size={16} className="text-primary md:w-[18px] md:h-[18px]"/> {t.sidebarTitle}
                 </h2>
               </div>
 
@@ -559,11 +669,11 @@ export default function MaktabGeneratorPage() {
 
         <div className="hidden lg:flex sticky top-0 z-20 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant px-8 py-3 justify-between items-center shadow-elev-1">
           <div className="flex items-center gap-4">
-            <h1 className="text-[16px] font-bold text-on-surface tracking-tight">AI Qoralama</h1>
+            <h1 className="text-[16px] font-bold text-on-surface tracking-tight">{t.draftTitle}</h1>
             {generatedQuestions.length > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1 bg-primary-container rounded-full">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-                <span className="text-[11px] font-bold text-on-primary-container tracking-wide uppercase">{generatedQuestions.length} Savol</span>
+                <span className="text-[11px] font-bold text-on-primary-container tracking-wide uppercase">{t.questionCountBadge(generatedQuestions.length)}</span>
               </div>
             )}
           </div>
@@ -579,7 +689,7 @@ export default function MaktabGeneratorPage() {
               onClick={() => openTopicModal("bank")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
-              Bazaga Saqlash
+              {t.saveToBank}
             </Button>
 
             <Button
@@ -589,7 +699,7 @@ export default function MaktabGeneratorPage() {
               onClick={() => openTopicModal("publish")}
               disabled={isPublishing || isSavingToBank || isGenerating || generatedQuestions.length === 0}
             >
-              Nashr Qilish
+              {t.publish}
             </Button>
           </div>
         </div>
@@ -598,14 +708,14 @@ export default function MaktabGeneratorPage() {
           {generatedQuestions.length === 0 && !isGenerating ? (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="h-[60vh] flex flex-col items-center justify-center text-on-surface-variant border-2 border-dashed border-outline-variant rounded-m3-lg bg-surface-container-low lg:mt-6 p-4 md:p-6 text-center shadow-elev-1 mx-1 lg:mx-0">
               <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-container rounded-m3-md md:rounded-m3-lg flex items-center justify-center mb-4 md:mb-5"><Sparkles size={24} className="text-on-primary-container md:w-7 md:h-7" /></div>
-              <p className="font-black text-on-surface text-[16px] md:text-[18px] mb-1.5 md:mb-2">Hozircha bo'sh</p>
-              <p className="text-[12px] md:text-[14px] text-on-surface-variant max-w-[250px] font-medium leading-relaxed">Chap paneldan parametrlarni tanlang va AI savol yozib beradi.</p>
-              <Button variant="filled" size="lg" className="lg:hidden mt-6" onClick={() => setIsSidebarOpen(true)}>Parametrlarni tanlash</Button>
+              <p className="font-black text-on-surface text-[16px] md:text-[18px] mb-1.5 md:mb-2">{t.emptyTitle}</p>
+              <p className="text-[12px] md:text-[14px] text-on-surface-variant max-w-[250px] font-medium leading-relaxed">{t.emptyDesc}</p>
+              <Button variant="filled" size="lg" className="lg:hidden mt-6" onClick={() => setIsSidebarOpen(true)}>{t.selectParams}</Button>
             </motion.div>
           ) : (
             <div className="space-y-4 md:space-y-6 lg:pb-12">
               <div className="lg:hidden flex items-center justify-between mb-1 px-1">
-                <span className="text-[10px] md:text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">{generatedQuestions.length} ta savol</span>
+                <span className="text-[10px] md:text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">{t.mobileCount(generatedQuestions.length)}</span>
                 {/* 🟢 NEW: Mobile Monthly Limit Card */}
                 <AiMonthlyLimitCard aiData={aiData} />
               </div>
@@ -626,8 +736,8 @@ export default function MaktabGeneratorPage() {
               {!isGenerating && generatedQuestions.length > 0 && (
                 <div className="py-8 md:py-10 flex flex-col items-center justify-center text-center animate-in fade-in duration-700">
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-surface-container-high text-on-surface-variant rounded-full flex items-center justify-center mb-3 md:mb-4"><Layers size={18} className="md:w-5 md:h-5" /></div>
-                  <p className="text-[13px] md:text-[15px] font-black text-on-surface">Yana savol qo'shmoqchimisiz?</p>
-                  <p className="text-[11px] md:text-[13.5px] text-on-surface-variant mt-1 max-w-[280px] font-medium leading-relaxed">Parametrlarni o'zgartirib yana "Yaratish" tugmasini bosing.</p>
+                  <p className="text-[13px] md:text-[15px] font-black text-on-surface">{t.morePrompt}</p>
+                  <p className="text-[11px] md:text-[13.5px] text-on-surface-variant mt-1 max-w-[280px] font-medium leading-relaxed">{t.morePromptDesc}</p>
                 </div>
               )}
 
@@ -642,7 +752,7 @@ export default function MaktabGeneratorPage() {
         <div className="lg:hidden fixed bottom-5 left-0 right-0 px-3 flex justify-between gap-2 z-[100] animate-in slide-in-from-bottom-10">
           <IconButton
             variant="filled"
-            aria-label="Parametrlarni ochish"
+            aria-label={t.openParams}
             onClick={() => setIsSidebarOpen(true)}
             className="w-12 h-[46px] rounded-m3-md shadow-elev-2 shrink-0"
           >
@@ -658,7 +768,7 @@ export default function MaktabGeneratorPage() {
             disabled={isSavingToBank || isPublishing || isGenerating}
             className="flex-1 h-[46px] rounded-m3-md shadow-elev-2 text-[11px]"
           >
-            Saqlash
+            {t.mobileSave}
           </Button>
 
           <Button
@@ -670,7 +780,7 @@ export default function MaktabGeneratorPage() {
             disabled={isPublishing || isSavingToBank || isGenerating}
             className="flex-1 h-[46px] rounded-m3-md shadow-elev-2 text-[11px]"
           >
-            Nashr Qilish
+            {t.publish}
           </Button>
         </div>,
         document.body
@@ -688,17 +798,17 @@ export default function MaktabGeneratorPage() {
                 <Crown size={28} className="text-warning" />
               </div>
 
-              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">Premium Xususiyat</h3>
+              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">{t.premiumFeature}</h3>
               <p className="text-[13px] md:text-[14px] text-on-surface-variant mb-6 font-medium leading-relaxed">
                 {limitModalMessage}
               </p>
 
               <div className="w-full flex flex-col gap-2">
                 <Button variant="filled" className="w-full" onClick={() => router.push('/teacher/subscription')}>
-                  Tariflarni ko'rish <ArrowLeft className="rotate-180" />
+                  {t.viewPlans} <ArrowLeft className="rotate-180" />
                 </Button>
                 <Button variant="outlined" className="w-full" onClick={() => setIsLimitModalOpen(false)}>
-                  Orqaga qaytish
+                  {t.goBack}
                 </Button>
               </div>
             </motion.div>
@@ -718,7 +828,7 @@ export default function MaktabGeneratorPage() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsClassModalOpen(false)} />
                 <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative bg-surface-container-low rounded-t-m3-xl sm:rounded-m3-xl w-full max-w-md h-auto max-h-[90dvh] flex flex-col shadow-elev-3 overflow-hidden z-10">
                   <div className="p-4 md:p-5 border-b border-outline-variant flex justify-between items-center bg-surface-container-low shrink-0">
-                    <h3 className="text-[18px] md:text-xl font-black text-on-surface">Sinfni tanlang</h3>
+                    <h3 className="text-[18px] md:text-xl font-black text-on-surface">{t.classModalTitle}</h3>
                     <button onClick={() => setIsClassModalOpen(false)} className="p-1.5 md:p-2 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-full transition-colors"><X size={18} className="md:w-5 md:h-5"/></button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 md:p-5 custom-scrollbar bg-surface">
@@ -746,7 +856,7 @@ export default function MaktabGeneratorPage() {
                 <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative bg-surface-container-low rounded-t-m3-xl sm:rounded-m3-xl w-full max-w-lg h-auto max-h-[90dvh] flex flex-col shadow-elev-3 overflow-hidden z-10">
                   <div className="p-4 md:p-5 border-b border-outline-variant flex justify-between items-center bg-surface-container-low shrink-0">
                     <div>
-                      <h3 className="text-[18px] md:text-xl font-black text-on-surface">Fanni tanlang</h3>
+                      <h3 className="text-[18px] md:text-xl font-black text-on-surface">{t.subjectModalTitle}</h3>
                       <p className="text-on-surface-variant text-[10px] md:text-[12px] font-bold mt-0.5 uppercase tracking-widest">{selectedClass}</p>
                     </div>
                     <button onClick={() => setIsSubjectModalOpen(false)} className="p-1.5 md:p-2 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-full transition-colors"><X size={18} className="md:w-5 md:h-5"/></button>
@@ -777,7 +887,7 @@ export default function MaktabGeneratorPage() {
                   <div className="p-4 md:p-6 border-b border-outline-variant flex flex-col gap-3 md:gap-4 bg-surface-container-low shrink-0">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="text-[18px] md:text-2xl font-black text-on-surface">Mavzuni tanlang</h3>
+                        <h3 className="text-[18px] md:text-2xl font-black text-on-surface">{t.syllabusModalTitle}</h3>
                         <p className="text-on-surface-variant text-[11px] md:text-[13px] font-bold mt-0.5">{selectedClass} • {formatSubjectName(selectedSubject)}</p>
                       </div>
                       <button onClick={() => { setIsSyllabusModalOpen(false); setSearchQuery(""); }} className="p-1.5 md:p-2 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-full transition-colors"><X size={18} className="md:w-5 md:h-5"/></button>
@@ -785,7 +895,7 @@ export default function MaktabGeneratorPage() {
                     <div className="relative">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" size={16} />
                       <input
-                        type="text" placeholder="Mavzu nomini qidiring..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                        type="text" placeholder={t.searchPlaceholder} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 md:py-3.5 rounded-m3-md md:rounded-m3-lg border border-outline-variant bg-surface-container focus:bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_12%,transparent)] transition-all text-[13px] md:text-[14px] font-bold text-on-surface placeholder:text-on-surface-variant"
                       />
                     </div>
@@ -811,7 +921,7 @@ export default function MaktabGeneratorPage() {
                                   className={`text-left p-3.5 md:p-4 rounded-m3-md md:rounded-m3-lg border transition-all duration-200 flex flex-col justify-between h-full min-h-[80px] md:min-h-[90px] active:scale-[0.98] ${isSelected ? 'bg-primary border-primary text-on-primary shadow-elev-2' : 'bg-surface-container-lowest border-outline-variant hover:border-primary hover:shadow-elev-1'}`}
                                 >
                                   <span className={`text-[12px] md:text-[13.5px] font-bold leading-snug ${isSelected ? 'text-on-primary' : 'text-on-surface'}`}>{sub.name}</span>
-                                  <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-3 md:mt-4 ${isSelected ? 'text-primary-container' : 'text-on-surface-variant'}`}>Mavzu {sub.index}</span>
+                                  <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-3 md:mt-4 ${isSelected ? 'text-primary-container' : 'text-on-surface-variant'}`}>{t.topicIndex(sub.index)}</span>
                                 </button>
                               );
                             })}
@@ -823,7 +933,7 @@ export default function MaktabGeneratorPage() {
                     {syllabusData.chapters.every((c: any) => c.subtopics.filter((s: any) => s.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0) && (
                       <div className="flex flex-col items-center justify-center py-12 md:py-16 text-on-surface-variant">
                         <Search size={32} className="mb-3 md:mb-4 opacity-30 text-primary md:w-10 md:h-10" />
-                        <p className="font-bold text-[13px] md:text-[15px] text-on-surface">"{searchQuery}" topilmadi</p>
+                        <p className="font-bold text-[13px] md:text-[15px] text-on-surface">{t.notFound(searchQuery)}</p>
                       </div>
                     )}
                   </div>
@@ -839,13 +949,13 @@ export default function MaktabGeneratorPage() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
                 <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-sm shadow-elev-3 z-10">
                   <div className="w-14 h-14 md:w-16 md:h-16 bg-primary-container rounded-m3-md md:rounded-m3-lg flex items-center justify-center mb-4 md:mb-5"><BookOpen size={24} strokeWidth={2.5} className="text-on-primary-container md:w-7 md:h-7" /></div>
-                  <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-1.5">Hujjat nomi</h3>
-                  <p className="text-[11px] md:text-[13px] font-medium text-on-surface-variant mb-5 md:mb-6 leading-relaxed">O'quvchilarga ko'rinadigan rasmiy nomni yozing.</p>
-                  <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-black text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_12%,transparent)] transition-all mb-6 md:mb-8 placeholder:font-medium placeholder:text-on-surface-variant" autoFocus placeholder="Masalan: 1-chorak nazorati"/>
+                  <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-1.5">{t.titleModal.title}</h3>
+                  <p className="text-[11px] md:text-[13px] font-medium text-on-surface-variant mb-5 md:mb-6 leading-relaxed">{t.titleModal.desc}</p>
+                  <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-black text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_12%,transparent)] transition-all mb-6 md:mb-8 placeholder:font-medium placeholder:text-on-surface-variant" autoFocus placeholder={t.titleModal.placeholder}/>
                   <div className="flex flex-col-reverse sm:flex-row gap-2 md:gap-3">
-                    <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>Bekor qilish</Button>
+                    <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>{t.titleModal.cancel}</Button>
                     <Button variant="filled" className="w-full" onClick={handleTitleSubmit}>
-                      Keyingi Qadam <ChevronRight strokeWidth={2.5}/>
+                      {t.titleModal.next} <ChevronRight strokeWidth={2.5}/>
                     </Button>
                   </div>
                 </motion.div>

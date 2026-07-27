@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Loader2, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import type { ClassData } from "@/hooks/useCenterClasses";
 import { saveGroupFeesApi } from "@/services/financeService";
+import { Button, StatusChip } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
 import SearchInput from "../../_components/SearchInput";
 
 interface Props {
@@ -13,11 +15,60 @@ interface Props {
   onSaved: () => void;
 }
 
+const T_UZ = {
+  invalidPrice: "Narx noto'g'ri kiritildi — faqat butun son bo'lsin.",
+  saved: (n: number) => `${n} ta guruh narxi saqlandi.`,
+  saveError: "Saqlashda xatolik yuz berdi.",
+  noGroups: "Markazda hali guruhlar yo'q.",
+  searchPlaceholder: "Guruh yoki o'qituvchini qidiring...",
+  notFound: "Guruh topilmadi",
+  studentCount: (n: number) => `${n} o'quvchi`,
+  noPriceChip: "narx yo'q",
+  som: "so'm",
+  footnote: "Narx o'zgarishi faqat KEYINGI hisob-kitoblarga ta'sir qiladi. 0 yoki bo'sh — guruh hisob-kitobga kirmaydi.",
+  saveWithCount: (n: number) => `Saqlash (${n})`,
+  save: "Saqlash",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    invalidPrice: "Invalid price — whole numbers only.",
+    saved: (n: number) => `Prices saved for ${n} groups.`,
+    saveError: "Failed to save.",
+    noGroups: "The center has no groups yet.",
+    searchPlaceholder: "Search for a group or teacher...",
+    notFound: "No groups found",
+    studentCount: (n: number) => `${n} students`,
+    noPriceChip: "no price",
+    som: "so'm",
+    footnote: "A price change only affects FUTURE billing runs. 0 or empty — the group is excluded from billing.",
+    saveWithCount: (n: number) => `Save (${n})`,
+    save: "Save",
+  },
+  ru: {
+    invalidPrice: "Цена указана неверно — только целое число.",
+    saved: (n: number) => `Сохранены цены ${n} групп.`,
+    saveError: "Не удалось сохранить.",
+    noGroups: "В центре пока нет групп.",
+    searchPlaceholder: "Поиск группы или учителя...",
+    notFound: "Группы не найдены",
+    studentCount: (n: number) => `Учеников: ${n}`,
+    noPriceChip: "нет цены",
+    som: "so'm",
+    footnote: "Изменение цены влияет только на СЛЕДУЮЩИЕ начисления. 0 или пусто — группа не участвует в начислениях.",
+    saveWithCount: (n: number) => `Сохранить (${n})`,
+    save: "Сохранить",
+  },
+};
+
 /**
  * All group prices in one editable list — same `classes.monthlyFee` field the
  * group settings page writes, so the two places can never disagree.
  */
 export default function GroupPricesSection({ classes, onSaved }: Props) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -55,7 +106,7 @@ export default function GroupPricesSection({ classes, onSaved }: Props) {
     for (const id of changedIds) {
       const n = parsedOf(id);
       if (n === null) {
-        toast.error("Narx noto'g'ri kiritildi — faqat butun son bo'lsin.");
+        toast.error(t.invalidPrice);
         return;
       }
       fees[id] = n;
@@ -65,44 +116,44 @@ export default function GroupPricesSection({ classes, onSaved }: Props) {
       // One API call — the server validates ownership and writes all fees in a
       // single batch, so there is never a "half saved" state.
       const { updated } = await saveGroupFeesApi(fees);
-      toast.success(`${updated} ta guruh narxi saqlandi.`);
+      toast.success(t.saved(updated));
       onSaved();
     } catch (err: any) {
       console.error("Group price save error:", err);
-      toast.error(err.message || "Saqlashda xatolik yuz berdi.");
+      toast.error(err.message || t.saveError);
     } finally {
       setSaving(false);
     }
   };
 
   if (classes.length === 0) {
-    return <p className="text-[13px] text-slate-400">Markazda hali guruhlar yo&apos;q.</p>;
+    return <p className="text-[13px] text-on-surface-variant">{t.noGroups}</p>;
   }
 
   return (
     <div className="space-y-3">
       {classes.length > 5 && (
-        <SearchInput value={search} onChange={setSearch} placeholder="Guruh yoki o'qituvchini qidiring..." />
+        <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
       )}
 
-      <div className="divide-y divide-brand-line/60 border border-brand-line rounded-2xl">
+      <div className="divide-y divide-outline-variant border border-outline-variant rounded-m3-lg">
         {filtered.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-400">Guruh topilmadi</p>
+          <p className="py-8 text-center text-sm text-on-surface-variant">{t.notFound}</p>
         ) : (
           filtered.map((c) => {
             const hasPrice = (prices[c.id] ?? "").trim() !== "" && parsedOf(c.id) !== 0;
             return (
               <div key={c.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-800 truncate">{c.title}</p>
-                  <p className="text-[12px] text-slate-400 mt-0.5 truncate">
-                    {c.teacherName} · {c.studentIds?.length || 0} o&apos;quvchi
+                  <p className="text-sm font-bold text-on-surface truncate">{c.title}</p>
+                  <p className="text-[12px] text-on-surface-variant mt-0.5 truncate">
+                    {c.teacherName} · {t.studentCount(c.studentIds?.length || 0)}
                   </p>
                 </div>
                 {!hasPrice && (
-                  <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[11px] font-bold shrink-0">
-                    narx yo&apos;q
-                  </span>
+                  <StatusChip tone="warning" noDot className="shrink-0">
+                    {t.noPriceChip}
+                  </StatusChip>
                 )}
                 <div className="relative shrink-0">
                   <input
@@ -113,10 +164,10 @@ export default function GroupPricesSection({ classes, onSaved }: Props) {
                     value={prices[c.id] ?? ""}
                     onChange={(e) => setPrices((p) => ({ ...p, [c.id]: e.target.value }))}
                     placeholder="0"
-                    className="w-36 pl-3 pr-12 py-2.5 border border-brand-line rounded-xl text-sm font-bold text-slate-900 tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-brand-200"
+                    className="w-36 pl-3 pr-12 py-2.5 bg-transparent border border-outline-variant rounded-m3-md text-sm font-bold text-on-surface tabular-nums text-right focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 pointer-events-none">
-                    so&apos;m
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-on-surface-variant pointer-events-none">
+                    {t.som}
                   </span>
                 </div>
               </div>
@@ -126,17 +177,12 @@ export default function GroupPricesSection({ classes, onSaved }: Props) {
       </div>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-[11.5px] text-slate-400">
-          Narx o&apos;zgarishi faqat KEYINGI hisob-kitoblarga ta&apos;sir qiladi. 0 yoki bo&apos;sh — guruh hisob-kitobga kirmaydi.
+        <p className="text-[11.5px] text-on-surface-variant">
+          {t.footnote}
         </p>
-        <button
-          onClick={save}
-          disabled={saving || changedIds.length === 0}
-          className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-40"
-        >
-          {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-          {changedIds.length > 0 ? `Saqlash (${changedIds.length})` : "Saqlash"}
-        </button>
+        <Button onClick={save} disabled={changedIds.length === 0} loading={saving} icon={<Save />}>
+          {changedIds.length > 0 ? t.saveWithCount(changedIds.length) : t.save}
+        </Button>
       </div>
     </div>
   );

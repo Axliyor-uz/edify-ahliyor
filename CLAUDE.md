@@ -25,8 +25,9 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | Finance (charges, payments, payroll, expenses) | [docs/FINANCE.md](docs/FINANCE.md) + [docs/FINANCE_DATABASE.md](docs/FINANCE_DATABASE.md) |
 | `app/admin/*`, `/api/admin/*`, god-mode | [docs/ADMIN.md](docs/ADMIN.md) |
 | IELTS | [docs/IELTS.md](docs/IELTS.md) |
-| Teacher UI kit — `components/ui/*`, M3 tokens, restyling `app/teacher/*` | [docs/UI_KIT.md](docs/UI_KIT.md) |
+| **Teacher design system** — [design.teacher.config.ts](design.teacher.config.ts) switchboard, `components/ui/*`, M3 tokens, restyling `app/teacher/*` | [docs/UI_KIT.md](docs/UI_KIT.md) |
 | **Student design system** — [design.config.ts](design.config.ts) switchboard, `components/student-ui/*`, restyling `app/(student)/*` | [docs/STUDENT_UI.md](docs/STUDENT_UI.md) |
+| **Manager design system** — [design.manager.config.ts](design.manager.config.ts) switchboard, `components/manager-ui/*`, restyling `app/manager/*` | [docs/MANAGER_UI.md](docs/MANAGER_UI.md) |
 | Android APK distribution — `public/app/*`, `/app` download page, version.json | [docs/APP_DISTRIBUTION.md](docs/APP_DISTRIBUTION.md) |
 
 ## Commands
@@ -70,7 +71,7 @@ Multi-role SaaS ("Edify") with four role trees, each with a `'use client'` role-
 
 ## Cross-cutting traps (the ones that bite regardless of domain)
 
-- **Two UI kits exist — never mix them.** `@/components/ui` = teacher, `@/components/student-ui` = student. The student tree re-skins entirely from [design.config.ts](design.config.ts) ([docs/STUDENT_UI.md](docs/STUDENT_UI.md)).
+- **Three UI kits exist — never mix them.** `@/components/ui` = teacher, `@/components/student-ui` = student, `@/components/manager-ui` = manager. Each tree re-skins entirely from its own root switchboard: student = [design.config.ts](design.config.ts) ([docs/STUDENT_UI.md](docs/STUDENT_UI.md)), teacher = [design.teacher.config.ts](design.teacher.config.ts) ([docs/UI_KIT.md](docs/UI_KIT.md)), manager = [design.manager.config.ts](design.manager.config.ts) ([docs/MANAGER_UI.md](docs/MANAGER_UI.md)).
 - **M3 token colors are plain hex in `var()`, so Tailwind opacity modifiers silently render them opaque** (`bg-surface/85`). Use the prebuilt translucent tokens (`bg-surface-blur`, `bg-scrim-bg`, `bg-state-hover`…) or add a `color-mix()` var.
 - **Never write `undefined` to Firestore** — build optional fields conditionally.
 - **Timestamps are inconsistent by collection** (serverTimestamp vs ISO string vs `YYYY-MM-DD` key vs number) — check the writer before comparing/ordering. Table in [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
@@ -87,7 +88,7 @@ Multi-role SaaS ("Edify") with four role trees, each with a `'use client'` role-
 
 - Interactive pages/layouts are Client Components; Admin SDK strictly in API routes/server modules.
 - Route-local UI in `_components/` folders. Icons: `lucide-react`. Toasts: `react-hot-toast`. Class merging: `clsx` + `tailwind-merge`. Math: `katex`/`mathlive` via [components/LatexRenderer.tsx](components/LatexRenderer.tsx).
-- User-facing content is trilingual `{uz, ru, en}`; Uzbek is the default UI language. Teacher pages use inline `TRANSLATIONS` dicts + `useTeacherLanguage()`; student pages use `useStudentLanguage()`.
+- User-facing content is trilingual `{uz, ru, en}`; Uzbek is the default UI language. Teacher pages use inline `TRANSLATIONS` dicts + `useTeacherLanguage()`; student pages use `useStudentLanguage()`; manager pages use `useManagerLanguage()` (from `app/manager/_components/ManagerLanguage.tsx`).
 - AI flows follow **check permission → generate → deduct actual count** with the monthly gatekeeper ([docs/AI.md](docs/AI.md)).
 - Student pages use module-level 60s caches — mutations must patch the cache too.
 

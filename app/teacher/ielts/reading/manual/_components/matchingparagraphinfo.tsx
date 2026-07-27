@@ -2,11 +2,41 @@
 
 import { Plus, Trash2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
 
+const TRANSLATIONS = {
+  uz: {
+    instructionsPh: "Yo'riqnoma...",
+    availableParagraphs: "Mavjud paragraflar:",
+    optionsPh: "masalan: A, B, C, D, E",
+    statementPh: "Ma'lumot tasdig'i...",
+    foundIn: "Qayerda:",
+    addStatement: "Tasdiq qo'shish",
+  },
+  en: {
+    instructionsPh: "Instructions...",
+    availableParagraphs: "Available Paragraphs:",
+    optionsPh: "e.g. A, B, C, D, E",
+    statementPh: "Information statement...",
+    foundIn: "Found in:",
+    addStatement: "Add Statement",
+  },
+  ru: {
+    instructionsPh: "Инструкция...",
+    availableParagraphs: "Доступные абзацы:",
+    optionsPh: "напр.: A, B, C, D, E",
+    statementPh: "Утверждение с информацией...",
+    foundIn: "Находится в:",
+    addStatement: "Добавить утверждение",
+  },
+};
+
 export default function MatchingParagraphInfoBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
-  
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+
   // 1. LOCAL STATE FIX for smooth typing
   // Change Line 9 to this:
 const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '');
@@ -99,14 +129,14 @@ const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '')
       <div className="p-3">
         {/* INSTRUCTIONS */}
         <input 
-          type="text" placeholder="Instructions..." value={qb.instructions} 
-          onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
+          type="text" placeholder={t.instructionsPh} value={qb.instructions}
+          onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
           className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none mb-3 p-0"
         />
 
         {/* PARAGRAPH OPTIONS ARRAY EDITOR */}
         <div className="mb-3 flex items-center gap-2 flex-wrap bg-surface-container p-2 rounded-m3-sm border border-outline-variant transition-colors focus-within:border-primary focus-within:bg-[color-mix(in_oklab,var(--m3-primary)_5%,transparent)]">
-          <span className="text-[10px] font-bold text-on-surface-variant uppercase mr-2">Available Paragraphs:</span>
+          <span className="text-[10px] font-bold text-on-surface-variant uppercase mr-2">{t.availableParagraphs}</span>
           <input
             type="text"
             value={optsInput}
@@ -114,7 +144,7 @@ const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '')
             onBlur={handleOptsBlur} // Saves to JSON when clicked away
             onKeyDown={(e) => { if (e.key === 'Enter') handleOptsBlur(); }}
             className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-sm py-1 px-2 text-[11px] font-black text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary uppercase"
-            placeholder="e.g. A, B, C, D, E"
+            placeholder={t.optionsPh}
           />
         </div>
 
@@ -127,7 +157,7 @@ const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '')
               </span>
 
               <input
-                type="text" placeholder="Information statement..." value={row.statement}
+                type="text" placeholder={t.statementPh} value={row.statement}
                 onChange={e => updateRow(rIdx, 'statement', e.target.value)}
                 onKeyDown={e => handleKeyDown(e, rIdx)}
                 onPaste={e => handlePaste(e, rIdx)}
@@ -135,7 +165,7 @@ const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '')
               />
 
               <div className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 shrink-0">
-                <span className="text-[10px] font-bold text-on-surface-variant">Found in:</span>
+                <span className="text-[10px] font-bold text-on-surface-variant">{t.foundIn}</span>
                 <select
                   value={row.correct_answer}
                   onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)}
@@ -154,7 +184,7 @@ const [optsInput, setOptsInput] = useState<string>(qb.options?.join(', ') || '')
         </div>
 
         <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
-          Add Statement
+          {t.addStatement}
         </Button>
       </div>
     </div>

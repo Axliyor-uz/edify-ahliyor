@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Plus, CheckCircle, Settings2, LayoutGrid, Eye, ChevronsLeftRight, ArrowUp, ArrowDown, X } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 import { saveIeltsReadingTest } from '@/services/ieltsService';
 import { Button, IconButton, StatusChip, EmptyState } from '@/components/ui';
 
@@ -32,12 +33,50 @@ const T = {
   uz: {
     setup: "Yangi Test", desc: "Test parametrlarini kiriting",
     title: "Test nomi (masalan: Cambridge 18 Test 1)", time: "Vaqt (daq)", next: "Boshlash",
-    save: "Saqlash", saving: "Saqlanmoqda...", addBlock: "Yangi Savol Qo'shish", preview: "Ko'zdan kechirish"
+    save: "Saqlash", saving: "Saqlanmoqda...", addBlock: "Yangi Savol Qo'shish", preview: "Ko'zdan kechirish",
+    back: "Ortga", labelTitle: "Test nomi", labelTime: "Vaqt chegarasi",
+    deletePassageConfirm: "Haqiqatan ham bu matnni o'chirmoqchimisiz?",
+    deletePassageTitle: "Matnni o'chirish",
+    noQuestions: "Hozircha savollar qo'shilmagan.",
+    selectType: "Savol turini tanlang",
+    errNoTitle: "Test nomini kiriting!",
+    errNoPassageTitle: (n: number) => `Passage ${n}: Sarlavha kiritilmagan!`,
+    errNoInstructions: (n: number) => `Passage ${n}: Yo'riqnoma kiritilmagan!`,
+    errNoAnswer: (n: number, q: string | number) => `Passage ${n}, Savol ${q}: To'g'ri javob kiritilmagan!`,
+    saveSuccess: "Test muvaffaqiyatli saqlandi!",
+    saveError: "Saqlashda xatolik yuz berdi!"
   },
   en: {
     setup: "New Test", desc: "Initialize test parameters",
     title: "Test Title (e.g. Cambridge 18 Test 1)", time: "Time (mins)", next: "Initialize",
-    save: "Save", saving: "Saving...", addBlock: "Add Question Block", preview: "Preview"
+    save: "Save", saving: "Saving...", addBlock: "Add Question Block", preview: "Preview",
+    back: "Back", labelTitle: "Test Title", labelTime: "Time Limit",
+    deletePassageConfirm: "Are you sure you want to delete this passage?",
+    deletePassageTitle: "Delete Passage",
+    noQuestions: "No questions added yet.",
+    selectType: "Select Question Type",
+    errNoTitle: "Enter a test title!",
+    errNoPassageTitle: (n: number) => `Passage ${n}: title is missing!`,
+    errNoInstructions: (n: number) => `Passage ${n}: instructions are missing!`,
+    errNoAnswer: (n: number, q: string | number) => `Passage ${n}, Question ${q}: correct answer is missing!`,
+    saveSuccess: "Test saved successfully!",
+    saveError: "Failed to save!"
+  },
+  ru: {
+    setup: "Новый тест", desc: "Введите параметры теста",
+    title: "Название теста (например: Cambridge 18 Test 1)", time: "Время (мин)", next: "Начать",
+    save: "Сохранить", saving: "Сохранение...", addBlock: "Добавить блок вопросов", preview: "Предпросмотр",
+    back: "Назад", labelTitle: "Название теста", labelTime: "Лимит времени",
+    deletePassageConfirm: "Вы действительно хотите удалить этот текст?",
+    deletePassageTitle: "Удалить текст",
+    noQuestions: "Вопросы пока не добавлены.",
+    selectType: "Выберите тип вопроса",
+    errNoTitle: "Введите название теста!",
+    errNoPassageTitle: (n: number) => `Passage ${n}: не указан заголовок!`,
+    errNoInstructions: (n: number) => `Passage ${n}: не указана инструкция!`,
+    errNoAnswer: (n: number, q: string | number) => `Passage ${n}, вопрос ${q}: не указан правильный ответ!`,
+    saveSuccess: "Тест успешно сохранён!",
+    saveError: "Ошибка при сохранении!"
   }
 };
 
@@ -45,8 +84,8 @@ const LOCAL_STORAGE_KEY = 'ielts_reading_draft';
 
 export default function HighDensityBuilder() {
   const router = useRouter();
-  const lang = 'uz'; 
-  const t = T[lang];
+  const { lang } = useTeacherLanguage();
+  const t = T[lang] || T.uz;
 
   const [step, setStep] = useState<1 | 2>(1);
   const [activeTab, setActiveTab] = useState(0);
@@ -189,7 +228,7 @@ export default function HighDensityBuilder() {
   // 🌟 PASSAGE DELETION LOGIC
   const deletePassage = (idx: number) => {
     if (passages.length <= 1) return;
-    if (!confirm("Haqiqatan ham bu matnni o'chirmoqchimisiz?")) return;
+    if (!confirm(t.deletePassageConfirm)) return;
     
     const newPassages = [...passages];
     newPassages.splice(idx, 1);
@@ -280,13 +319,13 @@ export default function HighDensityBuilder() {
   };
 
   const validateTest = () => {
-    if (!meta.title.trim()) { toast.error("Test nomini kiriting!"); return false; }
+    if (!meta.title.trim()) { toast.error(t.errNoTitle); return false; }
     for (let i = 0; i < passages.length; i++) {
       const p = passages[i];
-      if (!p.title?.trim()) { setActiveTab(i); toast.error(`Passage ${p.passage_number}: Sarlavha kiritilmagan!`); return false; }
+      if (!p.title?.trim()) { setActiveTab(i); toast.error(t.errNoPassageTitle(p.passage_number)); return false; }
       for (let j = 0; j < p.questions.length; j++) {
         const qb = p.questions[j];
-        if (!qb.instructions?.trim()) { setActiveTab(i); toast.error(`Passage ${p.passage_number}: Yo'riqnoma kiritilmagan!`); return false; }
+        if (!qb.instructions?.trim()) { setActiveTab(i); toast.error(t.errNoInstructions(p.passage_number)); return false; }
         for (let k = 0; k < qb.questions.length; k++) {
           const q = qb.questions[k];
           let isAnswerMissing = false;
@@ -295,7 +334,7 @@ export default function HighDensityBuilder() {
           } else if (!q.correct_answer || !String(q.correct_answer).trim()) {
             isAnswerMissing = true;
           }
-          if (isAnswerMissing) { setActiveTab(i); toast.error(`Passage ${p.passage_number}, Savol ${q.question_number || '?'}: To'g'ri javob kiritilmagan!`); return false; }
+          if (isAnswerMissing) { setActiveTab(i); toast.error(t.errNoAnswer(p.passage_number, q.question_number || '?')); return false; }
         }
       }
     }
@@ -326,10 +365,10 @@ export default function HighDensityBuilder() {
 
       await saveIeltsReadingTest(finalPayload);
       localStorage.removeItem(LOCAL_STORAGE_KEY); 
-      toast.success("Test muvaffaqiyatli saqlandi!");
-      router.push('/teacher/ielts/reading'); 
+      toast.success(t.saveSuccess);
+      router.push('/teacher/ielts/reading');
     } catch (error) {
-      toast.error("Saqlashda xatolik yuz berdi!");
+      toast.error(t.saveError);
     } finally {
       setIsSaving(false);
     }
@@ -352,7 +391,7 @@ export default function HighDensityBuilder() {
           <motion.div key="setup" initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full px-3 bg-surface">
             <div className="w-full max-w-sm bg-surface-container-low border border-outline-variant p-8 rounded-m3-xl shadow-elev-1 relative">
               <Link href="/teacher/ielts/reading" className="absolute -top-10 left-0 text-on-surface-variant hover:text-on-surface flex items-center gap-1.5 transition-colors font-medium">
-                <ArrowLeft size={15}/> Ortga
+                <ArrowLeft size={15}/> {t.back}
               </Link>
               <div className="flex flex-col items-center text-center gap-3 mb-8">
                 <div className="w-14 h-14 bg-primary-container rounded-m3-lg flex items-center justify-center text-on-primary-container"><Settings2 size={24} strokeWidth={2.5} /></div>
@@ -360,11 +399,11 @@ export default function HighDensityBuilder() {
               </div>
               <div className="space-y-5">
                 <div>
-                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 ml-1">Test Title</label>
+                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 ml-1">{t.labelTitle}</label>
                   <input type="text" value={meta.title} onChange={e => setMeta({...meta, title: e.target.value})} placeholder={t.title} className="w-full bg-surface-container border border-outline-variant px-4 py-3.5 rounded-m3-md text-[14px] font-semibold focus:outline-none focus:border-primary focus:bg-surface-container-lowest transition-colors text-on-surface placeholder:text-on-surface-variant shadow-elev-1" autoFocus />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 ml-1">Time Limit</label>
+                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 ml-1">{t.labelTime}</label>
                   <div className="bg-surface-container border border-outline-variant rounded-m3-md px-4 py-3 flex items-center justify-between focus-within:border-primary focus-within:bg-surface-container-lowest transition-colors shadow-elev-1">
                     <span className="text-[13px] text-on-surface-variant font-bold">{t.time}</span>
                     <input type="number" value={meta.time} onChange={e => setMeta({...meta, time: +e.target.value})} className="w-16 bg-transparent text-right text-[15px] font-black outline-none text-primary" />
@@ -384,7 +423,7 @@ export default function HighDensityBuilder() {
             {/* 🌟 REDUCED HEADER HEIGHT & PADDING */}
             <header className="flex-none h-12 bg-surface-container-low border-b border-outline-variant px-4 flex items-center justify-between z-40 shadow-elev-1">
               <div className="flex items-center gap-4">
-                <IconButton aria-label="Ortga" size="sm" onClick={() => setStep(1)}><ArrowLeft size={16} /></IconButton>
+                <IconButton aria-label={t.back} size="sm" onClick={() => setStep(1)}><ArrowLeft size={16} /></IconButton>
                 <h1 className="font-black text-[13px] text-on-surface max-w-[200px] md:max-w-[300px] truncate">{meta.title}</h1>
 
                 <StatusChip tone={totalQuestionsCount === 40 ? 'success' : 'warning'} className="text-[10px] font-black uppercase select-none">
@@ -407,7 +446,7 @@ export default function HighDensityBuilder() {
                           onClick={(e) => { e.stopPropagation(); deletePassage(idx); }}
                           className={`w-4 h-4 rounded-full flex items-center justify-center transition-colors
                             ${activeTab === idx ? 'text-on-surface-variant hover:bg-error-container hover:text-on-error-container' : 'opacity-0 group-hover/tab:opacity-100 text-on-surface-variant hover:bg-error-container hover:text-on-error-container'}`}
-                          title="Delete Passage"
+                          title={t.deletePassageTitle}
                         >
                           <X size={10} strokeWidth={3} />
                         </button>
@@ -449,7 +488,7 @@ export default function HighDensityBuilder() {
 
                   {passages[activeTab].questions.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center pb-20">
-                       <EmptyState icon={<LayoutGrid strokeWidth={1.5} />} title="No questions added yet." />
+                       <EmptyState icon={<LayoutGrid strokeWidth={1.5} />} title={t.noQuestions} />
                     </div>
                   ) : (
                     passages[activeTab].questions.map((qb: any, qbIdx: number) => {
@@ -503,7 +542,7 @@ export default function HighDensityBuilder() {
                           style={{ transformOrigin: "bottom center" }}
                           className="absolute bottom-[130%] left-1/2 w-max max-w-[calc(100vw-2rem)] bg-surface-container-low rounded-m3-lg border border-outline-variant p-3 shadow-elev-3 z-50"
                         >
-                          <div className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-2 px-2">Select Question Type</div>
+                          <div className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-2 px-2">{t.selectType}</div>
                           <div className="grid grid-cols-2 gap-1.5 w-[380px]">
                             {[
                               { type: 'matching_headings', label: 'Matching Headings' },

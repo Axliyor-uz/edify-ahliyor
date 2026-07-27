@@ -28,7 +28,8 @@ const EXPLORE_TRANSLATIONS: any = {
     requestBtn: "Qo'shilish", pendingBtn: "Kutilmoqda", joinedBtn: "Qo'shilgansiz", closedBtn: "Yopiq",
     success: "So'rov yuborildi!", fail: "So'rov yuborilmadi.",
     centerManaged: "Bu guruh o'quv markazi tomonidan boshqariladi — qo'shilish uchun markazga murojaat qiling.",
-    alreadyPending: "So'rovingiz allaqachon yuborilgan."
+    alreadyPending: "So'rovingiz allaqachon yuborilgan.",
+    unknownTeacher: "Noma'lum o'qituvchi", defaultBio: "Usta o'qituvchi", noDescription: "Tavsif berilmagan."
   },
   en: {
     title: "Top Instructors", subtitle: "Discover master teachers.",
@@ -38,7 +39,8 @@ const EXPLORE_TRANSLATIONS: any = {
     requestBtn: "Request to Join", pendingBtn: "Requested", joinedBtn: "Joined", closedBtn: "Closed",
     success: "Request sent successfully!", fail: "Could not send the request.",
     centerManaged: "This group is managed by a learning center — contact the center to enroll.",
-    alreadyPending: "You already have a pending request."
+    alreadyPending: "You already have a pending request.",
+    unknownTeacher: "Unknown Teacher", defaultBio: "Master Instructor", noDescription: "No description provided."
   },
   ru: {
     title: "Лучшие Преподаватели", subtitle: "Найдите мастеров своего дела.",
@@ -48,7 +50,8 @@ const EXPLORE_TRANSLATIONS: any = {
     requestBtn: "Присоединиться", pendingBtn: "В ожидании", joinedBtn: "Вы в классе", closedBtn: "Закрыто",
     success: "Запрос отправлен!", fail: "Не удалось отправить запрос.",
     centerManaged: "Эта группа управляется учебным центром — для записи обратитесь в центр.",
-    alreadyPending: "Ваш запрос уже отправлен."
+    alreadyPending: "Ваш запрос уже отправлен.",
+    unknownTeacher: "Неизвестный преподаватель", defaultBio: "Мастер своего дела", noDescription: "Описание отсутствует."
   }
 };
 
@@ -279,7 +282,7 @@ export default function ExploreTeachersPage() {
                       <div className="min-w-0 flex-1">
                         <Chip status="gold">#{index + 1}</Chip>
                         <h3 className="s-display mt-2 truncate text-[22px] font-bold leading-tight md:text-[26px]">
-                          {teacher.displayName || "Unknown Teacher"}
+                          {teacher.displayName || t.unknownTeacher}
                         </h3>
                         {teacher.username && (
                           <p className="truncate text-[14px] font-bold text-on-surface-variant">
@@ -368,7 +371,7 @@ export default function ExploreTeachersPage() {
                     {selectedTeacher.displayName}
                   </h2>
                   <p className="mt-1 text-[14px] font-bold text-on-surface-variant">
-                    {selectedTeacher.bio || "Master Instructor"}
+                    {selectedTeacher.bio || t.defaultBio}
                   </p>
                   <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
                     <Chip status="gold" size="md" icon={<Users size={14} />}>
@@ -402,7 +405,7 @@ export default function ExploreTeachersPage() {
                       <Card key={cls.id} className="flex flex-col">
                         <h4 className="s-display truncate text-[17px] font-bold">{cls.title}</h4>
                         <p className="mt-1 line-clamp-2 h-10 text-[13.5px] font-bold text-on-surface-variant">
-                          {cls.description || "No description provided."}
+                          {cls.description || t.noDescription}
                         </p>
 
                         <div className="mt-5 flex items-center justify-between gap-3 border-t border-outline-variant pt-4">

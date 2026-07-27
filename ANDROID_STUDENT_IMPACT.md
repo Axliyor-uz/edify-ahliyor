@@ -10,3 +10,4 @@ Format: `- YYYY-MM-DD | <files> | <what the Android student app must mirror>`
      questionSchema, Exam*/RASCH* libs, checkers). Synced through the commit that
      introduces this file. -->
 <!-- synced through 986f880 by EdifyStudent sync (2026-07-21) -->
+<!-- 2026-07-24 | app/(student)/layout.tsx, components/student-ui/Shell.tsx + shellStyles.ts (new), design.config.ts, plus translation completion across app/(student)/** (exam review, ielts hub/join, exam runner, checkers, explore). Client-only: many new nav shell/bar variants (App_shell_navigation renamed shell_a/b/c→rail/sidebar/topbar + classic/tonal/inverse/gradient/minimal/floating; Mobile_navigation adds iconic/topline) and finished uz/ru/en coverage. NO Firestore shape or API contract changes — nothing functional to mirror. -->

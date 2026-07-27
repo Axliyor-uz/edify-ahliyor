@@ -96,11 +96,11 @@ const TRANSLATIONS = {
     mode: "Rejim", pvp_local: "1 qurilmada", pvp_online: "Do'st bilan", pve: "Botga qarshi", diff: "Qiyinchilik",
     levels: { 1: "Oson", 2: "Yengil", 3: "O'rtacha", 4: "Qiyin", 5: "Grosmeyster" },
     start: "Boshlash", botThinking: "O'ylamoqda...",
-    youRed: "Siz (Qizil)", opponentBlack: "Raqib (Qora)",
+    youRed: "Siz (Qizil)", youBlack: "Siz (Qora)", you: "Siz", opponentBlack: "Raqib (Qora)", opponentRed: "Raqib (Qizil)", online: "Onlayn",
     resultTitleWin: "G'alaba!", resultTitleLose: "Mag'lubiyat", resultTitleDraw: "Durrang",
     xpEarned: "XP olindi", playAgain: "Yana o'ynash", exit: "Chiqish",
     createRoom: "Xona yaratish", joinRoom: "Kirish", enterCode: "4 xonali kod", waiting: "Do'st kutilmoqda...", roomCode: "Xona kodi:",
-    resign: "Taslim bo'lish", opponentResigned: "Raqib taslim bo'ldi!",
+    resign: "Taslim bo'lish", opponentResigned: "Raqib taslim bo'ldi!", roomNotFound: "Xona topilmadi yoki band.",
     turnIndicatorMine: "Sizning navbat", turnIndicatorTheirs: "Raqib navbati",
     boardTheme: "Taxta", themes: { wood: "Yog'och", green: "Turnir", slate: "Tungi" },
   },
@@ -109,11 +109,11 @@ const TRANSLATIONS = {
     mode: "Mode", pvp_local: "Local 2P", pvp_online: "Play online", pve: "vs AI", diff: "Difficulty",
     levels: { 1: "Beginner", 2: "Easy", 3: "Medium", 4: "Hard", 5: "Grandmaster" },
     start: "Start", botThinking: "Thinking...",
-    youRed: "You (Red)", opponentBlack: "Opponent (Black)",
+    youRed: "You (Red)", youBlack: "You (Black)", you: "You", opponentBlack: "Opponent (Black)", opponentRed: "Opponent (Red)", online: "Online",
     resultTitleWin: "Victory!", resultTitleLose: "Defeat", resultTitleDraw: "Draw",
     xpEarned: "XP earned", playAgain: "Play again", exit: "Exit",
     createRoom: "Create room", joinRoom: "Join", enterCode: "4-digit code", waiting: "Waiting for friend...", roomCode: "Room code:",
-    resign: "Resign", opponentResigned: "Opponent resigned!",
+    resign: "Resign", opponentResigned: "Opponent resigned!", roomNotFound: "Room not found or active.",
     turnIndicatorMine: "Your turn", turnIndicatorTheirs: "Opponent's turn",
     boardTheme: "Board", themes: { wood: "Wood", green: "Tournament", slate: "Night" },
   },
@@ -122,11 +122,11 @@ const TRANSLATIONS = {
     mode: "Режим", pvp_local: "На 1 устройстве", pvp_online: "Онлайн", pve: "Против бота", diff: "Сложность",
     levels: { 1: "Новичок", 2: "Легкий", 3: "Средний", 4: "Сложный", 5: "Гроссмейстер" },
     start: "Начать", botThinking: "Думает...",
-    youRed: "Вы (Красный)", opponentBlack: "Противник (Черный)",
+    youRed: "Вы (Красный)", youBlack: "Вы (Черный)", you: "Вы", opponentBlack: "Противник (Черный)", opponentRed: "Противник (Красный)", online: "Онлайн",
     resultTitleWin: "Победа!", resultTitleLose: "Поражение", resultTitleDraw: "Ничья",
     xpEarned: "Получено XP", playAgain: "Играть снова", exit: "Выход",
     createRoom: "Создать комнату", joinRoom: "Войти", enterCode: "4-значный код", waiting: "Ожидание друга...", roomCode: "Код:",
-    resign: "Сдаться", opponentResigned: "Противник сдался!",
+    resign: "Сдаться", opponentResigned: "Противник сдался!", roomNotFound: "Комната не найдена или уже занята.",
     turnIndicatorMine: "Ваш ход", turnIndicatorTheirs: "Ход противника",
     boardTheme: "Доска", themes: { wood: "Дерево", green: "Турнир", slate: "Ночь" },
   }
@@ -276,7 +276,7 @@ export default function CheckersGame() {
         transaction.update(roomRef, { guest: user.uid, status: 'playing' });
         return snap.data();
       });
-      if (!joined) return sToast.error("Room not found or active.");
+      if (!joined) return sToast.error(t.roomNotFound);
 
       resetLocalGame();
       setRoomCode(joinCodeInput);
@@ -287,7 +287,7 @@ export default function CheckersGame() {
       setMoveCount(joined.moveCount || 0);
       setAppState('playing');
     } catch {
-      sToast.error("Room not found or active.");
+      sToast.error(t.roomNotFound);
     }
   };
 
@@ -877,9 +877,9 @@ export default function CheckersGame() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="s-display truncate text-[16px] font-bold">
-                    {mode === 'pve' ? t.opponentBlack : mode === 'pvp_online' ? (myColor === 'red' ? "Raqib (Qora)" : "Raqib (Qizil)") : "Raqib (Qora)"}
+                    {mode === 'pve' ? t.opponentBlack : mode === 'pvp_online' ? (myColor === 'red' ? t.opponentBlack : t.opponentRed) : t.opponentBlack}
                   </h3>
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">{mode === 'pve' ? t.levels[difficulty] : 'Online'}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">{mode === 'pve' ? t.levels[difficulty] : t.online}</span>
                 </div>
               </div>
               {turn !== myColor && <span className="h-3.5 w-3.5 shrink-0 animate-pulse rounded-full bg-gold"/>}
@@ -894,9 +894,9 @@ export default function CheckersGame() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="s-display truncate text-[16px] font-bold">
-                    {mode === 'pvp_online' && myColor === 'black' ? "Siz (Qora)" : "Siz (Qizil)"}
+                    {mode === 'pvp_online' && myColor === 'black' ? t.youBlack : t.youRed}
                   </h3>
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Siz</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">{t.you}</span>
                 </div>
               </div>
               {turn === myColor && <span className="h-3.5 w-3.5 shrink-0 animate-pulse rounded-full bg-primary"/>}

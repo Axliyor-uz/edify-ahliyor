@@ -7,7 +7,7 @@
 ## Cross-cutting
 
 - Layout gate: `role==='teacher'` (see [AUTH.md](AUTH.md)).
-- `TeacherLanguageContext` (`app/teacher/layout.tsx`): `useTeacherLanguage()` → `lang ∈ uz|en|ru`, **not persisted** (resets to uz on reload). Pattern: every page/modal defines its own inline `TRANSLATIONS` dict and picks `TRANSLATIONS[lang] || TRANSLATIONS['uz']`. Hardcoded Uzbek strings still leak (toasts, grade page).
+- `TeacherLanguageContext` (`app/teacher/layout.tsx`): `useTeacherLanguage()` → `lang ∈ uz|en|ru`, **persisted per-device** in localStorage `edify-teacher-lang` (restored post-hydration; SSR shell renders uz). Pattern: every page/modal defines its own inline `TRANSLATIONS` dict and picks `TRANSLATIONS[lang] || TRANSLATIONS['uz']`. Hardcoded Uzbek strings still leak (toasts, grade page).
 - AI balance widget: `hooks/useMonthlyLimit.ts` — live `onSnapshot(users/{uid})`, `currentLimits.monthlyAiQuestions` (default 100), `usage.aiQuestionsUsed`, unlimited at ≥5000, danger at 80%.
 - ⚠️ Nav entries for **subscription** and **ielts** are commented out in the layout even though both routes are fully built (subscription reachable only via the AI-balance "Buy Credits" button).
 - **Design system:** the ENTIRE teacher tree is styled with the M3 UI kit (`components/ui/*`, tokens only — no raw colors). Read [UI_KIT.md](UI_KIT.md) before styling any teacher page.

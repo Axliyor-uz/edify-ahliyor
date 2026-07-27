@@ -31,7 +31,7 @@ const ASSIGN_MODAL_TRANSLATIONS = {
       presets: { plus1: "+1 Kun", plus3: "+3 Kun", plus7: "+7 Kun", clear: "Tozalash" },
       assignTo: "Kimga Biriktirish", all: "Barcha O'quvchilar", individual: "Ayrim O'quvchilar", noStudents: "Sinfda o'quvchilar yo'q."
     },
-    buttons: { back: "Ortga", next: "Keyingi qadam", publish: "Topshiriqni Nashr Qilish", save: "O'zgarishlarni Saqlash", select: "Testni tanlang" },
+    buttons: { back: "Ortga", next: "Keyingi qadam", publish: "Topshiriqni Nashr Qilish", save: "O'zgarishlarni Saqlash", select: "Testni tanlang", close: "Yopish" },
     toasts: { updated: "Topshiriq Yangilandi!", published: "Topshiriq Nashr Qilindi!", fail: "Xatolik yuz berdi", needDue: "Bu test natijalarni muddatdan keyin ko'rsatadi — muddat (deadline) belgilang" }
   },
   en: {
@@ -47,7 +47,7 @@ const ASSIGN_MODAL_TRANSLATIONS = {
       presets: { plus1: "+1 Day", plus3: "+3 Days", plus7: "+7 Days", clear: "Clear" },
       assignTo: "Assign To", all: "All Students", individual: "Select Individuals", noStudents: "No students in class yet."
     },
-    buttons: { back: "Back", next: "Next Step", publish: "Publish Assignment", save: "Save Changes", select: "Select a test" },
+    buttons: { back: "Back", next: "Next Step", publish: "Publish Assignment", save: "Save Changes", select: "Select a test", close: "Close" },
     toasts: { updated: "Assignment Updated!", published: "Assignment Published!", fail: "Failed to save", needDue: "This test reveals results after the due date — set a deadline first" }
   },
   ru: {
@@ -63,7 +63,7 @@ const ASSIGN_MODAL_TRANSLATIONS = {
       presets: { plus1: "+1 День", plus3: "+3 Дня", plus7: "+7 Дней", clear: "Очистить" },
       assignTo: "Кому Назначить", all: "Всем Ученикам", individual: "Выбрать Индивидуально", noStudents: "В классе нет учеников."
     },
-    buttons: { back: "Назад", next: "Далее", publish: "Опубликовать", save: "Сохранить Изменения", select: "Выберите тест" },
+    buttons: { back: "Назад", next: "Далее", publish: "Опубликовать", save: "Сохранить Изменения", select: "Выберите тест", close: "Закрыть" },
     toasts: { updated: "Задание Обновлено!", published: "Опубликовано!", fail: "Ошибка сохранения", needDue: "Этот тест показывает результаты после дедлайна — укажите срок сдачи" }
   }
 };
@@ -301,7 +301,7 @@ export default function AssignTestModal({ classId, isOpen, onClose, roster, edit
               {editData ? t.titleEdit : (step === 1 ? t.titleCreate : t.titleConfig)}
             </h2>
           </div>
-          <IconButton aria-label="Yopish" size="sm" onClick={onClose} className="shrink-0">
+          <IconButton aria-label={t.buttons.close} size="sm" onClick={onClose} className="shrink-0">
             <X strokeWidth={2.5} />
           </IconButton>
         </div>

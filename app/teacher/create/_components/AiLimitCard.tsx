@@ -3,12 +3,60 @@
 import { useState, useEffect } from "react";
 import { Clock, Info, X, Zap, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTeacherLanguage } from "@/app/teacher/layout";
+
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    limitDone: "Limit tugadi ",
+    aiLimit: "AI Limit ",
+    info: "Ma'lumot",
+    titleReached: "Bugungi AI limiti tugadi",
+    titleNormal: "Sizning kunlik AI limitingiz",
+    descReached: (limit: number) => `Siz bugun barcha ${limit} ta bepul savollarni yaratdingiz. Belgilangan vaqt o'tgandan so'ng, yana bepul savollar yaratishingiz mumkin.`,
+    descNormal: (used: number, remaining: number) => `Siz bugun ${used} ta savol yaratdingiz. Yana ${remaining} ta bepul savol yaratish imkoniyatingiz mavjud.`,
+    canCreateAgain: "Yana yaratish mumkin:",
+    resetsIn: "Limit yangilanishiga qoldi:",
+    hm: (h: number, m: number) => `${h}s ${m}d`,
+    increaseLimit: "Limitni oshirish",
+    close: "Yopish",
+  },
+  en: {
+    limitDone: "Limit reached ",
+    aiLimit: "AI Limit ",
+    info: "Info",
+    titleReached: "Today's AI limit is reached",
+    titleNormal: "Your daily AI limit",
+    descReached: (limit: number) => `You have created all ${limit} free questions today. After the set time passes, you can create free questions again.`,
+    descNormal: (used: number, remaining: number) => `You have created ${used} questions today. You can create ${remaining} more free questions.`,
+    canCreateAgain: "Can create again in:",
+    resetsIn: "Limit resets in:",
+    hm: (h: number, m: number) => `${h}h ${m}m`,
+    increaseLimit: "Increase limit",
+    close: "Close",
+  },
+  ru: {
+    limitDone: "Лимит исчерпан ",
+    aiLimit: "Лимит ИИ ",
+    info: "Информация",
+    titleReached: "Дневной лимит ИИ исчерпан",
+    titleNormal: "Ваш дневной лимит ИИ",
+    descReached: (limit: number) => `Сегодня вы создали все ${limit} бесплатных вопросов. По истечении указанного времени вы снова сможете создавать бесплатные вопросы.`,
+    descNormal: (used: number, remaining: number) => `Сегодня вы создали ${used} вопросов. У вас есть возможность создать ещё ${remaining} бесплатных вопросов.`,
+    canCreateAgain: "Снова доступно через:",
+    resetsIn: "До обновления лимита:",
+    hm: (h: number, m: number) => `${h}ч ${m}м`,
+    increaseLimit: "Увеличить лимит",
+    close: "Закрыть",
+  },
+};
 
 interface AiLimitCardProps {
-  aiData: any; 
+  aiData: any;
 }
 
 export default function AiLimitCard({ aiData }: AiLimitCardProps) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [timeLeft, setTimeLeft] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -27,14 +75,14 @@ export default function AiLimitCard({ aiData }: AiLimitCardProps) {
       const h = Math.floor(diffMs / (1000 * 60 * 60));
       const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
       
-      setTimeLeft(`${h}s ${m}d`); 
+      setTimeLeft(t.hm(h, m));
     };
 
-    updateTimer(); 
-    const interval = setInterval(updateTimer, 60000); 
-    
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000);
+
     return () => clearInterval(interval);
-  }, [aiData]);
+  }, [aiData, t]);
 
   // 🟢 CHANGED: We removed the "return null" so it ALWAYS shows up.
   if (!aiData) return null;
@@ -56,7 +104,7 @@ export default function AiLimitCard({ aiData }: AiLimitCardProps) {
         <Zap size={14} className={isReached ? "text-indigo-500" : "text-amber-500"} />
         
         <span className={`text-[11px] md:text-[13px] font-bold whitespace-nowrap ${isReached ? "text-indigo-800" : "text-slate-700"}`}>
-          <span className="hidden sm:inline">{isReached ? "Limit tugadi " : "AI Limit "}</span>
+          <span className="hidden sm:inline">{isReached ? t.limitDone : t.aiLimit}</span>
           <span className={isReached ? "opacity-70" : "text-slate-500"}>({aiData.used}/{aiData.limit})</span>
         </span>
         
@@ -65,7 +113,7 @@ export default function AiLimitCard({ aiData }: AiLimitCardProps) {
         <div className="flex items-center gap-1.5">
           <Info size={14} className={isReached ? "text-indigo-500" : "text-slate-400"} />
           <span className={`text-[11px] md:text-[12px] font-bold whitespace-nowrap hidden sm:block ${isReached ? "text-indigo-600" : "text-slate-500"}`}>
-            Ma'lumot
+            {t.info}
           </span>
         </div>
       </button>
@@ -91,19 +139,19 @@ export default function AiLimitCard({ aiData }: AiLimitCardProps) {
               </div>
 
               <h3 className="text-[17px] font-black text-slate-900 mb-2 tracking-tight">
-                {isReached ? "Bugungi AI limiti tugadi" : "Sizning kunlik AI limitingiz"}
+                {isReached ? t.titleReached : t.titleNormal}
               </h3>
-              
+
               <p className="text-[13px] text-slate-500 mb-5 font-medium leading-relaxed">
-                {isReached 
-                  ? `Siz bugun barcha ${aiData.limit} ta bepul savollarni yaratdingiz. Belgilangan vaqt o'tgandan so'ng, yana bepul savollar yaratishingiz mumkin.`
-                  : `Siz bugun ${aiData.used} ta savol yaratdingiz. Yana ${aiData.remaining} ta bepul savol yaratish imkoniyatingiz mavjud.`
+                {isReached
+                  ? t.descReached(aiData.limit)
+                  : t.descNormal(aiData.used, aiData.remaining)
                 }
               </p>
 
               <div className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 mb-5 relative overflow-hidden">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">
-                  {isReached ? "Yana yaratish mumkin:" : "Limit yangilanishiga qoldi:"}
+                  {isReached ? t.canCreateAgain : t.resetsIn}
                 </p>
                 <div className="flex items-center justify-center gap-2 relative z-10">
                   <Clock size={16} className={isReached ? "text-indigo-500" : "text-slate-500"} />
@@ -119,11 +167,11 @@ export default function AiLimitCard({ aiData }: AiLimitCardProps) {
                   className="w-full py-3 bg-[#0088cc] hover:bg-[#0077b3] text-white font-bold rounded-xl shadow-md shadow-blue-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-[14px]"
                 >
                   <Send size={16} />
-                  <span>Limitni oshirish</span>
+                  <span>{t.increaseLimit}</span>
                 </button>
-                
+
                 <button onClick={() => setIsModalOpen(false)} className="w-full py-3 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 font-bold rounded-xl transition-all active:scale-[0.98] text-[14px]">
-                  Yopish
+                  {t.close}
                 </button>
               </div>
 

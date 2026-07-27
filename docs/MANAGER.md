@@ -14,7 +14,7 @@ Everything a learning-center manager does outside the attendance/rooms/finance s
 
 | File | Responsibility |
 |---|---|
-| `app/manager/layout.tsx` | Role gate (`role==='manager'`, fail-closed), resolves center name + `status`, wraps pages in `ApprovalGate` |
+| `app/manager/layout.tsx` | Role gate (`role==='manager'`, fail-closed), resolves center name + `status`, wraps pages in `ApprovalGate`; since 2026-07-23 also renders the switchboard-driven shell (nav variants, dark toggle) — see [MANAGER_UI.md](MANAGER_UI.md); trilingual uz/ru/en via `_components/ManagerLanguage.tsx` (`useManagerLanguage()`, localStorage `edify-manager-lang`, flag switcher in the profile popover) — pages carry per-file `TRANSLATIONS` dicts |
 | `app/manager/_components/ApprovalGate.tsx` | pending/suspended notice + click-blocking overlay (UX only — rules are the boundary) |
 | `hooks/useCenterClasses.ts` | **THE center-membership derivation**: `classes where centerId==X` (+ `center_teachers where centerId==X` for the teachers roster) |
 | `app/manager/groups/**` | Group list, create modal, detail tabs (roster / schedule / oversight / settings) |

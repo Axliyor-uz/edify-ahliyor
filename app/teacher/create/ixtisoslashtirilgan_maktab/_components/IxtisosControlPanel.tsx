@@ -4,6 +4,58 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, ChevronRight, Minus, Plus, Wand2, Layers, BookMarked, Settings2, Zap, GraduationCap, BookOpen } from "lucide-react";
 
 import { Button, Spinner, cn } from "@/components/ui";
+import { useTeacherLanguage } from "@/app/teacher/layout";
+
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    difficulties: { easy: "Oson", medium: "O'rtacha", hard: "Murakkab", olympiad: "Olimpiada" },
+    limitMsg: (remaining: number) => `Sizda oylik limitdan faqatgina ${remaining} ta savol qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`,
+    selectClass: "Sinfni tanlang",
+    selectClassPh: "Sinfni tanlang...",
+    selectSubject: "Fanni tanlang",
+    selectSubjectPh: "Fanni tanlang...",
+    learningTopic: "O'quv mavzusi",
+    selectTopicPh: "Mavzuni tanlang...",
+    settings: "Sozlamalar",
+    questionCount: "Savollar soni",
+    warnPre: "Sizda faqat ",
+    warnPost: " ta savol yaratish limiti qoldi.",
+    generating: "Yaratilmoqda...",
+    generate: "Savol Yaratish",
+  },
+  en: {
+    difficulties: { easy: "Easy", medium: "Medium", hard: "Hard", olympiad: "Olympiad" },
+    limitMsg: (remaining: number) => `You have only ${remaining} questions left in your monthly limit. Please reduce the requested amount or upgrade your plan.`,
+    selectClass: "Select a grade",
+    selectClassPh: "Select a grade...",
+    selectSubject: "Select a subject",
+    selectSubjectPh: "Select a subject...",
+    learningTopic: "Learning topic",
+    selectTopicPh: "Select a topic...",
+    settings: "Settings",
+    questionCount: "Number of questions",
+    warnPre: "You have only ",
+    warnPost: " question creation credits left.",
+    generating: "Generating...",
+    generate: "Generate Questions",
+  },
+  ru: {
+    difficulties: { easy: "Лёгкий", medium: "Средний", hard: "Сложный", olympiad: "Олимпиада" },
+    limitMsg: (remaining: number) => `В вашем месячном лимите осталось всего ${remaining} вопросов. Пожалуйста, уменьшите запрашиваемое количество или повысьте тариф.`,
+    selectClass: "Выберите класс",
+    selectClassPh: "Выберите класс...",
+    selectSubject: "Выберите предмет",
+    selectSubjectPh: "Выберите предмет...",
+    learningTopic: "Учебная тема",
+    selectTopicPh: "Выберите тему...",
+    settings: "Настройки",
+    questionCount: "Количество вопросов",
+    warnPre: "У вас осталось всего ",
+    warnPost: " на создание вопросов.",
+    generating: "Создаётся...",
+    generate: "Создать вопросы",
+  },
+};
 
 const formatSubjectName = (rawSubject: string) => {
   if (!rawSubject) return "";
@@ -47,12 +99,14 @@ export default function IxtisosControlPanel({
   isLoadingSyllabus, isReadyToGenerate, isGenerating, handleGenerate,
   aiData, setIsLimitModalOpen, setLimitModalMessage
 }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
 
   const onGenerateClick = () => {
     // Pre-check limits
     if (!aiData?.isUnlimited && aiData?.remaining < count) {
       if (setLimitModalMessage) {
-        setLimitModalMessage(`Sizda oylik limitdan faqatgina ${aiData.remaining} ta savol qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`);
+        setLimitModalMessage(t.limitMsg(aiData.remaining));
       }
       setIsLimitModalOpen(true);
       return;
@@ -68,7 +122,7 @@ export default function IxtisosControlPanel({
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <StepBadge done={!!selectedClass} num="1" />
-            <h3 className={cn("text-[14px] font-bold", selectedClass ? "text-success" : "text-on-surface")}>Sinfni tanlang</h3>
+            <h3 className={cn("text-[14px] font-bold", selectedClass ? "text-success" : "text-on-surface")}>{t.selectClass}</h3>
           </div>
 
           <div className="pl-8">
@@ -79,7 +133,7 @@ export default function IxtisosControlPanel({
                   <span className="text-[15px] font-bold text-on-surface">{selectedClass}</span>
                 </div>
               ) : (
-                <span className="text-[14px] font-bold text-on-surface-variant pl-2">Sinfni tanlang...</span>
+                <span className="text-[14px] font-bold text-on-surface-variant pl-2">{t.selectClassPh}</span>
               )}
               <ChevronRight size={20} className="text-on-surface-variant group-hover:text-tertiary transition-colors shrink-0" />
             </button>
@@ -92,7 +146,7 @@ export default function IxtisosControlPanel({
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 pt-4 border-t border-outline-variant">
               <div className="flex items-center gap-2">
                 <StepBadge done={!!selectedSubject} num="2" />
-                <h3 className={cn("text-[14px] font-bold", selectedSubject ? "text-success" : "text-on-surface")}>Fanni tanlang</h3>
+                <h3 className={cn("text-[14px] font-bold", selectedSubject ? "text-success" : "text-on-surface")}>{t.selectSubject}</h3>
               </div>
 
               <div className="pl-8">
@@ -103,7 +157,7 @@ export default function IxtisosControlPanel({
                       <span className="text-[15px] font-bold text-on-surface">{formatSubjectName(selectedSubject)}</span>
                     </div>
                   ) : (
-                    <span className="text-[14px] font-bold text-on-surface-variant pl-2">Fanni tanlang...</span>
+                    <span className="text-[14px] font-bold text-on-surface-variant pl-2">{t.selectSubjectPh}</span>
                   )}
                   <ChevronRight size={20} className="text-on-surface-variant group-hover:text-tertiary transition-colors shrink-0" />
                 </button>
@@ -119,7 +173,7 @@ export default function IxtisosControlPanel({
               <div className="flex items-center gap-2 justify-between">
                 <div className="flex items-center gap-2">
                   <StepBadge done={!!activeSubtopic} num="3" />
-                  <h3 className={cn("text-[14px] font-bold", activeSubtopic ? "text-success" : "text-on-surface")}>O'quv mavzusi</h3>
+                  <h3 className={cn("text-[14px] font-bold", activeSubtopic ? "text-success" : "text-on-surface")}>{t.learningTopic}</h3>
                 </div>
                 {isLoadingSyllabus && <Spinner size={14} />}
               </div>
@@ -134,7 +188,7 @@ export default function IxtisosControlPanel({
                   ) : (
                     <div className="flex items-center gap-3 text-on-surface-variant">
                       <div className="w-10 h-10 rounded-m3-md bg-surface-container-lowest flex items-center justify-center shadow-elev-1 group-hover:text-tertiary transition-colors"><Layers size={20} /></div>
-                      <span className="text-[14px] font-bold">Mavzuni tanlang...</span>
+                      <span className="text-[14px] font-bold">{t.selectTopicPh}</span>
                     </div>
                   )}
                   <ChevronRight size={20} className="text-on-surface-variant group-hover:text-tertiary transition-colors shrink-0" />
@@ -152,7 +206,7 @@ export default function IxtisosControlPanel({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <StepBadge done={false} num="4" />
-                  <h3 className="text-[14px] font-bold text-on-surface">Sozlamalar</h3>
+                  <h3 className="text-[14px] font-bold text-on-surface">{t.settings}</h3>
                 </div>
 
                 <div className="pl-8 space-y-5">
@@ -171,7 +225,7 @@ export default function IxtisosControlPanel({
                               : "bg-surface-container-lowest border-outline-variant text-on-surface-variant hover:text-on-surface",
                           )}
                         >
-                          {diff.label}
+                          {t.difficulties[diff.id] || diff.label}
                         </button>
                       )
                     })}
@@ -179,7 +233,7 @@ export default function IxtisosControlPanel({
 
                   {/* Count & Limits */}
                   <div className="flex items-center justify-between bg-surface-container-lowest border border-outline-variant p-3 rounded-m3-lg shadow-elev-1">
-                    <span className="text-[13px] font-bold text-on-surface-variant flex items-center gap-2"><Settings2 size={16} className="text-tertiary" /> Savollar soni</span>
+                    <span className="text-[13px] font-bold text-on-surface-variant flex items-center gap-2"><Settings2 size={16} className="text-tertiary" /> {t.questionCount}</span>
                     <div className="flex items-center gap-4">
                       <button onClick={() => setCount((prev: number) => Math.max(1, prev - 1))} className="m3-interactive w-8 h-8 flex items-center justify-center bg-surface-container-high rounded-m3-sm text-on-surface-variant transition-colors disabled:text-disabled-fg" disabled={count <= 1}><Minus size={16} strokeWidth={3} /></button>
                       <span className="text-[16px] font-extrabold text-on-surface w-4 text-center tabular-nums">{count}</span>
@@ -200,7 +254,7 @@ export default function IxtisosControlPanel({
                     <div className="bg-warning-container rounded-m3-md p-3 flex gap-3 items-start">
                       <Zap size={16} className="text-warning shrink-0 mt-0.5" />
                       <p className="text-[10px] font-bold text-on-warning-container leading-snug">
-                        Sizda faqat <span className="font-extrabold">{aiData.remaining} ta</span> savol yaratish limiti qoldi.
+                        {t.warnPre}<span className="font-extrabold">{aiData.remaining}</span>{t.warnPost}
                       </p>
                     </div>
                   )}
@@ -222,7 +276,7 @@ export default function IxtisosControlPanel({
           loading={isGenerating}
           icon={<Wand2 strokeWidth={2.5} />}
         >
-          {isGenerating ? "Yaratilmoqda..." : "Savol Yaratish"}
+          {isGenerating ? t.generating : t.generate}
         </Button>
       </div>
 

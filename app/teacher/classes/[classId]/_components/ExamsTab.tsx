@@ -10,9 +10,49 @@ import {
   Edit2, X, CheckCircle, CircleDashed, UserIcon, Trophy, EyeOff, Eye
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 import { Button, IconButton, StatusChip, Spinner, EmptyState } from '@/components/ui';
 
+// --- TRANSLATION DICTIONARY ---
+const EXAMS_TAB_TRANSLATIONS: Record<string, any> = {
+  uz: {
+    empty: { title: "Imtihonlar yo'q", desc: "Sinf uchun BSB yoki CHSB biriktirmagansiz.", btn: "BSB / CHSB Biriktirish" },
+    min: (n: number) => `${n} daq`,
+    hiddenTitle: "Natijalar yashirilgan (Ochish uchun bosing)", visibleTitle: "Natijalar ochiq (Yashirish uchun bosing)",
+    edit: "Tahrirlash", close: "Yopish",
+    status: { active: "Imtihon jarayonda", scheduled: "Kutilmoqda", closed: "Yakunlangan" },
+    submittedTab: "Topshirganlar", pendingTab: "Kutilmoqda",
+    emptySubmitted: "Hali hech kim topshirmadi.", emptyPending: "Barcha o'quvchilar topshirib bo'ldi!",
+    points: "Ball", checking: "Tekshirilmoqda", grade: "Baholash",
+    toasts: { hidden: "Natijalar yashirildi!", visible: "O'quvchilar natijalarni ko'ra oladi!", error: "Xatolik yuz berdi" }
+  },
+  en: {
+    empty: { title: "No exams yet", desc: "You haven't assigned a BSB or CHSB for this class.", btn: "Assign BSB / CHSB" },
+    min: (n: number) => `${n} min`,
+    hiddenTitle: "Results hidden (click to reveal)", visibleTitle: "Results visible (click to hide)",
+    edit: "Edit", close: "Close",
+    status: { active: "Exam in progress", scheduled: "Scheduled", closed: "Finished" },
+    submittedTab: "Submitted", pendingTab: "Pending",
+    emptySubmitted: "No one has submitted yet.", emptyPending: "All students have submitted!",
+    points: "Pts", checking: "Pending review", grade: "Grade",
+    toasts: { hidden: "Results hidden!", visible: "Students can now see the results!", error: "Something went wrong" }
+  },
+  ru: {
+    empty: { title: "Экзаменов нет", desc: "Вы не назначили BSB или CHSB для этого класса.", btn: "Назначить BSB / CHSB" },
+    min: (n: number) => `${n} мин`,
+    hiddenTitle: "Результаты скрыты (нажмите, чтобы открыть)", visibleTitle: "Результаты открыты (нажмите, чтобы скрыть)",
+    edit: "Редактировать", close: "Закрыть",
+    status: { active: "Экзамен идет", scheduled: "Ожидается", closed: "Завершен" },
+    submittedTab: "Сдали", pendingTab: "Ожидаются",
+    emptySubmitted: "Пока никто не сдал.", emptyPending: "Все ученики сдали работу!",
+    points: "Балл", checking: "На проверке", grade: "Оценить",
+    toasts: { hidden: "Результаты скрыты!", visible: "Ученики теперь видят результаты!", error: "Произошла ошибка" }
+  }
+};
+
 export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = EXAMS_TAB_TRANSLATIONS[lang] || EXAMS_TAB_TRANSLATIONS['uz'];
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingSubmissions, setViewingSubmissions] = useState<any>(null);
@@ -58,11 +98,11 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
       await updateDoc(doc(db, 'classes', classId, 'exams', exam.id), {
         hideResults: !isCurrentlyHidden
       });
-      toast.success(!isCurrentlyHidden ? "Natijalar yashirildi!" : "O'quvchilar natijalarni ko'ra oladi!", {
+      toast.success(!isCurrentlyHidden ? t.toasts.hidden : t.toasts.visible, {
         icon: !isCurrentlyHidden ? '🙈' : '🏆'
       });
     } catch (error) {
-      toast.error("Xatolik yuz berdi");
+      toast.error(t.toasts.error);
     }
   };
 
@@ -73,11 +113,11 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
       <div className="py-6 md:py-8 bg-surface-container-low rounded-m3-xl border-2 border-dashed border-outline-variant shadow-elev-1 mx-2 md:mx-0">
         <EmptyState
           icon={<FileBadge strokeWidth={2.5} />}
-          title="Imtihonlar yo'q"
-          description="Sinf uchun BSB yoki CHSB biriktirmagansiz."
+          title={t.empty.title}
+          description={t.empty.desc}
           action={
             <Button variant="filled" size="sm" icon={<Plus strokeWidth={2.5}/>} onClick={onAdd}>
-              BSB / CHSB Biriktirish
+              {t.empty.btn}
             </Button>
           }
         />
@@ -123,7 +163,7 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
                     <span className="hidden sm:inline">•</span>
                     <span>{examDate.toLocaleDateString()} {examDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                     <span>•</span>
-                    <span>{exam.durationMinutes} daq</span>
+                    <span>{t.min(exam.durationMinutes)}</span>
                   </div>
                 </div>
               </div>
@@ -145,7 +185,7 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
                          ? 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border-outline-variant'
                          : 'bg-success-container text-on-success-container border-success shadow-elev-1'
                      }`}
-                     title={isHidden ? "Natijalar yashirilgan (Ochish uchun bosing)" : "Natijalar ochiq (Yashirish uchun bosing)"}
+                     title={isHidden ? t.hiddenTitle : t.visibleTitle}
                    >
                      {isHidden ? <EyeOff size={16} className="md:w-[18px] md:h-[18px]" strokeWidth={2.5}/> : <Eye size={16} className="md:w-[18px] md:h-[18px]" strokeWidth={2.5}/>}
                    </button>
@@ -154,7 +194,7 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
                    <button
                      onClick={(e) => { e.stopPropagation(); onEdit(exam); }}
                      className="w-8 h-8 md:w-10 md:h-10 bg-surface-container rounded-m3-sm md:rounded-m3-md flex items-center justify-center text-on-surface-variant hover:text-on-primary-container hover:bg-primary-container transition-colors border border-outline-variant active:scale-95"
-                     title="Tahrirlash"
+                     title={t.edit}
                    >
                      <Edit2 size={16} className="md:w-[18px] md:h-[18px]" strokeWidth={2.5}/>
                    </button>
@@ -193,7 +233,9 @@ export default function ExamsTab({ classId, roster, onAdd, onEdit }: any) {
 // EXAM SUBMISSIONS MODAL 
 // ============================================================================
 function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
-  const router = useRouter(); 
+  const router = useRouter();
+  const { lang } = useTeacherLanguage();
+  const t = EXAMS_TAB_TRANSLATIONS[lang] || EXAMS_TAB_TRANSLATIONS['uz'];
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'submitted' | 'pending'>('submitted');
   const [attemptsMap, setAttemptsMap] = useState<Record<string, any>>({});
@@ -247,20 +289,20 @@ function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
           <div className="flex-1 pr-4 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
                <span className={`w-2 h-2 rounded-full ${data.status === 'active' ? 'bg-success animate-pulse' : data.status === 'scheduled' ? 'bg-warning' : 'bg-outline'}`}></span>
-               <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">{data.status === 'active' ? 'Imtihon jarayonda' : data.status === 'scheduled' ? 'Kutilmoqda' : 'Yakunlangan'}</span>
+               <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">{data.status === 'active' ? t.status.active : data.status === 'scheduled' ? t.status.scheduled : t.status.closed}</span>
             </div>
             <h2 className="text-[15px] sm:text-[18px] font-black text-on-surface leading-tight truncate">{exam.title}</h2>
           </div>
-          <IconButton aria-label="Yopish" size="sm" onClick={onClose} className="shrink-0"><X strokeWidth={2.5}/></IconButton>
+          <IconButton aria-label={t.close} size="sm" onClick={onClose} className="shrink-0"><X strokeWidth={2.5}/></IconButton>
         </div>
 
         <div className="px-4 sm:px-6 py-3 sm:py-4 bg-surface shrink-0 z-10 border-b border-outline-variant">
           <div className="flex p-1 bg-surface-container-high rounded-m3-md shadow-inner border border-outline-variant">
             <button onClick={() => setActiveTab('submitted')} className={`flex-1 py-2 text-[11px] sm:text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-1.5 ${activeTab === 'submitted' ? 'bg-surface-container-lowest text-success shadow-elev-1 ring-1 ring-outline-variant' : 'text-on-surface-variant hover:text-on-surface'}`}>
-              <CheckCircle size={14} strokeWidth={2.5}/> Topshirganlar ({submittedList.length})
+              <CheckCircle size={14} strokeWidth={2.5}/> {t.submittedTab} ({submittedList.length})
             </button>
             <button onClick={() => setActiveTab('pending')} className={`flex-1 py-2 text-[11px] sm:text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-1.5 ${activeTab === 'pending' ? 'bg-surface-container-lowest text-warning shadow-elev-1 ring-1 ring-outline-variant' : 'text-on-surface-variant hover:text-on-surface'}`}>
-              <CircleDashed size={14} strokeWidth={2.5}/> Kutilmoqda ({pendingList.length})
+              <CircleDashed size={14} strokeWidth={2.5}/> {t.pendingTab} ({pendingList.length})
             </button>
           </div>
         </div>
@@ -269,7 +311,7 @@ function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
           {displayList.length === 0 ? (
             <div className="py-16 flex flex-col items-center text-on-surface-variant gap-3 border-2 border-dashed border-outline-variant rounded-m3-lg bg-surface-container-low shadow-elev-1">
               {activeTab === 'submitted' ? <CircleDashed size={32} className="opacity-30"/> : <CheckCircle size={32} className="opacity-30 text-success"/>}
-              <p className="font-bold text-[12px] sm:text-[13px]">{activeTab === 'submitted' ? 'Hali hech kim topshirmadi.' : "Barcha o'quvchilar topshirib bo'ldi!"}</p>
+              <p className="font-bold text-[12px] sm:text-[13px]">{activeTab === 'submitted' ? t.emptySubmitted : t.emptyPending}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -300,7 +342,7 @@ function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
                             <div className="flex items-center gap-1.5">
                               {/* Always visible Score Badge */}
                               <StatusChip tone="success" noDot className="text-[10px] font-black uppercase tracking-widest">
-                                <Trophy size={12} strokeWidth={2.5}/> {currentScore} <span className="hidden sm:inline">Ball</span>
+                                <Trophy size={12} strokeWidth={2.5}/> {currentScore} <span className="hidden sm:inline">{t.points}</span>
                               </StatusChip>
                               {/* Edit Button (Icon only on mobile) */}
                               <Button
@@ -309,20 +351,20 @@ function ExamSubmissionsModal({ classId, isOpen, onClose, data, roster }: any) {
                                 icon={<Edit2 strokeWidth={2.5} />}
                                 onClick={() => router.push(`/teacher/classes/${classId}/grade/${exam.id}/${student.uid}`)}
                               >
-                                <span className="hidden sm:inline">Tahrirlash</span>
+                                <span className="hidden sm:inline">{t.edit}</span>
                               </Button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1.5">
                               <StatusChip tone="info" noDot className="hidden sm:inline-flex text-[10px] font-black uppercase tracking-widest">
-                                <Clock size={12} strokeWidth={2.5}/> Tekshirilmoqda
+                                <Clock size={12} strokeWidth={2.5}/> {t.checking}
                               </StatusChip>
                               <Button
                                 variant="filled"
                                 size="sm"
                                 onClick={() => router.push(`/teacher/classes/${classId}/grade/${exam.id}/${student.uid}`)}
                               >
-                                Baholash <ChevronRight size={14} strokeWidth={3}/>
+                                {t.grade} <ChevronRight size={14} strokeWidth={3}/>
                               </Button>
                             </div>
                           )}

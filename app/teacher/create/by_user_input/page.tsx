@@ -55,7 +55,25 @@ const PAGE_TRANSLATIONS = {
     addMoreInstructions: "Matnni o'zgartiring va 'Test Yaratish' tugmasini bosing.", 
     solutionLogic: "Yechim Mantiqi",
     hideExp: "Yashirish",
-    showExp: "Yechim"
+    showExp: "Yechim",
+    promptTooShort: "Iltimos, batafsilroq ko'rsatma yozing (kamida 5 ta so'z).",
+    limitRemaining: (n: number) => `Sizda ${n} ta savol yaratish uchun limit qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`,
+    featureLocked: "Bu xususiyat joriy tarifingizda mavjud emas. Funksiyani ochish uchun tarifingizni oshiring.",
+    limitReached: "Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.",
+    questionsGenerated: (n: number) => `${n} ta savol yaratildi!`,
+    networkError: "Tarmoq xatosi. Internetni tekshiring.",
+    genericError: "Xatolik yuz berdi.",
+    createFirst: "Iltimos, oldin savol yarating.",
+    saveBankError: "Bazaga saqlashda xatolik yuz berdi.",
+    enterTitleErr: "Iltimos, test nomini kiriting.",
+    publishSuccess: "Test muvaffaqiyatli chop qilindi!",
+    publishError: "Testni chop qilishda xatolik.",
+    premiumFeature: "Premium Xususiyat",
+    viewPlans: "Tariflarni ko'rish",
+    goBack: "Orqaga qaytish",
+    titlePlaceholder: "Masalan: 1-chorak nazorati",
+    thinkingTitle: "AI Studiya ishlamoqda",
+    thinkingPhrases: ["Ma'lumotlar tahlil qilinmoqda...", "Qoidalar tekshirilmoqda...", "Qiyinlik darajasi moslashtirilmoqda...", "Savollar va javoblar yozilmoqda...", "Formula va chizmalar tekshirilmoqda..."]
   },
   en: {
     headerTitle: "AI Prompt Builder",
@@ -86,7 +104,25 @@ const PAGE_TRANSLATIONS = {
     addMoreInstructions: "Modify the text and click 'Generate Test' to append more.", 
     solutionLogic: "Solution Logic",
     hideExp: "Hide",
-    showExp: "Explanation"
+    showExp: "Explanation",
+    promptTooShort: "Please provide a more detailed prompt (at least 5 words).",
+    limitRemaining: (n: number) => `You have a limit of ${n} questions left. Please reduce the requested amount or upgrade your plan.`,
+    featureLocked: "This feature is not available on your current plan. Upgrade your plan to unlock it.",
+    limitReached: "Your monthly AI limit is not enough. Upgrade your plan or wait for next month.",
+    questionsGenerated: (n: number) => `${n} questions generated!`,
+    networkError: "Network error. Check your internet connection.",
+    genericError: "An error occurred.",
+    createFirst: "Please generate questions first.",
+    saveBankError: "An error occurred while saving to the bank.",
+    enterTitleErr: "Please enter a test title.",
+    publishSuccess: "Test published successfully!",
+    publishError: "Error publishing test.",
+    premiumFeature: "Premium Feature",
+    viewPlans: "View Plans",
+    goBack: "Go Back",
+    titlePlaceholder: "e.g., 1st Quarter Assessment",
+    thinkingTitle: "AI Studio is working",
+    thinkingPhrases: ["Analyzing the data...", "Checking the rules...", "Adjusting difficulty level...", "Writing questions and answers...", "Checking formulas and diagrams..."]
   },
   ru: {
     headerTitle: "AI Промпты",
@@ -117,7 +153,25 @@ const PAGE_TRANSLATIONS = {
     addMoreInstructions: "Измените текст и нажмите 'Создать Тест', чтобы добавить еще.", 
     solutionLogic: "Логика решения",
     hideExp: "Скрыть",
-    showExp: "Решение"
+    showExp: "Решение",
+    promptTooShort: "Пожалуйста, напишите более подробный запрос (минимум 5 слов).",
+    limitRemaining: (n: number) => `У вас остался лимит на ${n} вопросов. Пожалуйста, уменьшите запрашиваемое количество или повысьте тариф.`,
+    featureLocked: "Эта функция недоступна на вашем текущем тарифе. Повысьте тариф, чтобы открыть её.",
+    limitReached: "Вашего месячного лимита ИИ недостаточно. Повысьте тариф или дождитесь следующего месяца.",
+    questionsGenerated: (n: number) => `Создано вопросов: ${n}!`,
+    networkError: "Ошибка сети. Проверьте интернет-соединение.",
+    genericError: "Произошла ошибка.",
+    createFirst: "Пожалуйста, сначала создайте вопросы.",
+    saveBankError: "Произошла ошибка при сохранении в базу.",
+    enterTitleErr: "Пожалуйста, введите название теста.",
+    publishSuccess: "Тест успешно опубликован!",
+    publishError: "Ошибка при публикации теста.",
+    premiumFeature: "Премиум функция",
+    viewPlans: "Посмотреть тарифы",
+    goBack: "Вернуться назад",
+    titlePlaceholder: "Например: Контрольная за 1 четверть",
+    thinkingTitle: "ИИ Студия работает",
+    thinkingPhrases: ["Анализ данных...", "Проверка правил...", "Настройка уровня сложности...", "Составление вопросов и ответов...", "Проверка формул и диаграмм..."]
   }
 };
 
@@ -160,8 +214,8 @@ const sharedName = (paths: TopicPath[], key: "subjectName" | "topicName" | "subt
   return uniq.length === 1 ? uniq[0] : "Aralash";
 };
 
-const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
-  const phrases = ["Ma'lumotlar tahlil qilinmoqda...", "Qoidalar tekshirilmoqda...", "Qiyinlik darajasi moslashtirilmoqda...", "Savollar va javoblar yozilmoqda...", "Formula va chizmalar tekshirilmoqda..."];
+const AiThinkingModal = ({ isVisible, t }: { isVisible: boolean, t: any }) => {
+  const phrases: string[] = t.thinkingPhrases;
   const [phraseIndex, setPhraseIndex] = useState(0);
 
   useEffect(() => {
@@ -185,7 +239,7 @@ const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
                 <Sparkles size={16} className="absolute -top-2 -right-2 text-warning animate-pulse md:w-5 md:h-5 md:-top-3 md:-right-3" />
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
+            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">{t.thinkingTitle}</h3>
             <div className="h-5 md:h-6 relative z-10 overflow-hidden flex items-center justify-center w-full">
               <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[12px] md:text-[14px] font-medium text-on-surface-variant absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
             </div>
@@ -343,11 +397,11 @@ export default function AIUserInputPage() {
 
   // --- GENERATE API CALL ---
   const handleGenerate = async () => {
-    if (wordCount < 5) return toast.error("Please provide a more detailed prompt (at least 5 words).");
-    
+    if (wordCount < 5) return toast.error(t.promptTooShort);
+
     // 🟢 NEW: Pre-check monthly limits
     if (!aiData.isUnlimited && aiData.remaining < count) {
-      setLimitModalMessage(`Sizda ${aiData.remaining} ta savol yaratish uchun limit qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`);
+      setLimitModalMessage(t.limitRemaining(aiData.remaining));
       setIsLimitModalOpen(true);
       return; 
     }
@@ -372,12 +426,12 @@ export default function AIUserInputPage() {
       // 🟢 NEW: Gatekeeper error handling
       if (!response.ok) {
         if (data.code === 'FEATURE_LOCKED') {
-          setLimitModalMessage("Bu xususiyat joriy tarifingizda mavjud emas. Funksiyani ochish uchun tarifingizni oshiring.");
+          setLimitModalMessage(t.featureLocked);
           setIsLimitModalOpen(true);
           return;
         }
         if (data.code === 'LIMIT_REACHED') {
-          setLimitModalMessage("Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.");
+          setLimitModalMessage(t.limitReached);
           setIsLimitModalOpen(true);
           return;
         }
@@ -396,13 +450,13 @@ export default function AIUserInputPage() {
       }));
 
       setGeneratedQuestions(prev => [...prev, ...enrichedQuestions]);
-      toast.success(`${count} ta savol yaratildi!`);
-      
+      toast.success(t.questionsGenerated(count));
+
     } catch (error: any) {
       if (error.message.includes("fetch failed") || error.message.includes("ENOTFOUND")) {
-        toast.error("Tarmoq xatosi. Internetni tekshiring.");
+        toast.error(t.networkError);
       } else {
-        toast.error(error.message || "Xatolik yuz berdi.");
+        toast.error(error.message || t.genericError);
       }
     } finally {
       setIsGenerating(false);
@@ -411,7 +465,7 @@ export default function AIUserInputPage() {
 
   // --- TOPIC GATE (runs before BOTH save paths) ---
   const openTopicModal = (intent: "bank" | "publish") => {
-    if (generatedQuestions.length === 0) return toast.error("Iltimos, oldin savol yarating.");
+    if (generatedQuestions.length === 0) return toast.error(t.createFirst);
     setTopicIntent(intent);
     setIsTopicModalOpen(true);
   };
@@ -436,7 +490,7 @@ export default function AIUserInputPage() {
 
   // --- SAVE TO BANK LOGIC ---
   const handleSaveToBank = async (paths: TopicPath[]) => {
-    if (generatedQuestions.length === 0) return toast.error("Iltimos, oldin savol yarating.");
+    if (generatedQuestions.length === 0) return toast.error(t.createFirst);
     if (!user) return;
 
     setIsSavingToBank(true);
@@ -476,7 +530,7 @@ export default function AIUserInputPage() {
         return;
       }
       console.error("Save to bank error:", error);
-      toast.error("Bazaga saqlashda xatolik yuz berdi.");
+      toast.error(t.saveBankError);
     } finally {
       setIsSavingToBank(false);
     }
@@ -484,7 +538,7 @@ export default function AIUserInputPage() {
 
   // --- PUBLISH LOGIC ---
   const handleTitleSubmit = () => {
-    if (!testTitle.trim()) return toast.error("Iltimos, test nomini kiriting.");
+    if (!testTitle.trim()) return toast.error(t.enterTitleErr);
     setIsTitleModalOpen(false);
     setIsConfigModalOpen(true);
   };
@@ -532,7 +586,7 @@ export default function AIUserInputPage() {
       });
 
       await batch.commit();
-      toast.success("Test published successfully!");
+      toast.success(t.publishSuccess);
       setIsConfigModalOpen(false);
       router.push("/teacher/library/tests");
     } catch (error) {
@@ -541,7 +595,7 @@ export default function AIUserInputPage() {
         onInvalidTopic("publish");
         return;
       }
-      toast.error("Error publishing test.");
+      toast.error(t.publishError);
     } finally {
       setIsPublishing(false);
     }
@@ -550,7 +604,7 @@ export default function AIUserInputPage() {
   return (
     <div className="flex flex-col min-h-[100dvh] bg-surface font-t-body pt-[60px] lg:pt-0">
 
-      <AiThinkingModal isVisible={isGenerating} />
+      <AiThinkingModal isVisible={isGenerating} t={t} />
 
       {/* 🟢 TOP BAR (Mobile Offset) */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-[60px] bg-[color-mix(in_oklab,var(--m3-surface)_90%,transparent)] backdrop-blur-xl border-b border-outline-variant z-[10000] flex items-center justify-between px-3 shadow-elev-1">
@@ -571,17 +625,17 @@ export default function AIUserInputPage() {
                 <Crown size={28} className="text-warning" />
               </div>
 
-              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">Premium Xususiyat</h3>
+              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">{t.premiumFeature}</h3>
               <p className="text-[13px] md:text-[14px] text-on-surface-variant mb-6 font-medium leading-relaxed">
                 {limitModalMessage}
               </p>
 
               <div className="w-full flex flex-col gap-2">
                 <Button variant="filled" size="lg" className="w-full" onClick={() => router.push('/teacher/subscription')}>
-                  Tariflarni ko'rish <ArrowLeft className="rotate-180" />
+                  {t.viewPlans} <ArrowLeft className="rotate-180" />
                 </Button>
                 <Button variant="outlined" size="lg" className="w-full" onClick={() => setIsLimitModalOpen(false)}>
-                  Orqaga qaytish
+                  {t.goBack}
                 </Button>
               </div>
             </motion.div>
@@ -596,7 +650,7 @@ export default function AIUserInputPage() {
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-md shadow-elev-3 z-10">
               <h3 className="text-lg md:text-xl font-black text-on-surface mb-1.5 md:mb-2">{t.modalTitle}</h3>
               <p className="text-[12px] md:text-[14px] text-on-surface-variant mb-5 md:mb-6 font-medium">{t.modalDesc}</p>
-              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder="Masalan: 1-chorak nazorati" className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
+              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder={t.titlePlaceholder} className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
               <div className="flex gap-2 md:gap-3 justify-end">
                 <Button variant="outlined" onClick={() => setIsTitleModalOpen(false)}>{t.modalCancel}</Button>
                 <Button variant="filled" onClick={handleTitleSubmit}>{t.modalNext} <ChevronRight size={16} strokeWidth={3}/></Button>

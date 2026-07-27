@@ -56,7 +56,31 @@ const PAGE_TRANSLATIONS = {
     hideExp: "Yechimni yashirish",
     showExp: "Yechimni ko'rish",
     invalidImageError: "Iltimos, faqat ta'limga oid rasmlarni yuklang.",
-    maxImagesError: "Maksimal 2 ta rasm yuklash mumkin."
+    maxImagesError: "Maksimal 2 ta rasm yuklash mumkin.",
+    invalidImageFiles: "Iltimos, faqat rasm fayllarini yuklang.",
+    imageCompressError: "Rasmni yuklashda xatolik yuz berdi.",
+    uploadAtLeastOne: "Iltimos, kamida 1 ta rasm yuklang.",
+    limitRemaining: (n: number) => `Sizda ${n} ta savol yaratish uchun limit qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`,
+    featureLockedImage: "Rasm orqali test yaratish faqat Pro va VIP tariflarida mavjud. Funksiyani ochish uchun tarifingizni oshiring.",
+    limitReached: "Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.",
+    questionsGenerated: (n: number) => `${n} ta savol yaratildi!`,
+    networkError: "Tarmoq xatosi. Internetni tekshiring.",
+    genericError: "Xatolik yuz berdi.",
+    createFirst: "Iltimos, oldin savol yarating.",
+    saveBankError: "Bazaga saqlashda xatolik yuz berdi.",
+    publishSuccess: "Test muvaffaqiyatli chop qilindi!",
+    publishError: "Testni chop qilishda xatolik.",
+    enterTitle: "Nom kiriting",
+    premiumFeature: "Premium Xususiyat",
+    viewPlans: "Tariflarni ko'rish",
+    goBack: "Orqaga qaytish",
+    titlePlaceholder: "Masalan: Algebra imtihoni",
+    countLabel: "Savollar",
+    difficultyLabel: "Qiyinligi",
+    optimizingImage: "Rasm optimallashtirilmoqda...",
+    monthlyLeft: (n: number) => ({ prefix: "Sizda oylik limitdan", bold: `${n} ta`, suffix: "savol qoldi." }),
+    thinkingTitle: "AI Studiya ishlamoqda",
+    thinkingPhrases: ["Rasmlar o'qilmoqda...", "Konteks tahlil qilinmoqda...", "Formula va chizmalar aniqlanmoqda...", "Savollar va javoblar tuzilmoqda...", "Qiyinlik darajasi moslashtirilmoqda..."]
   },
   en: {
     headerTitle: "Create via Image",
@@ -86,7 +110,31 @@ const PAGE_TRANSLATIONS = {
     hideExp: "Hide Explanation",
     showExp: "Show Explanation",
     invalidImageError: "Please upload an image related to education.",
-    maxImagesError: "You can upload a maximum of 2 images."
+    maxImagesError: "You can upload a maximum of 2 images.",
+    invalidImageFiles: "Please upload valid image files.",
+    imageCompressError: "Failed to process the image.",
+    uploadAtLeastOne: "Please upload at least 1 image.",
+    limitRemaining: (n: number) => `You have a limit of ${n} questions left. Please reduce the requested amount or upgrade your plan.`,
+    featureLockedImage: "Creating tests via image is only available on Pro and VIP plans. Upgrade your plan to unlock this feature.",
+    limitReached: "Your monthly AI limit is not enough. Upgrade your plan or wait for next month.",
+    questionsGenerated: (n: number) => `${n} questions generated!`,
+    networkError: "Network error. Check your internet connection.",
+    genericError: "An error occurred.",
+    createFirst: "Please generate questions first.",
+    saveBankError: "An error occurred while saving to the bank.",
+    publishSuccess: "Test published successfully!",
+    publishError: "Error publishing test.",
+    enterTitle: "Enter a title",
+    premiumFeature: "Premium Feature",
+    viewPlans: "View Plans",
+    goBack: "Go Back",
+    titlePlaceholder: "e.g., Algebra Exam",
+    countLabel: "Questions",
+    difficultyLabel: "Difficulty",
+    optimizingImage: "Optimizing image...",
+    monthlyLeft: (n: number) => ({ prefix: "You have", bold: `${n}`, suffix: "questions left from your monthly limit." }),
+    thinkingTitle: "AI Studio is working",
+    thinkingPhrases: ["Reading images...", "Analyzing context...", "Detecting formulas and diagrams...", "Writing questions and answers...", "Adjusting difficulty level..."]
   },
   ru: {
     headerTitle: "Создать по фото",
@@ -116,7 +164,31 @@ const PAGE_TRANSLATIONS = {
     hideExp: "Скрыть объяснение",
     showExp: "Показать объяснение",
     invalidImageError: "Пожалуйста, загрузите образовательное изображение.",
-    maxImagesError: "Максимум 2 изображения."
+    maxImagesError: "Максимум 2 изображения.",
+    invalidImageFiles: "Пожалуйста, загружайте только изображения.",
+    imageCompressError: "Не удалось обработать изображение.",
+    uploadAtLeastOne: "Пожалуйста, загрузите хотя бы 1 изображение.",
+    limitRemaining: (n: number) => `У вас остался лимит на ${n} вопросов. Пожалуйста, уменьшите запрашиваемое количество или повысьте тариф.`,
+    featureLockedImage: "Создание тестов по фото доступно только на тарифах Pro и VIP. Повысьте тариф, чтобы открыть эту функцию.",
+    limitReached: "Вашего месячного лимита ИИ недостаточно. Повысьте тариф или дождитесь следующего месяца.",
+    questionsGenerated: (n: number) => `Создано вопросов: ${n}!`,
+    networkError: "Ошибка сети. Проверьте интернет-соединение.",
+    genericError: "Произошла ошибка.",
+    createFirst: "Пожалуйста, сначала создайте вопросы.",
+    saveBankError: "Произошла ошибка при сохранении в базу.",
+    publishSuccess: "Тест успешно опубликован!",
+    publishError: "Ошибка при публикации теста.",
+    enterTitle: "Введите название",
+    premiumFeature: "Премиум функция",
+    viewPlans: "Посмотреть тарифы",
+    goBack: "Вернуться назад",
+    titlePlaceholder: "Например: Экзамен по алгебре",
+    countLabel: "Вопросы",
+    difficultyLabel: "Сложность",
+    optimizingImage: "Оптимизация изображения...",
+    monthlyLeft: (n: number) => ({ prefix: "У вас осталось", bold: `${n}`, suffix: "вопросов из месячного лимита." }),
+    thinkingTitle: "ИИ Студия работает",
+    thinkingPhrases: ["Чтение изображений...", "Анализ контекста...", "Определение формул и диаграмм...", "Составление вопросов и ответов...", "Настройка уровня сложности..."]
   }
 };
 
@@ -159,14 +231,8 @@ const sharedName = (paths: TopicPath[], key: "subjectName" | "topicName" | "subt
   return uniq.length === 1 ? uniq[0] : "Aralash";
 };
 
-const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
-  const phrases = [
-    "Rasmlar o'qilmoqda...",
-    "Konteks tahlil qilinmoqda...",
-    "Formula va chizmalar aniqlanmoqda...",
-    "Savollar va javoblar tuzilmoqda...",
-    "Qiyinlik darajasi moslashtirilmoqda..."
-  ];
+const AiThinkingModal = ({ isVisible, t }: { isVisible: boolean, t: any }) => {
+  const phrases: string[] = t.thinkingPhrases;
   const [phraseIndex, setPhraseIndex] = useState(0);
 
   useEffect(() => {
@@ -192,7 +258,7 @@ const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
                 <Sparkles size={16} className="absolute -top-2 -right-2 text-tertiary animate-pulse md:w-5 md:h-5 md:-top-3 md:-right-3" />
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
+            <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-2 relative z-10 tracking-tight text-center">{t.thinkingTitle}</h3>
             <div className="h-5 md:h-6 relative z-10 overflow-hidden flex items-center justify-center w-full">
               <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[12px] md:text-[14px] font-medium text-on-surface-variant absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
             </div>
@@ -334,7 +400,7 @@ export default function AIImageInputPage() {
 
   const processFile = async (file: File) => {
   if (images.length >= 2) return toast.error(t.maxImagesError);
-  if (!file.type.startsWith("image/")) return toast.error("Please upload valid image files.");
+  if (!file.type.startsWith("image/")) return toast.error(t.invalidImageFiles);
 
   setIsCompressing(true); // Start loading spinner
 
@@ -367,7 +433,7 @@ export default function AIImageInputPage() {
 
   } catch (error) {
     console.error("Compression error:", error);
-    toast.error("Rasmni yuklashda xatolik yuz berdi (Image compression failed).");
+    toast.error(t.imageCompressError);
     setIsCompressing(false);
   }
 };
@@ -394,15 +460,15 @@ export default function AIImageInputPage() {
 
   // --- GENERATE API CALL ---
   const handleGenerate = async () => {
-    if (images.length === 0) return toast.error("Please upload at least 1 image.");
+    if (images.length === 0) return toast.error(t.uploadAtLeastOne);
 
     // 🟢 NEW: Check against Monthly Limits before calling the API to save time
     if (!aiData.isUnlimited && aiData.remaining < count) {
-      setLimitModalMessage(`Sizda ${aiData.remaining} ta savol yaratish uchun limit qoldi. Iltimos so'ralayotgan miqdorni kamaytiring yoki tarifni oshiring.`);
+      setLimitModalMessage(t.limitRemaining(aiData.remaining));
       setIsLimitModalOpen(true);
-      return; 
+      return;
     }
-    
+
     setIsGenerating(true);
 
     try {
@@ -424,12 +490,12 @@ export default function AIImageInputPage() {
       if (!response.ok) {
         // 🟢 NEW: Handle specific Gatekeeper errors gracefully
         if (data.code === 'FEATURE_LOCKED') {
-          setLimitModalMessage("Rasm orqali test yaratish faqat Pro va VIP tariflarida mavjud. Funksiyani ochish uchun tarifingizni oshiring.");
+          setLimitModalMessage(t.featureLockedImage);
           setIsLimitModalOpen(true);
           return;
         }
         if (data.code === 'LIMIT_REACHED') {
-          setLimitModalMessage("Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.");
+          setLimitModalMessage(t.limitReached);
           setIsLimitModalOpen(true);
           return;
         }
@@ -450,15 +516,15 @@ export default function AIImageInputPage() {
       }));
 
       setGeneratedQuestions(prev => [...prev, ...enrichedQuestions]);
-      toast.success(`${count} ta savol yaratildi!`);
-      setUserPrompt(""); 
+      toast.success(t.questionsGenerated(count));
+      setUserPrompt("");
       
     } catch (error: any) {
       console.error(error);
       if (error.message.includes("fetch failed") || error.message.includes("ENOTFOUND")) {
-        toast.error("Tarmoq xatosi. Internetni tekshiring.");
+        toast.error(t.networkError);
       } else {
-        toast.error(error.message || "Xatolik yuz berdi.");
+        toast.error(error.message || t.genericError);
       }
     } finally {
       setIsGenerating(false);
@@ -467,7 +533,7 @@ export default function AIImageInputPage() {
 
   // --- TOPIC GATE (runs before BOTH save paths) ---
   const openTopicModal = (intent: "bank" | "publish") => {
-    if (generatedQuestions.length === 0) return toast.error("Iltimos, oldin savol yarating.");
+    if (generatedQuestions.length === 0) return toast.error(t.createFirst);
     setTopicIntent(intent);
     setIsTopicModalOpen(true);
   };
@@ -492,7 +558,7 @@ export default function AIImageInputPage() {
 
   // --- SAVE TO BANK LOGIC ---
   const handleSaveToBank = async (paths: TopicPath[]) => {
-    if (generatedQuestions.length === 0) return toast.error("Iltimos, oldin savol yarating.");
+    if (generatedQuestions.length === 0) return toast.error(t.createFirst);
     if (!user) return;
 
     setIsSavingToBank(true);
@@ -534,7 +600,7 @@ export default function AIImageInputPage() {
         return;
       }
       console.error("Save to bank error:", error);
-      toast.error("Bazaga saqlashda xatolik yuz berdi.");
+      toast.error(t.saveBankError);
     } finally {
       setIsSavingToBank(false);
     }
@@ -598,7 +664,7 @@ export default function AIImageInputPage() {
       });
 
       await batch.commit();
-      toast.success("Test published successfully!");
+      toast.success(t.publishSuccess);
       setIsConfigModalOpen(false);
       router.push("/teacher/library/tests");
     } catch (error) {
@@ -607,7 +673,7 @@ export default function AIImageInputPage() {
         onInvalidTopic("publish");
         return;
       }
-      toast.error("Error publishing test.");
+      toast.error(t.publishError);
     } finally {
       setIsPublishing(false);
     }
@@ -616,7 +682,7 @@ export default function AIImageInputPage() {
   return (
     <div className="min-h-screen bg-surface font-t-body pb-24">
       
-      <AiThinkingModal isVisible={isGenerating} />
+      <AiThinkingModal isVisible={isGenerating} t={t} />
 
       {/* 🟢 NEW: Enhanced Premium Warning Modal for Limitations */}
       <AnimatePresence>
@@ -630,17 +696,17 @@ export default function AIImageInputPage() {
                 <Crown size={28} className="text-on-primary-container" />
               </div>
 
-              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">Premium Xususiyat</h3>
+              <h3 className="text-lg md:text-xl font-black text-on-surface mb-2">{t.premiumFeature}</h3>
               <p className="text-[13px] md:text-[14px] text-on-surface-variant mb-6 font-medium leading-relaxed">
                 {limitModalMessage}
               </p>
 
               <div className="w-full flex flex-col gap-2">
                 <Button variant="filled" className="w-full" onClick={() => router.push('/teacher/subscription')}>
-                  Tariflarni ko'rish <ArrowLeft className="rotate-180" />
+                  {t.viewPlans} <ArrowLeft className="rotate-180" />
                 </Button>
                 <Button variant="outlined" className="w-full" onClick={() => setIsLimitModalOpen(false)}>
-                  Orqaga qaytish
+                  {t.goBack}
                 </Button>
               </div>
             </motion.div>
@@ -655,10 +721,10 @@ export default function AIImageInputPage() {
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-md shadow-elev-3 z-10">
               <h3 className="text-lg md:text-xl font-black text-on-surface mb-1.5 md:mb-2">{t.modalTitle}</h3>
               <p className="text-[12px] md:text-[14px] text-on-surface-variant mb-5 md:mb-6 font-medium">{t.modalDesc}</p>
-              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder="e.g., Algebra Exam" className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
+              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder={t.titlePlaceholder} className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
               <div className="flex gap-2 md:gap-3 justify-end">
                 <Button variant="outlined" onClick={() => setIsTitleModalOpen(false)}>{t.modalCancel}</Button>
-                <Button variant="filled" onClick={() => { if (!testTitle.trim()) return toast.error("Enter a title"); setIsTitleModalOpen(false); setIsConfigModalOpen(true); }}>{t.modalNext} <ArrowLeft className="rotate-180"/></Button>
+                <Button variant="filled" onClick={() => { if (!testTitle.trim()) return toast.error(t.enterTitle); setIsTitleModalOpen(false); setIsConfigModalOpen(true); }}>{t.modalNext} <ArrowLeft className="rotate-180"/></Button>
               </div>
             </motion.div>
           </div>
@@ -725,7 +791,7 @@ export default function AIImageInputPage() {
 
         <div className="flex flex-col gap-1.5 md:gap-2">
           <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1">
-            Savollar
+            {t.countLabel}
           </label>
           <div className="flex items-center bg-surface-container-high p-1 rounded-m3-sm md:rounded-m3-md shadow-inner h-[36px] md:h-[46px]">
             <button
@@ -753,7 +819,7 @@ export default function AIImageInputPage() {
 
         <div className="flex flex-col gap-1.5 md:gap-2">
           <label className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest pl-1">
-            Qiyinligi
+            {t.difficultyLabel}
           </label>
           <div className="flex bg-surface-container-high p-1 rounded-m3-sm md:rounded-m3-md shadow-inner h-[36px] md:h-[46px]">
             <button
@@ -801,7 +867,7 @@ export default function AIImageInputPage() {
 
             <div className="text-center absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-4 z-20 bg-[color-mix(in_oklab,var(--m3-surface)_50%,transparent)] backdrop-blur-sm">
               <Spinner size={28} className="mb-2" />
-              <p className="text-[11px] md:text-[13px] font-bold text-primary">Rasm optimallashtirilmoqda...</p>
+              <p className="text-[11px] md:text-[13px] font-bold text-primary">{t.optimizingImage}</p>
             </div>
           ) : (
             images.length < 2 && (
@@ -838,7 +904,7 @@ export default function AIImageInputPage() {
             <div className="flex-1 order-2 sm:order-1 text-center sm:text-left">
               {aiData && !aiData.isUnlimited && aiData.remaining < 15 && (
                 <p className="text-[10px] md:text-[12px] font-medium text-warning px-1">
-                  Sizda oylik limitdan <span className="font-bold">{aiData.remaining} ta</span> savol qoldi.
+                  {t.monthlyLeft(aiData.remaining).prefix} <span className="font-bold">{t.monthlyLeft(aiData.remaining).bold}</span> {t.monthlyLeft(aiData.remaining).suffix}
                 </p>
               )}
             </div>

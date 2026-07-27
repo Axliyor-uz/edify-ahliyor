@@ -43,7 +43,7 @@ export default function SecurityTab({
                                     <Building2 size={16} strokeWidth={2.5} />
                                 </span>
                             ) : (
-                                <IconButton aria-label="Sinfni o'chirish" onClick={() => setClassToDelete({ id: cls.id, title: cls.title })} className="hover:text-error hover:bg-error-container"><Trash2 size={18}/></IconButton>
+                                <IconButton aria-label={t.security.deleteClassAria} onClick={() => setClassToDelete({ id: cls.id, title: cls.title })} className="hover:text-error hover:bg-error-container"><Trash2 size={18}/></IconButton>
                             )}
                         </div>
                     ))}
@@ -69,21 +69,21 @@ export default function SecurityTab({
                 <label className="block text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2">{t.security.currentPass}</label>
                 <div className="relative">
                   <input type={showPass.current ? "text" : "password"} value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} className="w-full px-4 py-3 border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary outline-none transition-all bg-surface-container-lowest" placeholder={t.security.currentPlace} />
-                  <IconButton size="sm" aria-label={showPass.current ? "Parolni yashirish" : "Parolni ko'rsatish"} onClick={() => setShowPass({...showPass, current: !showPass.current})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.current ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
+                  <IconButton size="sm" aria-label={showPass.current ? t.security.hidePassAria : t.security.showPassAria} onClick={() => setShowPass({...showPass, current: !showPass.current})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.current ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
                 </div>
               </div>
               <div>
                 <label className="block text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2">{t.security.newPass}</label>
                 <div className="relative">
                   <input type={showPass.new ? "text" : "password"} value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="w-full px-4 py-3 border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary outline-none transition-all bg-surface-container-lowest" placeholder={t.security.newPlace} />
-                  <IconButton size="sm" aria-label={showPass.new ? "Parolni yashirish" : "Parolni ko'rsatish"} onClick={() => setShowPass({...showPass, new: !showPass.new})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.new ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
+                  <IconButton size="sm" aria-label={showPass.new ? t.security.hidePassAria : t.security.showPassAria} onClick={() => setShowPass({...showPass, new: !showPass.new})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.new ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
                 </div>
               </div>
               <div>
                 <label className="block text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2">{t.security.confirmPass}</label>
                 <div className="relative">
                   <input type={showPass.confirm ? "text" : "password"} value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className={`w-full px-4 py-3 border rounded-m3-md text-[14px] font-bold text-on-surface outline-none transition-all ${passwords.confirm && passwords.new !== passwords.confirm ? 'border-error bg-error-container focus:border-error focus:ring-1 focus:ring-inset focus:ring-error' : 'border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary'}`} placeholder={t.security.confirmPlace} />
-                  <IconButton size="sm" aria-label={showPass.confirm ? "Parolni yashirish" : "Parolni ko'rsatish"} onClick={() => setShowPass({...showPass, confirm: !showPass.confirm})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.confirm ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
+                  <IconButton size="sm" aria-label={showPass.confirm ? t.security.hidePassAria : t.security.showPassAria} onClick={() => setShowPass({...showPass, confirm: !showPass.confirm})} className="absolute right-2 top-1/2 -translate-y-1/2">{showPass.confirm ? <EyeOff size={18}/> : <Eye size={18}/>}</IconButton>
                 </div>
               </div>
               <div className="md:col-span-2 pt-2 flex justify-end">

@@ -5,6 +5,43 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X, ArrowDown, BookOpen, AlertTriangle } from 'lucide-react';
 import { IconButton } from '@/components/ui';
+import { useTeacherLanguage } from '@/app/teacher/layout';
+
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    close: "Yopish",
+    previewBadge: "Ko'rib chiqish",
+    readOnly: "Faqat o'qish",
+    untitledTest: "Nomsiz test",
+    passageLabel: "Matn",
+    passageTitleFallback: "Matn sarlavhasi",
+    noQuestions: "Hali savollar biriktirilmagan.",
+    noInstructions: "Ko'rsatmalar berilmagan.",
+    diagramPending: "[Diagramma rasmi kutilmoqda]",
+  },
+  en: {
+    close: "Close",
+    previewBadge: "Preview",
+    readOnly: "Read-Only",
+    untitledTest: "Untitled Test",
+    passageLabel: "Passage",
+    passageTitleFallback: "Passage Title",
+    noQuestions: "No questions mapped yet.",
+    noInstructions: "No instructions provided.",
+    diagramPending: "[Diagram Image Pending]",
+  },
+  ru: {
+    close: "Закрыть",
+    previewBadge: "Предпросмотр",
+    readOnly: "Только чтение",
+    untitledTest: "Тест без названия",
+    passageLabel: "Текст",
+    passageTitleFallback: "Заголовок текста",
+    noQuestions: "Вопросы ещё не привязаны.",
+    noInstructions: "Инструкции не указаны.",
+    diagramPending: "[Изображение диаграммы ожидается]",
+  },
+};
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -14,6 +51,8 @@ interface PreviewModalProps {
 }
 
 export default function PreviewModal({ isOpen, onClose, meta, passage }: PreviewModalProps) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -84,17 +123,17 @@ export default function PreviewModal({ isOpen, onClose, meta, passage }: Preview
         <div className="h-12 border-b border-outline-variant bg-surface-container-low flex items-center justify-between px-5 shrink-0">
           <div className="flex items-center gap-3">
             <BookOpen size={16} className="text-primary" strokeWidth={2.5}/>
-            <span className="text-[10px] font-black tracking-widest uppercase text-on-primary-container bg-primary-container px-2 py-0.5 rounded-m3-xs">Preview</span>
+            <span className="text-[10px] font-black tracking-widest uppercase text-on-primary-container bg-primary-container px-2 py-0.5 rounded-m3-xs">{t.previewBadge}</span>
             <div className="h-4 w-px bg-outline-variant mx-1"></div>
             <h2 className="font-bold text-[13px] text-on-surface tracking-tight">
-              {meta?.title || 'Untitled Test'} <span className="text-on-surface-variant mx-1.5">•</span> Passage {passage?.passage_number || 1}
+              {meta?.title || t.untitledTest} <span className="text-on-surface-variant mx-1.5">•</span> {t.passageLabel} {passage?.passage_number || 1}
             </h2>
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden md:flex text-on-surface-variant text-[10px] font-black px-2 items-center gap-1.5 uppercase tracking-widest">
-              <AlertTriangle size={12} strokeWidth={2.5}/> Read-Only
+              <AlertTriangle size={12} strokeWidth={2.5}/> {t.readOnly}
             </div>
-            <IconButton aria-label="Yopish" size="sm" onClick={onClose}>
+            <IconButton aria-label={t.close} size="sm" onClick={onClose}>
               <X size={16} strokeWidth={2.5} />
             </IconButton>
           </div>
@@ -106,7 +145,7 @@ export default function PreviewModal({ isOpen, onClose, meta, passage }: Preview
           {/* LEFT: READING PASSAGE (Serif, Clean, Easy to Read) */}
           <div className="w-1/2 h-full overflow-y-auto border-r border-outline-variant bg-surface-container-lowest p-8 lg:p-12 custom-scrollbar">
             <div className="max-w-xl mx-auto pb-12">
-              <h1 className="text-[24px] lg:text-[28px] font-black text-on-surface mb-3 leading-tight">{passage?.title || "Passage Title"}</h1>
+              <h1 className="text-[24px] lg:text-[28px] font-black text-on-surface mb-3 leading-tight">{passage?.title || t.passageTitleFallback}</h1>
               {passage?.subtitle && <p className="text-[15px] text-on-surface-variant font-serif italic mb-8 leading-relaxed">{passage.subtitle}</p>}
               
               <div className="space-y-5 pt-6 text-[15.5px] leading-[1.9] text-on-surface font-serif">
@@ -125,7 +164,7 @@ export default function PreviewModal({ isOpen, onClose, meta, passage }: Preview
             <div className="max-w-xl mx-auto pb-12 space-y-12">
               
               {(!passage?.questions || passage.questions.length === 0) ? (
-                <div className="text-center text-on-surface-variant mt-20 text-[14px] font-medium">No questions mapped yet.</div>
+                <div className="text-center text-on-surface-variant mt-20 text-[14px] font-medium">{t.noQuestions}</div>
               ) : (
                 passage.questions.map((qb: any, qbIdx: number) => {
                   const isWordBank = Array.isArray(qb.options) && qb.options.length > 0;
@@ -140,7 +179,7 @@ export default function PreviewModal({ isOpen, onClose, meta, passage }: Preview
                           Questions {qb.start_question || '?'} - {qb.end_question || '?'}
                         </div>
                         <div className="text-[14px] text-on-surface italic leading-relaxed">
-                          {qb.instructions || 'No instructions provided.'}
+                          {qb.instructions || t.noInstructions}
                         </div>
                       </div>
 
@@ -308,7 +347,7 @@ export default function PreviewModal({ isOpen, onClose, meta, passage }: Preview
                               <img src={qb.diagram_url} alt={qb.diagram_alt_text || "Diagram"} className="max-h-[320px] w-auto object-contain mix-blend-multiply" />
                             ) : (
                               <div className="h-40 w-full flex items-center justify-center text-[13px] font-bold text-on-surface-variant border-2 border-dashed border-outline-variant rounded-m3-sm bg-surface-container">
-                                [Diagram Image Pending]
+                                {t.diagramPending}
                               </div>
                             )}
                           </div>

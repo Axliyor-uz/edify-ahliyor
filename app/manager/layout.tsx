@@ -1,39 +1,108 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard, GraduationCap, Layers, Users, Wallet, LogOut, Menu, X,
-  BookOpen, CalendarCheck, UserCheck, DoorOpen, CalendarRange, Loader2, Building2,
-} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "firebase/auth";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
 import toast from "react-hot-toast";
+
+import "@/components/manager-ui/theme.css";
+import {
+  ConfirmDialog, Loader, cn,
+  ManagerThemeProvider, useManagerTheme,
+  MANAGER_DESIGN, MOTION_ON, springTransition, popIn, pageTransition,
+} from "@/components/manager-ui";
+
+import { resolveSideStyle } from "@/components/manager-ui/shellStyles";
+import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import ApprovalGate, { type CenterApprovalStatus } from "./_components/ApprovalGate";
+import { ManagerLanguageProvider, useManagerLanguage, LANGUAGE_OPTIONS, FlagSvg } from "./_components/ManagerLanguage";
 
-// Flat menu — no section headers (they read as noise). Related items are
-// grouped visually with hairline dividers instead.
-const NAV_GROUPS: { name: string; href: string; icon: React.ElementType }[][] = [
-  [{ name: "Boshqaruv paneli", href: "/manager/dashboard", icon: LayoutDashboard }],
-  [
-    { name: "Guruhlar", href: "/manager/groups", icon: Layers },
-    { name: "O'quvchilar", href: "/manager/students", icon: Users },
-    { name: "O'qituvchilar", href: "/manager/teachers", icon: GraduationCap },
-  ],
-  [
-    { name: "Davomat", href: "/manager/attendance", icon: CalendarCheck },
-    { name: "Xodimlar davomati", href: "/manager/staff-attendance", icon: UserCheck },
-  ],
-  [
-    { name: "Dars jadvali", href: "/manager/timetable", icon: CalendarRange },
-    { name: "Xonalar", href: "/manager/rooms", icon: DoorOpen },
-  ],
-  [{ name: "To'lovlar", href: "/manager/finance", icon: Wallet }],
+import {
+  LayoutDashboard, GraduationCap, Layers, Users, Wallet, LogOut, Menu, X,
+  BookOpen, CalendarCheck, UserCheck, DoorOpen, CalendarRange, Building2,
+  UserIcon, PanelLeft, MoreVertical, MoreHorizontal, Sun, Moon, Monitor,
+} from "lucide-react";
+
+// ============================================================================
+// TRANSLATIONS — layout chrome only; pages carry their own TRANSLATIONS dicts
+// and read the shared language via useManagerLanguage() (_components/ManagerLanguage).
+// ============================================================================
+const LAYOUT_TRANSLATIONS = {
+  uz: {
+    nav: { dashboard: "Boshqaruv paneli", dashboardShort: "Asosiy", groups: "Guruhlar", students: "O'quvchilar", teachers: "O'qituvchilar", teachersShort: "Ustozlar", attendance: "Davomat", staffAttendance: "Xodimlar davomati", staffAttendanceShort: "Xodimlar", timetable: "Dars jadvali", timetableShort: "Jadval", rooms: "Xonalar", finance: "To'lovlar" },
+    bar: { home: "Asosiy", groups: "Guruhlar", attendance: "Davomat", finance: "To'lovlar", menu: "Menyu" },
+    theme: { label: "Mavzu", light: "Yorug'", system: "Tizim", dark: "Tun" },
+    language: "Til", profile: "Profilim", manager: "Menejer", more: "Yana",
+    close: "Yopish", expand: "Yoyish", collapse: "Yig'ish",
+    logout: { title: "Tizimdan chiqish", desc: "Rostdan ham hisobingizdan chiqmoqchimisiz?", confirm: "Chiqish", cancel: "Bekor qilish", error: "Tizimdan chiqishda xatolik yuz berdi" },
+  },
+  en: {
+    nav: { dashboard: "Dashboard", dashboardShort: "Home", groups: "Groups", students: "Students", teachers: "Teachers", teachersShort: "Teachers", attendance: "Attendance", staffAttendance: "Staff attendance", staffAttendanceShort: "Staff", timetable: "Timetable", timetableShort: "Schedule", rooms: "Rooms", finance: "Payments" },
+    bar: { home: "Home", groups: "Groups", attendance: "Attendance", finance: "Payments", menu: "Menu" },
+    theme: { label: "Theme", light: "Light", system: "System", dark: "Dark" },
+    language: "Language", profile: "My profile", manager: "Manager", more: "More",
+    close: "Close", expand: "Expand", collapse: "Collapse",
+    logout: { title: "Sign out", desc: "Are you sure you want to sign out of your account?", confirm: "Sign out", cancel: "Cancel", error: "Something went wrong while signing out" },
+  },
+  ru: {
+    nav: { dashboard: "Панель управления", dashboardShort: "Главная", groups: "Группы", students: "Ученики", teachers: "Учителя", teachersShort: "Учителя", attendance: "Посещаемость", staffAttendance: "Посещаемость сотрудников", staffAttendanceShort: "Сотрудники", timetable: "Расписание", timetableShort: "Расписание", rooms: "Кабинеты", finance: "Платежи" },
+    bar: { home: "Главная", groups: "Группы", attendance: "Посещения", finance: "Платежи", menu: "Меню" },
+    theme: { label: "Тема", light: "День", system: "Система", dark: "Ночь" },
+    language: "Язык", profile: "Мой профиль", manager: "Менеджер", more: "Ещё",
+    close: "Закрыть", expand: "Развернуть", collapse: "Свернуть",
+    logout: { title: "Выход", desc: "Вы уверены, что хотите выйти из аккаунта?", confirm: "Выйти", cancel: "Отмена", error: "Не удалось выйти из системы" },
+  },
+};
+type LayoutT = typeof LAYOUT_TRANSLATIONS.uz;
+
+// ============================================================================
+// NAVIGATION — flat items with group boundaries (dividers, not headers).
+// Names resolve per-language inside the shell via LAYOUT_TRANSLATIONS.nav.
+// ============================================================================
+type NavKey = keyof LayoutT["nav"];
+type NavDef = { key: NavKey; shortKey?: NavKey; href: string; icon: typeof LayoutDashboard; groupStart?: boolean };
+type NavItem = { name: string; href: string; icon: typeof LayoutDashboard; short?: string; groupStart?: boolean };
+
+const NAV_DEFS: NavDef[] = [
+  { key: "dashboard", shortKey: "dashboardShort", href: "/manager/dashboard", icon: LayoutDashboard },
+  { key: "groups", href: "/manager/groups", icon: Layers, groupStart: true },
+  { key: "students", href: "/manager/students", icon: Users },
+  { key: "teachers", shortKey: "teachersShort", href: "/manager/teachers", icon: GraduationCap },
+  { key: "attendance", href: "/manager/attendance", icon: CalendarCheck, groupStart: true },
+  { key: "staffAttendance", shortKey: "staffAttendanceShort", href: "/manager/staff-attendance", icon: UserCheck },
+  { key: "timetable", shortKey: "timetableShort", href: "/manager/timetable", icon: CalendarRange, groupStart: true },
+  { key: "rooms", href: "/manager/rooms", icon: DoorOpen },
+  { key: "finance", href: "/manager/finance", icon: Wallet, groupStart: true },
 ];
+
+// Full-width routes: wide grids/tables need the room; the rest stay centered.
+const WIDE_ROUTES = ["/manager/attendance", "/manager/staff-attendance", "/manager/timetable", "/manager/finance"];
+
+// Shared popover panel styling (M3 menu surface)
+const PANEL = "bg-surface-container rounded-m3-lg shadow-elev-3 border border-outline-variant z-[60]";
+
+// The switchboard decisions this shell renders (design.manager.config.ts).
+const SHELL = MANAGER_DESIGN.App_shell_navigation;
+const MOBILE_NAV = MANAGER_DESIGN.Mobile_navigation;
+const TOP_SHELL = SHELL === "topbar" || SHELL === "toolbar";
+const SIDE_SHELL = !TOP_SHELL;
+// Every side shell collapses except rail (born collapsed, pinned).
+const COLLAPSIBLE = SIDE_SHELL && SHELL !== "rail";
+// Mobile variants that render a bottom bar (vs the drawer-only original).
+const BAR_MOBILE = MOBILE_NAV === "dock" || MOBILE_NAV === "floating" || MOBILE_NAV === "iconic" || MOBILE_NAV === "topline";
+
+// Sidebar style recipes live in components/manager-ui/shellStyles.ts so the
+// /theme-check-manager gallery previews exactly what this shell renders.
+// (Top shells and rail/floating resolve to the 'sidebar' recipe.)
+const STYLE = resolveSideStyle(SHELL);
+// The mobile drawer always paints a solid panel — transparent/glass variants
+// fall back to the plain surface so the slide-out stays readable over content.
+const DRAWER_BG = STYLE.bg === "bg-transparent" ? "bg-surface-container-lowest" : STYLE.bg;
 
 function getInitials(name: string): string {
   const parts = (name || "").trim().split(/\s+/).filter(Boolean);
@@ -42,102 +111,37 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-// Proper top-level component (was previously created during render — lint error).
-function Sidebar({
-  pathname, centerName, userName, userEmail, userPhoto, onNavigate, onLogout,
-}: {
-  pathname: string | null;
-  centerName: string;
-  userName: string;
-  userEmail: string;
-  userPhoto: string | null;
-  onNavigate: () => void;
-  onLogout: () => void;
-}) {
+// ============================================================================
+// LAYOUT ENTRY — theme provider wraps the shell so useManagerTheme works
+// everywhere inside (including the mode toggle in the profile popover).
+// ============================================================================
+export default function ManagerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col h-full bg-white border-r border-slate-200">
-      {/* Brand + center */}
-      <div className="px-4 pt-5 pb-4 shrink-0">
-        <div className="flex items-center gap-2.5 text-slate-900">
-          <div className="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-sm shadow-amber-500/30 shrink-0">
-            <BookOpen size={18} strokeWidth={2.5} />
-          </div>
-          <div className="min-w-0">
-            <p className="font-extrabold text-[17px] tracking-tight leading-tight">Edify</p>
-            <p className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 truncate">
-              <Building2 size={11} className="shrink-0" /> {centerName}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar">
-        {NAV_GROUPS.map((group, gi) => (
-          <div key={gi}>
-            {gi > 0 && <div className="h-px bg-slate-100 mx-2 my-2" />}
-            <div className="flex flex-col gap-0.5">
-              {group.map((link) => {
-                const isActive = pathname === link.href || pathname?.startsWith(link.href + "/");
-                const Icon = link.icon;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={onNavigate}
-                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] transition-all active:scale-[0.98] ${
-                      isActive
-                        ? "bg-amber-50 text-amber-800 font-bold"
-                        : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
-                    }`}
-                  >
-                    {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-amber-500" />}
-                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-amber-600" : "text-slate-400"} />
-                    <span className="truncate">{link.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      {/* User card + logout */}
-      <div className="p-3 border-t border-slate-100 shrink-0">
-        <div className="flex items-center gap-2.5 px-2 py-2 rounded-2xl hover:bg-slate-50 transition-colors">
-          <Link href="/manager/profile" onClick={onNavigate} title="Profilim" className="flex items-center gap-2.5 min-w-0 flex-1">
-            {userPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={userPhoto} alt={userName || "Menejer"} className="w-10 h-10 rounded-full object-cover shrink-0 border border-amber-100" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-amber-800 font-bold text-[13px] shrink-0">
-                {getInitials(userName)}
-              </div>
-            )}
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[13px] font-bold text-slate-900 truncate">{userName || "Menejer"}</span>
-              <span className="text-[11px] text-slate-400 truncate">{userEmail}</span>
-            </div>
-          </Link>
-          <button
-            onClick={onLogout}
-            title="Tizimdan chiqish"
-            className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-          >
-            <LogOut size={17} strokeWidth={2.25} />
-          </button>
-        </div>
-      </div>
-    </div>
+    <ManagerThemeProvider>
+      <ManagerLanguageProvider>
+        <ManagerShell>{children}</ManagerShell>
+      </ManagerLanguageProvider>
+    </ManagerThemeProvider>
   );
 }
 
-export default function ManagerLayout({ children }: { children: React.ReactNode }) {
+// ============================================================================
+// THE SHELL
+// ============================================================================
+function ManagerShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, loading } = useAuth();
+  const { preference, setPreference, toggleEnabled } = useManagerTheme();
+  const { lang, setLang } = useManagerLanguage();
+  const t: LayoutT = LAYOUT_TRANSLATIONS[lang] || LAYOUT_TRANSLATIONS.uz;
+
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(SHELL === "rail");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   const [userName, setUserName] = useState("");
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
@@ -146,22 +150,65 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   // 'active'; this drives the matching UX. Unknown/missing status → 'pending'.
   const [centerStatus, setCenterStatus] = useState<CenterApprovalStatus>("pending");
 
-  // Logout confirmation dialog
-  const [logoutOpen, setLogoutOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const deskHeaderRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
 
+  const showBottomBar = BAR_MOBILE;
+
+  // Restore persisted rail state (collapsible shells only; 'rail' is pinned).
+  useEffect(() => {
+    if (!COLLAPSIBLE) return;
+    try { setIsCollapsed(localStorage.getItem("edify-mg-rail") === "1"); } catch { /* private mode */ }
+  }, []);
+  const toggleCollapsed = () => {
+    if (!COLLAPSIBLE) return;
+    setIsCollapsed((v) => {
+      try { localStorage.setItem("edify-mg-rail", v ? "0" : "1"); } catch { /* private mode */ }
+      return !v;
+    });
+  };
+
+  // Keyboard shortcut: [ toggles the rail
+  useEffect(() => {
+    if (!COLLAPSIBLE) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "[") return;
+      const tag = (document.activeElement?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || (document.activeElement as HTMLElement)?.isContentEditable) return;
+      toggleCollapsed();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Click outside listener for popovers
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const inHeader = headerRef.current?.contains(event.target as Node);
+      const inDeskHeader = deskHeaderRef.current?.contains(event.target as Node);
+      const inSidebar = sidebarRef.current?.contains(event.target as Node);
+      if (!inHeader && !inDeskHeader && !inSidebar) {
+        setIsProfileMenuOpen(false);
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Auth & Role Check — resolves center name + approval status BEFORE
+  // rendering children, so gated pages never flash as usable.
   useEffect(() => {
     async function checkRole() {
       if (!loading) {
-        if (!user) router.push('/auth/login');
+        if (!user) router.push("/auth/login");
         else {
           try {
             const profile = await getUserProfile(user.uid);
-            if (profile?.role === 'manager') {
+            if (profile?.role === "manager") {
               setUserName(profile.displayName || "");
               setUserPhoto(profile.photoURL || null);
-              // Resolve center name + approval status BEFORE rendering children,
-              // so gated pages never flash as usable. Any failure → 'pending'.
               if (profile.centerId) {
                 try {
                   const snap = await getDoc(doc(db, "centers", profile.centerId));
@@ -169,21 +216,21 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
                     const data = snap.data();
                     setCenterName(data.name || "Markaz");
                     setCenterStatus(
-                      data.status === 'active' ? 'active'
-                      : data.status === 'suspended' ? 'suspended'
-                      : 'pending'
+                      data.status === "active" ? "active"
+                      : data.status === "suspended" ? "suspended"
+                      : "pending"
                     );
                   }
                 } catch { /* stays 'pending' */ }
               }
               setIsAuthorized(true);
             }
-            else if (profile?.role === 'teacher') router.push('/teacher/dashboard');
-            else router.push('/dashboard');
+            else if (profile?.role === "teacher") router.push("/teacher/dashboard");
+            else router.push("/dashboard");
           } catch (error) {
             // Fail closed: an unreadable profile must not grant access.
             console.error(error);
-            router.push('/auth/login');
+            router.push("/auth/login");
           }
         }
       }
@@ -191,8 +238,8 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
     checkRole();
   }, [user, loading, router]);
 
-  // Keep the sidebar avatar/name in sync — e.g. right after the manager
-  // uploads a photo on /manager/profile — without needing a full reload.
+  // Keep the avatar/name in sync — e.g. right after the manager uploads a
+  // photo on /manager/profile — without needing a full reload.
   useEffect(() => {
     if (!isAuthorized || !user) return;
     const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
@@ -204,172 +251,586 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
     return () => unsub();
   }, [isAuthorized, user]);
 
-  // Lock body scroll while the mobile drawer is open.
-  useEffect(() => {
-    if (!isMobileMenuOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [isMobileMenuOpen]);
+  useEffect(() => { setMobileMenuOpen(false); setIsProfileMenuOpen(false); setIsMoreMenuOpen(false); }, [pathname]);
 
-  // Esc closes drawer / logout dialog.
-  useEffect(() => {
-    if (!isMobileMenuOpen && !logoutOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setIsMobileMenuOpen(false); if (!isLoggingOut) setLogoutOpen(false); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isMobileMenuOpen, logoutOpen, isLoggingOut]);
-
-  if (loading || (user && !isAuthorized)) {
+  if (loading || (user && !isAuthorized) || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-brand-page">
-        <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-sm animate-pulse">
-          <BookOpen size={24} />
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-surface t-canvas">
+        <Loader className="w-40" />
       </div>
     );
   }
 
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+
+  // Language-resolved navigation items.
+  const NAV_ITEMS: NavItem[] = NAV_DEFS.map((d) => ({
+    name: t.nav[d.key],
+    short: d.shortKey ? t.nav[d.shortKey] : undefined,
+    href: d.href,
+    icon: d.icon,
+    groupStart: d.groupStart,
+  }));
+
+  // Topbar shell: first 5 destinations inline, the rest behind "More".
+  // Toolbar shell shows every destination on its own nav row instead.
+  const topbarPrimary = NAV_ITEMS.slice(0, 5);
+  const topbarOverflow = NAV_ITEMS.slice(5);
+
   const confirmLogout = async () => {
-    setIsLoggingOut(true);
     try {
       await signOut(auth);
       router.push("/auth/login");
     } catch {
-      toast.error("Tizimdan chiqishda xatolik yuz berdi");
-      setIsLoggingOut(false);
+      toast.error(t.logout.error);
     }
   };
 
-  const requestLogout = () => { setIsMobileMenuOpen(false); setLogoutOpen(true); };
+  const avatar = (size: string, text: string) => (
+    <span className={cn("rounded-m3-sm bg-primary text-on-primary flex items-center justify-center font-bold overflow-hidden shrink-0 shadow-elev-1", size, text)}>
+      {userPhoto
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img src={userPhoto} alt={userName || t.manager} className="w-full h-full object-cover" />
+        : getInitials(userName)}
+    </span>
+  );
 
-  return (
-    <div className="min-h-[100dvh] bg-brand-page flex font-['Inter',sans-serif] selection:bg-amber-100 selection:text-amber-900">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-64 h-screen sticky top-0 shrink-0 z-40">
-        <Sidebar
-          pathname={pathname}
-          centerName={centerName}
-          userName={userName}
-          userEmail={user?.email || ""}
-          userPhoto={userPhoto}
-          onNavigate={() => {}}
-          onLogout={requestLogout}
-        />
-      </aside>
+  // --- Theme (light/system/dark) segmented switch — per-device override ---
+  const themeSwitch = toggleEnabled && (
+    <div className="flex items-center bg-surface-container-high p-1 rounded-m3-sm gap-1 mb-2" role="group" aria-label={t.theme.label}>
+      {([
+        { v: "light" as const, icon: Sun, label: t.theme.light },
+        { v: "system" as const, icon: Monitor, label: t.theme.system },
+        { v: "dark" as const, icon: Moon, label: t.theme.dark },
+      ]).map(({ v, icon: Icon, label }) => (
+        <button
+          key={v}
+          onClick={() => setPreference(v)}
+          aria-pressed={preference === v}
+          title={label}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-m3-xs text-[11px] font-bold transition-all",
+            preference === v ? "bg-surface-container-lowest text-primary shadow-elev-1" : "text-on-surface-variant hover:text-on-surface",
+          )}
+        >
+          <Icon size={13} />
+          <span className="hidden sm:inline">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
 
-      {/* Mobile Header — menu button on the LEFT (the drawer slides in from the left) */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/90 backdrop-blur-md border-b border-slate-200 z-40 flex items-center justify-between px-3">
-        <div className="flex items-center gap-2 min-w-0">
+  // --- Profile popover body (shared: sidebar footer + top bars) ---
+  const profilePanelBody = (
+    <>
+      <div className="px-3 py-3 bg-surface-container-high rounded-m3-md mb-2">
+        <p className="text-[13px] font-semibold text-on-surface truncate">{userName || t.manager}</p>
+        <p className="text-[10px] font-medium text-on-surface-variant truncate">{user?.email}</p>
+        <p className="flex items-center gap-1 text-[10px] font-semibold text-primary truncate mt-1">
+          <Building2 size={11} className="shrink-0" /> {centerName}
+        </p>
+      </div>
+      {themeSwitch}
+      {/* SVG-flag language switcher (same pattern as the teacher panel) */}
+      <div className="flex items-center bg-surface-container-high p-1 rounded-m3-sm gap-1 mb-2" role="group" aria-label={t.language}>
+        {LANGUAGE_OPTIONS.map((l) => (
           <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            aria-label="Menyuni ochish"
-            className="w-10 h-10 shrink-0 flex items-center justify-center bg-slate-50 rounded-xl text-slate-600 hover:bg-slate-100 active:scale-95 transition-all"
+            key={l.code}
+            onClick={() => setLang(l.code)}
+            aria-pressed={lang === l.code}
+            title={l.label}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-m3-xs text-[11px] font-bold uppercase transition-all",
+              lang === l.code ? "bg-surface-container-lowest text-primary shadow-elev-1" : "text-on-surface-variant hover:text-on-surface",
+            )}
           >
-            <Menu size={20} />
+            <FlagSvg code={l.code} />
+            {l.code}
           </button>
-          <div className="flex items-center gap-2 text-slate-900 min-w-0">
-            <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white shrink-0">
-              <BookOpen size={15} strokeWidth={2.5} />
-            </div>
+        ))}
+      </div>
+      <Link href="/manager/profile" onClick={() => setIsProfileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-m3-sm text-[13px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-state-hover transition-colors"><UserIcon size={16} /> {t.profile}</Link>
+      <div className="h-px bg-outline-variant my-1.5 mx-2"></div>
+      <button onClick={() => { setIsProfileMenuOpen(false); setShowLogoutModal(true); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-m3-sm text-[13px] font-medium text-error hover:bg-error-container transition-colors"><LogOut size={16} /> {t.logout.title}</button>
+    </>
+  );
+
+  // --- The animated active indicator, per recipe ---
+  // Positions use fixed offsets, never translate — framer's layout animation
+  // owns `transform`, so translate-based centering breaks the glide.
+  const navIndicator = (collapsed: boolean, isMobile: boolean) => {
+    const layoutId = isMobile ? "mg-nav-m" : "mg-nav";
+    if (STYLE.indicator === "pill") {
+      return (
+        <motion.span
+          layoutId={layoutId}
+          transition={springTransition}
+          className={cn(
+            "absolute", STYLE.indicatorCls,
+            collapsed ? "top-1.5 inset-x-0 mx-auto w-[52px] h-[30px] rounded-full" : "inset-0 rounded-full",
+          )}
+        />
+      );
+    }
+    if (STYLE.indicator === "bar") {
+      return (
+        <motion.span
+          layoutId={layoutId}
+          transition={springTransition}
+          className={cn(
+            "absolute left-0 w-1 rounded-r-full", STYLE.indicatorCls,
+            collapsed ? "top-[16px] h-6" : "top-[13px] h-5",
+          )}
+        />
+      );
+    }
+    // dot
+    return (
+      <motion.span
+        layoutId={layoutId}
+        transition={springTransition}
+        className={cn(
+          "absolute w-1.5 h-1.5 rounded-full", STYLE.indicatorCls,
+          collapsed ? "left-2 top-[25px]" : "left-1.5 top-[20px]",
+        )}
+      />
+    );
+  };
+
+  // --- SIDEBAR CONTENT (desktop side shells + mobile slide-out drawer) ---
+  const renderSidebarContent = (collapsed: boolean, isMobile: boolean = false) => (
+    <div className={cn("flex flex-col h-full relative", SHELL === "floating" && !isMobile ? "bg-transparent" : isMobile ? DRAWER_BG : STYLE.bg)}>
+
+      {/* Header: brand + center + rail toggle */}
+      <div className={cn("flex items-center gap-2.5 px-3.5 pt-4 pb-2 shrink-0 min-h-[64px]", collapsed && "flex-col gap-2 px-0 justify-center")}>
+        <div className="flex items-center gap-2.5 overflow-hidden cursor-pointer min-w-0" onClick={() => router.push("/manager/dashboard")}>
+          <div className={cn("w-9 h-9 rounded-m3-md flex items-center justify-center shrink-0 shadow-elev-1", STYLE.brandBox)}><BookOpen size={19} /></div>
+          {!collapsed && (
             <div className="min-w-0">
-              <p className="font-extrabold text-[15px] tracking-tight leading-tight">Edify</p>
-              <p className="text-[10px] font-semibold text-slate-400 truncate leading-tight">{centerName}</p>
-            </div>
-          </div>
-        </div>
-        {/* Identity chip on the right → manager profile */}
-        <Link href="/manager/profile" title="Profilim" className="shrink-0 active:scale-95 transition-transform">
-          {userPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={userPhoto} alt={userName || "Menejer"} className="w-9 h-9 rounded-full object-cover border border-amber-100" />
-          ) : (
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-amber-800 font-bold text-[12px]">
-              {getInitials(userName)}
+              <h1 className={cn("font-t-display font-bold text-[15px] leading-none tracking-tight truncate", STYLE.brandTitle)}>Edify<span className={STYLE.brandAccent}>Manager</span></h1>
+              <p className={cn("flex items-center gap-1 text-[9.5px] font-semibold mt-1 truncate", STYLE.brandSub)}>
+                <Building2 size={10} className="shrink-0" /> {centerName}
+              </p>
             </div>
           )}
-        </Link>
+        </div>
+        {isMobile ? (
+          <button onClick={() => setMobileMenuOpen(false)} aria-label={t.close} className={cn("m3-interactive ml-auto p-2 rounded-full", STYLE.email)}>
+            <X size={19} />
+          </button>
+        ) : COLLAPSIBLE ? (
+          <button
+            onClick={toggleCollapsed}
+            title={collapsed ? `${t.expand}  [` : `${t.collapse}  [`}
+            aria-label={collapsed ? t.expand : t.collapse}
+            className={cn("m3-interactive p-2 rounded-full", STYLE.email, !collapsed && "ml-auto")}
+          >
+            <PanelLeft size={18} className={cn("transition-transform duration-300", collapsed && "rotate-180")} />
+          </button>
+        ) : null}
       </div>
 
-      {/* Mobile Drawer */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-          <div className="relative w-[290px] max-w-[85%] h-full bg-white shadow-2xl rounded-r-3xl overflow-hidden animate-[drawerIn_.2s_ease-out]">
-            <button
-              onClick={() => setIsMobileMenuOpen(false)}
-              aria-label="Yopish"
-              className="absolute top-4 right-3 z-10 w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+      {/* Navigation */}
+      <nav className="flex-1 px-2.5 py-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
+        {NAV_ITEMS.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <div key={item.href}>
+              {item.groupStart && <div className={cn("h-px my-2", STYLE.divider, collapsed ? "mx-3" : "mx-2")} />}
+              <Link
+                href={item.href}
+                title={collapsed ? item.name : undefined}
+                onClick={() => isMobile && setMobileMenuOpen(false)}
+                className={cn(
+                  "group relative flex items-center transition-all mb-1",
+                  collapsed
+                    ? "flex-col justify-center gap-[3px] h-[56px] rounded-m3-md px-1"
+                    : cn("gap-3 h-[46px] px-3.5", STYLE.itemShape, STYLE.indicator === "bar" && "pl-4"),
+                  active ? cn(STYLE.active, STYLE.activeRowBg) : STYLE.idle,
+                )}
+              >
+                {active && navIndicator(collapsed, isMobile)}
+                <item.icon size={collapsed ? 20 : 19} strokeWidth={active ? 2.4 : 2} className={cn("shrink-0 relative z-10", active && STYLE.iconActive)} />
+                <span className={cn(
+                  "relative z-10 truncate",
+                  collapsed ? "text-[9.5px] font-semibold max-w-full px-0.5" : "flex-1 text-[13.5px] font-medium",
+                  active && "font-bold",
+                )}>
+                  {collapsed ? (item.short || item.name) : item.name}
+                </span>
+              </Link>
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* Footer: profile row (or the classic user card) + popover */}
+      <div className={cn("shrink-0 px-2.5 pb-3 pt-2 border-t relative", STYLE.footerBorder)}>
+        <AnimatePresence>
+          {isProfileMenuOpen && (
+            <motion.div
+              {...popIn}
+              className={cn("absolute w-60 p-2", PANEL, collapsed && !isMobile ? "left-full ml-2 bottom-2" : "bottom-full mb-2 left-2.5 origin-bottom-left")}
             >
-              <X size={19} />
+              {profilePanelBody}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {STYLE.classicFooter && !collapsed ? (
+          /* Original manager footer: user card opens the popover, logout is its
+             own always-visible button on the right. */
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              title={userName || t.profile}
+              className="m3-interactive flex-1 flex items-center gap-2.5 p-1.5 rounded-m3-md text-left transition-colors hover:bg-state-hover min-w-0"
+            >
+              {avatar("w-10 h-10", "text-[13px]")}
+              <span className="flex-1 min-w-0">
+                <b className={cn("block text-[12.5px] font-bold truncate", STYLE.name)}>{userName || t.manager}</b>
+                <small className={cn("block text-[10px] truncate", STYLE.email)}>{user?.email}</small>
+              </span>
             </button>
-            <Sidebar
-              pathname={pathname}
-              centerName={centerName}
-              userName={userName}
-              userEmail={user?.email || ""}
-              userPhoto={userPhoto}
-              onNavigate={() => setIsMobileMenuOpen(false)}
-              onLogout={requestLogout}
-            />
+            <button
+              onClick={() => { setIsProfileMenuOpen(false); if (isMobile) setMobileMenuOpen(false); setShowLogoutModal(true); }}
+              title={t.logout.title}
+              aria-label={t.logout.title}
+              className="m3-interactive w-9 h-9 shrink-0 rounded-m3-md flex items-center justify-center text-on-surface-variant hover:bg-error-container hover:text-error transition-colors"
+            >
+              <LogOut size={17} strokeWidth={2.25} />
+            </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <button
+            onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+            title={userName || t.profile}
+            className={cn("m3-interactive w-full flex items-center rounded-m3-md transition-colors hover:bg-state-hover", collapsed ? "justify-center p-1.5" : "gap-2.5 p-1.5 text-left")}
+          >
+            {avatar("w-9 h-9", "text-[13px]")}
+            {!collapsed && (
+              <>
+                <span className="flex-1 min-w-0">
+                  <b className={cn("block text-[12.5px] font-semibold truncate", STYLE.name)}>{userName || t.manager}</b>
+                  <small className={cn("block text-[10px] truncate", STYLE.email)}>{user?.email}</small>
+                </span>
+                <MoreVertical size={15} className={cn("shrink-0", STYLE.email)} />
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
-      {/* Logout confirmation dialog */}
-      {logoutOpen && (
-        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => !isLoggingOut && setLogoutOpen(false)} />
-          <div className="relative bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 text-center shadow-2xl animate-[dialogIn_.18s_ease-out]">
-            <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto mb-4">
-              <LogOut size={26} strokeWidth={2.25} />
-            </div>
-            <h3 className="text-[17px] font-black text-slate-900 tracking-tight">Tizimdan chiqish</h3>
-            <p className="text-[13.5px] text-slate-500 font-medium mt-1.5 mb-6">
-              Rostdan ham hisobingizdan chiqmoqchimisiz?
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                onClick={() => setLogoutOpen(false)}
-                disabled={isLoggingOut}
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[13.5px] rounded-xl transition-colors disabled:opacity-50"
-              >
-                Bekor qilish
-              </button>
-              <button
-                onClick={confirmLogout}
-                disabled={isLoggingOut}
-                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold text-[13.5px] rounded-xl shadow-sm shadow-red-500/25 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {isLoggingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={15} />}
-                {isLoggingOut ? "Chiqilmoqda..." : "Chiqish"}
-              </button>
-            </div>
+  // --- Top-bar nav pill (shared by 'topbar' and 'toolbar') ---
+  const topbarLink = (item: NavItem) => {
+    const active = isActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          "relative flex items-center gap-2 h-[38px] px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors",
+          active ? "text-on-secondary-container" : "text-on-surface-variant hover:text-on-surface hover:bg-state-hover",
+        )}
+      >
+        {active && (
+          <motion.span layoutId="mg-tb-pill" transition={springTransition} className="absolute inset-0 bg-secondary-container rounded-full" />
+        )}
+        <item.icon size={16} strokeWidth={active ? 2.4 : 2} className={cn("relative z-10", active && "text-primary")} />
+        <span className={cn("relative z-10", active && "font-bold")}>{item.name}</span>
+      </Link>
+    );
+  };
+
+  const brandBlock = (
+    <div className="flex items-center gap-2.5 cursor-pointer min-w-0 shrink-0" onClick={() => router.push("/manager/dashboard")}>
+      <div className="w-9 h-9 bg-primary rounded-m3-md flex items-center justify-center text-on-primary shrink-0 shadow-elev-1"><BookOpen size={19} /></div>
+      <b className="font-t-display text-[15px] text-on-surface tracking-tight truncate hidden lg:block">Edify<span className="text-primary">Manager</span></b>
+    </div>
+  );
+
+  const topbarRightCluster = (
+    <div className="flex items-center gap-2 shrink-0">
+      <span className="hidden lg:flex items-center gap-1.5 px-3 h-9 rounded-full bg-surface-container-low text-on-surface-variant text-[11.5px] font-semibold max-w-[220px]">
+        <Building2 size={13} className="shrink-0 text-primary" /> <span className="truncate">{centerName}</span>
+      </span>
+      <div className="relative">
+        <button onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); setIsMoreMenuOpen(false); }} className="transition-transform active:scale-95">
+          {avatar("w-9 h-9", "text-[12px]")}
+        </button>
+        <AnimatePresence>
+          {isProfileMenuOpen && (
+            <motion.div {...popIn} className={cn("absolute top-full right-0 mt-2 w-60 p-2 origin-top-right", PANEL)}>
+              {profilePanelBody}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+
+  // --- DESKTOP TOP BAR (SHELL === 'topbar'): single row, 5 + "Yana" ---
+  const desktopTopbar = SHELL === "topbar" && (
+    <header ref={deskHeaderRef} className="hidden md:flex bg-t-bar-blur backdrop-blur-xl border-b border-outline-variant sticky top-0 z-40 px-4 h-[60px] items-center gap-4 shrink-0">
+      {brandBlock}
+      <nav className="flex-1 flex items-center gap-1 min-w-0 overflow-x-auto custom-scrollbar">
+        {topbarPrimary.map(topbarLink)}
+
+        {/* Yana (overflow) */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => { setIsMoreMenuOpen(!isMoreMenuOpen); setIsProfileMenuOpen(false); }}
+            aria-expanded={isMoreMenuOpen}
+            className={cn(
+              "flex items-center gap-2 h-[38px] px-3.5 rounded-full text-[13px] font-medium transition-colors",
+              topbarOverflow.some((i) => isActive(i.href)) ? "bg-secondary-container text-on-secondary-container font-bold" : "text-on-surface-variant hover:text-on-surface hover:bg-state-hover",
+            )}
+          >
+            <MoreHorizontal size={16} />
+            {t.more}
+          </button>
+          <AnimatePresence>
+            {isMoreMenuOpen && (
+              <motion.div {...popIn} className={cn("absolute top-full left-0 mt-2 w-56 p-2 origin-top-left", PANEL)}>
+                {topbarOverflow.map((item) => {
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMoreMenuOpen(false)}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2.5 rounded-m3-sm text-[13px] font-medium transition-colors",
+                        active ? "bg-secondary-container text-on-secondary-container font-bold" : "text-on-surface-variant hover:text-on-surface hover:bg-state-hover",
+                      )}
+                    >
+                      <item.icon size={16} /> {item.name}
+                    </Link>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </nav>
+      {topbarRightCluster}
+    </header>
+  );
+
+  // --- DESKTOP TWO-DECK TOOLBAR (SHELL === 'toolbar'): brand row + full nav row ---
+  const desktopToolbar = SHELL === "toolbar" && (
+    <header ref={deskHeaderRef} className="hidden md:block bg-t-bar-blur backdrop-blur-xl border-b border-outline-variant sticky top-0 z-40 shrink-0">
+      <div className="px-4 h-[54px] flex items-center justify-between gap-4">
+        {brandBlock}
+        {topbarRightCluster}
+      </div>
+      <nav className="px-3 pb-2 flex items-center gap-1 overflow-x-auto custom-scrollbar">
+        {NAV_ITEMS.map(topbarLink)}
+      </nav>
+    </header>
+  );
+
+  // --- MOBILE BOTTOM NAV (dock / floating / iconic / topline) ---
+  const mobileNavItems = [
+    { label: t.bar.home, href: "/manager/dashboard", icon: LayoutDashboard },
+    { label: t.bar.groups, href: "/manager/groups", icon: Layers },
+    { label: t.bar.attendance, href: "/manager/attendance", icon: CalendarCheck },
+    { label: t.bar.finance, href: "/manager/finance", icon: Wallet },
+  ];
+
+  const mobileNavLink = (item: { label: string; href: string; icon: typeof LayoutDashboard }) => {
+    const active = isActive(item.href);
+    if (MOBILE_NAV === "iconic") {
+      return (
+        <Link key={item.href} href={item.href} aria-label={item.label} className={cn("flex-1 flex items-center justify-center h-[52px] relative", active ? "text-primary" : "text-on-surface-variant")}>
+          {active && (
+            <motion.span layoutId="mg-bn-pill" transition={springTransition} className="absolute inset-y-2 inset-x-0 mx-auto w-[56px] bg-secondary-container rounded-full" />
+          )}
+          <item.icon size={22} strokeWidth={active ? 2.4 : 2} className="relative z-10" />
+        </Link>
+      );
+    }
+    if (MOBILE_NAV === "topline") {
+      return (
+        <Link key={item.href} href={item.href} className={cn("flex-1 flex flex-col items-center gap-[3px] pt-2 pb-1 relative", active ? "text-primary" : "text-on-surface-variant")}>
+          {active && (
+            <motion.span layoutId="mg-bn-pill" transition={springTransition} className="absolute top-0 inset-x-0 mx-auto w-9 h-[3px] rounded-b-full bg-primary" />
+          )}
+          <item.icon size={21} strokeWidth={active ? 2.4 : 2} className="relative z-10" />
+          <span className={cn("relative z-10 text-[9.5px] font-semibold", active && "font-bold")}>{item.label}</span>
+        </Link>
+      );
+    }
+    // dock + floating
+    return (
+      <Link key={item.href} href={item.href} className={cn("flex-1 flex flex-col items-center gap-[3px] py-1 relative", active ? "text-on-secondary-container" : "text-on-surface-variant")}>
+        {active && (
+          <motion.span layoutId="mg-bn-pill" transition={springTransition} className="absolute -top-0.5 inset-x-0 mx-auto w-[52px] h-[28px] bg-secondary-container rounded-full" />
+        )}
+        <item.icon size={21} strokeWidth={active ? 2.4 : 2} className={cn("relative z-10", active && "text-primary")} />
+        <span className={cn("relative z-10 text-[9.5px] font-semibold", active && "font-bold")}>{item.label}</span>
+      </Link>
+    );
+  };
+
+  const menuButton = MOBILE_NAV === "iconic" ? (
+    <button onClick={() => setMobileMenuOpen(true)} aria-label={t.bar.menu} className="flex-1 flex items-center justify-center h-[52px] text-on-surface-variant">
+      <Menu size={22} strokeWidth={2} />
+    </button>
+  ) : (
+    <button onClick={() => setMobileMenuOpen(true)} className={cn("flex-1 flex flex-col items-center gap-[3px] text-on-surface-variant", MOBILE_NAV === "topline" ? "pt-2 pb-1" : "py-1")}>
+      <Menu size={21} strokeWidth={2} />
+      <span className="text-[9.5px] font-semibold">{t.bar.menu}</span>
+    </button>
+  );
+
+  // Bottom padding the scroll area reserves for each bar height.
+  const mainBarPad =
+    MOBILE_NAV === "dock" ? "pb-[calc(68px+env(safe-area-inset-bottom))] md:pb-0"
+    : MOBILE_NAV === "floating" ? "pb-[calc(84px+env(safe-area-inset-bottom))] md:pb-0"
+    : MOBILE_NAV === "iconic" ? "pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0"
+    : MOBILE_NAV === "topline" ? "pb-[calc(70px+env(safe-area-inset-bottom))] md:pb-0"
+    : "";
+
+  const isWide = WIDE_ROUTES.some((r) => pathname.startsWith(r));
+
+  return (
+    <div className={cn(
+      "min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container overflow-hidden relative",
+      SIDE_SHELL ? "flex" : "flex flex-col",
+    )}>
+
+      {/* --- LOGOUT CONFIRM --- */}
+      <ConfirmDialog
+        open={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => { confirmLogout(); setShowLogoutModal(false); }}
+        title={t.logout.title}
+        description={t.logout.desc}
+        confirmText={t.logout.confirm}
+        cancelText={t.logout.cancel}
+        danger
+      />
+
+      {/* --- MOBILE SLIDE-OUT DRAWER (full nav list, styled like the chosen sidebar) --- */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 md:hidden flex">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+            <motion.aside initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ type: "spring", bounce: 0, duration: MOTION_ON ? 0.4 : 0 }} className={cn("relative w-[280px] h-full shadow-elev-3", DRAWER_BG)}>
+              {renderSidebarContent(false, true)}
+            </motion.aside>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0 flex flex-col pt-14 lg:pt-0 overflow-y-auto">
-        <div
-          className={
-            // Attendance + finance use the full width (wide grids/tables need the room);
-            // every other manager page keeps the centered, max-width layout.
-            pathname?.startsWith("/manager/attendance") || pathname?.startsWith("/manager/staff-attendance") || pathname?.startsWith("/manager/timetable") || pathname?.startsWith("/manager/finance")
-              ? "flex-1 w-full p-3 sm:p-4 lg:p-6"
-              : "flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8"
-          }
+      {/* --- DESKTOP SIDE SHELLS: recipe-styled aside · rail (pinned) · floating (glass card) --- */}
+      {SIDE_SHELL && SHELL !== "floating" && (
+        <aside
+          ref={sidebarRef}
+          className={cn(
+            "hidden md:flex shrink-0 h-[100dvh] transition-[width] duration-t-med ease-t-std relative z-[50]",
+            STYLE.bg, STYLE.asideBorder,
+            isCollapsed ? "w-[84px]" : "w-[264px]",
+          )}
         >
-          <ApprovalGate status={centerStatus}>{children}</ApprovalGate>
-        </div>
-      </main>
+          {renderSidebarContent(isCollapsed, false)}
+        </aside>
+      )}
+      {SHELL === "floating" && (
+        <aside
+          ref={sidebarRef}
+          className={cn(
+            "hidden md:flex shrink-0 h-[100dvh] p-3 pr-0 relative z-[50] transition-[width] duration-t-med ease-t-std",
+            isCollapsed ? "w-[96px]" : "w-[276px]",
+          )}
+        >
+          <div className="flex-1 rounded-m3-xl bg-t-glass backdrop-blur-xl border border-t-glass-border shadow-elev-2 overflow-hidden">
+            {renderSidebarContent(isCollapsed, false)}
+          </div>
+        </aside>
+      )}
 
-      <style jsx global>{`
-        @keyframes drawerIn { from { transform: translateX(-24px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
-        @keyframes dialogIn { from { transform: translateY(16px) scale(.98); opacity: 0 } to { transform: translateY(0) scale(1); opacity: 1 } }
-      `}</style>
+      {/* --- MAIN COLUMN --- */}
+      <div className={cn("flex-1 flex flex-col min-w-0 relative z-10", SIDE_SHELL ? "h-[100dvh]" : "min-h-[100dvh]")}>
+
+        {desktopTopbar}
+        {desktopToolbar}
+
+        {/* MOBILE TOP BAR — slim: (hamburger) · brand · avatar */}
+        <header ref={headerRef} className="md:hidden bg-background-blur backdrop-blur-xl border-b border-outline-variant sticky top-0 z-30 px-3 py-2 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {MOBILE_NAV === "drawer" && (
+              <button onClick={() => setMobileMenuOpen(true)} aria-label={t.bar.menu} className="m3-interactive flex items-center justify-center h-9 w-9 -ml-1 text-on-surface-variant rounded-full shrink-0">
+                <Menu size={20} />
+              </button>
+            )}
+            <div className="flex items-center gap-2 min-w-0" onClick={() => router.push("/manager/dashboard")}>
+              <div className="w-8 h-8 bg-primary rounded-m3-sm flex items-center justify-center text-on-primary shrink-0 shadow-elev-1"><BookOpen size={16} /></div>
+              <div className="min-w-0">
+                <b className="block font-t-display text-[14px] text-on-surface tracking-tight leading-tight truncate">Edify<span className="text-primary">Manager</span></b>
+                <span className="block text-[9px] font-semibold text-on-surface-variant leading-tight truncate">{centerName}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Avatar + profile popover (theme switch lives inside) */}
+          <div className="relative">
+            <button onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} className="transition-transform active:scale-95">
+              {avatar("w-9 h-9", "text-[12px]")}
+            </button>
+            <AnimatePresence>
+              {isProfileMenuOpen && (
+                <motion.div {...popIn} className={cn("absolute top-full right-0 mt-2 w-60 p-2 origin-top-right", PANEL)}>
+                  {profilePanelBody}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </header>
+
+        {/* MAIN SCROLLABLE CONTENT — reserves space for the bottom bar on mobile */}
+        <main className={cn(
+          "flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative t-canvas",
+          showBottomBar && mainBarPad,
+        )}>
+          <motion.div
+            key={pathname}
+            {...pageTransition}
+            className={cn(
+              "w-full relative z-10 px-t-page-x py-t-page-y",
+              !isWide && "max-w-[1400px] mx-auto",
+            )}
+          >
+            <ApprovalGate status={centerStatus}>{children}</ApprovalGate>
+          </motion.div>
+        </main>
+
+        {/* MOBILE BOTTOM NAVIGATION — per Mobile_navigation */}
+        {showBottomBar && MOBILE_NAV === "floating" && (
+          <nav className="md:hidden fixed inset-x-3 z-40 bg-t-bar-blur backdrop-blur-xl border border-t-glass-border shadow-elev-3 rounded-full flex px-2 py-1.5" style={{ bottom: "calc(10px + env(safe-area-inset-bottom))" }}>
+            {mobileNavItems.map(mobileNavLink)}
+            {menuButton}
+          </nav>
+        )}
+        {showBottomBar && MOBILE_NAV !== "floating" && (
+          <nav
+            className={cn(
+              "md:hidden fixed bottom-0 inset-x-0 z-40 bg-t-bar-blur backdrop-blur-xl border-t border-outline-variant flex",
+              MOBILE_NAV === "dock" && "px-1.5 pt-1.5",
+              MOBILE_NAV === "iconic" && "px-1.5",
+              MOBILE_NAV === "topline" && "px-1.5",
+            )}
+            style={{ paddingBottom: "calc(6px + env(safe-area-inset-bottom))" }}
+          >
+            {mobileNavItems.map(mobileNavLink)}
+            {menuButton}
+          </nav>
+        )}
+
+      </div>
     </div>
   );
 }

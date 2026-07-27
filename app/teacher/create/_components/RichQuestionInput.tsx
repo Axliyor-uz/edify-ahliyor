@@ -8,6 +8,37 @@ import 'katex/dist/katex.min.css';
 import 'react-quill-new/dist/quill.snow.css';
 import MathInput from './MathInput';
 import { Button, IconButton } from '@/components/ui';
+import { useTeacherLanguage } from '@/app/teacher/layout';
+
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    typeHere: "Bu yerga yozing...",
+    close: "Yopish",
+    equationBuilder: "Formula Muharriri",
+    virtualKeyboardActive: "Virtual Klaviatura Faol",
+    mathPlaceholder: "Yozing yoki quyidagi klaviaturadan foydalaning...",
+    cancel: "Bekor qilish",
+    insertEquation: "Formulani Qo'shish",
+  },
+  en: {
+    typeHere: "Type here...",
+    close: "Close",
+    equationBuilder: "Equation Builder",
+    virtualKeyboardActive: "Virtual Keyboard Active",
+    mathPlaceholder: "Type or use the keyboard below...",
+    cancel: "Cancel",
+    insertEquation: "Insert Equation",
+  },
+  ru: {
+    typeHere: "Введите здесь...",
+    close: "Закрыть",
+    equationBuilder: "Редактор формул",
+    virtualKeyboardActive: "Виртуальная клавиатура активна",
+    mathPlaceholder: "Введите или используйте клавиатуру ниже...",
+    cancel: "Отмена",
+    insertEquation: "Вставить формулу",
+  },
+};
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false }) as any;
 
@@ -24,6 +55,8 @@ interface Props {
 }
 
 export default function RichQuestionInput({ label, value = "", onChange, placeholder, compact = false }: Props) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const quillRef = useRef<any>(null);
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [tempMath, setTempMath] = useState('');
@@ -150,7 +183,7 @@ export default function RichQuestionInput({ label, value = "", onChange, placeho
           ref={quillRef}
           theme="snow"
           modules={modules}
-          placeholder={placeholder || "Type here..."}
+          placeholder={placeholder || t.typeHere}
           onChange={handleEditorChange}
         />
       </div>
@@ -167,25 +200,25 @@ export default function RichQuestionInput({ label, value = "", onChange, placeho
                 <div className="w-8 h-8 bg-primary-container text-on-primary-container rounded-m3-sm flex items-center justify-center">
                   <Sigma size={18} strokeWidth={2.5} />
                 </div>
-                Equation Builder
+                {t.equationBuilder}
               </h3>
-              <IconButton aria-label="Yopish" size="sm" onClick={() => setIsMathModalOpen(false)}>
+              <IconButton aria-label={t.close} size="sm" onClick={() => setIsMathModalOpen(false)}>
                 <X />
               </IconButton>
             </div>
 
             <div className="p-8 bg-surface-container">
               <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest mb-4">
-                <Keyboard size={14} /> Virtual Keyboard Active
+                <Keyboard size={14} /> {t.virtualKeyboardActive}
               </div>
               <div className="rounded-m3-lg overflow-hidden ring-2 ring-primary shadow-elev-1">
-                <MathInput value={tempMath} onChange={(latex) => setTempMath(latex)} placeholder="Type or use the keyboard below..." />
+                <MathInput value={tempMath} onChange={(latex) => setTempMath(latex)} placeholder={t.mathPlaceholder} />
               </div>
             </div>
 
             <div className="p-5 border-t border-outline-variant flex justify-end gap-3">
-              <Button variant="text" onClick={() => setIsMathModalOpen(false)}>Cancel</Button>
-              <Button icon={<Check />} onClick={insertMath} className="px-8">Insert Equation</Button>
+              <Button variant="text" onClick={() => setIsMathModalOpen(false)}>{t.cancel}</Button>
+              <Button icon={<Check />} onClick={insertMath} className="px-8">{t.insertEquation}</Button>
             </div>
 
           </div>

@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import {
   Users, CheckCircle, CalendarDays, Clock, AlertTriangle, TrendingUp,
-  Loader2, ArrowRight, GraduationCap, UserPlus, DoorOpen, Banknote, Wallet,
+  ArrowRight, GraduationCap, UserPlus, DoorOpen, Banknote, Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
@@ -17,18 +18,141 @@ import { getTodayKey, parseDateKey } from "@/lib/dateUtils";
 import { fetchCenterSessions, rateOfSessions, tallyStudent, type CenterSession } from "@/services/attendanceService";
 import { fetchOpenCharges, fetchPaymentsForMonth, openAmountOf } from "@/services/financeService";
 import { formatUZS } from "@/lib/finance/money";
+import { PageHeader, EmptyState, Spinner, staggerContainer, staggerItem } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
+
+// Locale for the header date line only (attendance time math stays en-GB/Tashkent).
+const DATE_LOCALE: Record<LangType, string> = { uz: "uz-UZ", en: "en-US", ru: "ru-RU" };
+
+const TRANSLATIONS = {
+  uz: {
+    title: "Boshqaruv paneli",
+    acceptPayment: "To'lov qabul qilish",
+    markAttendance: "Davomat belgilash",
+    kpi: {
+      students: "O'quvchilar",
+      groupsCount: (n: number) => `${n} guruh`,
+      income: "Tushum",
+      thisMonth: "shu oy",
+      debt: "Qarzdorlik",
+      debtors: (n: number) => `${n} ta qarzdor`,
+      total: "jami",
+      todayAttendance: "Bugungi davomat",
+      markedLessons: "belgilangan darslar",
+      notMarkedYet: "hali belgilanmagan",
+      monthlyAttendance: "Oylik davomat",
+      monthAvg: "shu oy o'rtacha",
+      needsAttention: "E'tibor talab",
+      lowAttendance: "past davomatli o'quvchi",
+    },
+    todayLessons: "Bugungi darslar",
+    roomsBusy: (used: number, total: number) => `${used}/${total} xona band`,
+    all: "Barchasi",
+    noLessonsToday: "Bugun dars yo'q",
+    noLessonsTodayDesc: "Jadval bo'yicha bugunga dars rejalashtirilmagan",
+    noTeacher: "O'qituvchi yo'q",
+    markedOf: (marked: number, total: number) => `${marked}/${total} belgilandi`,
+    needsAttention: "E'tibor talab",
+    allGood: "Hammasi joyida",
+    noLowAttendance: "Past davomatli o'quvchi yo'q",
+    loading: "Yuklanmoqda...",
+    absentTimes: (n: number) => `${n} marta kelmagan`,
+    unknown: "Noma'lum",
+    allStudents: "Barcha o'quvchilar",
+    paymentsAndDebtors: "To'lovlar va qarzdorlar",
+    groupAttendance: "Guruhlar bo'yicha davomat",
+    noGroups: "Guruhlar yo'q",
+  },
+  en: {
+    title: "Dashboard",
+    acceptPayment: "Accept payment",
+    markAttendance: "Mark attendance",
+    kpi: {
+      students: "Students",
+      groupsCount: (n: number) => `${n} groups`,
+      income: "Revenue",
+      thisMonth: "this month",
+      debt: "Debt",
+      debtors: (n: number) => `${n} debtors`,
+      total: "total",
+      todayAttendance: "Today's attendance",
+      markedLessons: "lessons marked",
+      notMarkedYet: "not marked yet",
+      monthlyAttendance: "Monthly attendance",
+      monthAvg: "month average",
+      needsAttention: "Needs attention",
+      lowAttendance: "low-attendance students",
+    },
+    todayLessons: "Today's lessons",
+    roomsBusy: (used: number, total: number) => `${used}/${total} rooms in use`,
+    all: "View all",
+    noLessonsToday: "No lessons today",
+    noLessonsTodayDesc: "No lessons are scheduled for today",
+    noTeacher: "No teacher",
+    markedOf: (marked: number, total: number) => `${marked}/${total} marked`,
+    needsAttention: "Needs attention",
+    allGood: "All good",
+    noLowAttendance: "No students with low attendance",
+    loading: "Loading...",
+    absentTimes: (n: number) => `missed ${n} times`,
+    unknown: "Unknown",
+    allStudents: "All students",
+    paymentsAndDebtors: "Payments and debtors",
+    groupAttendance: "Attendance by group",
+    noGroups: "No groups",
+  },
+  ru: {
+    title: "Панель управления",
+    acceptPayment: "Принять оплату",
+    markAttendance: "Отметить посещаемость",
+    kpi: {
+      students: "Ученики",
+      groupsCount: (n: number) => `${n} групп`,
+      income: "Выручка",
+      thisMonth: "этот месяц",
+      debt: "Задолженность",
+      debtors: (n: number) => `должников: ${n}`,
+      total: "всего",
+      todayAttendance: "Посещаемость сегодня",
+      markedLessons: "отмеченные занятия",
+      notMarkedYet: "ещё не отмечено",
+      monthlyAttendance: "За месяц",
+      monthAvg: "среднее за месяц",
+      needsAttention: "Требует внимания",
+      lowAttendance: "ученики с низкой посещаемостью",
+    },
+    todayLessons: "Сегодняшние занятия",
+    roomsBusy: (used: number, total: number) => `${used}/${total} кабинетов занято`,
+    all: "Все",
+    noLessonsToday: "Сегодня занятий нет",
+    noLessonsTodayDesc: "На сегодня по расписанию занятий нет",
+    noTeacher: "Учитель не назначен",
+    markedOf: (marked: number, total: number) => `${marked}/${total} отмечено`,
+    needsAttention: "Требует внимания",
+    allGood: "Всё в порядке",
+    noLowAttendance: "Нет учеников с низкой посещаемостью",
+    loading: "Загрузка...",
+    absentTimes: (n: number) => `пропусков: ${n}`,
+    unknown: "Неизвестно",
+    allStudents: "Все ученики",
+    paymentsAndDebtors: "Платежи и должники",
+    groupAttendance: "Посещаемость по группам",
+    noGroups: "Групп нет",
+  },
+};
+type T = typeof TRANSLATIONS.uz;
 
 function rateColor(rate: number | null): string {
-  if (rate === null) return "text-slate-400";
-  if (rate >= 90) return "text-brand-700";
-  if (rate >= 75) return "text-amber-600";
-  return "text-rose-600";
+  if (rate === null) return "text-on-surface-variant";
+  if (rate >= 90) return "text-success";
+  if (rate >= 75) return "text-warning";
+  return "text-error";
 }
 function rateBar(rate: number | null): string {
-  if (rate === null) return "bg-slate-200";
-  if (rate >= 90) return "bg-brand-600";
-  if (rate >= 75) return "bg-amber-500";
-  return "bg-rose-500";
+  if (rate === null) return "bg-surface-container-highest";
+  if (rate >= 90) return "bg-success";
+  if (rate >= 75) return "bg-warning";
+  return "bg-error";
 }
 function getInitials(name: string): string {
   const p = (name || "").trim().split(/\s+/).filter(Boolean);
@@ -45,14 +169,16 @@ interface FinanceSummary {
 
 export default function ManagerDashboard() {
   const { user } = useAuth();
+  const { lang } = useManagerLanguage();
+  const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [centerId, setCenterId] = useState<string | null>(null);
   const today = useMemo(() => getTodayKey(), []);
   const monthStart = useMemo(() => today.slice(0, 8) + "01", [today]);
   const todayWeekday = useMemo(() => parseDateKey(today).getDay(), [today]);
 
   const currentDate = useMemo(
-    () => new Date().toLocaleDateString("uz-UZ", { weekday: "long", year: "numeric", month: "long", day: "numeric" }),
-    []
+    () => new Date().toLocaleDateString(DATE_LOCALE[lang] || "uz-UZ", { weekday: "long", year: "numeric", month: "long", day: "numeric" }),
+    [lang]
   );
 
   useEffect(() => {
@@ -140,7 +266,7 @@ export default function ManagerDashboard() {
       if (!mounted) return;
       setNames((prev) => {
         const m = { ...prev };
-        snaps.forEach((s) => { if (s.exists()) m[s.id] = s.data()?.displayName || "Noma'lum"; });
+        snaps.forEach((s) => { if (s.exists()) m[s.id] = s.data()?.displayName || t.unknown; });
         return m;
       });
     });
@@ -177,115 +303,111 @@ export default function ManagerDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Boshqaruv paneli</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <CalendarDays size={14} className="text-brand-600" />
-            <p className="text-sm text-slate-500">{currentDate}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/manager/finance" className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-brand-50 hover:bg-brand-100 text-brand-800 rounded-full font-bold text-[13px] transition-colors">
-            <Banknote size={15} /> To&apos;lov qabul qilish
-          </Link>
-          <Link href="/manager/attendance" className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-full font-bold text-[13px] shadow-sm shadow-brand-600/25 transition-colors">
-            <CheckCircle size={15} /> Davomat belgilash
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title={t.title}
+        subtitle={
+          <span className="inline-flex items-center gap-2">
+            <CalendarDays size={14} className="text-primary" /> {currentDate}
+          </span>
+        }
+        actions={
+          <>
+            <Link href="/manager/finance" className="inline-flex items-center gap-1.5 h-t-control-sm px-4 bg-primary-container text-on-primary-container hover:shadow-elev-1 rounded-full font-bold text-[13px] transition-all">
+              <Banknote size={15} /> {t.acceptPayment}
+            </Link>
+            <Link href="/manager/attendance" className="inline-flex items-center gap-1.5 h-t-control-sm px-4 bg-primary text-on-primary rounded-full font-bold text-[13px] shadow-elev-1 hover:shadow-elev-2 transition-all">
+              <CheckCircle size={15} /> {t.markAttendance}
+            </Link>
+          </>
+        }
+      />
 
       {/* KPI band — one row on desktop, swipeable on mobile (same pattern as FinanceStats) */}
-      <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 xl:grid-cols-6 md:overflow-visible md:pb-0">
+      <motion.div {...staggerContainer} className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 xl:grid-cols-6 md:overflow-visible md:pb-0">
         <KpiCard
-          href="/manager/students" Icon={Users} label="O'quvchilar" sub={`${classes.length} guruh`}
-          tile="bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-emerald-500/30"
-          wash="bg-gradient-to-b from-emerald-50/70 to-white"
+          href="/manager/students" Icon={Users} label={t.kpi.students} sub={t.kpi.groupsCount(classes.length)}
+          tone="success"
           value={loading ? null : String(uniqueStudentIds.length)}
         />
         <KpiCard
-          href="/manager/finance" Icon={TrendingUp} label="Tushum" sub="shu oy"
-          tile="bg-gradient-to-br from-teal-400 to-emerald-600 shadow-emerald-500/30"
-          wash="bg-gradient-to-b from-emerald-50/70 to-white"
+          href="/manager/finance" Icon={TrendingUp} label={t.kpi.income} sub={t.kpi.thisMonth}
+          tone="success"
           value={financeLoading ? null : finance ? formatUZS(finance.collected) : "—"}
-          valueClass="text-brand-800"
+          valueClass="text-success"
         />
         <KpiCard
-          href="/manager/finance" Icon={Wallet} label="Qarzdorlik" sub={finance ? `${finance.debtorCount} ta qarzdor` : "jami"}
-          tile="bg-gradient-to-br from-rose-400 to-rose-600 shadow-rose-500/30"
-          wash="bg-gradient-to-b from-rose-50/70 to-white"
+          href="/manager/finance" Icon={Wallet} label={t.kpi.debt} sub={finance ? t.kpi.debtors(finance.debtorCount) : t.kpi.total}
+          tone="error"
           value={financeLoading ? null : finance ? formatUZS(finance.debtTotal) : "—"}
-          valueClass={finance && finance.debtTotal > 0 ? "text-rose-600" : "text-slate-900"}
+          valueClass={finance && finance.debtTotal > 0 ? "text-error" : "text-on-surface"}
         />
         <KpiCard
-          href="/manager/attendance" Icon={CheckCircle} label="Bugungi davomat" sub={todaySessions.length > 0 ? "belgilangan darslar" : "hali belgilanmagan"}
-          tile="bg-gradient-to-br from-sky-400 to-sky-600 shadow-sky-500/30"
-          wash="bg-gradient-to-b from-sky-50/70 to-white"
+          href="/manager/attendance" Icon={CheckCircle} label={t.kpi.todayAttendance} sub={todaySessions.length > 0 ? t.kpi.markedLessons : t.kpi.notMarkedYet}
+          tone="tertiary"
           value={loading ? null : todayRate === null ? "—" : `${todayRate}%`}
           valueClass={rateColor(todayRate)}
         />
         <KpiCard
-          href="/manager/attendance" Icon={CalendarDays} label="Oylik davomat" sub="shu oy o'rtacha"
-          tile="bg-gradient-to-br from-violet-400 to-violet-600 shadow-violet-500/30"
-          wash="bg-gradient-to-b from-violet-50/70 to-white"
+          href="/manager/attendance" Icon={CalendarDays} label={t.kpi.monthlyAttendance} sub={t.kpi.monthAvg}
+          tone="tertiary"
           value={loading ? null : monthRate === null ? "—" : `${monthRate}%`}
           valueClass={rateColor(monthRate)}
         />
         <KpiCard
-          href="/manager/students" Icon={AlertTriangle} label="E'tibor talab" sub="past davomatli o'quvchi"
-          tile="bg-gradient-to-br from-amber-400 to-orange-500 shadow-orange-400/30"
-          wash="bg-gradient-to-b from-amber-50/70 to-white"
+          href="/manager/students" Icon={AlertTriangle} label={t.kpi.needsAttention} sub={t.kpi.lowAttendance}
+          tone="warning"
           value={loading ? null : String(chronic.length)}
-          valueClass={chronic.length > 0 ? "text-rose-600" : "text-slate-900"}
+          valueClass={chronic.length > 0 ? "text-error" : "text-on-surface"}
         />
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Today's lessons */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="text-[16px] font-bold text-slate-900 tracking-tight">Bugungi darslar</h2>
+              <h2 className="text-[16px] font-bold text-on-surface tracking-tight">{t.todayLessons}</h2>
               {rooms.length > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-100 text-brand-800 rounded-full text-[11px] font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-600" /> {roomsInUse.size}/{rooms.length} xona band
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary-container text-on-primary-container rounded-full text-[11px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" /> {t.roomsBusy(roomsInUse.size, rooms.length)}
                 </span>
               )}
             </div>
-            <Link href="/manager/attendance" className="text-[13px] font-bold text-brand-700 hover:text-brand-800 hover:underline underline-offset-4 transition-colors">Barchasi</Link>
+            <Link href="/manager/attendance" className="text-[13px] font-bold text-primary hover:underline underline-offset-4 transition-colors">{t.all}</Link>
           </div>
 
-          <div className="bg-white border border-brand-line rounded-3xl overflow-hidden">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl overflow-hidden">
             {loading ? (
-              <div className="flex items-center justify-center py-16"><Loader2 className="animate-spin text-slate-400" size={26} /></div>
+              <div className="flex items-center justify-center py-16"><Spinner size={26} /></div>
             ) : todayLessons.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center py-14 px-6">
-                <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3"><CalendarDays size={22} /></div>
-                <p className="text-sm font-bold text-slate-800">Bugun dars yo&apos;q</p>
-                <p className="text-[13px] text-slate-400 mt-1">Jadval bo&apos;yicha bugunga dars rejalashtirilmagan</p>
-              </div>
+              <EmptyState
+                className="py-14"
+                icon={<CalendarDays />}
+                title={t.noLessonsToday}
+                description={t.noLessonsTodayDesc}
+              />
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-outline-variant">
                 {todayLessons.map((l) => {
                   const done = l.total > 0 && l.marked >= l.total;
                   return (
-                    <Link key={l.id} href={`/manager/attendance/${l.id}`} className="flex items-center gap-3 px-5 py-3.5 hover:bg-brand-25 transition-colors group">
+                    <Link key={l.id} href={`/manager/attendance/${l.id}`} className="flex items-center gap-3 px-5 py-3.5 hover:bg-state-hover transition-colors group">
                       <div className="w-16 shrink-0">
-                        <div className="flex items-center gap-1 text-[13px] font-bold text-slate-700"><Clock size={13} className="text-brand-600" />{l.slot?.startTime}</div>
-                        <p className="text-[11px] text-slate-400 tabular-nums">{l.slot?.endTime}</p>
+                        <div className="flex items-center gap-1 text-[13px] font-bold text-on-surface"><Clock size={13} className="text-primary" />{l.slot?.startTime}</div>
+                        <p className="text-[11px] text-on-surface-variant tabular-nums">{l.slot?.endTime}</p>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-semibold text-slate-900 truncate group-hover:text-brand-800 transition-colors">{l.title}</p>
-                        <p className="text-[12px] text-slate-500 truncate flex items-center gap-1.5">
-                          {l.teacherName || "O'qituvchi yo'q"}
-                          {l.slot?.roomName && <span className="inline-flex items-center gap-0.5 text-brand-700 font-semibold"><DoorOpen size={11} /> {l.slot.roomName}</span>}
+                        <p className="text-[14px] font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{l.title}</p>
+                        <p className="text-[12px] text-on-surface-variant truncate flex items-center gap-1.5">
+                          {l.teacherName || t.noTeacher}
+                          {l.slot?.roomName && <span className="inline-flex items-center gap-0.5 text-primary font-semibold"><DoorOpen size={11} /> {l.slot.roomName}</span>}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
                         {l.rate !== null && <p className={`text-[14px] font-bold tabular-nums ${rateColor(l.rate)}`}>{l.rate}%</p>}
-                        <p className={`text-[11px] font-semibold ${done ? "text-brand-700" : "text-slate-400"} tabular-nums`}>{l.marked}/{l.total} belgilandi</p>
+                        <p className={`text-[11px] font-semibold ${done ? "text-success" : "text-on-surface-variant"} tabular-nums`}>{t.markedOf(l.marked, l.total)}</p>
                       </div>
-                      <ArrowRight size={16} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      <ArrowRight size={16} className="text-on-surface-variant group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                     </Link>
                   );
                 })}
@@ -297,70 +419,71 @@ export default function ManagerDashboard() {
         {/* Watch list */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-rose-500" />
-            <h2 className="text-[16px] font-bold text-slate-900 tracking-tight">E&apos;tibor talab</h2>
+            <AlertTriangle size={16} className="text-error" />
+            <h2 className="text-[16px] font-bold text-on-surface tracking-tight">{t.needsAttention}</h2>
           </div>
-          <div className="bg-white border border-brand-line rounded-3xl p-2">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl p-2">
             {loading ? (
-              <div className="flex items-center justify-center py-14"><Loader2 className="animate-spin text-slate-400" size={22} /></div>
+              <div className="flex items-center justify-center py-14"><Spinner size={22} /></div>
             ) : chronicTop.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center py-12 px-4">
-                <div className="w-11 h-11 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 mb-2"><CheckCircle size={20} /></div>
-                <p className="text-[13px] font-bold text-slate-800">Hammasi joyida</p>
-                <p className="text-[12px] text-slate-400 mt-0.5">Past davomatli o&apos;quvchi yo&apos;q</p>
-              </div>
+              <EmptyState
+                className="py-12"
+                icon={<CheckCircle />}
+                title={t.allGood}
+                description={t.noLowAttendance}
+              />
             ) : (
               <div className="space-y-0.5">
                 {chronicTop.map((c) => (
-                  <div key={c.uid} className="flex items-center gap-2.5 px-2.5 py-2 rounded-2xl hover:bg-brand-25 transition-colors">
-                    <span className="w-8 h-8 shrink-0 rounded-full bg-rose-50 text-rose-600 font-bold text-[11px] flex items-center justify-center">{getInitials(names[c.uid] || "?")}</span>
+                  <div key={c.uid} className="flex items-center gap-2.5 px-2.5 py-2 rounded-m3-lg hover:bg-state-hover transition-colors">
+                    <span className="w-8 h-8 shrink-0 rounded-full bg-error-container text-on-error-container font-bold text-[11px] flex items-center justify-center">{getInitials(names[c.uid] || "?")}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-slate-900 truncate">{names[c.uid] || "Yuklanmoqda..."}</p>
-                      <p className="text-[11px] text-slate-400 tabular-nums">{c.t.absent} marta kelmagan</p>
+                      <p className="text-[13px] font-semibold text-on-surface truncate">{names[c.uid] || t.loading}</p>
+                      <p className="text-[11px] text-on-surface-variant tabular-nums">{t.absentTimes(c.t.absent)}</p>
                     </div>
-                    <span className="shrink-0 text-[13px] font-bold text-rose-600 tabular-nums">{c.t.rate}%</span>
+                    <span className="shrink-0 text-[13px] font-bold text-error tabular-nums">{c.t.rate}%</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <Link href="/manager/students" className="flex items-center justify-between p-3.5 bg-white border border-brand-line rounded-3xl hover:border-brand-200 hover:shadow-sm transition-all group">
+          <Link href="/manager/students" className="flex items-center justify-between p-3.5 bg-surface-container-lowest border border-outline-variant rounded-m3-xl hover:shadow-elev-1 transition-all group">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-brand-100 rounded-full flex items-center justify-center text-brand-700"><UserPlus size={17} /></div>
-              <span className="font-bold text-[13px] text-slate-800">Barcha o&apos;quvchilar</span>
+              <div className="w-9 h-9 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container"><UserPlus size={17} /></div>
+              <span className="font-bold text-[13px] text-on-surface">{t.allStudents}</span>
             </div>
-            <ArrowRight size={16} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" />
+            <ArrowRight size={16} className="text-on-surface-variant group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
           </Link>
-          <Link href="/manager/finance" className="flex items-center justify-between p-3.5 bg-white border border-brand-line rounded-3xl hover:border-brand-200 hover:shadow-sm transition-all group">
+          <Link href="/manager/finance" className="flex items-center justify-between p-3.5 bg-surface-container-lowest border border-outline-variant rounded-m3-xl hover:shadow-elev-1 transition-all group">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-brand-100 rounded-full flex items-center justify-center text-brand-700"><Wallet size={17} /></div>
-              <span className="font-bold text-[13px] text-slate-800">To&apos;lovlar va qarzdorlar</span>
+              <div className="w-9 h-9 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container"><Wallet size={17} /></div>
+              <span className="font-bold text-[13px] text-on-surface">{t.paymentsAndDebtors}</span>
             </div>
-            <ArrowRight size={16} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" />
+            <ArrowRight size={16} className="text-on-surface-variant group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
           </Link>
         </div>
       </div>
 
       {/* Per-group rates */}
       <div className="space-y-3">
-        <h2 className="text-[16px] font-bold text-slate-900 tracking-tight">Guruhlar bo&apos;yicha davomat</h2>
-        <div className="bg-white border border-brand-line rounded-3xl p-2">
+        <h2 className="text-[16px] font-bold text-on-surface tracking-tight">{t.groupAttendance}</h2>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl p-2">
           {loading ? (
-            <div className="flex items-center justify-center py-14"><Loader2 className="animate-spin text-slate-400" size={24} /></div>
+            <div className="flex items-center justify-center py-14"><Spinner size={24} /></div>
           ) : groupRates.length === 0 ? (
-            <p className="text-center text-[13px] text-slate-400 py-10">Guruhlar yo&apos;q</p>
+            <p className="text-center text-[13px] text-on-surface-variant py-10">{t.noGroups}</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
               {groupRates.map((g) => (
-                <Link key={g.id} href={`/manager/attendance/${g.id}`} className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-brand-25 transition-colors group">
-                  <div className="w-9 h-9 shrink-0 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center"><GraduationCap size={16} /></div>
+                <Link key={g.id} href={`/manager/attendance/${g.id}`} className="flex items-center gap-3 px-3 py-2.5 rounded-m3-lg hover:bg-state-hover transition-colors group">
+                  <div className="w-9 h-9 shrink-0 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center"><GraduationCap size={16} /></div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[13px] font-semibold text-slate-900 truncate group-hover:text-brand-800 transition-colors">{g.title}</p>
+                      <p className="text-[13px] font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{g.title}</p>
                       <span className={`text-[13px] font-bold tabular-nums shrink-0 ${rateColor(g.rate)}`}>{g.rate === null ? "—" : `${g.rate}%`}</span>
                     </div>
-                    <div className="mt-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="mt-1 h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
                       <div className={`h-full rounded-full ${rateBar(g.rate)}`} style={{ width: `${g.rate ?? 0}%` }} />
                     </div>
                   </div>
@@ -374,32 +497,43 @@ export default function ManagerDashboard() {
   );
 }
 
-/** KPI tile — same anatomy as the finance stats cards, but clickable. */
-function KpiCard({ href, Icon, tile, wash, label, sub, value, valueClass }: {
-  href: string; Icon: LucideIcon; tile: string; wash: string;
+/** KPI tile — same anatomy as the finance stats cards, but clickable.
+ *  Tones map by MEANING onto the token system's semantic containers. */
+type KpiTone = "success" | "error" | "tertiary" | "warning";
+const KPI_ICON: Record<KpiTone, string> = {
+  success: "bg-success-container text-on-success-container",
+  error: "bg-error-container text-on-error-container",
+  tertiary: "bg-tertiary-container text-on-tertiary-container",
+  warning: "bg-warning-container text-on-warning-container",
+};
+
+function KpiCard({ href, Icon, tone, label, sub, value, valueClass }: {
+  href: string; Icon: LucideIcon; tone: KpiTone;
   label: string; sub: string; value: string | null; valueClass?: string;
 }) {
   return (
-    <Link
-      href={href}
-      className={`snap-start shrink-0 w-[176px] md:w-auto md:shrink border border-brand-line rounded-3xl p-4 transition-all hover:shadow-md hover:shadow-slate-200/60 hover:-translate-y-0.5 ${wash}`}
-    >
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md ${tile}`}>
-          <Icon size={17} strokeWidth={2.2} />
+    <motion.div {...staggerItem} className="snap-start shrink-0 w-[176px] md:w-auto md:shrink">
+      <Link
+        href={href}
+        className="block h-full bg-surface-container-lowest border border-outline-variant rounded-m3-lg p-4 transition-all shadow-elev-1 hover:shadow-elev-2 hover:-translate-y-0.5"
+      >
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className={`w-9 h-9 rounded-m3-md flex items-center justify-center ${KPI_ICON[tone]}`}>
+            <Icon size={17} strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0 leading-tight">
+            <p className="text-[11.5px] font-bold text-on-surface">{label}</p>
+            <p className="text-[10px] text-on-surface-variant truncate">{sub}</p>
+          </div>
         </div>
-        <div className="min-w-0 leading-tight">
-          <p className="text-[11.5px] font-bold text-slate-700">{label}</p>
-          <p className="text-[10px] text-slate-400 truncate">{sub}</p>
-        </div>
-      </div>
-      {value === null ? (
-        <div className="h-6 flex items-center"><Loader2 size={16} className="animate-spin text-slate-300" /></div>
-      ) : (
-        <p className={`text-[15px] xl:text-[16px] font-bold tabular-nums leading-tight whitespace-nowrap ${valueClass || "text-slate-900"}`}>
-          {value}
-        </p>
-      )}
-    </Link>
+        {value === null ? (
+          <div className="h-6 flex items-center"><Spinner size={16} /></div>
+        ) : (
+          <p className={`text-[15px] xl:text-[16px] font-bold tabular-nums leading-tight whitespace-nowrap ${valueClass || "text-on-surface"}`}>
+            {value}
+          </p>
+        )}
+      </Link>
+    </motion.div>
   );
 }

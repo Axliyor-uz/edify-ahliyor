@@ -3,6 +3,8 @@
    the switchboard driving them is /design.teacher.config.ts. */
 
 export { cn } from "./cn";
+export { SIDE_STYLES, resolveSideStyle } from "./shellStyles";
+export type { SideStyle, SideVariant, Indicator } from "./shellStyles";
 export { TeacherThemeProvider, useTeacherTheme } from "./TeacherThemeProvider";
 export {
   TEACHER_DESIGN, MOTION_ON, MOTION_EXPRESSIVE,
@@ -17,8 +19,8 @@ export type { ChipProps, StatusChipProps, StatusTone } from "./Chip";
 export { TextField, TextArea, Select, SearchBar } from "./TextField";
 export type { TextFieldProps, TextAreaProps, SelectProps, SearchBarProps } from "./TextField";
 export { Switch, Checkbox, Radio } from "./Selection";
-export { ProgressBar, Spinner, Skeleton } from "./Progress";
-export type { ProgressBarProps } from "./Progress";
+export { ProgressBar, Spinner, Skeleton, Loader } from "./Progress";
+export type { ProgressBarProps, LoaderProps } from "./Progress";
 export { Dialog, ConfirmDialog } from "./Dialog";
 export type { DialogProps, ConfirmDialogProps } from "./Dialog";
 export { Banner } from "./Banner";

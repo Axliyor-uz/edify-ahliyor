@@ -17,7 +17,7 @@ export interface StatTileProps {
   delta?: ReactNode;
   /** 0–100: renders a progress bar instead of the delta line. */
   progress?: number;
-  tone?: "primary" | "secondary" | "tertiary";
+  tone?: "primary" | "secondary" | "tertiary" | "success" | "warning";
   /** App-wide default comes from TEACHER_DESIGN.StatTile_style. Override sparingly. */
   variant?: StatTileVariant;
   className?: string;
@@ -37,6 +37,8 @@ const ICON_TONE = {
   primary: "bg-primary-container text-on-primary-container",
   secondary: "bg-secondary-container text-on-secondary-container",
   tertiary: "bg-tertiary-container text-on-tertiary-container",
+  success: "bg-success-container text-on-success-container",
+  warning: "bg-warning-container text-on-warning-container",
 } as const;
 
 /** Icon in a soft tone wash (accent variant). Only primary has a dedicated
@@ -45,6 +47,8 @@ const ICON_SOFT = {
   primary: "bg-t-primary-soft text-primary",
   secondary: "bg-secondary-container text-on-secondary-container",
   tertiary: "bg-tertiary-container text-on-tertiary-container",
+  success: "bg-success-container text-on-success-container",
+  warning: "bg-warning-container text-on-warning-container",
 } as const;
 
 /** Bare tone-colored icon, no container (outline variant). */
@@ -52,6 +56,8 @@ const ICON_PLAIN = {
   primary: "text-primary",
   secondary: "text-secondary",
   tertiary: "text-tertiary",
+  success: "text-success",
+  warning: "text-warning",
 } as const;
 
 /** Left accent bar color (accent variant). */
@@ -59,6 +65,8 @@ const BAR_TONE = {
   primary: "bg-primary",
   secondary: "bg-secondary",
   tertiary: "bg-tertiary",
+  success: "bg-success",
+  warning: "bg-warning",
 } as const;
 
 /** Dashboard KPI tile: icon + label, big tabular number, delta or progress. */

@@ -1,10 +1,43 @@
 'use client';
 
 import { Plus, Trash2, X } from 'lucide-react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
 
+const TRANSLATIONS = {
+  uz: {
+    instructionsPh: "Yo'riqnoma (masalan: Choose the correct letter, A, B, C or D...)",
+    questionPh: "Savol matni... (Savol + variantlarni shu yerga joylashtirib ko'ring!)",
+    optionPh: (id: string) => `Variant ${id}...`,
+    addOption: "Variant qo'shish",
+    correctAnswer: "To'g'ri javob:",
+    refPh: "Ref (ixt)",
+    addQuestion: "Savol qo'shish",
+  },
+  en: {
+    instructionsPh: "Instructions (e.g. Choose the correct letter, A, B, C or D...)",
+    questionPh: "Question text... (Try pasting question + options here!)",
+    optionPh: (id: string) => `Option ${id}...`,
+    addOption: "Add Option",
+    correctAnswer: "Correct Answer:",
+    refPh: "Ref (opt)",
+    addQuestion: "Add Question",
+  },
+  ru: {
+    instructionsPh: "Инструкция (например: Choose the correct letter, A, B, C or D...)",
+    questionPh: "Текст вопроса... (Попробуйте вставить сюда вопрос с вариантами!)",
+    optionPh: (id: string) => `Вариант ${id}...`,
+    addOption: "Добавить вариант",
+    correctAnswer: "Правильный ответ:",
+    refPh: "Ref (необяз.)",
+    addQuestion: "Добавить вопрос",
+  },
+};
+
 export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   
   // ==========================================================================
   // ROW & OPTION HANDLERS
@@ -129,7 +162,7 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
       <div className="p-3">
         {/* INSTRUCTIONS */}
         <input 
-          type="text" placeholder="Instructions (e.g. Choose the correct letter, A, B, C or D...)" 
+          type="text" placeholder={t.instructionsPh}
           value={qb.instructions} onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
           className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none mb-4 p-0"
         />
@@ -144,7 +177,7 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
                   {row.question_number}
                 </span>
                 <input 
-                  type="text" placeholder="Question text... (Try pasting question + options here!)" 
+                  type="text" placeholder={t.questionPh}
                   value={row.question_text} 
                   onChange={e => updateRow(rIdx, 'question_text', e.target.value)} 
                   onPaste={e => handleSmartPaste(e, rIdx)}
@@ -158,7 +191,7 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
                   <div key={oIdx} className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-on-surface-variant w-4">{opt.id}.</span>
                     <input
-                      type="text" placeholder={`Option ${opt.id}...`} value={opt.text}
+                      type="text" placeholder={t.optionPh(opt.id)} value={opt.text}
                       onChange={e => updateOption(rIdx, oIdx, e.target.value)}
                       className="flex-1 h-6 text-[12px] bg-surface-container-lowest border border-outline-variant rounded-m3-xs px-2 outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary"
                     />
@@ -173,13 +206,13 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
                 ))}
                 
                 <Button variant="text" size="sm" icon={<Plus />} onClick={() => addOption(rIdx)} className="mt-1 ml-3.5">
-                  Add Option
+                  {t.addOption}
                 </Button>
               </div>
 
               {/* 3. BOTTOM BAR (Correct Answer & Ref) */}
               <div className="pl-10 flex items-center gap-3">
-                <span className="text-[10px] font-bold text-on-surface-variant uppercase">Correct Answer:</span>
+                <span className="text-[10px] font-bold text-on-surface-variant uppercase">{t.correctAnswer}</span>
                 <select
                   value={row.correct_answer[0] || 'A'}
                   onChange={e => updateRow(rIdx, 'correct_answer', [e.target.value])}
@@ -188,9 +221,9 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
                   {row.options.map((o: any) => <option key={o.id} value={o.id}>{o.id}</option>)}
                 </select>
 
-                <input 
-                  type="text" placeholder="Ref (opt)" 
-                  value={row.passage_reference || ''} 
+                <input
+                  type="text" placeholder={t.refPh}
+                  value={row.passage_reference || ''}
                   onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())} 
                   className={`w-14 h-7 text-[10px] text-center font-bold rounded-m3-xs outline-none uppercase shrink-0 transition-colors
                     ${row.passage_reference
@@ -205,7 +238,7 @@ export default function MultipleChoiceBlock({ qb, qbIdx, updateBlock, deleteBloc
         </div>
 
         <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
-          Add Question
+          {t.addQuestion}
         </Button>
       </div>
     </div>

@@ -61,15 +61,23 @@ export const DESIGN: DesignConfig = {
    * ────────────────────────────────────────────────────────────────────── */
 
   /** Desktop / tablet navigation. */
-  App_shell_navigation: 'shell_b',
-  // ⭐ shell_a — slim icon rail with hover tooltips (most content space, mac-app feel)
-  //    shell_b — wide drawer with text labels always visible (easiest wayfinding)
-  //    shell_c — top bar only, no side nav (widest content, fewest destinations)
+  App_shell_navigation: 'sidebar',
+  // ⭐ sidebar  — labelled drawer, gliding pill behind the active row (easiest wayfinding)
+  //    classic  — sliding left accent bar + tinted active row (quiet desktop-software look)
+  //    tonal    — whole panel washed in the palette's container tint, white active pill
+  //    inverse  — high-contrast panel in the inverse surface color (bold, focused)
+  //    gradient — panel painted with the brand gradient (loudest, most "game")
+  //    minimal  — chromeless transparent panel, tiny sliding dot marks the page
+  //    floating — the sidebar detached as a rounded glass card with margin all around
+  //    rail     — slim icon-only rail with hover tooltips (most content space)
+  //    topbar   — top tabs only, no side nav (widest content, fewest destinations)
 
   /** Phone navigation. Ignored on desktop. */
   Mobile_navigation: 'dock',
   // ⭐ dock     — bottom bar edge-to-edge, like a native Android/iOS app
   //    floating — detached rounded pill that hovers above the content
+  //    iconic   — icon-only compact bar, gliding pill behind the active icon
+  //    topline  — labelled bar with a sliding accent line along its top edge
   //    drawer   — hamburger menu that slides in from the left
 
   /* ─────────────────────────────────────────────────────────────────────────
@@ -183,8 +191,10 @@ export type PaletteName =
 export interface DesignConfig {
   Color_palette: PaletteName;
   Color_mode: 'system' | 'light' | 'dark';
-  App_shell_navigation: 'shell_a' | 'shell_b' | 'shell_c';
-  Mobile_navigation: 'dock' | 'floating' | 'drawer';
+  App_shell_navigation:
+    | 'sidebar' | 'classic' | 'tonal' | 'inverse' | 'gradient' | 'minimal'
+    | 'floating' | 'rail' | 'topbar';
+  Mobile_navigation: 'dock' | 'floating' | 'iconic' | 'topline' | 'drawer';
   Shape_style: 'rounded' | 'soft' | 'sharp';
   Density: 'comfortable' | 'compact';
   Layout_density: 'platform' | 'floating';

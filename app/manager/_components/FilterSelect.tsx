@@ -15,7 +15,7 @@ interface Props {
   allLabel: string;
 }
 
-/** MD3 filter-chip styled <select>: outlined when idle, filled green when a filter is active. */
+/** M3 filter-chip styled <select>: outlined when idle, filled when a filter is active. */
 export default function FilterSelect({ value, onChange, options, allLabel }: Props) {
   const active = value !== "";
   return (
@@ -23,10 +23,10 @@ export default function FilterSelect({ value, onChange, options, allLabel }: Pro
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none pl-4 pr-9 py-2.5 rounded-full text-[13px] font-bold cursor-pointer max-w-[190px] border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+        className={`appearance-none h-t-control-sm pl-4 pr-9 rounded-full text-[13px] font-bold cursor-pointer max-w-[190px] border transition-colors focus:outline-none focus:ring-1 focus:ring-primary ${
           active
-            ? "bg-brand-600 text-white border-brand-600"
-            : "bg-white text-slate-600 border-brand-line hover:border-brand-600"
+            ? "bg-primary text-on-primary border-primary"
+            : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-primary"
         }`}
       >
         <option value="">{allLabel}</option>
@@ -39,7 +39,7 @@ export default function FilterSelect({ value, onChange, options, allLabel }: Pro
       <ChevronDown
         size={14}
         className={`absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${
-          active ? "text-white" : "text-slate-400"
+          active ? "text-on-primary" : "text-on-surface-variant"
         }`}
       />
     </div>

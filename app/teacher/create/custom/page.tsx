@@ -46,7 +46,16 @@ const PAGE_TRANSLATIONS = {
     emptyFieldsErr: "Iltimos, barcha savol va variantlarni to'ldiring.",
     easy: "Oson",
     medium: "O'rta",
-    hard: "Qiyin"
+    hard: "Qiyin",
+    minOneQuestion: "Testda kamida bitta savol bo'lishi kerak.",
+    saveBankError: "Bazaga saqlashda xatolik yuz berdi.",
+    enterTitleErr: "Iltimos, test nomini kiriting.",
+    publishSuccess: "Test muvaffaqiyatli chop qilindi!",
+    publishError: "Testni chop qilishda xatolik.",
+    titlePlaceholder: "Masalan: Algebra oraliq nazorati",
+    promptPlaceholder: "Masalan: Tenglamani yeching...",
+    optionPlaceholder: (letter: string) => `${letter} varianti...`,
+    expPlaceholder: "Yechimni shu yerda tushuntiring..."
   },
   en: {
     headerTitle: "Custom Studio",
@@ -73,7 +82,16 @@ const PAGE_TRANSLATIONS = {
     emptyFieldsErr: "Please fill out all question text and options.",
     easy: "Easy",
     medium: "Medium",
-    hard: "Hard"
+    hard: "Hard",
+    minOneQuestion: "Test must have at least one question.",
+    saveBankError: "An error occurred while saving to the bank.",
+    enterTitleErr: "Please enter a test title.",
+    publishSuccess: "Custom test published successfully!",
+    publishError: "Failed to publish test.",
+    titlePlaceholder: "e.g., Algebra Midterm",
+    promptPlaceholder: "E.g., Solve the equation...",
+    optionPlaceholder: (letter: string) => `Option ${letter}...`,
+    expPlaceholder: "Explain the solution here..."
   },
   ru: {
     headerTitle: "Своя Студия",
@@ -100,7 +118,16 @@ const PAGE_TRANSLATIONS = {
     emptyFieldsErr: "Пожалуйста, заполните все тексты вопросов и варианты.",
     easy: "Легкий",
     medium: "Средний",
-    hard: "Сложный"
+    hard: "Сложный",
+    minOneQuestion: "В тесте должен быть хотя бы один вопрос.",
+    saveBankError: "Произошла ошибка при сохранении в базу.",
+    enterTitleErr: "Пожалуйста, введите название теста.",
+    publishSuccess: "Тест успешно опубликован!",
+    publishError: "Не удалось опубликовать тест.",
+    titlePlaceholder: "Например: Промежуточный тест по алгебре",
+    promptPlaceholder: "Например: Решите уравнение...",
+    optionPlaceholder: (letter: string) => `Вариант ${letter}...`,
+    expPlaceholder: "Объясните решение здесь..."
   }
 };
 
@@ -243,7 +270,7 @@ export default function CreateCustomTestPage() {
   };
 
   const removeQuestion = (id: string) => {
-    if (draftQuestions.length === 1) return toast.error("Test must have at least one question.");
+    if (draftQuestions.length === 1) return toast.error(t.minOneQuestion);
     setDraftQuestions(prev => prev.filter(q => q.id !== id));
   };
 
@@ -306,7 +333,7 @@ export default function CreateCustomTestPage() {
         return;
       }
       console.error("Save to bank error:", error);
-      toast.error("Bazaga saqlashda xatolik yuz berdi.");
+      toast.error(t.saveBankError);
     } finally {
       setIsSavingToBank(false);
     }
@@ -315,7 +342,7 @@ export default function CreateCustomTestPage() {
 
   // --- PUBLISH FLOW ---
   const handleTitleSubmit = () => {
-    if (!testTitle.trim()) return toast.error("Please enter a test title.");
+    if (!testTitle.trim()) return toast.error(t.enterTitleErr);
     setIsTitleModalOpen(false);
     setIsConfigModalOpen(true);
   };
@@ -359,7 +386,7 @@ export default function CreateCustomTestPage() {
       });
 
       await batch.commit();
-      toast.success("Custom test published successfully!");
+      toast.success(t.publishSuccess);
       localStorage.removeItem(DRAFT_STORAGE_KEY);
       setIsConfigModalOpen(false);
       router.push("/teacher/dashboard");
@@ -369,7 +396,7 @@ export default function CreateCustomTestPage() {
         onInvalidTopic("publish");
         return;
       }
-      toast.error("Failed to publish test.");
+      toast.error(t.publishError);
     } finally {
       setIsPublishing(false);
     }
@@ -395,7 +422,7 @@ export default function CreateCustomTestPage() {
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-md shadow-elev-3 border border-outline-variant z-10">
               <h3 className="text-lg md:text-xl font-black text-on-surface mb-1.5 md:mb-2">{t.modalTitle}</h3>
               <p className="text-[12px] md:text-[14px] text-on-surface-variant mb-5 md:mb-6 font-medium">{t.modalDesc}</p>
-              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder="e.g., Algebra Midterm" className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
+              <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} placeholder={t.titlePlaceholder} className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary transition-all mb-6 md:mb-8" autoFocus/>
               <div className="flex gap-2 md:gap-3 justify-end">
                 <Button variant="outlined" size="sm" onClick={() => setIsTitleModalOpen(false)}>{t.modalCancel}</Button>
                 <Button variant="filled" size="sm" onClick={handleTitleSubmit}>{t.modalNext} <ArrowLeft className="rotate-180"/></Button>
@@ -493,7 +520,7 @@ export default function CreateCustomTestPage() {
                   <div className="p-3 md:p-6">
                     
                     <div className="mb-4 md:mb-6">
-                      <RichQuestionInput label={t.promptLabel} value={q.text} onChange={(latex) => updateDraftQuestion(q.id, 'text', latex)} placeholder="Masalan: Tenglamani yeching..." />
+                      <RichQuestionInput label={t.promptLabel} value={q.text} onChange={(latex) => updateDraftQuestion(q.id, 'text', latex)} placeholder={t.promptPlaceholder} />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 md:gap-x-6 gap-y-3 md:gap-y-4 mb-4 md:mb-6">
@@ -505,7 +532,7 @@ export default function CreateCustomTestPage() {
                                {letter}
                              </div>
                              <div className="flex-1">
-                               <RichQuestionInput label="" value={q[fieldKey] as string} onChange={(latex) => updateDraftQuestion(q.id, fieldKey, latex)} compact={true} placeholder={`${letter} varianti...`} />
+                               <RichQuestionInput label="" value={q[fieldKey] as string} onChange={(latex) => updateDraftQuestion(q.id, fieldKey, latex)} compact={true} placeholder={t.optionPlaceholder(letter)} />
                              </div>
                            </div>
                          )
@@ -537,7 +564,7 @@ export default function CreateCustomTestPage() {
                     {q.showExplanation && (
                       <div className="mt-3 md:mt-5 pt-3 md:pt-5 border-t border-dashed border-outline-variant animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="bg-surface-container p-2.5 md:p-4 rounded-m3-md md:rounded-m3-lg border border-outline-variant">
-                          <RichQuestionInput label={t.stepByStep} value={q.explanation} onChange={(latex) => updateDraftQuestion(q.id, 'explanation', latex)} placeholder="Yechimni shu yerda tushuntiring..." compact={true} />
+                          <RichQuestionInput label={t.stepByStep} value={q.explanation} onChange={(latex) => updateDraftQuestion(q.id, 'explanation', latex)} placeholder={t.expPlaceholder} compact={true} />
                         </div>
                       </div>
                     )}

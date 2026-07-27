@@ -6,13 +6,40 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { ArrowLeft, Maximize, ChevronsLeftRight, Play, Pause, Highlighter } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 import QuestionRenderer from './_components/question_renderer';
 
 import { Spinner } from '@/components/ui';
 
+const TRANSLATIONS = {
+  uz: {
+    timeUp: "Vaqt tugadi! Test avtomatik topshiriladi.",
+    notFound: "Test topilmadi.",
+    noQuestions: "Savollar biriktirilmagan.",
+    highlightTool: "Belgilash vositasi",
+    clickToRemove: "Olib tashlash uchun bosing",
+  },
+  en: {
+    timeUp: "Time's up! Your test will be submitted automatically.",
+    notFound: "Test not found.",
+    noQuestions: "No questions mapped.",
+    highlightTool: "Highlight Tool",
+    clickToRemove: "Click to remove",
+  },
+  ru: {
+    timeUp: "Время вышло! Тест будет отправлен автоматически.",
+    notFound: "Тест не найден.",
+    noQuestions: "Вопросы не добавлены.",
+    highlightTool: "Инструмент выделения",
+    clickToRemove: "Нажмите, чтобы убрать",
+  },
+};
+
 export default function AuthenticIELTSViewSimulator() {
   const { id } = useParams();
   const router = useRouter();
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
 
   const [testData, setTestData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,7 +85,7 @@ export default function AuthenticIELTSViewSimulator() {
       interval = setInterval(() => setTimeRemaining(prev => prev - 1), 1000);
     } else if (timeRemaining <= 0 && isTimerRunning) {
       setIsTimerRunning(false);
-      toast("Time's up! Your test will be submitted automatically.");
+      toast(t.timeUp);
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timeRemaining]);
@@ -100,7 +127,7 @@ export default function AuthenticIELTSViewSimulator() {
       const range = selection.getRangeAt(0);
       const span = document.createElement('span');
       span.className = 'bg-primary-container text-on-primary-container px-0.5 rounded-m3-xs cursor-pointer transition-colors hover:bg-error-container';
-      span.title = 'Click to remove';
+      span.title = t.clickToRemove;
       span.onclick = () => {
   const parent = span.parentNode;
   if (parent) {
@@ -119,7 +146,7 @@ export default function AuthenticIELTSViewSimulator() {
   }, [isHighlightMode, activePassageIdx]);
 
   if (isLoading) return <div className="flex h-screen items-center justify-center bg-surface"><Spinner size={24} /></div>;
-  if (!testData || !testData.passages) return <div className="p-10 text-center font-bold text-on-surface-variant">Test not found.</div>;
+  if (!testData || !testData.passages) return <div className="p-10 text-center font-bold text-on-surface-variant">{t.notFound}</div>;
 
   const passage = testData.passages[activePassageIdx];
   const startQ = passage.questions?.[0]?.start_question || 1;
@@ -178,7 +205,7 @@ export default function AuthenticIELTSViewSimulator() {
           </div>
 
           <div className="flex items-center space-x-1 hidden sm:flex">
-            <button onClick={() => setIsHighlightMode(!isHighlightMode)} className={`p-1 rounded-m3-xs transition-colors ${isHighlightMode ? 'bg-primary-container text-on-primary-container' : 'hover:bg-state-hover text-on-surface-variant'}`} title="Highlight Tool"><Highlighter size={14} /></button>
+            <button onClick={() => setIsHighlightMode(!isHighlightMode)} className={`p-1 rounded-m3-xs transition-colors ${isHighlightMode ? 'bg-primary-container text-on-primary-container' : 'hover:bg-state-hover text-on-surface-variant'}`} title={t.highlightTool}><Highlighter size={14} /></button>
             <div className="h-3 w-px bg-outline-variant mx-0.5"></div>
             <button className="p-1 hover:bg-state-hover rounded-m3-xs text-on-surface-variant transition-colors"><Maximize size={14}/></button>
           </div>
@@ -220,7 +247,7 @@ export default function AuthenticIELTSViewSimulator() {
           <div className="p-4 md:p-6 lg:px-8 pb-32 max-w-4xl mx-auto space-y-6" style={{ fontSize: `${baseFontSize}px`, lineHeight: 1.5 }}>
 
             {(!passage.questions || passage.questions.length === 0) ? (
-               <div className="text-on-surface-variant italic text-center mt-10">No questions mapped.</div>
+               <div className="text-on-surface-variant italic text-center mt-10">{t.noQuestions}</div>
             ) : (
               passage.questions?.map((qb: any, idx: number) => (
                 <QuestionRenderer

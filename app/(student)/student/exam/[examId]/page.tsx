@@ -21,24 +21,27 @@ import 'katex/dist/katex.min.css';
 const EXAM_TRANSLATIONS: any = {
   uz: {
     loading: "Imtihon yuklanmoqda...",
+    errorGeneric: "Xatolik yuz berdi",
     closed: { title: "Imtihon yopilgan", desc: "Bu imtihon vaqti tugagan yoki hali boshlanmagan.", back: "Ortga qaytish" },
     submitted: { title: "Qabul qilindi!", desc: "Javoblaringiz muvaffaqiyatli saqlandi. Natijalarni o'qituvchi e'lon qilganda ko'rishingiz mumkin.", back: "Asosiy sahifaga qaytish" },
-    waiting: { rules: "Qat'iy Qoidalar", rule1: "Testni boshlaganingizdan so'ng vaqt to'xtamaydi.", rule2: "Oynani (tab) almashtirish yoki yopish taqiqlanadi. Tizim buni avtomatik hisoblaydi.", rule3: "Vaqt tugaganda javoblar avtomatik yuboriladi.", start: "Tushundim, Boshlash", early: "Imtihon hali boshlanmagan." },
-    active: { warning: "Ogohlantirish! Oynani tark etdingiz. Bu ustozga xabar qilinadi.", focusLost: "Diqqat yo'qotildi", submitConfirm: "Barcha javoblarni yubormoqchimisiz? Buning ortiga qaytib bo'lmaydi.", submitAuto: "Vaqt tugadi! Javoblar avtomatik yuborilmoqda...", finish: "Yakunlash va Yuborish", saving: "Saqlanmoqda...", cancel: "Bekor qilish", confirm: "Topshirish" }
+    waiting: { rules: "Qat'iy Qoidalar", rule1: "Testni boshlaganingizdan so'ng vaqt to'xtamaydi.", rule2: "Oynani (tab) almashtirish yoki yopish taqiqlanadi. Tizim buni avtomatik hisoblaydi.", rule3: "Vaqt tugaganda javoblar avtomatik yuboriladi.", start: "Tushundim, Boshlash", early: "Imtihon hali boshlanmagan.", minutes: "Daqiqa" },
+    active: { warning: "Ogohlantirish! Oynani tark etdingiz. Bu ustozga xabar qilinadi.", focusLost: "Diqqat yo'qotildi", submitConfirm: "Barcha javoblarni yubormoqchimisiz? Buning ortiga qaytib bo'lmaydi.", submitAuto: "Vaqt tugadi! Javoblar avtomatik yuborilmoqda...", finish: "Yakunlash va Yuborish", saving: "Saqlanmoqda...", cancel: "Bekor qilish", confirm: "Topshirish", confirmTitle: "Testni yakunlaysizmi?", points: "Ball", trueLabel: "Rost", falseLabel: "Yolg'on", shortAnswerLabel: "Javobingizni yozing...", openEndedLabel: "Batafsil yechim yoki javobni yozing...", alreadySubmitted: "Siz allaqachon topshirgansiz!", questionsCount: (n: number) => `${n} Savol`, submitError: (msg: string) => `Xatolik: ${msg}` }
   },
   en: {
     loading: "Loading Exam...",
+    errorGeneric: "Something went wrong",
     closed: { title: "Exam Closed", desc: "The exam time has ended or hasn't started yet.", back: "Go Back" },
     submitted: { title: "Submitted!", desc: "Your answers have been saved. You can view results when the teacher releases them.", back: "Return to Dashboard" },
-    waiting: { rules: "Strict Rules", rule1: "Timer does not stop once started.", rule2: "Switching tabs is prohibited and tracked.", rule3: "Answers auto-submit when time is up.", start: "I Understand, Start", early: "Exam hasn't started yet." },
-    active: { warning: "Warning! You left the tab. This will be reported.", focusLost: "Focus Lost", submitConfirm: "Submit all answers? This cannot be undone.", submitAuto: "Time's up! Auto-submitting answers...", finish: "Finish and Submit", saving: "Saving...", cancel: "Cancel", confirm: "Submit" }
+    waiting: { rules: "Strict Rules", rule1: "Timer does not stop once started.", rule2: "Switching tabs is prohibited and tracked.", rule3: "Answers auto-submit when time is up.", start: "I Understand, Start", early: "Exam hasn't started yet.", minutes: "Minutes" },
+    active: { warning: "Warning! You left the tab. This will be reported.", focusLost: "Focus Lost", submitConfirm: "Submit all answers? This cannot be undone.", submitAuto: "Time's up! Auto-submitting answers...", finish: "Finish and Submit", saving: "Saving...", cancel: "Cancel", confirm: "Submit", confirmTitle: "Finish the test?", points: "Points", trueLabel: "True", falseLabel: "False", shortAnswerLabel: "Type your answer...", openEndedLabel: "Write your detailed solution or answer...", alreadySubmitted: "You have already submitted!", questionsCount: (n: number) => `${n} Questions`, submitError: (msg: string) => `Error: ${msg}` }
   },
   ru: {
     loading: "Загрузка экзамена...",
+    errorGeneric: "Произошла ошибка",
     closed: { title: "Экзамен закрыт", desc: "Время экзамена истекло или еще не началось.", back: "Вернуться" },
     submitted: { title: "Принято!", desc: "Ваши ответы сохранены. Результаты будут доступны после публикации учителем.", back: "На главную" },
-    waiting: { rules: "Строгие правила", rule1: "Таймер не останавливается после старта.", rule2: "Переключение вкладок запрещено и отслеживается.", rule3: "Ответы отправляются автоматически по истечении времени.", start: "Понятно, Начать", early: "Экзамен еще не начался." },
-    active: { warning: "Внимание! Вы покинули вкладку. Это будет зафиксировано.", focusLost: "Потеря фокуса", submitConfirm: "Отправить все ответы? Это действие необратимо.", submitAuto: "Время вышло! Автоматическая отправка...", finish: "Завершить и Отправить", saving: "Сохранение...", cancel: "Отмена", confirm: "Сдать" }
+    waiting: { rules: "Строгие правила", rule1: "Таймер не останавливается после старта.", rule2: "Переключение вкладок запрещено и отслеживается.", rule3: "Ответы отправляются автоматически по истечении времени.", start: "Понятно, Начать", early: "Экзамен еще не начался.", minutes: "Минут" },
+    active: { warning: "Внимание! Вы покинули вкладку. Это будет зафиксировано.", focusLost: "Потеря фокуса", submitConfirm: "Отправить все ответы? Это действие необратимо.", submitAuto: "Время вышло! Автоматическая отправка...", finish: "Завершить и Отправить", saving: "Сохранение...", cancel: "Отмена", confirm: "Сдать", confirmTitle: "Завершить тест?", points: "Балл", trueLabel: "Верно", falseLabel: "Неверно", shortAnswerLabel: "Введите ваш ответ...", openEndedLabel: "Напишите подробное решение или ответ...", alreadySubmitted: "Вы уже сдали работу!", questionsCount: (n: number) => `${n} Вопросов`, submitError: (msg: string) => `Ошибка: ${msg}` }
   }
 };
 
@@ -129,7 +132,7 @@ function ExamPlayerContent() {
           setTestTemplate(templateSnap.data());
         }
       } catch (error) {
-        sToast.error("Xatolik yuz berdi");
+        sToast.error(t.errorGeneric);
         setExamState('closed');
       } finally {
         setLoading(false);
@@ -201,7 +204,7 @@ function ExamPlayerContent() {
       const [freshExamSnap, freshAttemptSnap] = await Promise.all([ getDoc(doc(db, 'classes', classId, 'exams', examId)), getDoc(attemptRef) ]);
 
       if (freshExamSnap.data()?.submittedStudentIds?.includes(user.uid) || freshAttemptSnap.exists()) {
-        sToast.success("Siz allaqachon topshirgansiz!");
+        sToast.success(t.active.alreadySubmitted);
         setExamState('submitted'); return;
       }
 
@@ -253,7 +256,7 @@ function ExamPlayerContent() {
       await updateDoc(doc(db, 'classes', classId, 'exams', examId), { submittedStudentIds: arrayUnion(user.uid) });
       setExamState('submitted');
     } catch (error: any) {
-      sToast.error(`Xatolik: ${error.message}`);
+      sToast.error(t.active.submitError(error.message));
       setIsSubmitting(false);
     }
   };
@@ -308,7 +311,7 @@ function ExamPlayerContent() {
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <Chip status="primary" className="uppercase tracking-[0.1em]">{examData?.assessmentType}</Chip>
             <Chip className="uppercase tracking-[0.1em]">
-              <span className="s-num">{examData?.durationMinutes}</span> Daqiqa
+              <span className="s-num">{examData?.durationMinutes}</span> {t.waiting.minutes}
             </Chip>
           </div>
         </div>
@@ -339,7 +342,7 @@ function ExamPlayerContent() {
         open={showSubmitModal}
         onCancel={() => setShowSubmitModal(false)}
         onConfirm={submitExam}
-        title="Testni yakunlaysizmi?"
+        title={t.active.confirmTitle}
         description={t.active.submitConfirm}
         confirmLabel={t.active.confirm}
         cancelLabel={t.active.cancel}
@@ -356,7 +359,7 @@ function ExamPlayerContent() {
         <div className="flex min-w-0 flex-col pr-2">
           <h1 className="s-display truncate text-[14px] font-bold text-on-surface md:text-[16px]">{testTemplate?.title}</h1>
           <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-on-surface-variant md:text-[11px]">
-            {testTemplate?.assessmentType} • {testTemplate?.questions?.length} Savol
+            {testTemplate?.assessmentType} • {t.active.questionsCount(testTemplate?.questions?.length ?? 0)}
           </p>
         </div>
 
@@ -387,7 +390,7 @@ function ExamPlayerContent() {
 
             <div className="mb-4 flex items-center gap-2 md:mb-5">
               <span className="s-num shrink-0 rounded-m3-xs bg-inverse-surface px-3 py-1 text-[12px] font-black text-inverse-on-surface">{idx + 1}</span>
-              <Chip className="uppercase tracking-[0.12em]"><span className="s-num">{q.points}</span> Ball</Chip>
+              <Chip className="uppercase tracking-[0.12em]"><span className="s-num">{q.points}</span> {t.active.points}</Chip>
             </div>
 
             <h3 className="mb-6 text-[15px] font-bold leading-relaxed text-on-surface md:text-[17px]">
@@ -395,9 +398,9 @@ function ExamPlayerContent() {
             </h3>
 
             {q.type === 'mcq' && <McqRenderer question={q} value={answers[q.id]} onChange={(val: any) => handleAnswerChange(q.id, val)} />}
-            {q.type === 'true_false' && <TrueFalseRenderer value={answers[q.id]} onChange={(val: any) => handleAnswerChange(q.id, val)} />}
-            {q.type === 'short_answer' && <ShortAnswerRenderer value={answers[q.id]} onChange={(val: any) => handleAnswerChange(q.id, val)} />}
-            {q.type === 'open_ended' && <OpenEndedRenderer value={answers[q.id]} onChange={(val: any) => handleAnswerChange(q.id, val)} />}
+            {q.type === 'true_false' && <TrueFalseRenderer value={answers[q.id]} onChange={(val: any) => handleAnswerChange(q.id, val)} t={t} />}
+            {q.type === 'short_answer' && <ShortAnswerRenderer value={answers[q.id]} onChange={(val: any) => handleAnswerChange(q.id, val)} t={t} />}
+            {q.type === 'open_ended' && <OpenEndedRenderer value={answers[q.id]} onChange={(val: any) => handleAnswerChange(q.id, val)} t={t} />}
             {q.type === 'matching' && <MatchingRenderer question={q} value={answers[q.id] || {}} onChange={(val: any) => handleAnswerChange(q.id, val)} />}
           </Card>
         ))}
@@ -467,25 +470,25 @@ const McqRenderer = ({ question, value, onChange }: any) => {
   );
 };
 
-const TrueFalseRenderer = ({ value, onChange }: any) => {
+const TrueFalseRenderer = ({ value, onChange, t }: any) => {
   const base = 's-press flex-1 rounded-m3-md border py-4 text-[15px] font-black transition-colors duration-m3-fast ease-m3-std';
   const on = 'border-primary bg-primary-container text-on-primary-container';
   const off = 'border-outline-variant bg-surface text-on-surface-variant hover:bg-state-hover';
 
   return (
     <div className="flex gap-3">
-      <button onClick={() => onChange(true)} aria-pressed={value === true} className={cn(base, value === true ? on : off)}>Rost</button>
-      <button onClick={() => onChange(false)} aria-pressed={value === false} className={cn(base, value === false ? on : off)}>Yolg'on</button>
+      <button onClick={() => onChange(true)} aria-pressed={value === true} className={cn(base, value === true ? on : off)}>{t.active.trueLabel}</button>
+      <button onClick={() => onChange(false)} aria-pressed={value === false} className={cn(base, value === false ? on : off)}>{t.active.falseLabel}</button>
     </div>
   );
 };
 
-const ShortAnswerRenderer = ({ value, onChange }: any) => {
-  return <TextField label="Javobingizni yozing..." autoComplete="off" value={value || ''} onChange={(e) => onChange(e.target.value)} />;
+const ShortAnswerRenderer = ({ value, onChange, t }: any) => {
+  return <TextField label={t.active.shortAnswerLabel} autoComplete="off" value={value || ''} onChange={(e) => onChange(e.target.value)} />;
 };
 
-const OpenEndedRenderer = ({ value, onChange }: any) => {
-  return <TextArea label="Batafsil yechim yoki javobni yozing..." rows={5} value={value || ''} onChange={(e) => onChange(e.target.value)} className="s-scroll" />;
+const OpenEndedRenderer = ({ value, onChange, t }: any) => {
+  return <TextArea label={t.active.openEndedLabel} rows={5} value={value || ''} onChange={(e) => onChange(e.target.value)} className="s-scroll" />;
 };
 
 // 🟢 NEW: Custom Dropdown Component for LaTeX Support

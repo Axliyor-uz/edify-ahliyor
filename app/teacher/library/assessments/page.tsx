@@ -108,16 +108,16 @@ const ExamViewer = ({ selectedTest, onClose }: { selectedTest: any, onClose: () 
   useEffect(() => setMounted(true), []);
 
   const VIEWER_T: any = {
-    uz: { studentBtn: "O'quvchi uchun", keyBtn: "Javoblar bilan", generating: "Yuklanmoqda...", wait: "Kutib turing..." },
-    en: { studentBtn: "For Student", keyBtn: "With Answer Key", generating: "Generating...", wait: "Please wait..." },
-    ru: { studentBtn: "Для ученика", keyBtn: "С ответами", generating: "Загрузка...", wait: "Подождите..." }
+    uz: { studentBtn: "O'quvchi uchun", keyBtn: "Javoblar bilan", generating: "Yuklanmoqda...", wait: "Kutib turing...", close: "Yopish", toasts: { docNotFound: "Hujjat topilmadi!", pdfSuccess: "PDF muvaffaqiyatli yuklandi!", pdfFail: "PDF yaratishda xatolik yuz berdi." } },
+    en: { studentBtn: "For Student", keyBtn: "With Answer Key", generating: "Generating...", wait: "Please wait...", close: "Close", toasts: { docNotFound: "Document not found!", pdfSuccess: "PDF downloaded successfully!", pdfFail: "Failed to generate the PDF." } },
+    ru: { studentBtn: "Для ученика", keyBtn: "С ответами", generating: "Загрузка...", wait: "Подождите...", close: "Закрыть", toasts: { docNotFound: "Документ не найден!", pdfSuccess: "PDF успешно загружен!", pdfFail: "Ошибка при создании PDF." } }
   };
   const t = VIEWER_T[lang] || VIEWER_T['uz'];
 
   const getText = (field: any) => field?.uz || field || "";
 
   const handleDownloadPdf = async (withAnswers: boolean) => {
-    if (!printRef.current) return toast.error("Hujjat topilmadi!");
+    if (!printRef.current) return toast.error(t.toasts.docNotFound);
     if (withAnswers) setIsGeneratingTeacher(true);
     else setIsGeneratingStudent(true);
     setShowAnswers(withAnswers);
@@ -164,9 +164,9 @@ const ExamViewer = ({ selectedTest, onClose }: { selectedTest: any, onClose: () 
 };
 
         await html2pdf().set(opt).from(element).save();
-        toast.success("PDF muvaffaqiyatli yuklandi!");
+        toast.success(t.toasts.pdfSuccess);
       } catch (error) {
-        toast.error("PDF yaratishda xatolik yuz berdi.");
+        toast.error(t.toasts.pdfFail);
       } finally {
         setIsGeneratingStudent(false);
         setIsGeneratingTeacher(false);
@@ -217,7 +217,7 @@ const ExamViewer = ({ selectedTest, onClose }: { selectedTest: any, onClose: () 
                 </Button>
                 <div className="w-px h-6 bg-outline-variant mx-1"></div>
               </div>
-              <IconButton aria-label="Yopish" onClick={onClose} disabled={isGeneratingStudent || isGeneratingTeacher} className="hover:text-error"><X size={20} /></IconButton>
+              <IconButton aria-label={t.close} onClick={onClose} disabled={isGeneratingStudent || isGeneratingTeacher} className="hover:text-error"><X size={20} /></IconButton>
             </div>
           </div>
 
@@ -394,9 +394,42 @@ const ExamViewer = ({ selectedTest, onClose }: { selectedTest: any, onClose: () 
 // 3. MAIN PAGE (PAGINATION, FILTERING, UI)
 // ============================================================================
 
+// --- TRANSLATION DICTIONARY ---
+const ASSESSMENTS_TRANSLATIONS: Record<string, any> = {
+  uz: {
+    back: "Orqaga", title: "Mening Imtihonlarim", createNew: "Yangi Yaratish", create: "Yaratish",
+    filterAll: "Barcha", searchPlace: "Qidirish (Nomi yoki Fan)...",
+    loading: "Imtihonlar yuklanmoqda...", emptyTitle: "Hozircha imtihonlar yo'q", createInGenerator: "Generatorda Yaratish",
+    questions: "Savol", points: "Ball", newLabel: "Yangi",
+    loadingMore: "Yuklanmoqda...", loadMore: "Ko'proq yuklash",
+    confirmDelete: "Haqiqatan ham bu imtihonni o'chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.",
+    toasts: { loadFail: "Imtihonlarni yuklashda xatolik yuz berdi.", deleted: "Imtihon o'chirildi!", deleteFail: "O'chirishda xatolik yuz berdi." }
+  },
+  en: {
+    back: "Back", title: "My Exams", createNew: "Create New", create: "Create",
+    filterAll: "All", searchPlace: "Search (Title or Subject)...",
+    loading: "Loading exams...", emptyTitle: "No exams yet", createInGenerator: "Create in Generator",
+    questions: "Questions", points: "Pts", newLabel: "New",
+    loadingMore: "Loading...", loadMore: "Load more",
+    confirmDelete: "Are you sure you want to delete this exam? This action cannot be undone.",
+    toasts: { loadFail: "Failed to load exams.", deleted: "Exam deleted!", deleteFail: "Failed to delete." }
+  },
+  ru: {
+    back: "Назад", title: "Мои Экзамены", createNew: "Создать Новый", create: "Создать",
+    filterAll: "Все", searchPlace: "Поиск (Название или Предмет)...",
+    loading: "Загрузка экзаменов...", emptyTitle: "Экзаменов пока нет", createInGenerator: "Создать в Генераторе",
+    questions: "Вопросов", points: "Балл", newLabel: "Новый",
+    loadingMore: "Загрузка...", loadMore: "Загрузить еще",
+    confirmDelete: "Вы действительно хотите удалить этот экзамен? Это действие нельзя отменить.",
+    toasts: { loadFail: "Ошибка при загрузке экзаменов.", deleted: "Экзамен удален!", deleteFail: "Ошибка при удалении." }
+  }
+};
+
 export default function MyAssessmentsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang } = useTeacherLanguage();
+  const t = ASSESSMENTS_TRANSLATIONS[lang] || ASSESSMENTS_TRANSLATIONS['uz'];
 
   const [tests, setTests] = useState<any[]>([]);
   const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
@@ -442,7 +475,7 @@ export default function MyAssessmentsPage() {
       }
 
     } catch (error) {
-      toast.error("Imtihonlarni yuklashda xatolik yuz berdi.");
+      toast.error(t.toasts.loadFail);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -453,14 +486,14 @@ export default function MyAssessmentsPage() {
 
   const handleDelete = async (e: React.MouseEvent, testId: string) => {
     e.stopPropagation();
-    if (!confirm("Haqiqatan ham bu imtihonni o'chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.")) return;
+    if (!confirm(t.confirmDelete)) return;
     try {
       await deleteDoc(doc(db, "bsb_chsb_tests", testId));
-      setTests(prev => prev.filter(t => t.id !== testId));
-      toast.success("Imtihon o'chirildi!");
+      setTests(prev => prev.filter(item => item.id !== testId));
+      toast.success(t.toasts.deleted);
       if (selectedTest?.id === testId) setSelectedTest(null);
     } catch (error) {
-      toast.error("O'chirishda xatolik yuz berdi.");
+      toast.error(t.toasts.deleteFail);
     }
   };
 
@@ -477,16 +510,16 @@ export default function MyAssessmentsPage() {
       <div className="bg-surface-container-low border-b border-outline-variant sticky top-0 z-30">
         <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 md:gap-4">
-            <IconButton aria-label="Orqaga" onClick={() => router.push('/teacher/library')} className="-ml-1 md:-ml-2">
+            <IconButton aria-label={t.back} onClick={() => router.push('/teacher/library')} className="-ml-1 md:-ml-2">
               <ArrowLeft size={20} />
             </IconButton>
             <div className="w-px h-5 bg-outline-variant hidden sm:block"></div>
             <h1 className="text-[16px] md:text-[18px] font-bold text-on-surface tracking-tight flex items-center gap-2">
-              <FileText size={18} className="text-primary hidden sm:block"/> Mening Imtihonlarim
+              <FileText size={18} className="text-primary hidden sm:block"/> {t.title}
             </h1>
           </div>
           <Button variant="filled" size="sm" icon={<Plus size={16} />} onClick={() => router.push('/teacher/create/bsb-chsb')} className="md:h-10 md:px-5 md:text-sm">
-            <span className="hidden sm:inline">Yangi Yaratish</span><span className="sm:hidden">Yaratish</span>
+            <span className="hidden sm:inline">{t.createNew}</span><span className="sm:hidden">{t.create}</span>
           </Button>
         </div>
       </div>
@@ -496,19 +529,23 @@ export default function MyAssessmentsPage() {
         {/* 🟢 FILTERS & SEARCH */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div className="flex bg-surface-container-low p-1.5 rounded-m3-lg shadow-elev-1 w-full md:w-auto">
-            {['Barcha', 'BSB', 'CHSB'].map((type) => (
+            {[
+              { value: 'Barcha', label: t.filterAll },
+              { value: 'BSB', label: 'BSB' },
+              { value: 'CHSB', label: 'CHSB' }
+            ].map((type) => (
               <button
-                key={type}
-                onClick={() => setFilterType(type as any)}
-                className={`flex-1 md:px-8 py-2.5 text-[13px] font-bold rounded-m3-md transition-all ${filterType === type ? 'bg-primary-container text-on-primary-container shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface hover:bg-state-hover'}`}
+                key={type.value}
+                onClick={() => setFilterType(type.value as any)}
+                className={`flex-1 md:px-8 py-2.5 text-[13px] font-bold rounded-m3-md transition-all ${filterType === type.value ? 'bg-primary-container text-on-primary-container shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface hover:bg-state-hover'}`}
               >
-                {type}
+                {type.label}
               </button>
             ))}
           </div>
 
           <SearchBar
-            placeholder="Qidirish (Nomi yoki Fan)..."
+            placeholder={t.searchPlace}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full md:w-80"
@@ -519,16 +556,16 @@ export default function MyAssessmentsPage() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
             <Spinner size={32} className="mb-4" />
-            <p className="font-medium text-[14px]">Imtihonlar yuklanmoqda...</p>
+            <p className="font-medium text-[14px]">{t.loading}</p>
           </div>
         ) : filteredTests.length === 0 ? (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface-container-low border-2 border-dashed border-outline-variant rounded-m3-xl p-12 flex flex-col items-center justify-center text-center mt-4">
             <div className="w-16 h-16 bg-surface-container rounded-m3-lg flex items-center justify-center mb-5 shadow-elev-1"><FileText size={28} className="text-on-surface-variant" /></div>
-            <h2 className="text-[18px] md:text-[20px] font-black text-on-surface mb-2">Hozircha imtihonlar yo'q</h2>
+            <h2 className="text-[18px] md:text-[20px] font-black text-on-surface mb-2">{t.emptyTitle}</h2>
 
             {!searchQuery && (
               <Button variant="tonal" icon={<Plus strokeWidth={2.5} />} onClick={() => router.push('/teacher/create/bsb-chsb')} className="mt-4">
-                Generatorda Yaratish
+                {t.createInGenerator}
               </Button>
             )}
           </motion.div>
@@ -561,11 +598,11 @@ export default function MyAssessmentsPage() {
 
                     <div className="pt-4 border-t border-outline-variant flex items-center justify-between relative z-10 transition-colors">
                       <div className="flex items-center gap-4 text-[12px] md:text-[13px] font-bold text-on-surface-variant">
-                        <span className="flex items-center gap-1.5"><FileText size={14} className="text-on-surface-variant"/> {test.questionCount} Savol</span>
-                        <span className="flex items-center gap-1.5 text-primary"><Zap size={14} className="text-primary"/> {test.totalPoints} Ball</span>
+                        <span className="flex items-center gap-1.5"><FileText size={14} className="text-on-surface-variant"/> {test.questionCount} {t.questions}</span>
+                        <span className="flex items-center gap-1.5 text-primary"><Zap size={14} className="text-primary"/> {test.totalPoints} {t.points}</span>
                       </div>
                       <div className="flex items-center gap-1 text-[11px] font-bold text-on-surface-variant">
-                        <Clock size={12} /> {test.createdAt ? new Date(test.createdAt.toDate()).toLocaleDateString('uz-UZ') : 'Yangi'}
+                        <Clock size={12} /> {test.createdAt ? new Date(test.createdAt.toDate()).toLocaleDateString('uz-UZ') : t.newLabel}
                       </div>
                     </div>
                   </motion.div>
@@ -577,7 +614,7 @@ export default function MyAssessmentsPage() {
             {hasMore && (
               <div className="flex justify-center pt-6 pb-6">
                 <Button variant="outlined" icon={<ChevronDown strokeWidth={2.5} />} loading={isLoadingMore} onClick={() => fetchTests(true)}>
-                  {isLoadingMore ? "Yuklanmoqda..." : "Ko'proq yuklash"}
+                  {isLoadingMore ? t.loadingMore : t.loadMore}
                 </Button>
               </div>
             )}

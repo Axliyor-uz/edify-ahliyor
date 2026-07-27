@@ -2,13 +2,38 @@
 
 import { Plus, Trash2, X, Wand2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
+
+const TRANSLATIONS = {
+  uz: {
+    questionPh: "To'g'ridan-to'g'ri savolni yozing... (Raqamlangan ro'yxatni joylashtirib ko'ring!)",
+    answersPh: "Qabul qilinadigan javoblar (vergul bilan ajrating)",
+    refPh: "Ref (ixt)",
+    instructionsPh: "Yo'riqnoma (masalan: Answer the questions below. Choose NO MORE THAN TWO WORDS...)",
+    addQuestion: "Savol qo'shish",
+  },
+  en: {
+    questionPh: "Type the direct question... (Try pasting a numbered list here!)",
+    answersPh: "Accepted Answers (comma separated)",
+    refPh: "Ref (opt)",
+    instructionsPh: "Instructions (e.g. Answer the questions below. Choose NO MORE THAN TWO WORDS...)",
+    addQuestion: "Add Question",
+  },
+  ru: {
+    questionPh: "Введите вопрос... (Попробуйте вставить нумерованный список!)",
+    answersPh: "Допустимые ответы (через запятую)",
+    refPh: "Ref (необяз.)",
+    instructionsPh: "Инструкция (например: Answer the questions below. Choose NO MORE THAN TWO WORDS...)",
+    addQuestion: "Добавить вопрос",
+  },
+};
 
 // ==========================================================================
 // INDIVIDUAL ROW COMPONENT (Fixes the Comma Typing Issue)
 // ==========================================================================
-const QuestionRow = ({ row, rIdx, updateRow, deleteRow, totalRows, handleSmartPaste, addRow }: any) => {
+const QuestionRow = ({ row, rIdx, updateRow, deleteRow, totalRows, handleSmartPaste, addRow, t }: any) => {
   const [ansText, setAnsText] = useState(row.correct_answer.join(', '));
 
   useEffect(() => {
@@ -31,7 +56,7 @@ const QuestionRow = ({ row, rIdx, updateRow, deleteRow, totalRows, handleSmartPa
         </span>
         
         <textarea 
-          placeholder="Type the direct question... (Try pasting a numbered list here!)" 
+          placeholder={t.questionPh}
           value={row.question_text} 
           onChange={e => { 
             updateRow(rIdx, 'question_text', e.target.value); 
@@ -52,7 +77,7 @@ const QuestionRow = ({ row, rIdx, updateRow, deleteRow, totalRows, handleSmartPa
 
       <div className="pl-8 flex items-center gap-2">
         <input
-          type="text" placeholder="Accepted Answers (comma separated)"
+          type="text" placeholder={t.answersPh}
           value={ansText}
           onChange={e => setAnsText(e.target.value)}
           onBlur={handleAnsBlur}
@@ -62,7 +87,7 @@ const QuestionRow = ({ row, rIdx, updateRow, deleteRow, totalRows, handleSmartPa
 
         {/* GHOST REFERENCE INPUT */}
         <input
-          type="text" placeholder="Ref (opt)"
+          type="text" placeholder={t.refPh}
           value={row.passage_reference || ''}
           onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())}
           className={`w-14 h-7 text-[10px] text-center font-bold rounded-m3-sm outline-none uppercase shrink-0 transition-colors
@@ -82,6 +107,8 @@ const QuestionRow = ({ row, rIdx, updateRow, deleteRow, totalRows, handleSmartPa
 // MAIN COMPONENT BLOCK
 // ==========================================================================
 export default function ShortAnswerBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
 
   const updateRow = (rIdx: number, key: string, val: any) => {
     const updatedQs = [...qb.questions];
@@ -159,7 +186,7 @@ export default function ShortAnswerBlock({ qb, qbIdx, updateBlock, deleteBlock }
         {/* INSTRUCTIONS */}
         <div className="relative mb-3">
           <input
-            type="text" placeholder="Instructions (e.g. Answer the questions below. Choose NO MORE THAN TWO WORDS...)"
+            type="text" placeholder={t.instructionsPh}
             value={qb.instructions}
             onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
             className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none p-0 pr-6"
@@ -179,12 +206,13 @@ export default function ShortAnswerBlock({ qb, qbIdx, updateBlock, deleteBlock }
               totalRows={qb.questions.length}
               handleSmartPaste={handleSmartPaste}
               addRow={addRow}
+              t={t}
             />
           ))}
         </div>
         
         <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
-          Add Question
+          {t.addQuestion}
         </Button>
       </div>
     </div>
