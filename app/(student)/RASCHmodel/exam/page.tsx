@@ -49,14 +49,13 @@ const UI: Record<Lang, Record<string, string>> = {
     timeUp: 'Vaqt tugadi — test avtomatik yakunlandi.',
     results: 'Natija', byTopic: "Bo'limlar bo'yicha", retake: 'Yangi test',
     skillsTitle: "Aniqlangan ko'nikmalar",
-    skillsHint:
-      "Bu variant ko'nikmalarning bir qismini o'lchadi. Ko'nikma mavzudan mustaqil: masalan \"tengsizlik yechish\" logarifmik va trigonometrik savollarda bir xil ko'nikma. To'liq manzara — \"Darajam\" sahifasida.",
+    skillsHint: "Bu variant ko'nikmalarning bir qismini o'lchadi — to'liq manzara Darajam sahifasida.",
     loadingExam: 'Test tayyorlanmoqda…', shortfallWarning: "Ba'zi bo'limlar uchun yetarli savol topilmadi:",
     loadFailed: "Testni yuklab bo'lmadi. Qayta urinib ko'ring.",
-    discarded: "Oldingi testning vaqti tugagan, lekin unda birorta ham savolga javob berilmagan — u natija sifatida saqlanmadi.",
+    discarded: "Oldingi test javobsiz tugagan — natija sifatida saqlanmadi.",
     emptyBank: "Savollar bazasidan savol topilmadi. Administrator `npm run backfill:rand` ni ishga tushirishi kerak.",
     langTitle: 'Savollar tili',
-    langHint: "Testni boshlagandan so'ng savollar tili o'zgarmaydi — interfeys tilidan mustaqil.",
+    langHint: "Boshlangandan so'ng o'zgarmaydi.",
     resumed: 'Boshlangan test tiklandi — savollar qayta yuklanmadi.',
     reads: 'ta savol bazadan o‘qildi',
     levelTitle: 'Darajangiz o‘zgarishi',
@@ -73,14 +72,13 @@ const UI: Record<Lang, Record<string, string>> = {
     timeUp: 'Время вышло — тест завершён автоматически.',
     results: 'Результат', byTopic: 'По разделам', retake: 'Новый тест',
     skillsTitle: 'Определённые навыки',
-    skillsHint:
-      'Этот вариант измерил часть навыков. Навык не зависит от темы: «решение неравенства» — один и тот же навык в логарифмических и тригонометрических вопросах. Полная картина — на странице «Мой уровень».',
+    skillsHint: 'Этот вариант измерил часть навыков — полная картина на «Мой уровень».',
     loadingExam: 'Подготовка теста…', shortfallWarning: 'Недостаточно вопросов для некоторых разделов:',
     loadFailed: 'Не удалось загрузить тест. Попробуйте ещё раз.',
-    discarded: 'Время прошлого теста истекло, но в нём не было отвечено ни одного вопроса — он не сохранён как результат.',
+    discarded: 'Прошлый тест истёк без ответов — не сохранён как результат.',
     emptyBank: 'В банке вопросов ничего не найдено. Администратору нужно выполнить `npm run backfill:rand`.',
     langTitle: 'Язык вопросов',
-    langHint: 'После начала теста язык вопросов не меняется — он не зависит от языка интерфейса.',
+    langHint: 'После начала теста не меняется.',
     resumed: 'Начатый тест восстановлен — вопросы не загружались заново.',
     reads: 'вопросов прочитано из базы',
     levelTitle: 'Изменение вашего уровня',
@@ -97,14 +95,13 @@ const UI: Record<Lang, Record<string, string>> = {
     timeUp: 'Time is up — the test was submitted automatically.',
     results: 'Results', byTopic: 'By section', retake: 'New test',
     skillsTitle: 'Skills detected',
-    skillsHint:
-      'This paper measured a slice of the skills. A skill is content-free: "solving an inequality" is the same skill in a logarithmic and a trigonometric question. The full picture is on the My level page.',
+    skillsHint: 'This paper measured a slice of the skills — the full picture is on My level.',
     loadingExam: 'Preparing the test…', shortfallWarning: 'Not enough questions found for some sections:',
     loadFailed: 'Could not load the test. Please try again.',
-    discarded: 'Your previous paper ran out of time with nothing answered on it, so it was not recorded as a result.',
+    discarded: 'Your last paper timed out with nothing answered — it was not recorded.',
     emptyBank: 'No questions found in the bank. An admin needs to run `npm run backfill:rand`.',
     langTitle: 'Question language',
-    langHint: "Once the test starts the question language is fixed — it is independent of the interface language.",
+    langHint: "Fixed once the test starts.",
     resumed: 'Resumed your test — no questions were re-fetched.',
     reads: 'questions read from the database',
     levelTitle: 'How your level moved',
@@ -534,7 +531,7 @@ export default function ExamPage() {
             graded against the clock. */}
         <RaschNav lang={appLang} />
         <div className="mx-auto w-full max-w-2xl">
-          <Card className="p-6 md:p-8">
+          <Card className="p-s-card sm:p-6 md:p-8">
             <h1 className="s-display mb-2 text-2xl font-bold tracking-tight md:text-3xl">{t.examTitle}</h1>
             <div className="mb-6 flex items-center gap-4 text-[13px] font-bold text-on-surface-variant">
               <span className="flex items-center gap-1.5"><Clock size={14} strokeWidth={3} /><span className="s-num">{EXAM_DURATION_MINUTES}</span> {t.duration}</span>
@@ -547,13 +544,17 @@ export default function ExamPage() {
               <p className="mb-2 flex items-center gap-1.5 text-[12px] font-black uppercase tracking-wider text-on-surface-variant">
                 <Languages size={14} strokeWidth={3} /> {t.langTitle}
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              {/* Wraps instead of a 3-column grid: a FilterChip is `shrink-0`, so
+                  on a 360px phone "🇷🇺 Русский" (plus the tick when it is the
+                  selected one) is wider than a third of the card and pushed the
+                  page into horizontal scroll. */}
+              <div className="flex flex-wrap gap-2">
                 {QUESTION_LANGS.map((l) => (
                   <FilterChip
                     key={l.code}
                     selected={pendingLang === l.code}
                     onClick={() => setPendingLang(l.code)}
-                    className="w-full justify-center"
+                    className="flex-1 justify-center"
                   >
                     <span className="text-[16px] leading-none">{l.flag}</span>
                     {l.label}
@@ -623,7 +624,7 @@ export default function ExamPage() {
             />
           )}
 
-          <Card className="p-6 text-center md:p-8">
+          <Card className="p-s-card text-center sm:p-6 md:p-8">
             <p className="mb-1 text-[13px] font-black uppercase tracking-wider text-on-surface-variant">{t.results}</p>
             <p className="s-display s-num text-5xl font-bold tracking-tight text-primary">
               {score}<span className="text-3xl text-on-surface-variant">/{totalQuestions}</span>
@@ -677,7 +678,7 @@ export default function ExamPage() {
                         <span className="flex min-w-0 items-center gap-2">
                           {/* Topic hue — a categorical series color shared with the progress chart. */}
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: topic.hex }} />
-                          <span className="truncate text-on-surface-variant">{topic.label[appLang]}</span>
+                          <span className="min-w-0 truncate text-on-surface-variant">{topic.label[appLang]}</span>
                         </span>
                         <span className="flex shrink-0 items-center gap-2">
                           <span className={cn('s-num text-[11px] font-black', flat ? 'text-on-surface-variant' : up ? 'text-success' : 'text-error')}>
@@ -703,7 +704,7 @@ export default function ExamPage() {
             <div className="flex flex-col gap-2">
               {bySection.map(([sectionId, s]) => (
                 <div key={sectionId} className="flex items-center justify-between gap-3 text-[13px] font-bold">
-                  <span className="truncate text-on-surface-variant">{s.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-on-surface-variant">{s.label}</span>
                   <span className="s-num shrink-0 text-on-surface-variant">{s.testType} · {s.correct}/{s.total}</span>
                 </div>
               ))}
@@ -758,21 +759,34 @@ export default function ExamPage() {
             appLang={appLang}
           />
 
-          {/* Where to next: another paper, the level chart, or out */}
-          <div className="flex flex-col gap-3 sm:flex-row">
+          {/* Where to next: another paper, the level chart, or out. ONE row on a
+              phone, like the navbar above — the primary action keeps its label,
+              the two destinations shrink to icon buttons (their label survives
+              as `aria-label`/`title`). */}
+          <div className="flex items-stretch gap-2">
             <Button
-              fullWidth
               onClick={newExam}
               icon={<RotateCcw size={16} strokeWidth={3} />}
-              className="flex-1 uppercase tracking-wider"
+              className="min-w-0 flex-1 px-3 text-[12px] uppercase tracking-wider sm:px-5 sm:text-[14.5px]"
             >
               {t.retake}
             </Button>
-            <NavLink href="/RASCHmodel/progress" tone="tonal" className="flex-1 uppercase tracking-wider">
-              <TrendingUp size={16} strokeWidth={3} /> {t.viewProgress}
+            <NavLink
+              href="/RASCHmodel/progress"
+              tone="tonal"
+              label={t.viewProgress}
+              className="shrink-0 px-3 uppercase tracking-wider sm:px-5"
+            >
+              <TrendingUp size={16} strokeWidth={3} />
+              <span className="hidden sm:inline">{t.viewProgress}</span>
             </NavLink>
-            <NavLink href="/RASCHmodel" className="uppercase tracking-wider">
-              <Home size={16} strokeWidth={3} /> {t.home}
+            <NavLink
+              href="/RASCHmodel"
+              label={t.home}
+              className="shrink-0 px-3 uppercase tracking-wider sm:px-5"
+            >
+              <Home size={16} strokeWidth={3} />
+              <span className="hidden sm:inline">{t.home}</span>
             </NavLink>
           </div>
         </div>

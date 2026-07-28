@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/(student)/*`, XP/streak/leaderboard logic, `services/quizService.ts`, `services/historyService.ts`, or `lib/social.ts`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-28 (teacher-built Rasch papers + the shared exam runner).
+**Last verified:** 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
 
 ## Purpose & scope
 
@@ -118,14 +118,32 @@ is still running. Full contract, traps and the answer-key caveat:
 
 Inside the seven dimensions sit **34 content-free skills** ([lib/RASCHskills.ts](../lib/RASCHskills.ts)) — what the student can *do*, as opposed to which content the item came from. Derived entirely from data already persisted (no Firestore change, no migration), 13 of them span more than one dimension, and the 45-question paper detects ~21 of 34 per sitting. Full contract, traps and the syllabus→skill map: **[RASCH_SKILLS.md](RASCH_SKILLS.md)**.
 
+## The Rasch suite runs dense, and short (2026-07-28)
+
+`app/(student)/RASCHmodel/layout.tsx` wraps the whole suite in `.s-dense`, which
+re-declares the density custom properties for that subtree only (14px card
+padding instead of 20, tighter gaps) — see [STUDENT_UI.md](STUDENT_UI.md). These
+pages stack a heptagon, a skills panel, chapter levels, a forecast and a chart,
+and at the app's comfortable density that is a wall of padding on a phone.
+
+⚠️ **Keep the copy to one short line.** Every hint on these pages was a
+paragraph explaining the Rasch model (what θ is, why a skill is content-free,
+how the expected score is summed) and it read as noise on top of the numbers.
+They are now single clauses. If you need to explain the model at length, the
+place for it is the docs, not the student's screen — and don't restore the long
+version "just for this one card", because it is exactly how the wall came back
+last time. The heptagon is 280px on a phone, the chart 220px; the headline
+numbers dropped one step each.
+
 ## The Rasch suite's shared navbar
 
 `RASCHmodel/_components/RaschNav.tsx` is the ONE nav for every page under `/RASCHmodel`. Fixed order, everywhere: **Home → My level → Analysis → Practice → Code → Quick start** (the last is the filled CTA, pushed right with `ml-auto`).
 
+- **The level chip lives here** (2026-07-28). `_components/LevelBadge.tsx::LevelChip` is pinned to the right of the bar, BEFORE the CTA, on every page of the suite — a ring gauge, the 0–5 number and the band name. It reads `getRASCHLevels`, which is 12h-cached and single-flighted, so a bar on six pages costs **0 reads warm** and one shared read cold. It renders `null` until the read resolves and whenever nothing is measured; a permanent empty pill reads as broken. ⚠️ The bar is now two explicit flex groups, not an `ml-auto` on the CTA — a lone `ml-auto` lands on whichever element carries it first, which put the chip to the RIGHT of the button.
 - **Six items since 2026-07-28**: `Kod` (`/RASCHmodel/quiz`) sits between Practice and Quick start. It is a plain item, not the CTA — a student arrives holding a code somebody gave them, so it must be findable, but the paper they can always start alone stays the filled call to action.
 - Each page used to roll its own row and they disagreed on both membership and order (progress had Home/Analysis/New test, diagnosis had My level/Home/Practice, practice had Analysis/Home). ⚠️ **Don't add a local nav row back to a Rasch page** — put the change in `RaschNav`.
 - **Sticky, not static**: `sticky top-[var(--s-topbar-h)] z-20`. It parks under the shell's own app bar (z-40) and below the shell-C tab row (z-30) so it can never overlap either; the active shell is `shell_b`, so that tab row isn't rendered today. Translucency uses `bg-surface-blur` — a `bg-surface/85` would render **opaque** (M3 tokens are plain hex inside `var()`).
-- Items scroll horizontally (`s-no-scrollbar`) rather than wrapping: five labelled items don't fit a 360px phone, and a bar that grows to two rows shifts the page down as you navigate.
+- **Phone = a mini bar (2026-07-28)**: below `sm` every item is a **32px icon-only chip** (`h-8 px-2`, 16px icon, label `hidden sm:inline` but kept as `aria-label`/`title`), and the level chip matches it (`h-8 px-2 sm:h-9 sm:px-3`). That is what makes all six destinations plus the readout fit a 360px screen. ⚠️ Don't put a label back on just the active item or the CTA — the Uzbek labels ("Bosh sahifa", "Tezkor test") blow the width immediately, which is how this overflowed in the first place. `overflow-x-auto` (`s-no-scrollbar`) stays as the safety net for a 320px screen; wrapping is still refused, because a bar that grows to two rows shifts the page down as you navigate.
 - The current page is a **tonal chip**, not an outline, so position is readable without parsing labels. Matching is exact (`pathname === href`) — every route is a sibling of `/RASCHmodel`, so `startsWith` would light "Home" everywhere.
 - ⚠️ **The exam page mounts it only at `intro` and `submitted`, never `in-progress`.** A running paper has its own sticky timer bar, and offering "Home / Practice" mid-sitting invites abandoning a paper that is already being graded against the clock.
 - The hub's `PageHeader actions` row was removed as a duplicate of this bar, along with its `progress`/`diagnosis`/`practice`/`quickStart` strings.

@@ -182,16 +182,42 @@ export function quizSlotCount(items: RaschQuizItem[]): number {
   return hydrateQuiz(items).reduce((sum, q) => sum + examSlotCount(q), 0);
 }
 
+/** `sectionId` → levelling dimension. Built once; the blueprint is a constant. */
+const SECTION_TOPIC: Map<string, TopicKey> = new Map(EXAM_BLUEPRINT.map((s) => [s.id, s.topic]));
+
 /** Slots per dimension, for the builder's coverage panel. */
 export function quizTopicCounts(items: RaschQuizItem[]): QuizTopicCounts {
-  const sectionTopic = new Map(EXAM_BLUEPRINT.map((s) => [s.id, s.topic]));
   const counts: QuizTopicCounts = {};
   for (const q of hydrateQuiz(items)) {
-    const topic = sectionTopic.get(q.sectionId);
+    const topic = SECTION_TOPIC.get(q.sectionId);
     if (!topic) continue;
     counts[topic] = (counts[topic] ?? 0) + examSlotCount(q);
   }
   return counts;
+}
+
+/** The dimension one stored item is filed under. `null` = an unknown `sectionId`. */
+export function quizItemTopic(item: RaschQuizItem): TopicKey | null {
+  return SECTION_TOPIC.get(item.sectionId) ?? null;
+}
+
+/**
+ * The dimension a `questions1` chapter would count against — what the bank
+ * picker's chapter dropdown shows the quota for, BEFORE anything is read.
+ *
+ * Goes through `sectionForChapter`, the same resolver `bankQuizItem` uses, so
+ * the number on the dropdown is the number the pick will actually move.
+ */
+export function topicForQuizChapter(topicId: string, chapterId: string): TopicKey | null {
+  return SECTION_TOPIC.get(sectionForChapter(topicId, chapterId).id) ?? null;
+}
+
+/**
+ * Slots ONE item costs. A stored item carries no position (both fields are
+ * derived by `hydrateQuiz`), so they are stubbed in just for the count.
+ */
+export function quizItemSlots(item: RaschQuizItem): number {
+  return examSlotCount({ ...item, slotNumber: 0, sectionLabel: { uz: '', ru: '', en: '' } });
 }
 
 /** Slots per difficulty grade (1 easy / 2 medium / 3 hard), for the same panel. */
@@ -204,9 +230,14 @@ export function quizDifficultyCounts(items: RaschQuizItem[]): Record<DifficultyI
 }
 
 /**
- * How the mock exam's 45 slots are shared out — the shape a teacher paper is
- * compared against in the builder. Purely advisory: a teacher is allowed to
- * build a geometry-only paper, they just get to see that they did.
+ * How the mock exam's 45 slots are shared out — and, since a teacher paper is
+ * scored into the SAME seven dimensions on the SAME 0–5 scale, the quota each
+ * dimension must hit exactly. It is not advisory: a geometry-only paper would
+ * report six dimensions it never measured and one measured to death, and the
+ * levels it writes are the student's real ones.
+ *
+ * ⚠️ These sum to `RASCH_QUIZ_TOTAL`, which is what makes "45 slots" and "every
+ * quota exactly met" the same statement. Changing the blueprint changes both.
  */
 export const BLUEPRINT_TOPIC_TARGET: Record<TopicKey, number> = (() => {
   const target = {} as Record<TopicKey, number>;
@@ -214,6 +245,50 @@ export const BLUEPRINT_TOPIC_TARGET: Record<TopicKey, number> = (() => {
   for (const section of EXAM_BLUEPRINT) target[section.topic] += section.count;
   return target;
 })();
+
+/** Why an add was refused — the builder turns each into its own message. */
+export type QuizAddCheck =
+  | { ok: true; slots: number }
+  | { ok: false; reason: 'duplicate' }
+  | { ok: false; reason: 'full'; slots: number }
+  | { ok: false; reason: 'topicFull'; slots: number; topic: TopicKey; have: number; want: number };
+
+/**
+ * May this item join the paper?
+ *
+ * ⚠️ **A block is added whole or not at all.** A `shared_options` block occupies
+ * one slot per sub-question, so a block that would overshoot its dimension's
+ * quota is refused entirely — truncating it would break the shared pool it is
+ * printed with.
+ *
+ * An item whose `sectionId` is not in the blueprint has no quota to check
+ * against and is judged on the 45-slot total alone; `sectionForChapter` makes
+ * that unreachable from either picker, and `toItemResponses` would file it under
+ * the wrong dimension anyway (see docs/RASCH_QUIZ.md).
+ */
+export function checkQuizAdd(items: RaschQuizItem[], item: RaschQuizItem): QuizAddCheck {
+  if (items.some((q) => q.id === item.id)) return { ok: false, reason: 'duplicate' };
+
+  const slots = quizItemSlots(item);
+  if (quizSlotCount(items) + slots > RASCH_QUIZ_TOTAL) return { ok: false, reason: 'full', slots };
+
+  const topic = quizItemTopic(item);
+  if (topic) {
+    const have = quizTopicCounts(items)[topic] ?? 0;
+    const want = BLUEPRINT_TOPIC_TARGET[topic];
+    if (have + slots > want) return { ok: false, reason: 'topicFull', slots, topic, have, want };
+  }
+
+  return { ok: true, slots };
+}
+
+/** Dimensions that are not exactly at quota — empty means the paper is publishable. */
+export function quizQuotaGaps(items: RaschQuizItem[]): { topic: TopicKey; have: number; want: number }[] {
+  const counts = quizTopicCounts(items);
+  return TOPIC_KEYS
+    .map((topic) => ({ topic, have: counts[topic] ?? 0, want: BLUEPRINT_TOPIC_TARGET[topic] }))
+    .filter((row) => row.have !== row.want);
+}
 
 /** Preview text for a builder row — the paper is trilingual, the list is not. */
 export function itemPreview(q: RaschQuizItem, lang: Lang, max = 110): string {

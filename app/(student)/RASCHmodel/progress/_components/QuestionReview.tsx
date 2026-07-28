@@ -219,7 +219,7 @@ function QuestionCard({
             className={cn('block text-[11px] font-bold leading-snug text-on-surface', !open && 'line-clamp-2')}
           />
           <span className="s-num mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] font-bold text-on-surface-variant">
-            <span className="truncate">{q.subtopic}</span>
+            <span className="min-w-0 max-w-full truncate">{q.subtopic}</span>
             <span>·</span>
             <span>{formatShortDate(q.examAt, lang)}</span>
             {/* Drills and papers are different evidence — label which this was. */}

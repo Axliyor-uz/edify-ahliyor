@@ -90,6 +90,28 @@ export const CREATION_METHODS = [
 export type CreationMethod = (typeof CREATION_METHODS)[number];
 
 /**
+ * Provenance filters, grouped by **who actually wrote the question**.
+ *
+ * ⚠️ The bank holds questions from every era, so each list must carry BOTH the
+ * legacy `creationMethod` strings and the v1 enum above — a filter that knows
+ * only the enum silently hides half a teacher's bank. They ride the existing
+ * `creationMethod + creatorId + createdAt` composite index, so a
+ * `where('creationMethod','in', …)` beside `creatorId ==` needs no new index.
+ * Shared by `create/my_questions` and the Rasch builder's own-bank picker.
+ */
+export const AI_CREATION_METHODS: string[] = ["general_ai", "ai_generated", "ai_prompt", "by_prompt"];
+export const IMAGE_CREATION_METHODS: string[] = ["by_image", "imported"];
+export const MANUAL_CREATION_METHODS: string[] = ["custom", "teacher_created", "manual", "manual_builder"];
+
+/** Everything a machine wrote — a question read out of an image is AI-written too. */
+export const MACHINE_CREATION_METHODS: string[] = [...AI_CREATION_METHODS, ...IMAGE_CREATION_METHODS];
+
+/** ⚠️ False for a document whose method is empty or unrecognized — "not known to
+ *  be AI" is not the same as "written by hand", and a legacy doc must not be
+ *  mislabelled as the teacher's own work. */
+export const isAiWritten = (creationMethod: string) => MACHINE_CREATION_METHODS.includes(creationMethod);
+
+/**
  * Per-source defaults, applied by `toQuestionV1()` whenever the creator did not
  * supply a value. This is what makes "by prompt", "by image" and "by hand"
  * produce consistently-filled documents instead of each page inventing its own.
@@ -453,3 +475,22 @@ export interface NormalizedQuestion {
   /** The untouched source doc — for writers that must round-trip it. */
   raw: Record<string, unknown>;
 }
+
+/**
+ * **Closed** = every answer point is picked from an option list, so the item is
+ * graded by a letter and never by typed text ("yopiq savol"). The Rasch paper
+ * builder filters on this.
+ *
+ * ⚠️ Mirrors the rule `ExamTeacher.toExamItem` already applies: a part that
+ * draws from the block's printed pool answers with a letter **even when the
+ * document mislabels its type** `open`. A `multi_part` block is closed only if
+ * EVERY part carries its own options — one typed part makes the whole block
+ * typed on the runner.
+ */
+export const isClosedQuestion = (n: NormalizedQuestion): boolean => {
+  if (!n.isBlock) return !isTextType(n.type) && n.optionList.length > 0;
+  // `parseParts` hands the shared pool over by reference, which is how the exam
+  // bridge detects the same thing.
+  if (n.optionList.length > 0 && n.parts.every((p) => p.optionList === n.optionList)) return true;
+  return n.parts.length > 0 && n.parts.every((p) => !isTextType(p.type) && p.optionList.length > 0);
+};

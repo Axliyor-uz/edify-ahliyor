@@ -20,20 +20,17 @@ const UI: Record<Lang, Record<string, string>> = {
   uz: {
     subtitle: "Fanlarni tanlang va tezkor mashq qilishni boshlang 🚀",
     bannerTitle: 'Imtihonga tayyorlaning!',
-    bannerDesc:
-      "Har bir fan bo'yicha mavzularni o'rganing, savollarni yeching va bilimingizni sinang. Natijalaringiz real vaqtda kuzatiladi.",
+    bannerDesc: "Mavzularni o'rganing, savollarni yeching, darajangizni kuzating.",
   },
   ru: {
     subtitle: 'Выберите предмет и начните тренировку 🚀',
     bannerTitle: 'Готовьтесь к экзамену!',
-    bannerDesc:
-      'Изучайте темы по каждому предмету, решайте задачи и проверяйте свои знания. Результаты отслеживаются в реальном времени.',
+    bannerDesc: 'Изучайте темы, решайте задачи, следите за уровнем.',
   },
   en: {
     subtitle: 'Pick a subject and start practising 🚀',
     bannerTitle: 'Get exam-ready!',
-    bannerDesc:
-      'Work through the topics of each subject, solve the questions and test what you know. Your results are tracked as you go.',
+    bannerDesc: 'Work through the topics, solve the questions, watch your level move.',
   },
 };
 

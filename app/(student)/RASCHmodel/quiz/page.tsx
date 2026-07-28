@@ -16,7 +16,7 @@ import { useStudentLanguage } from '../../layout';
 import { saveExamResult, scoreByTopic, toItemResponses } from '@/services/RASCHProgressService';
 import { findQuizByCode, saveQuizResult } from '@/services/teacherRaschQuizService';
 import { estimateAbility } from '@/lib/RASCHtheta';
-import { RASCH_TOPICS } from '@/lib/RASCHtopics';
+import { RASCH_TOPICS, TOPIC_KEYS, type TopicKey } from '@/lib/RASCHtopics';
 import { skillCoverage, skill as skillMeta, SKILL_KEYS, type SkillKey } from '@/lib/RASCHskills';
 import { archiveExam, setSolvedUser } from '@/lib/RASCHsolved';
 import {
@@ -57,18 +57,17 @@ const UI: Record<Lang, Record<string, string>> = {
     empty: "Bu testda savol yo'q.",
     by: "Muallif", duration: 'daqiqa', totalQ: 'ta savol',
     langTitle: 'Savollar tili',
-    langHint: "Testni boshlagandan so'ng savollar tili o'zgarmaydi — interfeys tilidan mustaqil.",
+    langHint: "Boshlangandan so'ng o'zgarmaydi.",
     start: 'Testni boshlash',
     another: 'Boshqa kod kiritish',
     resumed: 'Boshlangan test tiklandi — savollar qayta yuklanmadi.',
     oneRead: "Butun test 1 ta hujjatdan o'qildi",
     timeUp: 'Vaqt tugadi — test avtomatik yakunlandi.',
-    discarded: "Oldingi testning vaqti tugagan, lekin unda birorta ham savolga javob berilmagan — u natija sifatida saqlanmadi.",
+    discarded: "Oldingi test javobsiz tugagan — natija sifatida saqlanmadi.",
     results: 'Natija',
     byTopic: "Bo'limlar bo'yicha",
     skillsTitle: "Aniqlangan ko'nikmalar",
-    skillsHint:
-      "Ko'nikma mavzudan mustaqil: masalan \"tengsizlik yechish\" logarifmik va trigonometrik savollarda bir xil ko'nikma. To'liq manzara — \"Darajam\" sahifasida.",
+    skillsHint: "Ko'nikma mavzudan mustaqil — to'liq manzara Darajam sahifasida.",
     levelTitle: 'Darajangiz o‘zgarishi',
     savingResult: 'Natija saqlanmoqda…',
     saveFailed: 'Natijani saqlab bo‘lmadi.',
@@ -89,18 +88,17 @@ const UI: Record<Lang, Record<string, string>> = {
     empty: 'В этом тесте нет вопросов.',
     by: 'Автор', duration: 'минут', totalQ: 'вопросов',
     langTitle: 'Язык вопросов',
-    langHint: 'После начала теста язык вопросов не меняется — он не зависит от языка интерфейса.',
+    langHint: 'После начала теста не меняется.',
     start: 'Начать тест',
     another: 'Ввести другой код',
     resumed: 'Начатый тест восстановлен — вопросы не загружались заново.',
     oneRead: 'Весь тест прочитан одним документом',
     timeUp: 'Время вышло — тест завершён автоматически.',
-    discarded: 'Время прошлого теста истекло, но в нём не было отвечено ни одного вопроса — он не сохранён как результат.',
+    discarded: 'Прошлый тест истёк без ответов — не сохранён как результат.',
     results: 'Результат',
     byTopic: 'По разделам',
     skillsTitle: 'Определённые навыки',
-    skillsHint:
-      'Навык не зависит от темы: «решение неравенства» — один и тот же навык в логарифмических и тригонометрических вопросах. Полная картина — на странице «Мой уровень».',
+    skillsHint: 'Навык не зависит от темы — полная картина на «Мой уровень».',
     levelTitle: 'Изменение вашего уровня',
     savingResult: 'Сохранение результата…',
     saveFailed: 'Не удалось сохранить результат.',
@@ -121,18 +119,17 @@ const UI: Record<Lang, Record<string, string>> = {
     empty: 'This test has no questions.',
     by: 'By', duration: 'minutes', totalQ: 'questions',
     langTitle: 'Question language',
-    langHint: 'Once the test starts the question language is fixed — it is independent of the interface language.',
+    langHint: 'Fixed once the test starts.',
     start: 'Start test',
     another: 'Enter a different code',
     resumed: 'Resumed your test — no questions were re-fetched.',
     oneRead: 'The whole paper was read as one document',
     timeUp: 'Time is up — the test was submitted automatically.',
-    discarded: 'Your previous paper ran out of time with nothing answered on it, so it was not recorded as a result.',
+    discarded: 'Your last paper timed out with nothing answered — it was not recorded.',
     results: 'Results',
     byTopic: 'By section',
     skillsTitle: 'Skills detected',
-    skillsHint:
-      'A skill is content-free: "solving an inequality" is the same skill in a logarithmic and a trigonometric question. The full picture is on the My level page.',
+    skillsHint: 'A skill is content-free — the full picture is on My level.',
     levelTitle: 'How your level moved',
     savingResult: 'Saving your result…',
     saveFailed: 'Could not save your result.',
@@ -503,6 +500,21 @@ export default function TeacherQuizPage() {
       // untouched one, say).
       try {
         const correct = items.filter((i) => i.correct).length;
+
+        // Per-dimension ability, so the teacher can see WHERE a student is weak
+        // rather than only how much they scored. Measured the same way the
+        // student's own heptagon is — `estimateAbility` over that dimension's
+        // items — so the two never disagree about the same paper.
+        //
+        // A dimension the paper never touched is LEFT OUT, not written as 0: the
+        // results page must be able to tell "not measured" from "measured at the
+        // floor", and Firestore must never be handed an `undefined`.
+        const topicTheta: Partial<Record<TopicKey, number>> = {};
+        for (const key of TOPIC_KEYS) {
+          const own = items.filter((i) => i.topic === key);
+          if (own.length > 0) topicTheta[key] = estimateAbility(own).theta;
+        }
+
         await saveQuizResult({
           quizId: session.quizId,
           quizTitle: session.quizTitle,
@@ -516,6 +528,7 @@ export default function TeacherQuizPage() {
           submittedAt: Date.now(),
           examLang: session.examLang,
           topics: scoreByTopic(items),
+          topicTheta,
           theta: estimateAbility(items).theta,
         });
         if (!cancelled) setReported(true);
@@ -552,7 +565,7 @@ export default function TeacherQuizPage() {
       <Page>
         <RaschNav lang={appLang} />
         <div className="mx-auto w-full max-w-2xl">
-          <Card className="p-6 md:p-8">
+          <Card className="p-s-card sm:p-6 md:p-8">
             {!pending ? (
               <>
                 <h1 className="s-display mb-2 flex items-center gap-2 text-2xl font-bold tracking-tight md:text-3xl">
@@ -630,13 +643,17 @@ export default function TeacherQuizPage() {
                   <p className="mb-2 flex items-center gap-1.5 text-[12px] font-black uppercase tracking-wider text-on-surface-variant">
                     <Languages size={14} strokeWidth={3} /> {t.langTitle}
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
+                  {/* Wraps instead of a 3-column grid: a FilterChip is `shrink-0`,
+                      so on a 360px phone "🇷🇺 Русский" (plus the tick when it is
+                      the selected one) is wider than a third of the card and
+                      pushed the page into horizontal scroll. */}
+                  <div className="flex flex-wrap gap-2">
                     {QUESTION_LANGS.map((l) => (
                       <FilterChip
                         key={l.code}
                         selected={pendingLang === l.code}
                         onClick={() => setPendingLang(l.code)}
-                        className="w-full justify-center"
+                        className="flex-1 justify-center"
                       >
                         <span className="text-[16px] leading-none">{l.flag}</span>
                         {l.label}
@@ -682,7 +699,7 @@ export default function TeacherQuizPage() {
             <Banner status="warning" icon={<AlertTriangle size={16} strokeWidth={3} />} title={t.timeUp} />
           )}
 
-          <Card className="p-6 text-center md:p-8">
+          <Card className="p-s-card text-center sm:p-6 md:p-8">
             <p className="mb-1 text-[13px] font-black uppercase tracking-wider text-on-surface-variant">{session.quizTitle}</p>
             <p className="s-display s-num text-5xl font-bold tracking-tight text-primary">
               {score}<span className="text-3xl text-on-surface-variant">/{totalQuestions}</span>
@@ -722,7 +739,7 @@ export default function TeacherQuizPage() {
                     <div key={topic.key} className="flex items-center justify-between gap-3 text-[13px] font-bold">
                       <span className="flex min-w-0 items-center gap-2">
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: topic.hex }} />
-                        <span className="truncate text-on-surface-variant">{topic.label[appLang]}</span>
+                        <span className="min-w-0 truncate text-on-surface-variant">{topic.label[appLang]}</span>
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
                         <span className={cn('s-num text-[11px] font-black', flat ? 'text-on-surface-variant' : up ? 'text-success' : 'text-error')}>
@@ -742,7 +759,7 @@ export default function TeacherQuizPage() {
             <div className="flex flex-col gap-2">
               {bySection.map(([sectionId, s]) => (
                 <div key={sectionId} className="flex items-center justify-between gap-3 text-[13px] font-bold">
-                  <span className="truncate text-on-surface-variant">{s.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-on-surface-variant">{s.label}</span>
                   <span className="s-num shrink-0 text-on-surface-variant">{s.testType} · {s.correct}/{s.total}</span>
                 </div>
               ))}
@@ -786,20 +803,34 @@ export default function TeacherQuizPage() {
             hideAnswers={session.hideAnswers}
           />
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          {/* ONE row on a phone, like the navbar above: the action you came for
+              keeps its label and the two destinations shrink to icon buttons
+              (their label survives as `aria-label`/`title`). Three stacked
+              full-width bars cost a third of the screen for two links. */}
+          <div className="flex items-stretch gap-2">
             <Button
-              fullWidth
               onClick={reset}
               icon={<KeyRound size={16} strokeWidth={3} />}
-              className="flex-1 uppercase tracking-wider"
+              className="min-w-0 flex-1 px-3 text-[12px] uppercase tracking-wider sm:px-5 sm:text-[14.5px]"
             >
               {t.another}
             </Button>
-            <NavLink href="/RASCHmodel/progress" tone="tonal" className="flex-1 uppercase tracking-wider">
-              <TrendingUp size={16} strokeWidth={3} /> {t.viewProgress}
+            <NavLink
+              href="/RASCHmodel/progress"
+              tone="tonal"
+              label={t.viewProgress}
+              className="shrink-0 px-3 uppercase tracking-wider sm:px-5"
+            >
+              <TrendingUp size={16} strokeWidth={3} />
+              <span className="hidden sm:inline">{t.viewProgress}</span>
             </NavLink>
-            <NavLink href="/RASCHmodel" className="uppercase tracking-wider">
-              <Home size={16} strokeWidth={3} /> {t.home}
+            <NavLink
+              href="/RASCHmodel"
+              label={t.home}
+              className="shrink-0 px-3 uppercase tracking-wider sm:px-5"
+            >
+              <Home size={16} strokeWidth={3} />
+              <span className="hidden sm:inline">{t.home}</span>
             </NavLink>
           </div>
         </div>

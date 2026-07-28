@@ -268,6 +268,17 @@ blueprint never draws: level 5 became **unreachable** (a perfect 45/45 measured
 became "easy" overnight with no change in ability. The stretch keeps the
 measurement identical and only changes how it is reported.
 
+⚠️ **Band → colour is ONE table, and no band is grey.**
+`app/(student)/RASCHmodel/_components/LevelBadge.tsx` owns it, shared by the
+navbar chip, the "My level" card and the hub summary — those three carried three
+tables that had already drifted. `beginner` and `simple` used to paint with
+`--m3-outline` / `--m3-on-surface-variant`, so the two bands most students start
+in rendered identically to "not measured yet". Every band now owns a hue
+(`error → tertiary → secondary → primary → success → gold`), with `error` only at
+the literal floor. A dead `BAND_COLOR` table of RAW Tailwind colours used to sit
+in `RASCHscale.ts`; it is gone — raw colours are what the student design system
+forbids, since the tree re-skins from `design.config.ts`.
+
 ⚠️ **Band names are DISPLAY tiers, not difficulty grades.**
 `beginner | simple | easy | medium | hard | olympiad`, entered at 0.25 below each
 integer. They do not map one-to-one onto the three difficulty grades, and the

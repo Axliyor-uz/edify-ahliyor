@@ -3,8 +3,10 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft, ArrowDown, ArrowUp, Database, KeyRound, Save, Send, Target, Trash2,
+  ArrowLeft, ArrowDown, ArrowUp, Blocks, Database, HelpCircle, KeyRound,
+  Save, Send, Target, Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 import { useTeacherLanguage } from "@/app/teacher/layout";
@@ -13,15 +15,15 @@ import LatexRenderer from "@/components/LatexRenderer";
 import { RASCH_TOPICS } from "@/lib/RASCHtopics";
 import {
   BLUEPRINT_TOPIC_TARGET, RASCH_QUIZ_DEFAULT_MINUTES, RASCH_QUIZ_TOTAL,
-  QUIZ_MAX_BYTES, itemPreview, quizByteSize, quizDifficultyCounts, quizSlotCount,
-  quizTopicCounts, slimQuizItem,
+  QUIZ_MAX_BYTES, checkQuizAdd, itemPreview, quizByteSize, quizDifficultyCounts,
+  quizItemTopic, quizQuotaGaps, quizSlotCount, quizTopicCounts, slimQuizItem,
+  topicForQuizChapter,
 } from "@/lib/RASCHquiz";
-import { examSlotCount } from "@/lib/ExamTeacher";
 import {
   getQuiz, newQuizId, pickedIds, reserveAccessCode, saveQuiz, setQuizStatus,
 } from "@/services/teacherRaschQuizService";
 import { BankPicker, MyBankPicker, type PickerStrings } from "../_components/QuestionPickers";
-import QuickCompose, { type ComposeStrings } from "../_components/QuickCompose";
+import { clearDraft, readDraft, writeDraft } from "../_components/draft";
 import {
   Banner, Button, Card, IconButton, PageHeader, ProgressBar, Spinner, Switch, Tabs,
   TextField, cn,
@@ -35,6 +37,10 @@ import type { RaschQuizItem, RaschQuizStatus } from "@/types/TeacherRaschQuiz";
  * the teacher saves — picking a question costs a read (from whichever bank) and
  * nothing else. Contract + traps: docs/RASCH_QUIZ.md.
  */
+
+/** `{name}` / `{want}` … in a dictionary string, filled at the call site. */
+const fmt = (template: string, vars: Record<string, string | number>) =>
+  template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? `{${key}}`));
 
 const TR: Record<string, Record<string, string>> = {
   uz: {
@@ -53,12 +59,26 @@ const TR: Record<string, Record<string, string>> = {
     codePending: "Saqlaganda beriladi",
     progress: "Savollar",
     coverage: "Bo'limlar bo'yicha qamrov",
-    coverageHint: "Milliy variantdagi nisbat qavs ichida ko'rsatilgan — majburiy emas, faqat taqqoslash uchun.",
+    coverageHint: "Har bir bo'lim uchun talab qilingan son — aynan shuncha bo'lishi shart, ko'p ham, kam ham emas.",
     difficulty: "Qiyinlik",
     easy: "Oson", medium: "O'rta", hard: "Qiyin",
-    tabBank: "Milliy baza",
-    tabMine: "Mening savollarim",
-    tabNew: "Yangi savol",
+    addTitle: "Savol qo'shish",
+    addHint: "O'zingiz yozgan savollardan yoki Edify bazasidan tanlang. Yangi savol yaratsangiz, u savollar bazangizga saqlanadi va shu yerda paydo bo'ladi.",
+    newSingle: "Bitta savol yaratish",
+    newSingleHint: "Variantli, yozma yoki sonli javob; rasm ham qo'shsa bo'ladi.",
+    newBlock: "Ko'p savolli test yaratish",
+    newBlockHint: "Bitta shart ostida bir nechta savol — umumiy variantli yoki yozma.",
+    mine: "Yozgan savollaringiz",
+    bank: "Edify bazasi",
+    load: "Yuklash", loadMore: "Yana 10 ta", none: "Savol topilmadi",
+    added: "Qo'shilgan", add: "Qo'shish", block: "Blok",
+    imageOnly: "Rasmli savol", full: "To'ldi",
+    kind: "Savol turi", kindAll: "Hammasi", kindClosed: "Yopiq", kindOpen: "Ochiq",
+    source: "Kim yozgan", srcAi: "AI", srcMine: "O'zim",
+    subject: "Fan", chapter: "Bo'lim", reads: "ta hujjat o'qildi",
+    quotaFull: "to'ldi", quotaLeft: "yana kerak:",
+    draftKept: "Variantingiz saqlab qo'yildi — savol yaratib qaytsangiz yo'qolmaydi.",
+    discardDraft: "Tozalash",
     paper: "Variant",
     emptyPaper: "Hali savol qo'shilmagan.",
     remove: "Olib tashlash",
@@ -72,22 +92,10 @@ const TR: Record<string, Record<string, string>> = {
     needTitle: "Test nomini kiriting",
     needFull: `Faollashtirish uchun aynan ${RASCH_QUIZ_TOTAL} ta savol kerak.`,
     overFull: `Variantda ${RASCH_QUIZ_TOTAL} ta savol bor — yana qo'shib bo'lmaydi.`,
+    overTopic: `"{name}" bo'limiga aynan {want} ta savol kerak — bu bo'lim to'ldi.`,
+    needSection: `"{name}" bo'limida {have} ta savol bor, {want} ta bo'lishi kerak.`,
     loadFailed: "Testni yuklab bo'lmadi",
     size: "hajmi",
-    // pickers
-    subject: "Fan", chapter: "Bo'lim", load: "Yuklash", loadMore: "Yana 10 ta",
-    loading: "Yuklanmoqda…", none: "Savol topilmadi", added: "Qo'shilgan", add: "Qo'shish",
-    block: "Blok", imageOnly: "Rasmli savol", reads: "ta hujjat o'qildi", full: "To'ldi",
-    // compose
-    composeHeading: "O'z savolingizni yozing",
-    composeHint: "Savol savollar bazangizga ham saqlanadi — keyingi variantlarda qayta ishlatasiz.",
-    topic: "Mavzu", subtopic: "Ichki mavzu",
-    type: "Turi", mcq: "Variantli", open: "Yozma javob", numeric: "Sonli javob",
-    question: "Savol matni", correct: "To'g'ri javob", wrong: "Noto'g'ri", answer: "Javob",
-    explanation: "Izoh", composeSave: "Saqlab, variantga qo'shish", composeSaved: "Savol qo'shildi",
-    errNoPrompt: "Savol matnini kiriting", errNoTopic: "Fan, mavzu va ichki mavzuni tanlang",
-    errNoAnswer: "To'g'ri javobni kiriting", errNoOptions: "Kamida bitta noto'g'ri variant kerak",
-    errDuplicate: "Variantlar takrorlanmasin", errSave: "Savolni saqlab bo'lmadi",
   },
   ru: {
     back: "Назад",
@@ -105,12 +113,26 @@ const TR: Record<string, Record<string, string>> = {
     codePending: "Будет выдан при сохранении",
     progress: "Вопросы",
     coverage: "Покрытие по разделам",
-    coverageHint: "В скобках — пропорция национального варианта; это ориентир, а не требование.",
+    coverageHint: "Для каждого раздела указано требуемое число — ровно столько, не больше и не меньше.",
     difficulty: "Сложность",
     easy: "Лёгкие", medium: "Средние", hard: "Трудные",
-    tabBank: "Национальная база",
-    tabMine: "Мои вопросы",
-    tabNew: "Новый вопрос",
+    addTitle: "Добавить вопрос",
+    addHint: "Выбирайте из своих вопросов или из Edify database. Созданный вопрос сохранится в вашей базе и появится здесь.",
+    newSingle: "Создать один вопрос",
+    newSingleHint: "С вариантами, письменный или числовой ответ; можно с картинкой.",
+    newBlock: "Создать тест с несколькими вопросами",
+    newBlockHint: "Несколько вопросов под одним условием — с общими вариантами или письменные.",
+    mine: "Ваши вопросы",
+    bank: "Edify database",
+    load: "Загрузить", loadMore: "Ещё 10", none: "Вопросы не найдены",
+    added: "Добавлен", add: "Добавить", block: "Блок",
+    imageOnly: "Вопрос с картинкой", full: "Заполнено",
+    kind: "Тип вопроса", kindAll: "Все", kindClosed: "Закрытые", kindOpen: "Открытые",
+    source: "Кто написал", srcAi: "ИИ", srcMine: "Я сам",
+    subject: "Предмет", chapter: "Раздел", reads: "документов прочитано",
+    quotaFull: "заполнено", quotaLeft: "ещё нужно:",
+    draftKept: "Ваш вариант сохранён — он не потеряется, пока вы создаёте вопрос.",
+    discardDraft: "Очистить",
     paper: "Вариант",
     emptyPaper: "Вопросы ещё не добавлены.",
     remove: "Убрать",
@@ -124,20 +146,10 @@ const TR: Record<string, Record<string, string>> = {
     needTitle: "Введите название теста",
     needFull: `Для активации нужно ровно ${RASCH_QUIZ_TOTAL} вопросов.`,
     overFull: `В варианте уже ${RASCH_QUIZ_TOTAL} вопросов — больше добавить нельзя.`,
+    overTopic: "В разделе «{name}» нужно ровно {want} вопрос(ов) — раздел заполнен.",
+    needSection: "В разделе «{name}» {have} вопрос(ов), а должно быть {want}.",
     loadFailed: "Не удалось загрузить тест",
     size: "размер",
-    subject: "Предмет", chapter: "Раздел", load: "Загрузить", loadMore: "Ещё 10",
-    loading: "Загрузка…", none: "Вопросы не найдены", added: "Добавлен", add: "Добавить",
-    block: "Блок", imageOnly: "Вопрос с картинкой", reads: "документов прочитано", full: "Заполнено",
-    composeHeading: "Напишите свой вопрос",
-    composeHint: "Вопрос также сохранится в вашей базе — используйте его в других вариантах.",
-    topic: "Тема", subtopic: "Подтема",
-    type: "Тип", mcq: "С вариантами", open: "Письменный ответ", numeric: "Числовой ответ",
-    question: "Текст вопроса", correct: "Правильный ответ", wrong: "Неверный", answer: "Ответ",
-    explanation: "Объяснение", composeSave: "Сохранить и добавить", composeSaved: "Вопрос добавлен",
-    errNoPrompt: "Введите текст вопроса", errNoTopic: "Выберите предмет, тему и подтему",
-    errNoAnswer: "Введите правильный ответ", errNoOptions: "Нужен хотя бы один неверный вариант",
-    errDuplicate: "Варианты не должны повторяться", errSave: "Не удалось сохранить вопрос",
   },
   en: {
     back: "Back",
@@ -155,12 +167,26 @@ const TR: Record<string, Record<string, string>> = {
     codePending: "Issued when you save",
     progress: "Questions",
     coverage: "Coverage by section",
-    coverageHint: "The national paper's share is in brackets — a reference, not a requirement.",
+    coverageHint: "Each section needs exactly the number shown — no more, no fewer.",
     difficulty: "Difficulty",
     easy: "Easy", medium: "Medium", hard: "Hard",
-    tabBank: "National bank",
-    tabMine: "My questions",
-    tabNew: "New question",
+    addTitle: "Add a question",
+    addHint: "Pick from your own questions or from the Edify database. A question you create is saved to your bank and appears here.",
+    newSingle: "Create one question",
+    newSingleHint: "Multiple choice, written or numeric answer; an image if you want one.",
+    newBlock: "Create a multi-question test",
+    newBlockHint: "Several questions under one stem — shared options or written answers.",
+    mine: "Your questions",
+    bank: "Edify database",
+    load: "Load", loadMore: "10 more", none: "No questions found",
+    added: "Added", add: "Add", block: "Block",
+    imageOnly: "Image question", full: "Full",
+    kind: "Question type", kindAll: "All", kindClosed: "Closed", kindOpen: "Open",
+    source: "Written by", srcAi: "AI", srcMine: "Me",
+    subject: "Subject", chapter: "Chapter", reads: "documents read",
+    quotaFull: "full", quotaLeft: "still needed:",
+    draftKept: "Your paper is saved — it survives going off to write a question.",
+    discardDraft: "Start over",
     paper: "The paper",
     emptyPaper: "No questions added yet.",
     remove: "Remove",
@@ -174,20 +200,10 @@ const TR: Record<string, Record<string, string>> = {
     needTitle: "Give the test a name",
     needFull: `Publishing needs exactly ${RASCH_QUIZ_TOTAL} questions.`,
     overFull: `The paper already has ${RASCH_QUIZ_TOTAL} questions.`,
+    overTopic: `"{name}" needs exactly {want} question(s) — that section is full.`,
+    needSection: `"{name}" has {have} question(s) but needs {want}.`,
     loadFailed: "Could not load the test",
     size: "size",
-    subject: "Subject", chapter: "Chapter", load: "Load", loadMore: "10 more",
-    loading: "Loading…", none: "No questions found", added: "Added", add: "Add",
-    block: "Block", imageOnly: "Image question", reads: "documents read", full: "Full",
-    composeHeading: "Write your own question",
-    composeHint: "It is saved to your question bank too — reuse it in later papers.",
-    topic: "Topic", subtopic: "Subtopic",
-    type: "Type", mcq: "Multiple choice", open: "Written answer", numeric: "Numeric answer",
-    question: "Question text", correct: "Correct answer", wrong: "Wrong", answer: "Answer",
-    explanation: "Explanation", composeSave: "Save & add to paper", composeSaved: "Question added",
-    errNoPrompt: "Enter the question text", errNoTopic: "Choose a subject, topic and subtopic",
-    errNoAnswer: "Enter the correct answer", errNoOptions: "At least one wrong option is needed",
-    errDuplicate: "Options must not repeat", errSave: "Could not save the question",
   },
 };
 
@@ -211,10 +227,32 @@ function BuilderInner() {
   const [loading, setLoading] = useState(!!editId);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState("bank");
+  const [restored, setRestored] = useState(false);
+  const [source, setSource] = useState("mine");
 
-  // ── load an existing paper ───────────────────────────────────────────────
+  // ── load: the local draft first, then the server copy ───────────────────
+  //
+  // The draft wins when it belongs to this paper. It is only ever written when
+  // the teacher leaves to write a question, so if one exists it is strictly
+  // newer than what is stored — restoring the server copy over it would throw
+  // away exactly the work the stash was protecting.
   useEffect(() => {
+    const draft = readDraft();
+    const mine = draft && (editId ? draft.quizId === editId : true);
+
+    if (draft && mine) {
+      setTitle(draft.title);
+      setMinutes(draft.minutes);
+      setShuffle(draft.shuffle);
+      setShowAnswers(draft.showAnswers);
+      setAccessCode(draft.accessCode);
+      setStatus(draft.status);
+      setItems(draft.items);
+      setRestored(true);
+      setLoading(false);
+      return;
+    }
+
     if (!editId) return;
     let cancelled = false;
     (async () => {
@@ -239,7 +277,10 @@ function BuilderInner() {
       }
     })();
     return () => { cancelled = true; };
-  }, [editId, t.loadFailed]);
+    // Runs once per paper: `editId` and the error string are the only inputs,
+    // and re-running it would stomp on whatever the teacher has since picked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId]);
 
   // ── derived: the blueprint picture, recomputed for free on every change ──
   const slots = useMemo(() => quizSlotCount(items), [items]);
@@ -247,22 +288,62 @@ function BuilderInner() {
   const diffCounts = useMemo(() => quizDifficultyCounts(items), [items]);
   const bytes = useMemo(() => quizByteSize(items), [items]);
   const already = useMemo(() => pickedIds(items), [items]);
+  const gaps = useMemo(() => quizQuotaGaps(items), [items]);
   const full = slots >= RASCH_QUIZ_TOTAL;
+  /** Publishable: 45 slots AND every dimension exactly at its quota. */
+  const complete = full && gaps.length === 0;
 
+  const topicName = useCallback(
+    (key: string) => RASCH_TOPICS.find((tp) => tp.key === key)?.label[lang as "uz" | "ru" | "en"] ?? key,
+    [lang],
+  );
+
+  /**
+   * The quota of one dimension, in the shape the pickers render. Same numbers as
+   * the coverage panel — both read `topicCounts`, so a row can never disagree
+   * with the panel above it.
+   */
+  const roomOf = useCallback((topic: string | null) => {
+    if (!topic || !(topic in BLUEPRINT_TOPIC_TARGET)) return null;
+    const key = topic as keyof typeof BLUEPRINT_TOPIC_TARGET;
+    return { name: topicName(key), have: topicCounts[key] ?? 0, want: BLUEPRINT_TOPIC_TARGET[key] };
+  }, [topicCounts, topicName]);
+
+  const roomForItem = useCallback(
+    (item: RaschQuizItem) => roomOf(quizItemTopic(item)),
+    [roomOf],
+  );
+
+  /** Which dimension a `questions1` chapter feeds — no read needed to know it. */
+  const roomForChapter = useCallback(
+    (topicId: string, chapterId: string) => roomOf(topicForQuizChapter(topicId, chapterId)),
+    [roomOf],
+  );
+
+  /**
+   * Every add is checked against BOTH ceilings — the paper's 45 slots and the
+   * picked question's own dimension quota. The refusal is announced: a teacher
+   * who picked a 5th geometry question for a 4-question section must be told
+   * why nothing appeared, not left thinking the button is broken.
+   *
+   * ⚠️ The check runs OUTSIDE the state updater. `setItems(prev => …)` may be
+   * invoked twice in dev, and a toast fired from inside would fire twice with it.
+   */
   const addItem = useCallback((item: RaschQuizItem) => {
-    setItems((prev) => {
-      if (prev.some((q) => q.id === item.id)) return prev;
-      // A `shared_options` block occupies one slot per sub-question, so it is
-      // added whole or not at all — truncating it would break its shared pool.
-      const slim = slimQuizItem(item);
-      const cost = examSlotCount({ ...slim, slotNumber: 0, sectionLabel: { uz: "", ru: "", en: "" } });
-      if (quizSlotCount(prev) + cost > RASCH_QUIZ_TOTAL) {
-        toast.error(t.overFull);
-        return prev;
+    // A `shared_options` block occupies one slot per sub-question, so it is
+    // added whole or not at all — truncating it would break its shared pool.
+    const slim = slimQuizItem(item);
+    const check = checkQuizAdd(items, slim);
+
+    if (!check.ok) {
+      if (check.reason === "full") toast.error(t.overFull);
+      else if (check.reason === "topicFull") {
+        toast.error(fmt(t.overTopic, { name: topicName(check.topic), want: check.want }));
       }
-      return [...prev, slim];
-    });
-  }, [t.overFull]);
+      return;
+    }
+    setItems((prev) => (prev.some((q) => q.id === slim.id) ? prev : [...prev, slim]));
+  }, [items, t, topicName]);
 
   const removeItem = (id: string) => setItems((prev) => prev.filter((q) => q.id !== id));
 
@@ -275,11 +356,43 @@ function BuilderInner() {
       return next;
     });
 
+  /**
+   * Park the paper in localStorage before leaving for a question builder.
+   *
+   * Without this, the two "create a question" links would silently destroy up to
+   * 45 hand-picked questions — the builder holds the paper in component state
+   * and those links are ordinary navigations. It also closes a hazard that was
+   * already there: a back-swipe used to lose the paper too.
+   */
+  const stash = () => {
+    writeDraft({ quizId, title, minutes, shuffle, showAnswers, accessCode, status, items });
+  };
+
+  /** Throw the restored draft away and start the paper over. */
+  const discard = () => {
+    clearDraft();
+    setTitle('');
+    setMinutes(RASCH_QUIZ_DEFAULT_MINUTES);
+    setShuffle(true);
+    setShowAnswers(true);
+    setAccessCode('');
+    setStatus('draft');
+    setItems([]);
+    setRestored(false);
+  };
+
   // ── save ─────────────────────────────────────────────────────────────────
   async function persist(publish: boolean) {
     if (!user) return;
     if (!title.trim()) { toast.error(t.needTitle); return; }
     if (publish && slots !== RASCH_QUIZ_TOTAL) { toast.error(t.needFull); return; }
+    // A paper built here can never break a quota, but one loaded from before the
+    // rule existed can — and it must not be re-published against the wrong shape.
+    if (publish && gaps.length > 0) {
+      const gap = gaps[0];
+      toast.error(fmt(t.needSection, { name: topicName(gap.topic), have: gap.have, want: gap.want }));
+      return;
+    }
     if (bytes > QUIZ_MAX_BYTES) { toast.error(t.tooLarge); return; }
 
     setSaving(true);
@@ -309,6 +422,9 @@ function BuilderInner() {
 
       setAccessCode(code);
       setStatus(nextStatus);
+      // Safely on the server — the local copy is no longer the newest thing.
+      clearDraft();
+      setRestored(false);
       toast.success(publish ? t.published : t.saved);
       if (publish) router.push("/teacher/create/rasch");
     } catch (err) {
@@ -323,22 +439,14 @@ function BuilderInner() {
   }
 
   const pickerStrings: PickerStrings = {
+    load: t.load, loadMore: t.loadMore, none: t.none,
+    added: t.added, add: t.add, block: t.block,
+    imageOnly: t.imageOnly, full: t.full,
+    kind: t.kind, kindAll: t.kindAll, kindClosed: t.kindClosed, kindOpen: t.kindOpen,
+    source: t.source, srcAi: t.srcAi, srcMine: t.srcMine,
     subject: t.subject, chapter: t.chapter, difficulty: t.difficulty,
-    easy: t.easy, medium: t.medium, hard: t.hard,
-    load: t.load, loadMore: t.loadMore, loading: t.loading, none: t.none,
-    added: t.added, add: t.add, block: t.block, imageOnly: t.imageOnly,
-    reads: t.reads, full: t.full,
-  };
-
-  const composeStrings: ComposeStrings = {
-    heading: t.composeHeading, hint: t.composeHint,
-    subject: t.subject, topic: t.topic, subtopic: t.subtopic,
-    type: t.type, mcq: t.mcq, open: t.open, numeric: t.numeric,
-    question: t.question, correct: t.correct, wrong: t.wrong, answer: t.answer,
-    difficulty: t.difficulty, easy: t.easy, medium: t.medium, hard: t.hard,
-    explanation: t.explanation, save: t.composeSave, saved: t.composeSaved, full: t.full,
-    errNoPrompt: t.errNoPrompt, errNoTopic: t.errNoTopic, errNoAnswer: t.errNoAnswer,
-    errNoOptions: t.errNoOptions, errDuplicate: t.errDuplicate, errSave: t.errSave,
+    easy: t.easy, medium: t.medium, hard: t.hard, reads: t.reads,
+    quotaFull: t.quotaFull, quotaLeft: t.quotaLeft,
   };
 
   if (loading) {
@@ -362,6 +470,12 @@ function BuilderInner() {
         </div>
 
         {loadError && <Banner tone="error" title={loadError} />}
+
+        {restored && (
+          <Banner tone="info" title={t.draftKept}>
+            <Button size="sm" variant="text" onClick={discard}>{t.discardDraft}</Button>
+          </Banner>
+        )}
 
         {/* ── settings ─────────────────────────────────────────────────── */}
         <Card className="flex flex-col gap-4 p-4">
@@ -413,7 +527,7 @@ function BuilderInner() {
           <div>
             <div className="mb-1.5 flex items-end justify-between gap-3">
               <span className="text-[13px] font-bold text-on-surface">{t.progress}</span>
-              <span className={cn("text-[15px] font-black", full ? "text-success" : "text-on-surface-variant")}>
+              <span className={cn("text-[15px] font-black", complete ? "text-success" : "text-on-surface-variant")}>
                 {slots}<span className="text-on-surface-variant">/{RASCH_QUIZ_TOTAL}</span>
               </span>
             </div>
@@ -429,14 +543,21 @@ function BuilderInner() {
               {RASCH_TOPICS.map((topic) => {
                 const have = topicCounts[topic.key] ?? 0;
                 const want = BLUEPRINT_TOPIC_TARGET[topic.key];
+                // Over is only reachable on a paper built before the quota rule —
+                // the picker refuses the question that would cause it.
                 return (
                   <div key={topic.key} className="flex items-center justify-between gap-3 text-[12px] font-medium">
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: topic.hex }} />
                       <span className="truncate text-on-surface-variant">{topic.label[lang as "uz" | "ru" | "en"]}</span>
                     </span>
-                    <span className={cn("flex-none font-bold", have === 0 ? "text-on-surface-variant" : "text-on-surface")}>
-                      {have} <span className="font-normal text-on-surface-variant">({want})</span>
+                    <span
+                      className={cn(
+                        "flex-none font-bold tabular-nums",
+                        have === want ? "text-success" : have > want ? "text-error" : "text-on-surface-variant",
+                      )}
+                    >
+                      {have}<span className="font-normal text-on-surface-variant">/{want}</span>
                     </span>
                   </div>
                 );
@@ -455,26 +576,83 @@ function BuilderInner() {
 
         {/* ── add questions ────────────────────────────────────────────── */}
         <Card className="p-4">
-          <Tabs
-            tabs={[
-              { id: "bank", label: t.tabBank },
-              { id: "mine", label: t.tabMine },
-              { id: "new", label: t.tabNew },
-            ]}
-            value={tab}
-            onChange={setTab}
-            className="mb-4"
-          />
+          <h2 className="mb-1 text-[14px] font-bold text-on-surface">{t.addTitle}</h2>
+          <p className="mb-3 text-[12px] font-medium leading-relaxed text-on-surface-variant">{t.addHint}</p>
 
-          {tab === "bank" && (
-            <BankPicker t={pickerStrings} picked={already} disabled={full} onAdd={addItem} />
-          )}
-          {tab === "mine" && user && (
-            <MyBankPicker t={pickerStrings} uid={user.uid} picked={already} disabled={full} onAdd={addItem} />
-          )}
-          {tab === "new" && (
-            <QuickCompose t={composeStrings} disabled={full} onAdd={addItem} />
-          )}
+          {/* Writing a question happens in the REAL builders, not in a cut-down
+              form embedded here. A question is a first-class bank document
+              (docs/QUESTIONS.md) — images on the prompt and on every option,
+              blocks, the validated topic path — and a second half-featured
+              editor would have drifted from the canonical one the moment either
+              was touched. These two cover the two shapes a question can take. */}
+          <div className="mb-4 grid gap-2 sm:grid-cols-2">
+            <Link
+              href="/teacher/create/question"
+              onClick={stash}
+              className="m3-interactive flex items-start gap-3 rounded-m3-md border border-outline-variant bg-surface-container-lowest p-3 transition-colors hover:bg-surface-container"
+            >
+              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-m3-sm bg-tertiary-container text-on-tertiary-container">
+                <HelpCircle size={17} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[13px] font-bold text-on-surface">{t.newSingle}</span>
+                <span className="mt-0.5 block text-[11px] font-medium leading-snug text-on-surface-variant">
+                  {t.newSingleHint}
+                </span>
+              </span>
+            </Link>
+
+            <Link
+              href="/teacher/create/block"
+              onClick={stash}
+              className="m3-interactive flex items-start gap-3 rounded-m3-md border border-outline-variant bg-surface-container-lowest p-3 transition-colors hover:bg-surface-container"
+            >
+              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-m3-sm bg-primary-container text-on-primary-container">
+                <Blocks size={17} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[13px] font-bold text-on-surface">{t.newBlock}</span>
+                <span className="mt-0.5 block text-[11px] font-medium leading-snug text-on-surface-variant">
+                  {t.newBlockHint}
+                </span>
+              </span>
+            </Link>
+          </div>
+
+          {/* Two pools. The teacher's own questions come FIRST and are the
+              default — a paper is normally built from questions a teacher wrote —
+              with the national bank there to top up the sections they have not
+              written for yet. Without it, publishing would need 45 own questions
+              before the button ever unlocked. */}
+          <div className="border-t border-outline-variant pt-3">
+            <Tabs
+              tabs={[{ id: "mine", label: t.mine }, { id: "bank", label: t.bank }]}
+              value={source}
+              onChange={setSource}
+              className="mb-3"
+            />
+
+            {source === "mine" && user && (
+              <MyBankPicker
+                t={pickerStrings}
+                uid={user.uid}
+                picked={already}
+                disabled={full}
+                onAdd={addItem}
+                roomForItem={roomForItem}
+              />
+            )}
+            {source === "bank" && (
+              <BankPicker
+                t={pickerStrings}
+                picked={already}
+                disabled={full}
+                onAdd={addItem}
+                roomForItem={roomForItem}
+                roomForChapter={roomForChapter}
+              />
+            )}
+          </div>
         </Card>
 
         {/* ── the paper ────────────────────────────────────────────────── */}
@@ -522,13 +700,13 @@ function BuilderInner() {
       {/* ── sticky save bar ──────────────────────────────────────────────── */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-outline-variant bg-surface-container-low px-4 py-3">
         <div className="mx-auto flex max-w-5xl items-center gap-3">
-          <span className={cn("text-[13px] font-black", full ? "text-success" : "text-on-surface-variant")}>
+          <span className={cn("text-[13px] font-black", complete ? "text-success" : "text-on-surface-variant")}>
             {slots}/{RASCH_QUIZ_TOTAL}
           </span>
           <Button variant="outlined" icon={<Save />} loading={saving} onClick={() => persist(false)} className="ml-auto">
             {t.save}
           </Button>
-          <Button icon={<Send />} loading={saving} disabled={!full} onClick={() => persist(true)}>
+          <Button icon={<Send />} loading={saving} disabled={!complete} onClick={() => persist(true)}>
             {t.saveAndPublish}
           </Button>
         </div>

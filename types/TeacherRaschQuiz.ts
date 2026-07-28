@@ -100,8 +100,27 @@ export interface RaschQuizResult {
 
   /** The question language the student sat it in. */
   examLang: Lang;
-  /** Per-dimension breakdown, so the teacher sees WHERE it went wrong. */
+  /** Per-dimension raw counts, so the teacher sees the evidence. */
   topics: Record<TopicKey, TopicScore>;
+  /**
+   * Per-dimension ability in LOGITS, for the dimensions this paper actually
+   * measured. The teacher's results page maps each to the 0–5 level, which is
+   * what "where is this student weak" is reported on.
+   *
+   * ⚠️ Logits, not levels — and only for dimensions with at least one item.
+   *
+   * Storing θ rather than the level keeps the record independent of the display
+   * scale: `thetaToLevel` has already been restretched once (0–3 → 0–5) and
+   * doing that again must not silently re-label saved results. A dimension the
+   * paper never touched is ABSENT from the map, never `0` — zero is a real
+   * ability, "not measured" is not, and conflating them is the exact bug the
+   * student-side heptagon documents (`level: null` ≠ 0).
+   *
+   * Optional because results written before 2026-07-28 have no such field; the
+   * results page renders those dimensions as "—" rather than inventing a level
+   * from the percentage, which under Rasch is not the same quantity.
+   */
+  topicTheta?: Partial<Record<TopicKey, number>>;
   /** Ability measured from this paper alone, in logits. */
   theta: number | null;
 }

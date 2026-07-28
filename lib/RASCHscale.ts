@@ -172,14 +172,14 @@ export function levelBand(level: number): LevelBand {
   return 'beginner';
 }
 
-export const BAND_COLOR: Record<LevelBand, { text: string; bg: string; hex: string }> = {
-  beginner: { text: 'text-zinc-600', bg: 'bg-zinc-50 border-zinc-200', hex: '#71717a' },
-  simple: { text: 'text-slate-700', bg: 'bg-slate-50 border-slate-200', hex: '#475569' },
-  easy: { text: 'text-sky-700', bg: 'bg-sky-50 border-sky-200', hex: '#0284c7' },
-  medium: { text: 'text-violet-700', bg: 'bg-violet-50 border-violet-200', hex: '#7c3aed' },
-  hard: { text: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', hex: '#059669' },
-  olympiad: { text: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', hex: '#d97706' },
-};
+/**
+ * ⚠️ Band → colour does NOT live here. It is a UI concern and it must be ONE
+ * table: `app/(student)/RASCHmodel/_components/LevelBadge.tsx` owns it, shared by
+ * the navbar chip, the "My level" card and the hub summary. A `BAND_COLOR` table
+ * of raw Tailwind colours (zinc/slate/sky/violet/emerald/amber) used to sit here
+ * with zero consumers — raw colours are exactly what the student design system
+ * forbids, since the whole tree re-skins from design.config.ts.
+ */
 
 /** "1.24" — always two decimals, so the number doesn't jitter in width. */
 export function formatLevel(level: number): string {

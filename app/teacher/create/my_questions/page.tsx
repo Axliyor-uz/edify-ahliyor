@@ -17,16 +17,19 @@ import TestConfigurationModal from "@/app/teacher/create/_components/TestConfigu
 import { normalizeQuestion } from "@/lib/questionSchema";
 import QuestionPartsPreview from "@/components/QuestionPartsPreview";
 import { cacheList, cacheQuestion, getCachedList, invalidateQuestionCache, listKey } from "@/lib/questionCache";
-import { DIFFICULTY_ID_BY_NAME } from "@/types/question";
+import {
+  AI_CREATION_METHODS as AI_METHODS,
+  DIFFICULTY_ID_BY_NAME,
+  IMAGE_CREATION_METHODS as IMAGE_METHODS,
+  MANUAL_CREATION_METHODS as MANUAL_METHODS,
+} from "@/types/question";
 
 import { Button, IconButton, Spinner, Skeleton } from "@/components/ui";
 
 // The bank holds questions from every era. A filter chip must match BOTH the
-// legacy creationMethod values and the v1 enum (types/question.ts), so each chip
-// queries an `in` list. Firestore bills only the docs returned — no extra reads.
-const AI_METHODS = ["general_ai", "ai_generated", "ai_prompt", "by_prompt"];
-const IMAGE_METHODS = ["by_image", "imported"];
-const MANUAL_METHODS = ["custom", "teacher_created", "manual", "manual_builder"];
+// legacy creationMethod values and the v1 enum, so each chip queries an `in`
+// list. Firestore bills only the docs returned — no extra reads. The lists live
+// in types/question.ts because the Rasch builder's picker filters on them too.
 
 // --- LATEX FORMATTER ---
 const FormattedText = ({ text }: { text: any }) => {

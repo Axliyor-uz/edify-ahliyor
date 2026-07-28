@@ -73,7 +73,7 @@ const UI: Record<Lang, Record<string, string>> = {
     yes: 'Ha, yakunlash', cancel: 'Bekor qilish',
     openLabel: 'Javobingizni yozing',
     openPlaceholder: 'Masalan: 16  yoki  4pi*sqrt(3)',
-    openHint: "Variantlar berilmaydi. Javobni matn ko'rinishida kiriting — bo'sh joylar va qavslar hisobga olinmaydi.",
+    openHint: "Javobni matn ko'rinishida kiriting.",
     sharedPool: 'Umumiy variantlar',
   },
   ru: {
@@ -83,7 +83,7 @@ const UI: Record<Lang, Record<string, string>> = {
     yes: 'Да, завершить', cancel: 'Отмена',
     openLabel: 'Введите ваш ответ',
     openPlaceholder: 'Например: 16  или  4pi*sqrt(3)',
-    openHint: 'Варианты не даются. Введите ответ текстом — пробелы и скобки не учитываются.',
+    openHint: 'Введите ответ текстом.',
     sharedPool: 'Общие варианты',
   },
   en: {
@@ -201,7 +201,7 @@ export default function ExamRunner({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <Card className="p-6">
+          <Card className="p-s-card sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <span className="min-w-0 truncate rounded-m3-xs bg-surface-container-high px-2.5 py-1 text-[11px] font-black text-on-surface-variant">
                 {q.chapter} · {q.testType}

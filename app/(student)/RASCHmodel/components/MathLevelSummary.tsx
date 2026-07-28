@@ -8,11 +8,12 @@ import { ChevronRight, Gauge } from 'lucide-react';
 
 import { useAuth } from '@/lib/AuthContext';
 import { dimensions, getRASCHLevels, mathLevel } from '@/services/RASCHProgressService';
-import { MASTER_LEVEL, formatLevel, levelBand, type LevelBand } from '@/lib/RASCHscale';
+import { MASTER_LEVEL, formatLevel, levelBand } from '@/lib/RASCHscale';
+import { BAND_TONE } from '../_components/LevelBadge';
+import { BAND_LABEL } from '@/lib/RASCHband';
 import { RASCH_TOPICS } from '@/lib/RASCHtopics';
 import {
   Card, Chip, ProgressBar, Tile, cn, MOTION_ON, springTransition,
-  type ChipProps, type ProgressBarProps, type TileProps,
 } from '@/components/student-ui';
 import type { RASCHLevels } from '@/types/RASCH';
 import type { Lang } from '@/types/Math';
@@ -25,8 +26,6 @@ const UI: Record<Lang, Record<string, string>> = {
     details: "Batafsil",
     master: 'master',
     dims: "o'lchamdan",
-    band_beginner: "Boshlang'ich", band_simple: 'Oddiy', band_easy: 'Oson',
-    band_medium: "O'rta", band_hard: 'Qiyin', band_olympiad: 'Olimpiada',
   },
   ru: {
     title: 'Ваш уровень по математике',
@@ -35,8 +34,6 @@ const UI: Record<Lang, Record<string, string>> = {
     details: 'Подробнее',
     master: 'мастер',
     dims: 'из измерений',
-    band_beginner: 'Начальный', band_simple: 'Простой', band_easy: 'Лёгкий',
-    band_medium: 'Средний', band_hard: 'Сложный', band_olympiad: 'Олимпиадный',
   },
   en: {
     title: 'Your mathematics level',
@@ -45,27 +42,7 @@ const UI: Record<Lang, Record<string, string>> = {
     details: 'Details',
     master: 'master',
     dims: 'of dimensions',
-    band_beginner: 'Beginner', band_simple: 'Simple', band_easy: 'Easy',
-    band_medium: 'Medium', band_hard: 'Hard', band_olympiad: 'Olympiad',
   },
-};
-
-/**
- * Band → design tokens. The band's name is always printed beside the color, so
- * the level never depends on hue alone to be readable.
- */
-const BAND_TONE: Record<LevelBand, {
-  tile: NonNullable<TileProps['tone']>;
-  chip: NonNullable<ChipProps['status']>;
-  bar: NonNullable<ProgressBarProps['tone']>;
-  text: string;
-}> = {
-  beginner: { tile: 'neutral', chip: 'neutral', bar: 'primary', text: 'text-on-surface-variant' },
-  simple: { tile: 'neutral', chip: 'neutral', bar: 'primary', text: 'text-on-surface-variant' },
-  easy: { tile: 'secondary', chip: 'info', bar: 'primary', text: 'text-secondary' },
-  medium: { tile: 'primary', chip: 'primary', bar: 'primary', text: 'text-primary' },
-  hard: { tile: 'success', chip: 'success', bar: 'success', text: 'text-success' },
-  olympiad: { tile: 'gold', chip: 'gold', bar: 'gold', text: 'text-gold' },
 };
 
 /**
@@ -126,9 +103,9 @@ export default function MathLevelSummary({
     >
       <Link href="/RASCHmodel/progress" className="group block">
         <Card interactive>
-          <div className="flex items-center gap-4">
-            <Tile tone={tone.tile}>
-              <Gauge size={22} strokeWidth={2.5} />
+          <div className="flex items-center gap-3">
+            <Tile tone={tone.tile} size="sm">
+              <Gauge size={17} strokeWidth={2.5} />
             </Tile>
 
             <div className="min-w-0 flex-1">
@@ -136,13 +113,13 @@ export default function MathLevelSummary({
 
               {measured ? (
                 <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
-                  <span className={cn('s-num text-3xl font-black leading-none tracking-tight', tone.text)}>
+                  <span className={cn('s-num text-2xl font-black leading-none tracking-tight', tone.text)}>
                     {formatLevel(math.level)}
                   </span>
-                  <span className="s-num text-[15px] font-black leading-none text-on-surface-variant">
+                  <span className="s-num text-[13px] font-black leading-none text-on-surface-variant">
                     / {MASTER_LEVEL}
                   </span>
-                  <Chip status={tone.chip} className="ml-1">{t[`band_${band}`]}</Chip>
+                  <Chip status={tone.chip} className="ml-1">{BAND_LABEL[lang][band]}</Chip>
                 </div>
               ) : (
                 <p className="mt-1 text-[13px] font-bold text-on-surface-variant">{t.empty}</p>
@@ -163,13 +140,13 @@ export default function MathLevelSummary({
                 value={(math.level / MASTER_LEVEL) * 100}
                 tone={tone.bar}
                 label={t.title}
-                className="mt-4"
+                className="mt-3"
               />
 
               {/* The seven dimensions, in miniature — the heptagon's data as a strip.
                   Each bar carries its topic's identity color, the same one the
                   progress chart uses; unmeasured bars fall back to a surface token. */}
-              <div className="mt-3 flex h-8 items-end gap-1">
+              <div className="mt-2.5 flex h-6 items-end gap-1">
                 {dims.map((d) => {
                   const topic = RASCH_TOPICS.find((tp) => tp.key === d.key)!;
                   const unmeasured = d.measured === 0;
@@ -189,7 +166,7 @@ export default function MathLevelSummary({
                   );
                 })}
               </div>
-              <p className="s-num mt-1.5 text-[10px] font-bold text-on-surface-variant">
+              <p className="s-num mt-1 text-[10px] font-bold text-on-surface-variant">
                 {math.measuredDimensions}/7 {t.dims} · θ {math.theta.toFixed(2)}
               </p>
             </>

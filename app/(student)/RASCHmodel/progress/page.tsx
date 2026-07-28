@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useStudentLanguage } from '../../layout';
 import ChartFrame from '@/components/ChartFrame';
 import RaschNav from '../_components/RaschNav';
+import { BAND_TONE, LevelCard } from '../_components/LevelBadge';
 import { getRASCHLevels, saveBaseline } from '@/services/RASCHProgressService';
 import { DEFAULT_BASELINE, LEVEL_WINDOW, overallLevel } from '@/lib/RASCHlevels';
 import { RASCH_TOPICS, TOPIC_KEYS, type TopicKey } from '@/lib/RASCHtopics';
@@ -25,11 +26,11 @@ import {
   type Dimension, type TopicSection, type DimensionSkill, type DimensionSkills,
 } from '@/services/RASCHProgressService';
 import { skill as skillMeta, relatedSkills, type SkillStat } from '@/lib/RASCHskills';
-import { chanceAt, formatLevel, levelBand, MASTER_LEVEL, type LevelBand } from '@/lib/RASCHscale';
+import { formatLevel, levelBand, MASTER_LEVEL } from '@/lib/RASCHscale';
 import { daysToTarget, type LearningRate, type ScorePrediction } from '@/lib/RASCHdynamic';
 import {
   Button, Card, Chip, EmptyState, ErrorState, FilterChip, LoadingState,
-  Page, PageHeader, Slider, Stack, cn, type Status,
+  Page, PageHeader, Slider, Stack, cn,
 } from '@/components/student-ui';
 import type { RASCHLevels } from '@/types/RASCH';
 import type { Lang } from '@/types/Math';
@@ -37,9 +38,9 @@ import type { Lang } from '@/types/Math';
 const UI: Record<Lang, Record<string, string>> = {
   uz: {
     title: 'Mening darajam',
-    subtitle: 'Har bir mavzu bo\'yicha darajangiz oxirgi 5 ta test o\'rtachasi asosida hisoblanadi',
+    subtitle: 'Oxirgi 5 ta test bo\'yicha',
     setupTitle: 'Boshlang\'ich darajangizni tanlang',
-    setupHint: 'Har bir mavzu uchun hozirgi darajangizni belgilang. Keyin har bir testdan so\'ng daraja o\'zgarib boradi — 5 ta testdan keyin boshlang\'ich daraja hisobga olinmaydi.',
+    setupHint: 'Hozirgi darajangizni belgilang — har bir testdan keyin o\'zgaradi.',
     save: 'Saqlash va boshlash',
     saving: 'Saqlanmoqda…',
     overall: 'Umumiy',
@@ -66,7 +67,7 @@ const UI: Record<Lang, Record<string, string>> = {
     confHigh: 'yuqori ishonch',
     confNone: "ma'lumot yo'q",
     forecastNoData: 'Bashorat uchun kamida 2 ta test kerak.',
-    forecastNote: "Oxirgi testlaringiz tendensiyasi asosida hisoblangan. Bu — taxmin, kafolat emas: oraliq qanchalik keng bo'lsa, noaniqlik shuncha yuqori.",
+    forecastNote: "Taxmin, kafolat emas — oraliq keng bo'lsa, noaniqlik yuqori.",
     predicted: 'Bashorat',
     bandolympiad: "Olimpiada",
     bandhard: "Qiyin",
@@ -74,10 +75,10 @@ const UI: Record<Lang, Record<string, string>> = {
     bandeasy: "Oson",
     bandsimple: "Oddiy",
     bandbeginner: "Boshlang'ich",
-    chaptersHint: "Uchramagan mavzu 0 emas — u o'lchanmagan. Test yoki mashqda uchraganda daraja paydo bo'ladi.",
+    chaptersHint: "Uchramagan mavzu 0 emas — o'lchanmagan.",
     notMet: "Uchramagan",
     chaptersTitle: "Mavzular bo'yicha daraja",
-    scaleHint: "Daraja — Rasch shkalasi: siz ishonchli (80%) yecha oladigan masalaning qiyinligi, 5 balldan. 5 — olimpiada masalalarini ishonchli yechadi. Foizlarda tasodifan topish ehtimoli (4 variantdan 1 tasi) ham hisobga olingan.",
+    scaleHint: "5 balldan: siz 80% ishonch bilan yechadigan masala qiyinligi.",
     solves: "masalalarni yechadi",
     ofOlympic: "olimpiada",
     ofMedium: "o'rta",
@@ -87,7 +88,7 @@ const UI: Record<Lang, Record<string, string>> = {
     mathLevel: "Matematika darajangiz",
     overallTheta: "Umumiy qobiliyat",
     hepEmpty: "Test topshiring — 7 o'lcham shundan keyin ko'rinadi.",
-    hepHint: "Har bir o'lcham — alohida Rasch qobiliyati (θ). Har bir test va mashqdan keyin o'sha o'lcham o'zgaradi. Ko'rsatkich — standart variantdagi kutilayotgan natija.",
+    hepHint: "Har bir o'lcham — alohida qobiliyat (θ); test va mashq uni o'zgartiradi.",
     skillsShort: "ko'nikma",
     skillsCollected: "ko'nikma to'plangan",
     skillsDeveloped: 'tasi rivojlangan',
@@ -106,11 +107,9 @@ const UI: Record<Lang, Record<string, string>> = {
     noExplanation: "Bu savol uchun izoh kiritilmagan.",
     fromExam: 'Test',
     fromPractice: 'Mashq',
-    skillHint:
-      "O'lchamni bosing — ichidagi ko'nikmalar ochiladi. Ko'nikma mavzuga bog'liq emas: \"tengsizlik yechish\" logarifmik, trigonometrik va modulli masalalarda bir xil ko'nikma, shuning uchun bitta ko'nikma bir nechta o'lchamdan dalil to'playdi.",
+    skillHint: "O'lchamni bosing — ko'nikmalari ochiladi. Ko'nikma mavzudan mustaqil.",
     skillPanelTitle: "Ko'nikmalar",
-    skillPanelHint:
-      "45 savollik test har safar ko'nikmalarning bir qismini o'lchaydi — hammasini emas. Qamrov testdan testga to'planadi.",
+    skillPanelHint: "Har bir test ko'nikmalarning bir qismini o'lchaydi.",
     skillCoverage: 'qamrov',
     skillWeakest: 'Eng zaif ko\'nikmalar',
     skillNone: "Test topshiring — ko'nikmalar shundan keyin aniqlanadi.",
@@ -122,7 +121,7 @@ const UI: Record<Lang, Record<string, string>> = {
     raschIn2w: '2 haftadan keyin',
     raschRate: "O'sish tezligi",
     perWeek: 'logit/hafta',
-    raschHow: "Har bir savol uchun P(to'g'ri) = σ(θ − b) hisoblanib, ular qo'shiladi — bu kutilayotgan ball. Qobiliyat (θ) vaqt bilan o'zgaradi, o'sish tezligi testlaringizdan o'lchanadi.",
+    raschHow: "Kutilayotgan ball — P(to'g'ri) = σ(θ − b) yig'indisi.",
     toTarget: '75% ga yetish uchun',
     days: 'kun',
     noRate: "O'sish tezligi hali o'lchanmagan — kamida 2 ta test kerak.",
@@ -132,7 +131,7 @@ const UI: Record<Lang, Record<string, string>> = {
     title: 'Мой уровень',
     subtitle: 'Уровень по каждой теме — среднее из последних 5 тестов',
     setupTitle: 'Выберите начальный уровень',
-    setupHint: 'Укажите текущий уровень по каждой теме. Дальше он будет меняться после каждого теста — через 5 тестов начальный уровень перестаёт учитываться.',
+    setupHint: 'Укажите текущий уровень — после каждого теста он меняется.',
     save: 'Сохранить и начать',
     saving: 'Сохранение…',
     overall: 'Общий',
@@ -159,7 +158,7 @@ const UI: Record<Lang, Record<string, string>> = {
     confHigh: 'высокая уверенность',
     confNone: 'нет данных',
     forecastNoData: 'Для прогноза нужно минимум 2 теста.',
-    forecastNote: 'Рассчитано по тренду последних тестов. Это оценка, а не гарантия: чем шире диапазон, тем больше неопределённость.',
+    forecastNote: 'Оценка, а не гарантия: шире диапазон — больше неопределённость.',
     predicted: 'Прогноз',
     bandolympiad: "Олимпиадный",
     bandhard: "Сложный",
@@ -167,10 +166,10 @@ const UI: Record<Lang, Record<string, string>> = {
     bandeasy: "Лёгкий",
     bandsimple: "Простой",
     bandbeginner: "Начальный",
-    chaptersHint: "Не встреченная глава — это не 0, а «не измерено». Уровень появится, когда она встретится в тесте или тренировке.",
+    chaptersHint: "Не встреченная глава — не 0, а «не измерено».",
     notMet: "Не встречалось",
     chaptersTitle: "Уровень по главам",
-    scaleHint: "Уровень по шкале Rasch — сложность задач, которые вы решаете надёжно (80%), из 5. Уровень 5 — надёжно решает олимпиадные задачи. В процентах учтён и шанс угадать (1 из 4).",
+    scaleHint: "Из 5: сложность задач, которые вы решаете надёжно (80%).",
     solves: "задач решает",
     ofOlympic: "олимпиадных",
     ofMedium: "средних",
@@ -180,7 +179,7 @@ const UI: Record<Lang, Record<string, string>> = {
     mathLevel: "Ваш уровень по математике",
     overallTheta: "Общая способность",
     hepEmpty: "Пройдите тест — тогда появятся 7 измерений.",
-    hepHint: "Каждое измерение — отдельная способность по Rasch (θ). После каждого теста и тренировки оно меняется. Значение — ожидаемый результат на стандартном варианте.",
+    hepHint: "Каждое измерение — своя способность (θ); тесты и тренировки её двигают.",
     skillsShort: 'навыков',
     skillsCollected: 'навыков собрано',
     skillsDeveloped: 'развито',
@@ -199,11 +198,9 @@ const UI: Record<Lang, Record<string, string>> = {
     noExplanation: 'Для этого вопроса объяснение не добавлено.',
     fromExam: 'Тест',
     fromPractice: 'Тренировка',
-    skillHint:
-      'Нажмите на измерение — раскроются его навыки. Навык не привязан к теме: «решение неравенства» — один и тот же навык в логарифмических, тригонометрических и модульных задачах, поэтому один навык собирает данные из нескольких измерений.',
+    skillHint: 'Нажмите на измерение — раскроются навыки. Навык не привязан к теме.',
     skillPanelTitle: 'Навыки',
-    skillPanelHint:
-      'Тест из 45 вопросов измеряет часть навыков, а не все. Охват накапливается от теста к тесту.',
+    skillPanelHint: 'Каждый тест измеряет часть навыков.',
     skillCoverage: 'охват',
     skillWeakest: 'Самые слабые навыки',
     skillNone: 'Пройдите тест — навыки определятся после него.',
@@ -215,7 +212,7 @@ const UI: Record<Lang, Record<string, string>> = {
     raschIn2w: 'Через 2 недели',
     raschRate: 'Скорость роста',
     perWeek: 'логит/неделя',
-    raschHow: 'Для каждого вопроса считается P(верно) = σ(θ − b), и они суммируются — это и есть ожидаемый балл. Способность (θ) меняется со временем, скорость роста измеряется по вашим тестам.',
+    raschHow: 'Ожидаемый балл — сумма P(верно) = σ(θ − b) по вопросам.',
     toTarget: 'До 75%',
     days: 'дней',
     noRate: 'Скорость роста ещё не измерена — нужно минимум 2 теста.',
@@ -225,7 +222,7 @@ const UI: Record<Lang, Record<string, string>> = {
     title: 'My level',
     subtitle: 'Your level per topic is the mean of your last 5 exams',
     setupTitle: 'Choose your starting level',
-    setupHint: 'Set where you are today for each topic. Every exam then moves it — after 5 exams the starting level stops counting entirely.',
+    setupHint: 'Set where you are today — every exam moves it from there.',
     save: 'Save and start',
     saving: 'Saving…',
     overall: 'Overall',
@@ -252,7 +249,7 @@ const UI: Record<Lang, Record<string, string>> = {
     confHigh: 'high confidence',
     confNone: 'no data',
     forecastNoData: 'A forecast needs at least 2 exams.',
-    forecastNote: 'Extrapolated from the trend of your recent exams. It is an estimate, not a promise — the wider the range, the less certain it is.',
+    forecastNote: 'An estimate, not a promise — a wider range means less certainty.',
     predicted: 'Forecast',
     bandolympiad: "Olympiad",
     bandhard: "Hard",
@@ -260,10 +257,10 @@ const UI: Record<Lang, Record<string, string>> = {
     bandeasy: "Easy",
     bandsimple: "Simple",
     bandbeginner: "Beginner",
-    chaptersHint: "A chapter you haven't met is not 0 — it's unmeasured. Its level appears once it shows up in an exam or drill.",
+    chaptersHint: "A chapter you haven't met is unmeasured, not 0.",
     notMet: "Not met yet",
     chaptersTitle: "Level by chapter",
-    scaleHint: "On the Rasch scale your level is the difficulty of problem you solve dependably (80%), out of 5. Level 5 reliably solves olympiad problems. The percentages include the 1-in-4 chance of guessing a four-option question.",
+    scaleHint: "Out of 5: the difficulty you solve dependably (80%).",
     solves: "problems solved",
     ofOlympic: "olympiad",
     ofMedium: "medium",
@@ -273,7 +270,7 @@ const UI: Record<Lang, Record<string, string>> = {
     mathLevel: "Your mathematics level",
     overallTheta: "Overall ability",
     hepEmpty: "Sit an exam — the seven dimensions appear after that.",
-    hepHint: "Each axis is its own Rasch ability (θ). Every exam and drill moves that axis on its own evidence. The value is the expected score on a standard paper.",
+    hepHint: "Each axis is its own ability (θ), moved by every exam and drill.",
     skillsShort: 'skills',
     skillsCollected: 'skills collected',
     skillsDeveloped: 'developed',
@@ -292,11 +289,9 @@ const UI: Record<Lang, Record<string, string>> = {
     noExplanation: 'No explanation was written for this question.',
     fromExam: 'Exam',
     fromPractice: 'Drill',
-    skillHint:
-      'Tap a dimension to open its skills. A skill is content-free: "solving an inequality" is the same skill whether the item is logarithmic, trigonometric or modular — which is why one skill collects evidence from several dimensions.',
+    skillHint: 'Tap a dimension to open its skills. A skill is content-free.',
     skillPanelTitle: 'Skills',
-    skillPanelHint:
-      'A 45-question paper measures a slice of the skills, never all of them. Coverage accumulates from sitting to sitting.',
+    skillPanelHint: 'Each paper measures a slice of the skills.',
     skillCoverage: 'coverage',
     skillWeakest: 'Weakest skills',
     skillNone: 'Take a test — skills are detected from it.',
@@ -308,7 +303,7 @@ const UI: Record<Lang, Record<string, string>> = {
     raschIn2w: 'In 2 weeks',
     raschRate: 'Learning rate',
     perWeek: 'logits/week',
-    raschHow: 'For every item we compute P(correct) = σ(θ − b) and sum them — that sum IS the expected score. Ability (θ) moves over time; the learning rate is measured from your exams.',
+    raschHow: 'Expected score = the sum of P(correct) = σ(θ − b) over the items.',
     toTarget: 'To reach 75%',
     days: 'days',
     noRate: 'No learning rate yet — that needs at least 2 exams.',
@@ -337,15 +332,6 @@ const TOOLTIP_STYLE = {
 
 /** The 0–5 band scale, mapped onto the palette's semantic roles: an ordinal
  *  ramp from "unmeasured grey" up to gold at olympiad. */
-const BAND_TONE: Record<LevelBand, { color: string; chip: Status }> = {
-  beginner: { color: 'var(--m3-outline)', chip: 'neutral' },
-  simple: { color: 'var(--m3-on-surface-variant)', chip: 'neutral' },
-  easy: { color: 'var(--m3-secondary)', chip: 'info' },
-  medium: { color: 'var(--m3-primary)', chip: 'primary' },
-  hard: { color: 'var(--m3-success)', chip: 'success' },
-  olympiad: { color: 'var(--m3-gold)', chip: 'gold' },
-};
-
 /** Firebase throws a typed error; the only one that realistically lands here is
  *  permission-denied, which means the RASCH_levels rules are not deployed. */
 function describeError(err: unknown, t: Record<string, string>): string {
@@ -410,7 +396,7 @@ function ForecastCard({ f, t }: { f: Forecast; t: Record<string, string> }) {
         <>
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <p className="s-display s-num text-5xl font-bold leading-none tracking-tight text-primary">{f.expected}%</p>
+              <p className="s-display s-num text-4xl font-bold leading-none tracking-tight text-primary">{f.expected}%</p>
               <p className={cn('s-num mt-2 flex items-center gap-1 text-[12px] font-black', tone)}>
                 <Icon size={13} strokeWidth={3} />
                 {f.slope > 0 ? '+' : ''}{f.slope} / {t.exam.toLowerCase()}
@@ -445,77 +431,6 @@ function ForecastCard({ f, t }: { f: Forecast; t: Record<string, string> }) {
   );
 }
 
-// ─── The headline: one mathematics level, 0–3 ─────────────────────────────
-// A level is not an invented score. In Rasch, ability and item difficulty share
-// one scale, so "your level is 1.20" means: you are 50/50 on a problem of
-// difficulty 1.20. Level 3 is where the olympiad problems live — which is
-// exactly why 3 is master.
-function MathLevelCard({
-  level, theta, dimensionsMeasured, t,
-}: {
-  level: number;
-  theta: number;
-  dimensionsMeasured: number;
-  t: Record<string, string>;
-}) {
-  const band = levelBand(level);
-  const tone = BAND_TONE[band];
-  const pct = (level / MASTER_LEVEL) * 100;
-
-  return (
-    <Card className="md:p-7">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[12px] font-black uppercase tracking-wider text-on-surface-variant">{t.mathLevel}</p>
-          <div className="mt-1 flex items-end gap-2">
-            <span className="s-display s-num text-6xl font-bold leading-none tracking-tight" style={{ color: tone.color }}>
-              {formatLevel(level)}
-            </span>
-            <span className="s-num pb-1 text-2xl font-black leading-none text-on-surface-variant">/ {MASTER_LEVEL}</span>
-          </div>
-        </div>
-        <Chip status={tone.chip} size="md">{t[`band${band}`]}</Chip>
-      </div>
-
-      {/* The 0–3 track, with the difficulty tiers marked where they actually are */}
-      <div className="mt-5">
-        <div className="relative h-3 overflow-hidden rounded-full bg-surface-container-highest">
-          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: tone.color }} />
-        </div>
-        <div className="relative mt-1 h-4">
-          {Array.from({ length: MASTER_LEVEL + 1 }, (_, i) => i).map((tick) => (
-            <span
-              key={tick}
-              className="s-num absolute -translate-x-1/2 text-[10px] font-black text-on-surface-variant"
-              style={{ left: `${(tick / MASTER_LEVEL) * 100}%` }}
-            >
-              {tick}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* What the number MEANS, in problems rather than logits.
-          Three cells, not five: the bank has three difficulty grades and the
-          blueprint only ever draws 2 and 3, so a "simple" or "olympiad" column
-          would report a chance on questions the student is never asked. */}
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        {([1, 2, 3] as const).map((d) => (
-          <div key={d} className="rounded-m3-sm bg-surface-container-high px-3 py-2 text-center">
-            <p className="s-num text-[17px] font-black leading-none">{chanceAt(level, d)}%</p>
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-              {d === 1 ? t.ofEasy : d === 2 ? t.ofMedium : t.ofOlympic}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <p className="mt-3 text-[11px] font-medium leading-relaxed text-on-surface-variant">
-        {t.scaleHint} <span className="s-num text-outline">θ = {theta.toFixed(2)} · {dimensionsMeasured}/7</span>
-      </p>
-    </Card>
-  );
-}
 
 // ─── Level in each of the 29 chapters ─────────────────────────────────────
 function ChapterLevels({ sections, t }: { sections: TopicSection[]; t: Record<string, string> }) {
@@ -560,7 +475,7 @@ function ChapterLevels({ sections, t }: { sections: TopicSection[]; t: Record<st
                         className={cn('flex items-center gap-2.5 rounded-m3-sm px-2.5 py-2', !measured && 'opacity-50')}
                       >
                         <span className="s-num w-5 shrink-0 text-right text-[10px] font-black text-on-surface-variant">{i + 1}</span>
-                        <span className="flex-1 truncate text-[12px] font-bold text-on-surface-variant">{chapter.name}</span>
+                        <span className="min-w-0 flex-1 truncate text-[12px] font-bold text-on-surface-variant">{chapter.name}</span>
 
                         {measured ? (
                           <>
@@ -777,10 +692,10 @@ function AbilityHeptagon({
       </div>
 
       {!measured ? (
-        <p className="py-8 text-center text-[13px] font-bold text-on-surface-variant">{t.hepEmpty}</p>
+        <p className="py-5 text-center text-[13px] font-bold text-on-surface-variant">{t.hepEmpty}</p>
       ) : (
         <>
-          <ChartFrame className="-mx-2 h-[340px] sm:h-[400px]">
+          <ChartFrame className="-mx-2 h-[280px] sm:h-[360px]">
             {({ width, height }) => (
               <RadarChart width={width} height={height} data={data} outerRadius="72%">
                 <PolarGrid stroke={GRID_INK} />
@@ -1050,7 +965,7 @@ function RaschForecastCard({
         {/* Now */}
         <div className="rounded-m3-md bg-surface-container-high p-4">
           <p className="text-[11px] font-black uppercase tracking-wider text-on-surface-variant">{t.raschNow}</p>
-          <p className="s-display s-num mt-1 text-4xl font-bold leading-none tracking-tight">{now.expected}%</p>
+          <p className="s-display s-num mt-1 text-3xl font-bold leading-none tracking-tight">{now.expected}%</p>
           <p className="s-num mt-1.5 text-[12px] font-black text-on-surface-variant">{now.low}% – {now.high}%</p>
         </div>
 
@@ -1113,16 +1028,16 @@ function BaselineSetup({
         </div>
         <h2 className="s-display text-xl font-bold tracking-tight md:text-2xl">{t.setupTitle}</h2>
       </div>
-      <p className="mb-6 text-[13px] font-bold text-on-surface-variant">{t.setupHint}</p>
+      <p className="mb-4 text-[13px] font-bold text-on-surface-variant">{t.setupHint}</p>
 
-      <div className="mb-6 flex flex-col gap-4">
+      <div className="mb-4 flex flex-col gap-3">
         {RASCH_TOPICS.map((topic) => (
           <div key={topic.key} className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-3">
               <span className="flex min-w-0 items-center gap-2">
                 {/* Topic hue — the same categorical color the charts use. */}
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: topic.hex }} />
-                <span className="truncate text-[13px] font-bold text-on-surface-variant">{topic.label[lang]}</span>
+                <span className="min-w-0 truncate text-[13px] font-bold text-on-surface-variant">{topic.label[lang]}</span>
               </span>
               <Chip className="s-num">{values[topic.key]}%</Chip>
             </div>
@@ -1335,7 +1250,7 @@ export default function ProgressPage() {
               <Card className="flex items-center gap-4 py-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-wider text-on-surface-variant">{t.overall}</p>
-                  <p className="s-display s-num mt-0.5 text-3xl font-bold leading-none text-primary">{overall}%</p>
+                  <p className="s-display s-num mt-0.5 text-2xl font-bold leading-none text-primary">{overall}%</p>
                   {/* Mathematics ability: the mean of the seven dimensions. */}
                   <p className="s-num mt-1 text-[10px] font-black text-outline">θ {theta.toFixed(2)}</p>
                 </div>
@@ -1349,11 +1264,15 @@ export default function ProgressPage() {
           />
         </motion.div>
 
-        <MathLevelCard
+        {/* The headline level, on the main page — compact, and coloured by the
+            band rather than by `primary`, so the card says where you stand before
+            you read the number. Same component the navbar chip is built from
+            (_components/LevelBadge), so the two can never disagree. */}
+        <LevelCard
           level={math.level}
           theta={math.theta}
           dimensionsMeasured={math.measuredDimensions}
-          t={t}
+          lang={lang}
         />
 
         <AbilityHeptagon dims={dims} skillsByDim={skillsByDim} lang={lang} t={t} />
@@ -1420,7 +1339,7 @@ export default function ProgressPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <ChartFrame className="-ml-2 h-[260px] min-w-[320px]">
+                <ChartFrame className="-ml-2 h-[220px] min-w-[320px]">
                   {({ width, height }) => (
                     <LineChart width={width} height={height} data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
                       <CartesianGrid stroke={GRID_INK} vertical={false} />
