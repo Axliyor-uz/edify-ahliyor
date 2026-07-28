@@ -15,6 +15,8 @@ This directory is the **source of truth** for how Edify works. The workflow cont
 | Any Firestore read/write, collection shapes, indexes, timestamps | [DATA_MODEL.md](DATA_MODEL.md) + the domain doc |
 | **Anything that creates, stores, renders or grades a question** — `teacher_questions`, `questions1`, embedded `custom_tests.questions[]`, the v1 schema, the normalizer | [QUESTIONS.md](QUESTIONS.md) |
 | Student app `app/(student)/*` — dashboard, classes, test/exam runners, XP/streak/leaderboards, games, library, notifications, social, explore | [STUDENT.md](STUDENT.md) |
+| **The skill axis** — `lib/RASCHskills.ts`, the syllabus→skill map, skills inside the heptagon, exam skill detection | [RASCH_SKILLS.md](RASCH_SKILLS.md) |
+| **Teacher-built Rasch papers** — `teacher_rasch_quizzes`/`teacher_rasch_results`, the 6-digit access code, `app/teacher/create/rasch/*`, `/RASCHmodel/quiz`, the shared `ExamRunner`/`ExamReview` | [RASCH_QUIZ.md](RASCH_QUIZ.md) |
 | Teacher app `app/teacher/*` — test creation, question banks, classes/assignments/exams/grading/materials, analytics, print, subscription | [TEACHER.md](TEACHER.md) |
 | AI generation routes, credit/limit systems, `lib/ai/*`, `/api/analyze`, TTS | [AI.md](AI.md) |
 | Manager app `app/manager/*` core — center lifecycle/approval, groups, teachers, student enrollment, walk-in check-in | [MANAGER.md](MANAGER.md) |

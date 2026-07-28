@@ -117,6 +117,17 @@ inner wrapper.
 `Color_mode: 'system'` is resolved at runtime and keeps following the OS if the
 student flips their theme mid-session.
 
+**Local density — `.s-dense`.** One subtree can run tighter than the app's
+`Density` without touching design.config.ts: the class re-declares
+`--s-card-pad` / `--s-gap` / `--s-gap-lg` / `--s-section-gap` / `--s-page-y` on a
+wrapper, and every `p-s-card` / `gap-s-*` inside inherits the smaller value —
+no per-card overrides to drift. Used by
+`app/(student)/RASCHmodel/layout.tsx`, whose pages stack a dozen analytic cards.
+⚠️ It deliberately leaves `--s-page-x` alone: changing it would misalign those
+pages with the rest of the app and break `-mx-s-page-x` full-bleed rows. ⚠️ The
+wrapper must stay a plain `<div>` — an `overflow` or `transform` on it would
+break the suite's `sticky` navbar and timer bar.
+
 ## Palettes
 
 10 palettes × light + dark = 20 complete M3 dynamic-color schemes, generated

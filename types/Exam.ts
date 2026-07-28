@@ -160,4 +160,17 @@ export interface ExamSnapshot {
   /** Seconds spent per question id — persisted, so a reload keeps the timings
    *  the guess/gap/fragile diagnosis is built from. */
   seconds?: Record<string, number>;
+
+  // ── teacher-quiz sittings only (docs/RASCH_QUIZ.md) ──────────────────────
+  /** `teacher_rasch_quizzes/{id}` this paper came from. Absent on a mock exam. */
+  quizId?: string;
+  /** Denormalized so the resume screen can name the paper without a read. */
+  quizTitle?: string;
+  quizTeacherId?: string;
+  quizTeacherName?: string;
+  /** The quiz's own time limit — a teacher paper is not always 150 minutes, and
+   *  the deadline must survive a reload without re-reading the quiz doc. */
+  durationMinutes?: number;
+  /** The teacher chose to withhold answers/explanations after submission. */
+  hideAnswers?: boolean;
 }

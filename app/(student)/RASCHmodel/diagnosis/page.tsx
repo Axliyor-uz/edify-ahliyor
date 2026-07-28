@@ -5,10 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Brain, Clock, Gauge, Home, Rocket, Target, Zap, AlertCircle,
+  Brain, Clock, Gauge, Rocket, Target, Zap, AlertCircle,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/AuthContext';
+import RaschNav from '../_components/RaschNav';
 import { useStudentLanguage } from '../../layout';
 import { abilityFor, diagnosticsFor, getRASCHLevels, type AnalysisSource } from '@/services/RASCHProgressService';
 import { behaviorTotals, weakestSpots, EXPECTED_SEC } from '@/lib/RASCHdiagnosis';
@@ -23,12 +24,12 @@ import type { Lang } from '@/types/Math';
 const UI: Record<Lang, Record<string, string>> = {
   uz: {
     title: 'Bilim tahlili',
-    subtitle: 'Har bir savol vaqti va natijasi asosida — nimani bilmaysiz, nimani shoshib xato qilasiz',
+    subtitle: 'Nimani bilmaysiz, nimada shoshasiz',
     back: 'Darajam',
     home: 'Bosh sahifa',
     practice: 'Zaif mavzularni mashq qilish',
     ability: 'Qobiliyat (Rasch)',
-    abilityHint: 'Standart variantdagi kutilayotgan natija. Test qiyin yoki oson chiqishiga bog‘liq emas.',
+    abilityHint: 'Standart variantdagi kutilayotgan natija.',
     items: 'ta savol asosida',
     behavior: 'Javob berish uslubi',
     solid: 'Mustahkam',
@@ -57,16 +58,16 @@ const UI: Record<Lang, Record<string, string>> = {
     srcHint: 'Test — vaqt bosimi ostida. Mashq — erkin. Ular alohida o‘lchanadi.',
     noSource: 'Bu bo‘limda hali ma‘lumot yo‘q.',
     mastery: 'O‘zlashtirish',
-    masteryHint: 'Bilim ehtimoli (BKT) — tasodifiy topish va e‘tiborsizlik hisobga olingan holda. Ball emas, bilim.',
+    masteryHint: 'Bilim ehtimoli (BKT) — ball emas, bilim.',
   },
   ru: {
     title: 'Анализ знаний',
-    subtitle: 'По времени и результату каждого вопроса — что вы не знаете, а где просто спешите',
+    subtitle: 'Что вы не знаете, а где просто спешите',
     back: 'Мой уровень',
     home: 'Главная',
     practice: 'Тренировать слабые темы',
     ability: 'Способность (Rasch)',
-    abilityHint: 'Ожидаемый результат на стандартном варианте. Не зависит от того, лёгкий попался тест или трудный.',
+    abilityHint: 'Ожидаемый результат на стандартном варианте.',
     items: 'на основе вопросов',
     behavior: 'Как вы отвечаете',
     solid: 'Уверенно',
@@ -95,16 +96,16 @@ const UI: Record<Lang, Record<string, string>> = {
     srcHint: 'Тест — под давлением времени. Тренировка — свободно. Измеряются отдельно.',
     noSource: 'В этом разделе пока нет данных.',
     mastery: 'Освоение',
-    masteryHint: 'Вероятность знания (BKT) — с поправкой на угадывание и невнимательность. Это не балл, а знание.',
+    masteryHint: 'Вероятность знания (BKT) — не балл, а знание.',
   },
   en: {
     title: 'Knowledge analysis',
-    subtitle: "From the time and outcome of every question — what you don't know, versus what you rush",
+    subtitle: "What you don't know, versus what you rush",
     back: 'My level',
     home: 'Home',
     practice: 'Practise weak spots',
     ability: 'Ability (Rasch)',
-    abilityHint: "Expected score on a standard paper. Unaffected by whether your draw was easy or hard.",
+    abilityHint: "Expected score on a standard paper.",
     items: 'based on questions',
     behavior: 'How you answer',
     solid: 'Solid',
@@ -133,7 +134,7 @@ const UI: Record<Lang, Record<string, string>> = {
     srcHint: 'An exam is timed and pressured; practice is not. They are measured separately.',
     noSource: 'No data in this view yet.',
     mastery: 'Mastery',
-    masteryHint: 'P(knows it) from BKT — discounting lucky guesses and careless slips. Not a score: knowledge.',
+    masteryHint: 'P(knows it) from BKT — knowledge, not a score.',
   },
 };
 
@@ -240,19 +241,8 @@ export default function DiagnosisPage() {
 
   return (
     <Page>
+      <RaschNav lang={lang} />
       <Stack>
-        <div className="flex flex-wrap items-center gap-2">
-          <NavLink href="/RASCHmodel/progress">
-            <ArrowLeft size={14} strokeWidth={3} /> {t.back}
-          </NavLink>
-          <NavLink href="/RASCHmodel">
-            <Home size={14} strokeWidth={3} /> {t.home}
-          </NavLink>
-          <NavLink href="/RASCHmodel/practice" tone="filled" className="ml-auto">
-            <Rocket size={14} strokeWidth={3} /> {t.practice}
-          </NavLink>
-        </div>
-
         <PageHeader title={t.title} subtitle={t.subtitle} className="pb-0" />
 
         {/* Source: exams and practice are different evidence, so they are

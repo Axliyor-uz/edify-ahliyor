@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/teacher/*`, test/question collections (`teacher_questions`, `custom_tests`, `bsb_chsb_tests`), grading, or subscription/limits display. AI generation routes are covered in [AI.md](AI.md); read both when touching `app/teacher/create/*/api/`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-12 (commit `7c31a96`).
+**Last verified:** 2026-07-28 (Rasch paper creator added; rest unverified since commit `7c31a96`).
 
 ## Cross-cutting
 
@@ -27,7 +27,7 @@ Hub lists 9 methods. Two write targets: per-question docs in **`teacher_question
 |---|---|---|---|
 | Manual "Blank Canvas" | `create/custom/` | both | localStorage draft (1h TTL despite the 24h constant name); MathInput/RichQuestionInput |
 | Single question builder | `create/question/` | `teacher_questions` only | images on prompt + every option, 5 question types, required topic path — see below |
-| Question block | `create/block/` | `teacher_questions` only | one stem + N sub-questions in **ONE doc** (`multi_part` / `shared_options`); ⚠️ edit blocks HERE (`?edit=`), never in `create/question` — see [QUESTIONS.md](QUESTIONS.md) |
+| Question block | `create/block/` | `teacher_questions` only | one stem + N sub-questions in **ONE doc** (`multi_part` / `shared_options`); ⚠️ edit blocks HERE (`?edit=`), never in `create/question` — see [QUESTIONS.md](QUESTIONS.md). Bottom of the page reuses `CreatedQuestionsList` with `filter={q => q.isBlock}` — the teacher's own blocks, edit loads back into the builder in place |
 | General AI | `create/ai/` + api | both | |
 | By image | `create/by_image/` + api | both | the ONLY feature-gated AI route (`IMAGE_AI`) — see [AI.md](AI.md) |
 | Free prompt | `create/by_user_input/` + api | both | |
@@ -36,14 +36,15 @@ Hub lists 9 methods. Two write targets: per-question docs in **`teacher_question
 | From own bank | `create/my_questions/` | `custom_tests` | manages `teacher_questions where creatorId==uid` |
 | BSB/CHSB | `create/bsb-chsb/` + api | **`bsb_chsb_tests`** only | mixed question types with `points`, `pairs`, `rubric`; ⚠️ NOT feature-gated despite `BSB_GENERATOR` existing in the registry |
 | Operations / Abiturient | `create/operations/`, `create/abiturient/` | none | operations = client-side jsPDF worksheets; abiturient = router hub |
+| **Rasch paper (45 q + 6-digit code)** | `create/rasch/` (+ `build/`, `results/[quizId]/`) | **`teacher_rasch_quizzes`** only | Two pools: the teacher's own `teacher_questions` (default tab) and `questions1` to top up. Writing a new question links out to `create/question` / `create/block`; ⚠️ the paper is stashed to localStorage first so navigating away can't destroy it. Students open it at `/RASCHmodel/quiz` and it scores into their Rasch levels. Full contract: [RASCH_QUIZ.md](RASCH_QUIZ.md) |
 
 `custom_tests` doc: `{teacherId, teacherName?, title, track, subjectName, topicName..., questions:[full question objects embedded], duration (0 = no limit), shuffle (default true), resultsVisibility ('always'|'after_due'|'never', default 'after_due'), accessCode, status:'active', createdAt, questionCount}`. ⚠️ Shape drifts by creator: `teacherName` absent in ai/my_questions paths; `track` varies (`custom`/`general_ai`/`custom_mix`); `EditTestModal` writes a derived `showResults` bool no creator writes.
 
-`accessCode`: 6 chars from an ambiguity-safe alphabet, generated once per modal mount, **no uniqueness check**.
+`accessCode`: 6 chars from an ambiguity-safe alphabet, generated once per modal mount, **no uniqueness check**. ⚠️ Not the same thing as a Rasch paper's `accessCode`, which is 6 **digits**, minted once on first save and best-effort uniqueness-checked ([RASCH_QUIZ.md](RASCH_QUIZ.md)).
 
 ### Single question builder (`create/question/`)
 
-Its own hub section ("Savollar Bazasi"). One question at a time, written to **`teacher_questions`** in the **canonical v1 schema** — the same format every other creation method now writes. **Read [QUESTIONS.md](QUESTIONS.md) before touching this or any other question path.** Firestore/Storage logic: [services/questionBankService.ts](../services/questionBankService.ts); the page only holds form state. Route-local: `_components/ImagePicker.tsx` (pick + preview, no upload) and `_components/CreatedQuestionsList.tsx` (the teacher's own questions, list + delete).
+Its own hub section ("Savollar Bazasi"). One question at a time, written to **`teacher_questions`** in the **canonical v1 schema** — the same format every other creation method now writes. **Read [QUESTIONS.md](QUESTIONS.md) before touching this or any other question path.** Firestore/Storage logic: [services/questionBankService.ts](../services/questionBankService.ts); the page only holds form state. Route-local: `_components/ImagePicker.tsx` (pick + preview, no upload) and `_components/CreatedQuestionsList.tsx` (the teacher's own questions, list + delete). ⚠️ `CreatedQuestionsList` is shared with `create/block` — it reads **nothing** on mount (the just-saved question is handed over in memory as `sessionQuestions`), only on "load 10". Its optional `filter` prop narrows what is shown, and because filtering is client-side a press then pulls up to 3 pages of 10 until something matches.
 
 - **Prompt** = rich text (RichQuestionInput → LaTeX inline as `$...$`, math via the ∑ toolbar button) **and/or** an image.
 - **Images everywhere**: the prompt and **every answer option** may carry one (≤5 MB). An option is valid with text, an image, or both. Images upload to Storage `teacher_questions/{uid}/{questionId}_{slot}_{ts}{ext}` (`slot` = `prompt`|`correct`|`opt{i}`) **only on save, after validation passes** — an abandoned form uploads nothing. `deleteQuestion()` removes every owned object before the doc, or they'd leak.

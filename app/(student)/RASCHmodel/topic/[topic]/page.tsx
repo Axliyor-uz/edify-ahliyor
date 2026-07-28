@@ -6,12 +6,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, BookOpen, CheckCircle2, ChevronDown, Home, Rocket, XCircle,
+  BookOpen, CheckCircle2, ChevronDown, Rocket, XCircle,
 } from 'lucide-react';
 
 import LatexRenderer from '@/components/LatexRenderer';
 import QuestionCreator from '@/components/QuestionCreator';
 import { useAuth } from '@/lib/AuthContext';
+import RaschNav from '../../_components/RaschNav';
 import { useStudentLanguage } from '../../../layout';
 import {
   getServerSolvedArchive,
@@ -196,24 +197,7 @@ export default function TopicPage({ params }: { params: Promise<{ topic: string 
   return (
     <Page className="flex flex-col gap-s-gap-lg">
 
-      {/* Nav */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href="/RASCHmodel/progress">
-          <Button variant="outlined" size="sm" icon={<ArrowLeft size={14} strokeWidth={3} />}>
-            {t.back}
-          </Button>
-        </Link>
-        <Link href="/RASCHmodel">
-          <Button variant="outlined" size="sm" icon={<Home size={14} strokeWidth={3} />}>
-            {t.home}
-          </Button>
-        </Link>
-        <Link href="/RASCHmodel/exam" className="ml-auto">
-          <Button size="sm" icon={<Rocket size={14} strokeWidth={3} />}>
-            {t.newTest}
-          </Button>
-        </Link>
-      </div>
+      <RaschNav lang={lang} />
 
       {/* Header */}
       <Card>

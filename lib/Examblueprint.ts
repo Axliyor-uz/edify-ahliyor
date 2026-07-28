@@ -243,10 +243,31 @@ export function topicOf(section: BlueprintSection): TopicKey {
  * and chapter 17, which no section maps, falls back to 'algebraic'.
  */
 export function topicForChapter(topicId: string, chapterId: string): TopicKey {
+  return sectionForChapter(topicId, chapterId).topic;
+}
+
+/**
+ * The whole blueprint SECTION a chapter belongs to — same resolution as
+ * `topicForChapter`, but it hands back the row rather than just its topic.
+ *
+ * A teacher-built paper (docs/RASCH_QUIZ.md) picks its questions one at a time
+ * instead of filling sections, yet every downstream consumer keys off
+ * `ExamQuestion.sectionId`: `toItemResponses` maps it to the levelling topic and
+ * `archiveExam` files the question under it. Deriving the section here, from the
+ * SAME table `topicForChapter` uses, is what keeps a hand-picked question landing
+ * in the same dimension a drawn one would.
+ *
+ * ⚠️ Never invent a sectionId. An id no blueprint row carries makes
+ * `toItemResponses` fall back to `'numbers'`, which silently credits the wrong
+ * dimension. That is why this returns a section rather than an id-or-null.
+ */
+export function sectionForChapter(topicId: string, chapterId: string): BlueprintSection {
   const section = EXAM_BLUEPRINT.find((s) =>
     s.pools.some((p) => p.topicId === topicId && p.chapterId === chapterId),
   );
-  return section?.topic ?? 'algebraic';
+  // Chapter 17 (Nostandart masalalar) is deliberately unmapped — it falls back
+  // to the first `algebraic` row, matching topicForChapter's own fallback.
+  return section ?? EXAM_BLUEPRINT.find((s) => s.topic === 'algebraic')!;
 }
 
 /** The difficulty ids a section may draw from. */

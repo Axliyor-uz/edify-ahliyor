@@ -30,7 +30,7 @@ A v1 doc repeats four fields at the top level even though they also live nested:
 | Flat field | Also at | Why it must stay flat |
 |---|---|---|
 | `creatorId` | `metadata.creatorId` | every bank query filters `creatorId ==` |
-| `creationMethod` | `metadata.creationMethod` | the my_questions filter chips |
+| `creationMethod` | `metadata.creationMethod` | the my_questions filter chips + the Rasch builder's "kim yozgan" chips |
 | `difficultyId` | `difficulty.id` | the difficulty chips + all RASCH math |
 | `createdAt` | `metadata.createdAt` | `orderBy createdAt desc` on every listing |
 
@@ -42,7 +42,7 @@ Firestore cannot filter across two different document shapes, and an OR-query ov
 
 - **type** (19): `mcq`, `multiple_select`, `true_false`, `open`, `numeric`, `fill_blank`, `matching`, `ordering`, `drag_drop`, `hotspot`, `matrix`, `essay`, `coding`, `proof`, `graph`, `equation_builder`, `interactive`, plus the two BLOCK types `multi_part` and `shared_options` (see below). ⚠️ Only `IMPLEMENTED_QUESTION_TYPES` (`mcq`, `multiple_select`, `true_false`, `open`, `numeric`, `multi_part`, `shared_options`) can actually be authored, rendered and auto-graded today — the rest are declared so the schema is stable, not because the UI supports them.
 - **status**: `draft`, `review`, `approved`, `published`, `archived`, `deleted`.
-- **creationMethod**: `ai_prompt`, `ai_generated`, `imported`, `exam_import`, `teacher_created`, `copied`, `translated`, `corrected`.
+- **creationMethod**: `ai_prompt`, `ai_generated`, `imported`, `exam_import`, `teacher_created`, `copied`, `translated`, `corrected`. ⚠️ **Never filter on a single value.** The bank holds pre-v1 docs written as `general_ai`, `by_prompt`, `by_image`, `custom`, `manual`… so provenance filters query an `in` list: `AI_CREATION_METHODS` / `IMAGE_CREATION_METHODS` / `MANUAL_CREATION_METHODS` in [types/question.ts](../types/question.ts), shared by `create/my_questions` and the Rasch builder's picker. A doc whose method is empty or unrecognized matches **none** of them and must not be assumed hand-written (`isAiWritten` returns false for it, deliberately).
 - **language**: `uz`, `ru`, `en`. **mediaType**: `image`, `pdf`, `3d`, `animation`, `latex`, `geogebra`. **testType**: `diagnostic`, `practice`, `homework`, `exam`, `quiz`, `adaptive`, `placement`, `SAT`, `IELTS`, `TOEFL`, `custom`.
 
 ### ⚠️ Difficulty ids are NOT a clean ladder
@@ -120,6 +120,8 @@ Fields: `parts: QuestionPart[]` on `QuestionV1` (empty for a normal question); `
 `isAnswerCorrect(q, given)` still answers "is this fully right?" (all parts correct), which is what the correct/incorrect filters and the overview grid use. ⚠️ Consequently `attempts.score`/`totalQuestions` are **points**, not question counts — see [DATA_MODEL.md](DATA_MODEL.md). XP is unchanged: a block pays the same XP as one question of its difficulty, never multiplied by its parts.
 
 Every surface that shows a student's answer must branch on `q.isBlock` — the runner, the results page and the teacher's `StudentDetailsModal` all do; a `BlockAnswer` rendered as a plain value comes out as `[object Object]`. Builder: [app/teacher/create/block/](../app/teacher/create/block/), service: [services/questionBlockService.ts](../services/questionBlockService.ts).
+
+**Closed vs typed:** `isClosedQuestion(n)` ([types/question.ts](../types/question.ts)) is the one answer to "is this answered by picking a letter?" — `!isTextType` + a non-empty option list for a normal question; for a block, `shared_options` is always closed (a part drawing from the printed pool answers with a letter **even if the doc mislabels its type** `open` — the same rule `toExamItem` applies) and `multi_part` only when every part carries its own options. Don't re-derive it from `q.type`; the Rasch builder's Yopiq/Ochiq filter and the exam bridge must agree.
 
 ### Blocks in the Milliy sertifikat exam (a DIFFERENT counting rule)
 

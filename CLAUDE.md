@@ -17,6 +17,8 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | Any Firestore collection/field/index | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) |
 | Creating/storing/rendering/grading a **question** (v1 schema, normalizer, banks) | [docs/QUESTIONS.md](docs/QUESTIONS.md) |
 | `app/(student)/*` — runners, XP/leaderboards, games, library, social | [docs/STUDENT.md](docs/STUDENT.md) |
+| Rasch **skill axis** — `lib/RASCHskills.ts`, skills inside the heptagon, exam skill detection | [docs/RASCH_SKILLS.md](docs/RASCH_SKILLS.md) |
+| **Teacher-built Rasch papers** — `teacher_rasch_quizzes`, the 6-digit code, `/RASCHmodel/quiz`, the shared exam runner | [docs/RASCH_QUIZ.md](docs/RASCH_QUIZ.md) |
 | `app/teacher/*` — test creation, classes, grading, analytics, subscription | [docs/TEACHER.md](docs/TEACHER.md) |
 | AI routes, credit limits, `lib/ai/*`, `/api/analyze`, TTS | [docs/AI.md](docs/AI.md) |
 | `app/manager/*` core — approval gate, groups, teachers, enrollment, walk-in | [docs/MANAGER.md](docs/MANAGER.md) |
@@ -38,10 +40,11 @@ npm run build    # Production build
 npm run start    # Serve the production build
 npm run lint     # ESLint (eslint-config-next: core-web-vitals + typescript)
 
+npm run test:rules  # Firestore rules tests (emulator) — run after ANY rules edit
 npx firebase-tools deploy --only firestore:rules,firestore:indexes   # after ANY rules/indexes edit
 ```
 
-There is **no test suite** — verify by running the dev server and exercising the flow (each doc ends with a concrete walkthrough). ⚠️ Never run a bare `firebase deploy`: `firebase.json` has a `functions` block but no `functions/` dir exists — it fails at predeploy. Firebase project: `scanqr-64512`.
+There is **no test suite for application code** — verify by running the dev server and exercising the flow (each doc ends with a concrete walkthrough). The ONE exception is `firestore.rules`: `npm run test:rules` runs `tests/rules/*.test.mjs` against the Firestore emulator (124 tests). **Run it after any rules edit** — it is the only automated check in the repo. ⚠️ Never run a bare `firebase deploy`: `firebase.json` has a `functions` block but no `functions/` dir exists — it fails at predeploy. Firebase project: `scanqr-64512`.
 
 ## Stack
 
