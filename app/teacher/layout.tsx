@@ -24,7 +24,7 @@ import {
   LayoutDashboard, Users, FilePlus, FolderOpen, Library,
   Sparkles, Settings, LogOut, Menu, X, Bell,
   Zap, BookOpen, UserIcon, CreditCard, PanelLeft, MoreVertical,
-  MoreHorizontal, Sun, Moon, Monitor,
+  MoreHorizontal, Sun, Moon, Monitor, Globe,
 } from 'lucide-react';
 
 // ============================================================================
@@ -95,7 +95,7 @@ const HIDE_BOTTOM_BAR = [
   /^\/teacher\/create\/.+/,
   /^\/teacher\/classes\/.+/,
   /^\/teacher\/print/,
-  /^\/teacher\/ielts\/reading\/(manual|view)/,
+  /^\/teacher\/ielts\/(reading|listening)\/(manual|view)/,
 ];
 
 // Shared popover panel styling (M3 menu surface)
@@ -287,7 +287,7 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
     { name: t.menu.overview, href: '/teacher/dashboard', icon: LayoutDashboard },
     { name: t.create, href: '/teacher/create', icon: FilePlus, isAI: true },
     { name: t.menu.classes, href: '/teacher/classes', icon: Users, tourId: 'tour-sidebar-classes' },
-    // { name: t.menu.ielts, href: '/teacher/ielts', icon: Globe, isAI: true }, // deliberately hidden — see docs/TEACHER.md
+    { name: t.menu.ielts, href: '/teacher/ielts', icon: Globe, isAI: true },
     { name: t.menu.library, href: '/teacher/library', icon: FolderOpen, short: t.menuShort.library },
     { name: t.menu.onlineLibrary, href: '/teacher/online-books', icon: Library, tourId: 'tour-sidebar-online-books', short: t.menuShort.onlineLibrary },
     { name: t.menu.analytics, href: '/teacher/analytics', icon: Sparkles, isAI: true },

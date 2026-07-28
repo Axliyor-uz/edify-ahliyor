@@ -72,11 +72,13 @@ All written by **Admin SDK** via `lib/server/financeOps.ts` behind `/api/manager
   - ⚠️ **`score`/`totalQuestions` on an assignment attempt are POINTS, not question counts.** A question is worth `points` (which normalizes to 1 when absent, so a block-free test is byte-for-byte identical to the old correct-count), and a **block** is worth the sum of its parts with **partial credit**. `attempt.score / attempt.totalQuestions` stays a coherent percentage either way. Score with `gradeQuestion()` — never by counting `=== q.answer` matches.
   - ⚠️ **`answers[questionId]` is no longer always an option letter.** Since the v1 question schema it is `string` (letter, for mcq/true_false), `string[]` (letters, for `multiple_select`), **free text** (`open`/`numeric`), **or a `BlockAnswer` object** `{[partId]: value}` holding a whole block's response in ONE entry. Never compare it with `=== q.answer` — use `isAnswerCorrect(q, given)` from [lib/questionSchema.ts](../lib/questionSchema.ts), the single comparator the student runner, the results page and teacher-side review all share. See [QUESTIONS.md](QUESTIONS.md).
 
-## IELTS (see [IELTS.md](IELTS.md))
+## IELTS (see [IELTS.md](IELTS.md) — full shapes in [lib/ielts/types.ts](../lib/ielts/types.ts))
 
-- **`ielts_groups/{groupId}`** — `{title, targetBand, joinCode ('I-'+4 chars, ⚠️ no uniqueness check), teacherId, teacherName, description, studentIds[], createdAt}`. Subcollection `requests/{autoId}` `{studentId, displayName, username, photoUrl, requestedAt}`.
-- **`ielts_reading_tests/{test_id}`** — provided doc ID; authored payload (passages/blocks/questions with inline `correct_answer`) + `{teacherId, status:'published', createdAt/updatedAt}`. No TypeScript type exists for this shape.
-- ⚠️ **`ielts_tests`, `ielts_attempts`, `ielts_groups/*/assignments` do not exist** — types only, zero reads/writes.
+- **`ielts_groups/{groupId}`** — `{title, targetBand, joinCode ('I-'+4–6 chars, unique via generateUniqueJoinCode), teacherId, teacherName, description, studentIds[], createdAt}`. Read rule: teacher/member only. Subcollection `requests/{autoId}` `{studentId, displayName, username, photoUrl, requestedAt}` — created **only** by `POST /api/ielts/join` (Admin SDK). Subcollection `assignments/{autoId}` — live: `{testId, skill, testTitle, questionCount, totalTimeMinutes, mode, openAt, dueAt, allowedAttempts, resultsVisibility, assignedTo, teacherId, createdAt, status, completedBy[] (server-written)}`.
+- **`ielts_reading_tests` / `ielts_listening_tests` / `ielts_writing_tests` / `ielts_speaking_tests` `{test_id}`** — provided doc ID; **public docs are answer-free** (`answers_split: true`, no `correct_answer` anywhere). `teacherId: null` + `source: 'platform'` = admin platform dataset. ⚠️ Legacy pre-split reading docs still embed answers until re-saved.
+- **`ielts_answer_keys/{testId}`** — `{testId, teacherId, skill, keys}` — the split answer key; owning-teacher-only rules, graded server-side in `/api/ielts/submit`. Never student-readable.
+- **`ielts_attempts/{id}`** — LIVE, **server-written only** (client `create: false`); assignment attempts use deterministic id `{uid}_{groupId}_{assignmentId}` + `attemptsTaken` increment; practice attempts auto-id with `kind:'practice'`. Teacher may update only `reviewStatus`+`teacherGrade` (writing/speaking grading).
+- ⚠️ **`ielts_tests` does not exist** (dead name; rules block removed).
 
 ## Leaderboards, library, AI, misc
 

@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { UserMinus, Loader2, Award, UserCheck, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Spinner, EmptyState } from '@/components/ui';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { removeStudentFromGroup } from '@/services/ieltsService';
+import { GroupAttempt, effectiveBand, submittedMillis } from './groupData';
 
 const TRANSLATIONS: Record<string, any> = {
   uz: {
@@ -51,24 +53,56 @@ const TRANSLATIONS: Record<string, any> = {
   },
 };
 
-function bandPill(band: number) {
-  if (band >= 8)   return 'bg-success-container text-on-success-container';
-  if (band >= 6.5) return 'bg-warning-container text-on-warning-container';
-  return                  'bg-error-container text-on-error-container';
+function bandPill(band: number | null) {
+  if (band == null)  return 'bg-surface-container-high text-on-surface-variant border-outline-variant';
+  if (band >= 8)     return 'bg-success-container text-on-success-container';
+  if (band >= 6.5)   return 'bg-warning-container text-on-warning-container';
+  return                    'bg-error-container text-on-error-container';
+}
+
+/** Tiny inline band trend (last 5 attempts), band 4–9 normalized. */
+function Sparkline({ bands }: { bands: number[] }) {
+  if (bands.length < 2) return null;
+  const w = 56, h = 18, pad = 2;
+  const points = bands
+    .map((b, i) => {
+      const x = pad + (i * (w - 2 * pad)) / (bands.length - 1);
+      const y = h - pad - ((Math.min(9, Math.max(4, b)) - 4) / 5) * (h - 2 * pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="text-primary shrink-0" aria-hidden>
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 interface Props {
   groupId: string;
   studentIds: string[];
+  attempts: GroupAttempt[];
 }
 
-export default function IeltsRosterTab({ groupId, studentIds }: Props) {
+export default function IeltsRosterTab({ groupId, studentIds, attempts }: Props) {
   const { lang } = useTeacherLanguage();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [students, setStudents]     = useState<any[]>([]);
   const [isLoading, setIsLoading]   = useState(true);
   const [removingUid, setRemovingUid] = useState<string | null>(null);
   const [search, setSearch]         = useState('');
+
+  // Per-student band history (chronological), from group attempts passed down by the page
+  const bandsByUser = useMemo(() => {
+    const m: Record<string, number[]> = {};
+    const sorted = [...attempts].sort((a, b) => submittedMillis(a) - submittedMillis(b));
+    for (const a of sorted) {
+      const band = effectiveBand(a);
+      if (band == null) continue;
+      (m[a.userId] ??= []).push(band);
+    }
+    return m;
+  }, [attempts]);
 
   useEffect(() => {
     const fetchRoster = async () => {
@@ -82,9 +116,9 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
             const snap = await getDoc(doc(db, 'users', uid));
             if (snap.exists()) {
               const d = snap.data();
-              return { uid, displayName: d.displayName || t.unknown, username: d.username || 'user', photoUrl: d.photoURL, currentBand: 6.5 };
+              return { uid, displayName: d.displayName || t.unknown, username: d.username || 'user', photoUrl: d.photoURL };
             }
-            return { uid, displayName: t.deletedProfile, username: 'unknown', currentBand: 0 };
+            return { uid, displayName: t.deletedProfile, username: 'unknown' };
           })
         );
         setStudents(resolved);
@@ -101,7 +135,7 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
     if (!confirm(t.confirmRemove(student.displayName))) return;
     setRemovingUid(student.uid);
     try {
-      await updateDoc(doc(db, 'ielts_groups', groupId), { studentIds: arrayRemove(student.uid) });
+      await removeStudentFromGroup(groupId, student.uid);
       toast.success(t.removed(student.displayName));
     } catch {
       toast.error(t.error);
@@ -157,6 +191,9 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
         <AnimatePresence>
           {filtered.map(std => {
             const isRemoving = removingUid === std.uid;
+            const bands = bandsByUser[std.uid] || [];
+            const latestBand = bands.length ? bands[bands.length - 1] : null;
+            const trend = bands.slice(-5);
             return (
               <motion.div
                 layout
@@ -187,10 +224,11 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
                   <p className="text-[15px] font-black text-on-surface truncate mb-0.5">{std.displayName}</p>
                   <div className="flex items-center gap-2">
                     <p className="text-[12px] font-bold text-on-surface-variant truncate">@{std.username}</p>
-                    <div className={`flex items-center gap-1 border border-transparent px-1.5 py-0.5 rounded-m3-xs ${bandPill(std.currentBand)}`}>
+                    <div className={`flex items-center gap-1 border border-transparent px-1.5 py-0.5 rounded-m3-xs shrink-0 ${bandPill(latestBand)}`}>
                       <Award size={10} strokeWidth={2.5} />
-                      <span className="text-[10px] font-black">{std.currentBand.toFixed(1)}</span>
+                      <span className="text-[10px] font-black">{latestBand != null ? latestBand.toFixed(1) : '—'}</span>
                     </div>
+                    <Sparkline bands={trend} />
                   </div>
                 </div>
 

@@ -8,12 +8,12 @@ import Link from 'next/link';
 const PAGE_TRANSLATIONS: Record<string, any> = {
   uz: {
     title: "IELTS Moduli",
-    subtitle: "O'quvchilarning IELTS ko'nikmalarini AI yordamida tekshiring",
+    subtitle: "IELTS testlarini yarating, guruhlarga biriktiring va baholang",
     modules: {
-      listening: { title: "Listening", desc: "Audio testlar va avtomatik tekshirish." },
+      listening: { title: "Listening", desc: "4 qismli audio testlar va avtomatik tekshirish." },
       reading: { title: "Reading", desc: "Matnli testlar va tahlillar." },
-      writing: { title: "Writing", desc: "Insholarni AI orqali tekshirish (Task 1 & 2)." },
-      speaking: { title: "Speaking", desc: "Ovozli yozuvlarni AI orqali baholash." },
+      writing: { title: "Writing", desc: "Task 1 & 2 topshiriqlari, insholarni o'zingiz baholaysiz." },
+      speaking: { title: "Speaking", desc: "Part 1–3 savollari va cue card to'plamlari." },
     },
     action: "Boshqarish",
     aiPowered: "AI yordamida",
@@ -21,12 +21,12 @@ const PAGE_TRANSLATIONS: Record<string, any> = {
   },
   en: {
     title: "IELTS Module",
-    subtitle: "Manage and evaluate IELTS skills using AI",
+    subtitle: "Author IELTS tests, assign them to groups, and grade",
     modules: {
-      listening: { title: "Listening", desc: "Audio tests and automatic grading." },
+      listening: { title: "Listening", desc: "4-part audio tests with automatic grading." },
       reading: { title: "Reading", desc: "Passages, true/false/not given, analytics." },
-      writing: { title: "Writing", desc: "AI-powered essay grading (Task 1 & 2)." },
-      speaking: { title: "Speaking", desc: "Evaluate voice recordings using AI." },
+      writing: { title: "Writing", desc: "Task 1 & 2 prompts — essays graded by you." },
+      speaking: { title: "Speaking", desc: "Part 1–3 questions and cue-card sets." },
     },
     action: "Manage",
     aiPowered: "AI Powered",
@@ -34,12 +34,12 @@ const PAGE_TRANSLATIONS: Record<string, any> = {
   },
   ru: {
     title: "Модуль IELTS",
-    subtitle: "Оценивайте навыки IELTS с помощью ИИ",
+    subtitle: "Создавайте IELTS тесты, назначайте группам и оценивайте",
     modules: {
-      listening: { title: "Аудирование", desc: "Аудиотесты и автопроверка." },
+      listening: { title: "Аудирование", desc: "Аудиотесты из 4 частей с автопроверкой." },
       reading: { title: "Чтение", desc: "Тексты и аналитика." },
-      writing: { title: "Письмо", desc: "Проверка эссе с помощью ИИ (Task 1 & 2)." },
-      speaking: { title: "Говорение", desc: "Оценка голосовых записей с ИИ." },
+      writing: { title: "Письмо", desc: "Задания Task 1 & 2 — эссе оцениваете вы." },
+      speaking: { title: "Говорение", desc: "Вопросы Part 1–3 и наборы cue card." },
     },
     action: "Управлять",
     aiPowered: "На базе ИИ",
@@ -50,8 +50,8 @@ const PAGE_TRANSLATIONS: Record<string, any> = {
 const IELTS_CARDS = [
   { id: 'listening', icon: Headphones, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent', isAI: false, href: '/teacher/ielts/listening' },
   { id: 'reading', icon: BookOpen, color: 'text-on-secondary-container', bg: 'bg-secondary-container', border: 'border-transparent', isAI: false, href: '/teacher/ielts/reading' },
-  { id: 'writing', icon: PenTool, color: 'text-on-tertiary-container', bg: 'bg-tertiary-container', border: 'border-transparent', isAI: true, href: '/teacher/ielts/writing' },
-  { id: 'speaking', icon: Mic, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent', isAI: true, href: '/teacher/ielts/speaking' },
+  { id: 'writing', icon: PenTool, color: 'text-on-tertiary-container', bg: 'bg-tertiary-container', border: 'border-transparent', isAI: false, href: '/teacher/ielts/writing' },
+  { id: 'speaking', icon: Mic, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent', isAI: false, href: '/teacher/ielts/speaking' },
 ];
 
 export default function IELTSDashboard() {

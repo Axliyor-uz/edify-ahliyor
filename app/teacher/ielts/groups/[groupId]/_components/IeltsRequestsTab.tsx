@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import {
-  collection, doc, updateDoc, deleteDoc,
-  arrayUnion, getDoc, onSnapshot,
-} from 'firebase/firestore';
-import { Check, X, Inbox, Loader2, UserPlus, AlertCircle } from 'lucide-react';
+import { collection, doc, deleteDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { approveJoinRequest } from '@/services/ieltsService';
+import { Check, X, Inbox, Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -104,8 +102,8 @@ export default function IeltsRequestsTab({ groupId }: Props) {
   const handleApprove = async (req: EnrichedRequest) => {
     setProcessingId(req.requestId);
     try {
-      await updateDoc(doc(db, 'ielts_groups', groupId), { studentIds: arrayUnion(req.uid) });
-      await deleteDoc(doc(db, 'ielts_groups', groupId, 'requests', req.requestId));
+      // Atomic: arrayUnion + request delete in one batch (services/ieltsService)
+      await approveJoinRequest(groupId, req.requestId, req.uid);
       toast.success(t.successApprove.replace('{name}', req.displayName));
     } catch (e) {
       console.error(e); toast.error(t.fail);
