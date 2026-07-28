@@ -38,6 +38,8 @@ interface Props {
   /** So the page can drop a question from its session list when it's deleted. */
   onDeleted: (id: string) => void;
   labels: ListLabels;
+  /** Narrows what the bank shows — the block builder passes `q => q.isBlock`. */
+  filter?: (q: NormalizedQuestion) => boolean;
 }
 
 const PAGE_SIZE = 10;
@@ -50,7 +52,7 @@ const PAGE_SIZE = 10;
  * in-memory (`sessionQuestions`). Firestore is only touched when the teacher
  * presses "load 10", and then exactly 10 documents at a time.
  */
-export default function CreatedQuestionsList({ creatorId, sessionQuestions, onEdit, onDeleted, labels }: Props) {
+export default function CreatedQuestionsList({ creatorId, sessionQuestions, onEdit, onDeleted, labels, filter }: Props) {
   const [fetched, setFetched] = useState<NormalizedQuestion[]>([]);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -61,12 +63,27 @@ export default function CreatedQuestionsList({ creatorId, sessionQuestions, onEd
     if (!creatorId || loading) return;
     setLoading(true);
     try {
-      const page = await fetchMyQuestionsPage(creatorId, PAGE_SIZE, cursor);
-      // A question created this session is already on screen — don't show it twice.
-      const seen = new Set([...sessionQuestions, ...fetched].map((q) => q.id));
-      setFetched((prev) => [...prev, ...page.questions.filter((q) => !seen.has(q.id))]);
-      setCursor(page.cursor);
-      setHasMore(page.hasMore);
+      let next = cursor;
+      let more = true;
+      const found: NormalizedQuestion[] = [];
+
+      // Without a filter this is exactly ONE page of 10. With one (the block
+      // builder shows blocks only) a page can hold nothing to show, so pull up
+      // to 3 pages per press — otherwise the button looks dead.
+      const maxPages = filter ? 3 : 1;
+      for (let i = 0; i < maxPages; i++) {
+        const page = await fetchMyQuestionsPage(creatorId, PAGE_SIZE, next);
+        // A question created this session is already on screen — don't show it twice.
+        const seen = new Set([...sessionQuestions, ...fetched, ...found].map((q) => q.id));
+        found.push(...page.questions.filter((q) => !seen.has(q.id) && (!filter || filter(q))));
+        if (page.cursor) next = page.cursor;
+        more = page.hasMore;
+        if (found.length > 0 || !more) break;
+      }
+
+      setFetched((prev) => [...prev, ...found]);
+      setCursor(next);
+      setHasMore(more);
     } catch (err) {
       console.error("teacher_questions fetch failed:", err);
       toast.error(labels.loadFailed);

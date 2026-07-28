@@ -235,16 +235,24 @@ export interface QuestionPage {
  * — the builder page only fetches when the teacher presses the button, so simply
  * opening the form costs zero reads. Uses the existing `creatorId + createdAt
  * desc` index; v1 and legacy docs both match it.
+ *
+ * `methods` narrows by provenance (`AI_CREATION_METHODS` /
+ * `MANUAL_CREATION_METHODS` …). It is done **server-side**, so a filtered page
+ * still bills 10 documents and every one of them is shown — and it rides the
+ * `creationMethod + creatorId + createdAt` index `create/my_questions` already
+ * uses, so no new index. ⚠️ Firestore caps an `in` list at 30 values.
  */
 export async function fetchMyQuestionsPage(
   creatorId: string,
   pageSize = 10,
   cursor: QueryDocumentSnapshot | null = null,
+  methods?: string[],
 ): Promise<QuestionPage> {
   const snap = await getDocs(
     query(
       collection(db, "teacher_questions"),
       where("creatorId", "==", creatorId),
+      ...(methods?.length ? [where("creationMethod", "in", methods)] : []),
       orderBy("createdAt", "desc"),
       ...(cursor ? [startAfter(cursor)] : []),
       limit(pageSize),

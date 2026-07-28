@@ -1,9 +1,11 @@
 // lib/RASCHsolved.ts
-import { EXAM_BLUEPRINT } from './Examblueprint';
+import { EXAM_BLUEPRINT, topicForChapter } from './Examblueprint';
+import { getMathTopics } from './Mathstructure';
+import { skillFor, type SkillKey } from './RASCHskills';
 import { TOPIC_KEYS, type TopicKey } from './RASCHtopics';
 import { examChosen } from './ExamTeacher';
 import type { ExamQuestion } from '@/types/Exam';
-import type { Lang, LocalizedText, OptionKey } from '@/types/Math';
+import type { Lang, LocalizedText, OptionKey, QuestionDoc } from '@/types/Math';
 
 /**
  * The questions the student has actually solved, archived per topic in the
@@ -25,9 +27,17 @@ import type { Lang, LocalizedText, OptionKey } from '@/types/Math';
 const KEY = 'RASCHmodel:solved:v1';
 const VERSION = 1;
 
-/** Per topic. Twenty questions is a few exams' worth — enough to review, small
- *  enough that seven topics never threaten the localStorage quota. */
-const CAP_PER_TOPIC = 20;
+/**
+ * Per topic. Sixty is a few months' work — enough that the per-skill review can
+ * page back through "+5 more" and still find something, while seven topics stay
+ * well inside the localStorage quota (a question with three languages of text,
+ * options and an explanation is ~1–2 KB, so the ceiling is roughly 400–800 KB).
+ *
+ * Raised from 20 when the review moved from "the last exam" to "my work on this
+ * skill": twenty per DIMENSION is only two or three questions per SKILL, which
+ * made every skill panel look empty.
+ */
+const CAP_PER_TOPIC = 60;
 
 export interface SolvedQuestion {
   id: string;
@@ -35,6 +45,17 @@ export interface SolvedQuestion {
   examAt: number;
   chapter: string;
   subtopic: string;
+  /**
+   * The syllabus position, so a stored question can be resolved to the SKILL it
+   * exercises (lib/RASCHskills.ts) without re-reading the question document.
+   *
+   * Optional because entries archived before this existed carry only the display
+   * NAMES above — `resolveSolvedPosition` recovers the ids from those, so the
+   * skill review works on old archives too. New entries always carry them.
+   */
+  topicId?: string;
+  chapterId?: string;
+  subtopicId?: string;
   testType: string;
   question: LocalizedText;
   /** Shared block statement, shown above the question (shared_options items). */
@@ -55,6 +76,9 @@ export interface SolvedQuestion {
   creatorName?: string;
   /** Corrector's display name, if it was ever edited. */
   correctedBy?: string;
+  /** Where it was answered. Absent on entries archived before drills were kept
+   *  — those are all exams, so `undefined` reads as 'exam'. */
+  kind?: 'exam' | 'practice';
 }
 
 interface Archive {
@@ -169,6 +193,9 @@ export function archiveExam(params: {
       examAt: params.at,
       chapter: q.chapter,
       subtopic: q.subtopic,
+      topicId: q.topicId,
+      chapterId: q.chapterId,
+      subtopicId: q.subtopicId,
       testType: q.testType,
       question: q.question,
       ...(q.stem ? { stem: q.stem } : {}),
@@ -191,6 +218,64 @@ export function archiveExam(params: {
     byTopic[topic] = [...existing, entry].slice(-CAP_PER_TOPIC);
   }
 
+  commit(byTopic);
+}
+
+/**
+ * The same, for a finished practice drill.
+ *
+ * Practice used to be invisible here: only exams were archived, so a student who
+ * drilled a skill ten times still saw "no questions stored" on that skill's
+ * review. A drill is the work most worth reviewing — it is the attempt made
+ * right after seeing the weakness.
+ *
+ * Practice draws straight from `questions1` (no sections), so the dimension is
+ * recovered from the chapter through the blueprint, exactly as the practice save
+ * path does for its item responses.
+ */
+export function archivePractice(params: {
+  questions: QuestionDoc[];
+  answers: Record<string, string>;
+  lang: Lang;
+  at: number;
+}): void {
+  if (typeof window === 'undefined') return;
+
+  const archive = getSolvedArchive();
+  const byTopic: Record<string, SolvedQuestion[]> = { ...archive.byTopic };
+
+  for (const q of params.questions) {
+    const topic = topicForChapter(q.topicId, q.chapterId);
+    const given = params.answers[q.id] ?? '';
+
+    const entry: SolvedQuestion = {
+      id: q.id,
+      examAt: params.at,
+      chapter: q.chapter,
+      subtopic: q.subtopic,
+      topicId: q.topicId,
+      chapterId: q.chapterId,
+      subtopicId: q.subtopicId,
+      testType: 'practice',
+      question: q.question,
+      options: q.options,
+      answer: q.answer,
+      explanation: q.explanation,
+      given,
+      correct: given === q.answer,
+      lang: params.lang,
+      kind: 'practice',
+    };
+
+    const existing = (byTopic[topic] ?? []).filter((e) => e.id !== entry.id);
+    byTopic[topic] = [...existing, entry].slice(-CAP_PER_TOPIC);
+  }
+
+  commit(byTopic);
+}
+
+/** Writes the archive back, tolerating a full quota. */
+function commit(byTopic: Record<string, SolvedQuestion[]>): void {
   const next: Archive = { version: VERSION, byTopic };
   try {
     const raw = JSON.stringify(next);
@@ -199,9 +284,101 @@ export function archiveExam(params: {
     cachedValue = next;
     emit();
   } catch {
-    // Quota exceeded — the exam and the levels are unaffected; only this
+    // Quota exceeded — the exam/drill and the levels are unaffected; only this
     // review archive is lost. Never break a submission over it.
   }
+}
+
+// ─── Reading the archive by SKILL ────────────────────────────────────────────
+
+/**
+ * Recovers a stored question's syllabus ids.
+ *
+ * New entries carry them outright. Entries archived before that carry only the
+ * display names, so they are looked up in the bundled syllabus — chapter names
+ * are unique across both subjects, which makes the lookup unambiguous. Without
+ * this the skill review would be empty for every student until their next exam.
+ */
+function resolveSolvedPosition(
+  q: SolvedQuestion,
+): { topicId: string; chapterId: string; subtopicId: string } | null {
+  if (q.topicId && q.chapterId && q.subtopicId) {
+    return { topicId: q.topicId, chapterId: q.chapterId, subtopicId: q.subtopicId };
+  }
+  const hit = nameIndex().get(`${q.chapter} ${q.subtopic}`);
+  return hit ?? null;
+}
+
+let NAME_INDEX: Map<string, { topicId: string; chapterId: string; subtopicId: string }> | null = null;
+
+/** Built lazily and once — the syllabus is bundled, so this costs no I/O. */
+function nameIndex() {
+  if (NAME_INDEX) return NAME_INDEX;
+  const map = new Map<string, { topicId: string; chapterId: string; subtopicId: string }>();
+  for (const topic of getMathTopics()) {
+    for (const chapter of topic.chapters) {
+      for (const sub of chapter.subtopics) {
+        map.set(`${chapter.name} ${sub.name}`, {
+          topicId: topic.topicId,
+          chapterId: chapter.chapterId,
+          subtopicId: sub.subtopicId,
+        });
+      }
+    }
+  }
+  NAME_INDEX = map;
+  return map;
+}
+
+export interface SolvedBySkill {
+  /** FULL lists, newest first. The UI pages through them ("+5 more") — capping
+   *  here would make "show more" impossible to implement honestly. */
+  correct: SolvedQuestion[];
+  wrong: SolvedQuestion[];
+}
+
+/**
+ * The questions this skill was measured on, newest first, split by outcome.
+ *
+ * `scope: 'last'` keeps only the most recent sitting — "how did I do on the last
+ * paper" — while 'all' spans everything the device has archived. Both are capped
+ * for display; the uncapped totals ride along so the UI never implies the cap is
+ * the whole story.
+ */
+export function solvedForSkill(
+  skillKey: SkillKey,
+  opts: { scope?: 'last' | 'all' } = {},
+): SolvedBySkill {
+  return split(
+    Object.values(getSolvedArchive().byTopic).flat().filter((q) => {
+      const pos = resolveSolvedPosition(q);
+      return pos ? skillFor(pos.topicId, pos.chapterId, pos.subtopicId) === skillKey : false;
+    }),
+    opts.scope ?? 'all',
+  );
+}
+
+/**
+ * Newest first, split by outcome, optionally narrowed to the most recent sitting.
+ *
+ * A question re-answered later is archived once (latest wins), so the newest
+ * `examAt` in a filtered set IS the last sitting that touched it — which is what
+ * makes "last exam" meaningful per skill rather than only globally.
+ */
+function split(list: SolvedQuestion[], scope: 'last' | 'all'): SolvedBySkill {
+  const scoped =
+    scope === 'last' && list.length > 0
+      ? (() => {
+          const latest = Math.max(...list.map((q) => q.examAt));
+          return list.filter((q) => q.examAt === latest);
+        })()
+      : list;
+
+  const newestFirst = [...scoped].sort((a, b) => b.examAt - a.examAt);
+  return {
+    correct: newestFirst.filter((q) => q.correct),
+    wrong: newestFirst.filter((q) => !q.correct),
+  };
 }
 
 export function clearSolvedArchive(): void {

@@ -14,6 +14,8 @@ import { useTeacherLanguage } from "@/app/teacher/layout";
 import { SUBJECTS, findSubject, findTopic } from "@/lib/questionTopics";
 import RichQuestionInput from "@/app/teacher/create/_components/RichQuestionInput";
 import ImagePicker from "@/app/teacher/create/question/_components/ImagePicker";
+import CreatedQuestionsList from "@/app/teacher/create/question/_components/CreatedQuestionsList";
+import { normalizeQuestion } from "@/lib/questionSchema";
 import { OPTION_LETTERS, emptyOption, fetchQuestionById, uploadQuestionImage, type OptionDraft } from "@/services/questionBankService";
 import {
   LETTER_LABELS, MAX_PARTS, MAX_POOL, blockDraftFromQuestion, newPart, newQuestionId, partUsesOptions,
@@ -62,6 +64,24 @@ const T = {
       uploadFailed: "Rasmni yuklab bo'lmadi.",
       saveFailed: "Blokni saqlab bo'lmadi.",
     },
+    list: {
+      title: "Yaratilgan bloklar",
+      subtitle: "Bu yerda siz yaratgan ko'p savolli testlar ko'rinadi. Eskilarini yuklash uchun tugmani bosing.",
+      justCreated: "Yangi",
+      empty: "Hali blok yaratilmadi.",
+      fetch: "Oldingi bloklarni yuklash",
+      fetchMore: "Yana yuklash",
+      noMore: "Barcha bloklar yuklandi.",
+      loadFailed: "Bloklarni yuklab bo'lmadi.",
+      deleted: "Blok o'chirildi.",
+      deleteFailed: "O'chirib bo'lmadi.",
+      confirmDelete: "Bu blok o'chirilsinmi?",
+      edit: "Tahrirlash",
+      correctedBy: "Tuzatgan:",
+      correctIs: "To'g'ri javob:",
+      imageOnly: "Faqat rasmli blok",
+      count: "ta",
+    },
   },
   en: {
     headerTitle: "Multi-question test",
@@ -99,6 +119,24 @@ const T = {
       uploadFailed: "Could not upload the image.",
       saveFailed: "Could not save the block.",
     },
+    list: {
+      title: "Blocks you created",
+      subtitle: "The multi-question tests you built. Press the button to load the older ones.",
+      justCreated: "New",
+      empty: "No block created yet.",
+      fetch: "Load previous blocks",
+      fetchMore: "Load more",
+      noMore: "All blocks loaded.",
+      loadFailed: "Could not load the blocks.",
+      deleted: "Block deleted.",
+      deleteFailed: "Could not delete it.",
+      confirmDelete: "Delete this block?",
+      edit: "Edit",
+      correctedBy: "Corrected by:",
+      correctIs: "Correct answer:",
+      imageOnly: "Image-only block",
+      count: "blocks",
+    },
   },
   ru: {
     headerTitle: "Тест с несколькими вопросами",
@@ -135,6 +173,24 @@ const T = {
       notImage: "Можно загружать только изображения.",
       uploadFailed: "Не удалось загрузить изображение.",
       saveFailed: "Не удалось сохранить блок.",
+    },
+    list: {
+      title: "Созданные блоки",
+      subtitle: "Здесь показаны созданные вами тесты с несколькими вопросами. Нажмите кнопку, чтобы загрузить прежние.",
+      justCreated: "Новый",
+      empty: "Блоков пока нет.",
+      fetch: "Загрузить прежние блоки",
+      fetchMore: "Загрузить ещё",
+      noMore: "Все блоки загружены.",
+      loadFailed: "Не удалось загрузить блоки.",
+      deleted: "Блок удалён.",
+      deleteFailed: "Не удалось удалить.",
+      confirmDelete: "Удалить этот блок?",
+      edit: "Редактировать",
+      correctedBy: "Исправил:",
+      correctIs: "Правильный ответ:",
+      imageOnly: "Блок только с изображением",
+      count: "шт.",
     },
   },
 };
@@ -175,6 +231,8 @@ function BlockBuilder() {
   const [uploadPercent, setUploadPercent] = useState(0);
 
   const [creatorName, setCreatorName] = useState("");
+  /** Blocks saved in THIS session — rendered from memory, zero reads. */
+  const [sessionBlocks, setSessionBlocks] = useState<NormalizedQuestion[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [formKey, setFormKey] = useState(0);
 
@@ -282,7 +340,11 @@ function BlockBuilder() {
 
       // ONE document — however many sub-questions the block holds. Passing
       // `editing` preserves createdAt and stamps who corrected it.
-      await saveBlock(buildDraft(image), questionId, user.uid, creatorName || "Teacher", "teacher_created", editing);
+      const saved = await saveBlock(buildDraft(image), questionId, user.uid, creatorName || "Teacher", "teacher_created", editing);
+
+      // Show it in the list below straight from memory — no read-back after the write.
+      const normalized = normalizeQuestion(saved);
+      setSessionBlocks((prev) => [normalized, ...prev.filter((q) => q.id !== normalized.id)]);
 
       toast.success(editing ? t.updated : t.savedAs(parts.length));
       if (editing) router.push("/teacher/create/my_questions");
@@ -679,6 +741,19 @@ function BlockBuilder() {
             />
           </div>
         </Card>
+
+        {/* --- 7. BLOCKS THIS TEACHER ALREADY CREATED --- */}
+        {user && (
+          <CreatedQuestionsList
+            creatorId={user.uid}
+            sessionQuestions={sessionBlocks}
+            onEdit={loadForEdit}
+            onDeleted={(id) => setSessionBlocks((prev) => prev.filter((q) => q.id !== id))}
+            labels={t.list}
+            // Single questions live in create/question — this builder only edits blocks.
+            filter={(q) => q.isBlock}
+          />
+        )}
       </main>
 
       {/* MOBILE SAVE BAR */}

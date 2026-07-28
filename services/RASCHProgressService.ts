@@ -13,6 +13,10 @@ import { thetaToLevel, levelToTheta } from '@/lib/RASCHscale';
 import { getMathTopics } from '@/lib/Mathstructure';
 import { filterTheta, learningRate, predictScore } from '@/lib/RASCHdynamic';
 import { applyItems, mergeDiagnostics } from '@/lib/RASCHdiagnosis';
+import {
+  skillStats, skillsInDimension, skillsCollected, weakestSkills, DEVELOPED_LEVEL,
+  skill as skillMeta, type SkillKey, type SkillStat,
+} from '@/lib/RASCHskills';
 import { TOPIC_KEYS, type TopicKey } from '@/lib/RASCHtopics';
 import { EXAM_BLUEPRINT } from '@/lib/Examblueprint';
 import { examChosen, isExamPartCorrect, partKey } from '@/lib/ExamTeacher';
@@ -37,10 +41,15 @@ const RECENT_ITEMS_CAP = 135;
  * The ability model's version.
  *
  * v2 added the guessing floor (a 4-option question is right 1 time in 4 by luck)
- * and re-anchored the 0–3 level scale to reliable solving rather than a
- * coin-flip. v1 numbers are inflated — a 28/45 paper rated 2.69/3 — so any
- * document still carrying them is recomputed from its stored item responses on
- * the next read. No extra reads: the items are already in the document.
+ * and re-anchored the level scale to reliable solving rather than a coin-flip.
+ * v1 numbers are inflated, so any document still carrying them is recomputed
+ * from its stored item responses on the next read. No extra reads: the items are
+ * already in the document.
+ *
+ * ⚠️ The 0–3 → 0–5 rescale did NOT bump this, on purpose. Nothing stores a
+ * level: every one is `thetaToLevel(θ)` at render time, so the rescale is a
+ * re-interpretation of θ, not a change to it. Bumping would force a pointless
+ * recompute that produced identical θ values.
  */
 const MODEL_VERSION = 2;
 
@@ -184,20 +193,47 @@ export function migrateModel(levels: RASCHLevels): RASCHLevels {
 }
 
 /**
+ * In-flight reads, keyed by uid.
+ *
+ * The levels document has four independent readers (the hub's MathLevelSummary,
+ * progress, diagnosis, practice) and they do not coordinate. On a cold cache —
+ * first visit, or after the 12h TTL — two of them mounting together each issued
+ * their own `getDoc` for the same document, and React's development double-mount
+ * doubled that again. Sharing the promise makes a cold start cost exactly one
+ * read no matter how many components ask at once.
+ */
+const inFlight = new Map<string, Promise<RASCHLevels>>();
+
+/**
  * The student's levels, ability and diagnosis. Served from localStorage when
- * warm (0 reads); otherwise a single document read.
+ * warm (0 reads); otherwise a single document read, shared by every concurrent
+ * caller.
  */
 export async function getRASCHLevels(uid: string, force = false): Promise<RASCHLevels> {
   if (!force) {
     const cached = readCache(uid);
     if (cached && cached.modelVersion === MODEL_VERSION) return cached;
+
+    const pending = inFlight.get(uid);
+    if (pending) return pending;
   }
 
-  const snap = await getDoc(doc(db, LEVELS_COLLECTION, uid));
-  const raw = snap.exists() ? (snap.data() as RASCHLevels) : emptyLevels(uid, null);
-  const levels = migrateModel(raw);
-  writeCache(levels);
-  return levels;
+  const request = (async () => {
+    const snap = await getDoc(doc(db, LEVELS_COLLECTION, uid));
+    const raw = snap.exists() ? (snap.data() as RASCHLevels) : emptyLevels(uid, null);
+    const levels = migrateModel(raw);
+    writeCache(levels);
+    return levels;
+  })();
+
+  inFlight.set(uid, request);
+  try {
+    return await request;
+  } finally {
+    // Cleared on failure too, so a network blip does not pin a rejected promise
+    // and make every later call fail with the same stale error.
+    inFlight.delete(uid);
+  }
 }
 
 // ─── turning a finished sitting into data ────────────────────────────────────
@@ -750,4 +786,96 @@ export function mathLevel(levels: RASCHLevels | null): {
     theta: Math.round(theta * 1000) / 1000,
     measuredDimensions: dims.length,
   };
+}
+
+// ─── The skill axis: 34 skills inside the 7 dimensions ───────────────────────
+
+/** One skill as the UI needs it, inside a particular dimension's listing. */
+export interface DimensionSkill extends SkillStat {
+  /** False when this skill is homed in another dimension and only visits here. */
+  homed: boolean;
+  /** Items of THIS skill that were seen inside THIS dimension. */
+  seenHere: number;
+  /** The other dimensions it also draws from — the cross-links to show. */
+  otherDims: TopicKey[];
+}
+
+/** A dimension with its skill breakdown attached. */
+export interface DimensionSkills {
+  key: TopicKey;
+  skills: DimensionSkill[];
+  /** Skills under this dimension with any evidence at all. */
+  collected: number;
+  /** …of which are at level ≥ 2 — owned, not merely met. */
+  developed: number;
+  total: number;
+}
+
+/**
+ * Every dimension, with the skills it exercises.
+ *
+ * The rollup is DERIVED from what is already persisted (`diagnostics.subtopics`
+ * for lifetime counts, `recentItems` for current-form θ), so this costs no extra
+ * Firestore read and needed no migration — see lib/RASCHskills.ts.
+ *
+ * A dimension lists skills homed in it FIRST, then the skills that merely visit:
+ * 'algebraic' draws chapters 12–14 (logarithms, trigonometry, absolute value)
+ * whose subtopics are equations and function work, so eleven of the skills shown
+ * under it are homed elsewhere. That is not a bug in the taxonomy — it is the
+ * taxonomy reporting that 'algebraic' is a content bag, not a skill.
+ */
+export function dimensionSkills(
+  levels: RASCHLevels | null,
+  source: AnalysisSource = 'all',
+): DimensionSkills[] {
+  const stats = skillStats({
+    diagnostics: diagnosticsFor(levels, source),
+    recentItems: levels?.recentItems ?? [],
+  });
+
+  return TOPIC_KEYS.map((key) => {
+    const skills: DimensionSkill[] = skillsInDimension(key).map((sk) => {
+      const stat = stats[sk];
+      return {
+        ...stat,
+        homed: skillMeta(sk)?.home === key,
+        seenHere: stat.seenByDim[key] ?? 0,
+        otherDims: stat.dims.filter((d) => d !== key),
+      };
+    });
+
+    // Measured first (weakest at the top — that is the actionable end), then the
+    // ones never met. An unmeasured skill sorted by level 0 would masquerade as
+    // the student's worst, which is exactly the error the null level exists to
+    // prevent.
+    skills.sort((a, b) => {
+      const am = a.level !== null, bm = b.level !== null;
+      if (am !== bm) return am ? -1 : 1;
+      if (am && bm && a.level !== b.level) return a.level! - b.level!;
+      return b.seenHere - a.seenHere;
+    });
+
+    return {
+      key,
+      skills,
+      collected: skills.filter((s) => s.seenHere > 0).length,
+      developed: skills.filter((s) => (s.level ?? 0) >= DEVELOPED_LEVEL && s.seenHere > 0).length,
+      total: skills.length,
+    };
+  });
+}
+
+/** The whole skill axis in one object — for the headline counters. */
+export function skillPicture(levels: RASCHLevels | null, source: AnalysisSource = 'all'): {
+  stats: Record<SkillKey, SkillStat>;
+  collected: number;
+  developed: number;
+  total: number;
+  weakest: SkillStat[];
+} {
+  const stats = skillStats({
+    diagnostics: diagnosticsFor(levels, source),
+    recentItems: levels?.recentItems ?? [],
+  });
+  return { stats, ...skillsCollected(stats), weakest: weakestSkills(stats, { minSeen: 2, limit: 5 }) };
 }
