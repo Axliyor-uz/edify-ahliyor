@@ -173,6 +173,8 @@ my-math-app/
 5.  **XP Calculation:** * Easy = 10 XP
     * Medium = 20 XP
     * Hard = 30 XP
+  
+sdcs
 
 ### C. Streak & XP Logic
 **Goal:** Habit formation and daily engagement.
