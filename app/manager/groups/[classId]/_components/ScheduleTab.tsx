@@ -14,6 +14,162 @@ import { useCenterRooms } from "@/hooks/useCenterRooms";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import { findScheduleConflicts } from "@/services/roomService";
 import { roomTheme } from "@/lib/roomColors";
+import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+
+const TRANSLATIONS = {
+  uz: {
+    // index = dayOfWeek (0 = Sunday)
+    dayName: ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"],
+    dayShort: ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"],
+    duration: (h: number, m: number) => (h && m ? `${h} soat ${m} daqiqa` : h ? `${h} soat` : `${m} daqiqa`),
+    presets: { odd: "Toq kunlar", even: "Juft kunlar", daily: "Har kuni" },
+    hourAria: "soat",
+    minuteAria: "daqiqa",
+    roomNone: "Xona tanlanmagan",
+    roomOption: (name: string, capacity: number) => `${name} · ${capacity} o'rin`,
+    freeRoomFound: (name: string) => `Bo'sh xona: ${name}`,
+    freeRoomNotFound: "Mos bo'sh xona topilmadi.",
+    pickAtLeastOneDay: "Kamida bitta kun tanlang.",
+    startBeforeEnd: (day: string) => `${day}: boshlanish vaqti tugash vaqtidan oldin bo'lishi kerak.`,
+    scheduleSaved: "Dars jadvali saqlandi!",
+    saveError: "Saqlashda xatolik yuz berdi.",
+    headerTitle: "Dars jadvali",
+    headerEditDesc: "Kunlarni tanlang va vaqtni kiriting",
+    headerViewDesc: "Guruh qaysi kunlari o'qiydi",
+    edit: "O'zgartirish",
+    cancel: "Bekor qilish",
+    save: "Saqlash",
+    emptyTitle: "Hali jadval yo'q",
+    emptyDesc: "Guruh qaysi kunlari o'qishini belgilab qo'ying.",
+    addSchedule: "Jadval qo'shish",
+    lessonsPerWeek: (n: number) => `Haftasiga ${n} ta dars`,
+    weeklyTotal: (h: number, m: number) =>
+      `Jami ${[h > 0 ? `${h} soat` : "", m > 0 ? `${m} daq` : ""].filter(Boolean).join(" ")}`,
+    conflictsTitle: "Diqqat: jadval ziddiyatlari",
+    roomBusyLine: (room: string, other: string, s: string, e: string) => `«${room}» band: «${other}» (${s}–${e})`,
+    teacherBusy: "O'qituvchi band",
+    capacityShort: "Sig'im yetarli emas",
+    capacityDetail: (n: number, cap?: number) => `${n} o'quvchi > ${cap} o'rin`,
+    step1: "Dars kunlarini tanlang",
+    clear: "Tozalash",
+    selected: "Tanlandi:",
+    step2: "Dars vaqtini kiriting",
+    sameTimeToggle: "Har kuni bir xil",
+    pickDaysFirstLeft: "Avval chapdan kunlarni tanlang",
+    startLabel: "Boshlanishi",
+    endLabel: "Tugashi",
+    endLater: "Tugash vaqti kechroq bo'lsin",
+    eachLesson: (dur: string) => `Har dars ${dur}`,
+    step3: "Xonani biriktiring",
+    optional: "(ixtiyoriy)",
+    sameRoomToggle: "Hamma kun bir xona",
+    noRoomsYet: "Hali xona qo'shilmagan.",
+    addRoomLink: "Xona qo'shish →",
+    pickDaysFirst: "Avval kunlarni tanlang",
+    suggestFreeRoom: "Bo'sh xona",
+  },
+  en: {
+    dayName: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    dayShort: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+    duration: (h: number, m: number) => (h && m ? `${h} h ${m} min` : h ? `${h} h` : `${m} min`),
+    presets: { odd: "Mon/Wed/Fri", even: "Tue/Thu/Sat", daily: "Every day" },
+    hourAria: "hours",
+    minuteAria: "minutes",
+    roomNone: "No room selected",
+    roomOption: (name: string, capacity: number) => `${name} · ${capacity} seats`,
+    freeRoomFound: (name: string) => `Free room: ${name}`,
+    freeRoomNotFound: "No suitable free room found.",
+    pickAtLeastOneDay: "Select at least one day.",
+    startBeforeEnd: (day: string) => `${day}: the start time must be before the end time.`,
+    scheduleSaved: "Schedule saved!",
+    saveError: "Something went wrong while saving.",
+    headerTitle: "Class schedule",
+    headerEditDesc: "Pick the days and set the time",
+    headerViewDesc: "The days this group meets",
+    edit: "Edit",
+    cancel: "Cancel",
+    save: "Save",
+    emptyTitle: "No schedule yet",
+    emptyDesc: "Set the days this group meets.",
+    addSchedule: "Add schedule",
+    lessonsPerWeek: (n: number) => `${n} lessons per week`,
+    weeklyTotal: (h: number, m: number) =>
+      `Total ${[h > 0 ? `${h} h` : "", m > 0 ? `${m} min` : ""].filter(Boolean).join(" ")}`,
+    conflictsTitle: "Warning: schedule conflicts",
+    roomBusyLine: (room: string, other: string, s: string, e: string) => `"${room}" is taken by "${other}" (${s}–${e})`,
+    teacherBusy: "Teacher is busy",
+    capacityShort: "Not enough capacity",
+    capacityDetail: (n: number, cap?: number) => `${n} students > ${cap} seats`,
+    step1: "Pick the lesson days",
+    clear: "Clear",
+    selected: "Selected:",
+    step2: "Set the lesson time",
+    sameTimeToggle: "Same every day",
+    pickDaysFirstLeft: "Pick the days on the left first",
+    startLabel: "Start",
+    endLabel: "End",
+    endLater: "The end time must be later",
+    eachLesson: (dur: string) => `Each lesson ${dur}`,
+    step3: "Assign a room",
+    optional: "(optional)",
+    sameRoomToggle: "One room for all days",
+    noRoomsYet: "No rooms added yet.",
+    addRoomLink: "Add a room →",
+    pickDaysFirst: "Pick the days first",
+    suggestFreeRoom: "Free room",
+  },
+  ru: {
+    dayName: ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"],
+    dayShort: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+    duration: (h: number, m: number) => (h && m ? `${h} ч ${m} мин` : h ? `${h} ч` : `${m} мин`),
+    presets: { odd: "Нечётные дни", even: "Чётные дни", daily: "Каждый день" },
+    hourAria: "часы",
+    minuteAria: "минуты",
+    roomNone: "Кабинет не выбран",
+    roomOption: (name: string, capacity: number) => `${name} · ${capacity} мест`,
+    freeRoomFound: (name: string) => `Свободный кабинет: ${name}`,
+    freeRoomNotFound: "Подходящий свободный кабинет не найден.",
+    pickAtLeastOneDay: "Выберите хотя бы один день.",
+    startBeforeEnd: (day: string) => `${day}: время начала должно быть раньше времени окончания.`,
+    scheduleSaved: "Расписание сохранено!",
+    saveError: "Не удалось сохранить расписание.",
+    headerTitle: "Расписание занятий",
+    headerEditDesc: "Выберите дни и укажите время",
+    headerViewDesc: "Дни, когда занимается группа",
+    edit: "Изменить",
+    cancel: "Отмена",
+    save: "Сохранить",
+    emptyTitle: "Расписания пока нет",
+    emptyDesc: "Укажите, в какие дни занимается группа.",
+    addSchedule: "Добавить расписание",
+    lessonsPerWeek: (n: number) => `${n} занятий в неделю`,
+    weeklyTotal: (h: number, m: number) =>
+      `Итого ${[h > 0 ? `${h} ч` : "", m > 0 ? `${m} мин` : ""].filter(Boolean).join(" ")}`,
+    conflictsTitle: "Внимание: конфликты в расписании",
+    roomBusyLine: (room: string, other: string, s: string, e: string) => `«${room}» занят: «${other}» (${s}–${e})`,
+    teacherBusy: "Преподаватель занят",
+    capacityShort: "Недостаточно мест",
+    capacityDetail: (n: number, cap?: number) => `${n} учеников > ${cap} мест`,
+    step1: "Выберите дни занятий",
+    clear: "Очистить",
+    selected: "Выбрано:",
+    step2: "Укажите время занятий",
+    sameTimeToggle: "Одинаково каждый день",
+    pickDaysFirstLeft: "Сначала выберите дни слева",
+    startLabel: "Начало",
+    endLabel: "Окончание",
+    endLater: "Время окончания должно быть позже",
+    eachLesson: (dur: string) => `Каждое занятие ${dur}`,
+    step3: "Закрепите кабинет",
+    optional: "(необязательно)",
+    sameRoomToggle: "Один кабинет на все дни",
+    noRoomsYet: "Кабинеты ещё не добавлены.",
+    addRoomLink: "Добавить кабинет →",
+    pickDaysFirst: "Сначала выберите дни",
+    suggestFreeRoom: "Свободный кабинет",
+  },
+};
+type T = typeof TRANSLATIONS.uz;
 
 interface Props {
   classId: string;
@@ -28,14 +184,15 @@ interface Props {
   prefill?: { dayOfWeek: number; roomId?: string };
 }
 
+// Mon..Sun iteration order; display names come from the language dict.
 const DAYS = [
-  { label: "Dushanba", dayOfWeek: 1, short: "Du" },
-  { label: "Seshanba", dayOfWeek: 2, short: "Se" },
-  { label: "Chorshanba", dayOfWeek: 3, short: "Ch" },
-  { label: "Payshanba", dayOfWeek: 4, short: "Pa" },
-  { label: "Juma", dayOfWeek: 5, short: "Ju" },
-  { label: "Shanba", dayOfWeek: 6, short: "Sh" },
-  { label: "Yakshanba", dayOfWeek: 0, short: "Ya" },
+  { dayOfWeek: 1 },
+  { dayOfWeek: 2 },
+  { dayOfWeek: 3 },
+  { dayOfWeek: 4 },
+  { dayOfWeek: 5 },
+  { dayOfWeek: 6 },
+  { dayOfWeek: 0 },
 ];
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
@@ -53,15 +210,13 @@ const timeToMinutes = (t: string) => {
   return (h || 0) * 60 + (m || 0);
 };
 
-// Compact Uzbek duration, or null if the range is invalid (end <= start).
-const formatDuration = (start: string, end: string) => {
+// Compact localized duration, or null if the range is invalid (end <= start).
+const formatDuration = (start: string, end: string, t: T) => {
   const diff = timeToMinutes(end) - timeToMinutes(start);
   if (diff <= 0) return null;
   const h = Math.floor(diff / 60);
   const m = diff % 60;
-  if (h && m) return `${h} soat ${m} daqiqa`;
-  if (h) return `${h} soat`;
-  return `${m} daqiqa`;
+  return t.duration(h, m);
 };
 
 type DayState = { enabled: boolean; startTime: string; endTime: string; roomId?: string };
@@ -111,41 +266,41 @@ function detectUniformRoom(schedule: ScheduleEntry[]) {
   return { sameRoom: same, uniRoom: first };
 }
 
-const PRESETS = [
-  { label: "Toq kunlar", days: [1, 3, 5] },
-  { label: "Juft kunlar", days: [2, 4, 6] },
-  { label: "Har kuni", days: [1, 2, 3, 4, 5, 6] },
+const PRESETS: { key: keyof T["presets"]; days: number[] }[] = [
+  { key: "odd", days: [1, 3, 5] },
+  { key: "even", days: [2, 4, 6] },
+  { key: "daily", days: [1, 2, 3, 4, 5, 6] },
 ];
 
 // 24-hour time picker (hour + minute dropdowns) — no AM/PM.
 function TimeSelect({
-  icon: Icon, tone, label, value, onChange, invalid,
+  icon: Icon, tone, label, value, onChange, invalid, t,
 }: {
   icon: React.ElementType; tone: string; label: string;
-  value: string; onChange: (v: string) => void; invalid?: boolean;
+  value: string; onChange: (v: string) => void; invalid?: boolean; t: T;
 }) {
   const h = (value.split(":")[0] || "00").padStart(2, "0");
   const m = (value.split(":")[1] || "00").padStart(2, "0");
   const minutes = MINUTES.includes(m) ? MINUTES : [m, ...MINUTES];
 
   const selectCls =
-    "appearance-none bg-transparent outline-none cursor-pointer text-center text-[16px] font-bold text-slate-800 tabular-nums";
+    "appearance-none bg-transparent outline-none cursor-pointer text-center text-[16px] font-bold text-on-surface tabular-nums";
 
   return (
     <div className="flex-1 min-w-0">
-      <span className="block text-[11px] font-semibold text-slate-400 mb-1.5">{label}</span>
-      <div className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border-2 bg-white transition-colors ${
-        invalid ? "border-rose-300" : "border-slate-200 focus-within:border-brand-600"
+      <span className="block text-[11px] font-semibold text-on-surface-variant mb-1.5">{label}</span>
+      <div className={`flex items-center gap-2 px-2.5 py-2 rounded-m3-md border-2 bg-surface-container-lowest transition-colors ${
+        invalid ? "border-error" : "border-outline-variant focus-within:border-primary"
       }`}>
-        <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tone}`}>
+        <span className={`w-8 h-8 rounded-m3-md flex items-center justify-center shrink-0 ${tone}`}>
           <Icon size={16} />
         </span>
         <div className="flex items-center gap-0.5">
-          <select value={h} onChange={(e) => onChange(`${e.target.value}:${m}`)} aria-label={`${label} soat`} className={selectCls}>
+          <select value={h} onChange={(e) => onChange(`${e.target.value}:${m}`)} aria-label={`${label} ${t.hourAria}`} className={selectCls}>
             {HOURS.map((hh) => <option key={hh} value={hh}>{hh}</option>)}
           </select>
-          <span className="text-[16px] font-bold text-slate-300">:</span>
-          <select value={m} onChange={(e) => onChange(`${h}:${e.target.value}`)} aria-label={`${label} daqiqa`} className={selectCls}>
+          <span className="text-[16px] font-bold text-on-surface-variant">:</span>
+          <select value={m} onChange={(e) => onChange(`${h}:${e.target.value}`)} aria-label={`${label} ${t.minuteAria}`} className={selectCls}>
             {minutes.map((mm) => <option key={mm} value={mm}>{mm}</option>)}
           </select>
         </div>
@@ -155,6 +310,8 @@ function TimeSelect({
 }
 
 export default function ScheduleTab({ classId, centerId, teacherId, studentCount, currentSchedule, onUpdate, autoEdit, prefill }: Props) {
+  const { lang } = useManagerLanguage();
+  const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const initUniform = useMemo(() => detectUniform(currentSchedule), [currentSchedule]);
   const initRoom = useMemo(() => detectUniformRoom(currentSchedule), [currentSchedule]);
 
@@ -216,11 +373,11 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
       if (findScheduleConflicts(classes, classId, teacherId, test).roomClashes.length === 0) {
         setSameRoom(true);
         setUniRoom(r.id);
-        toast.success(`Bo'sh xona: ${r.name}`);
+        toast.success(t.freeRoomFound(r.name));
         return;
       }
     }
-    toast.error("Mos bo'sh xona topilmadi.");
+    toast.error(t.freeRoomNotFound);
   };
 
   const toggleDay = (dayOfWeek: number) => {
@@ -267,11 +424,11 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
     const th = r ? roomTheme(r.color) : null;
     return (
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <span className={`w-3 h-3 rounded-full shrink-0 ${th ? th.bar : "bg-slate-200"}`} />
+        <span className={`w-3 h-3 rounded-full shrink-0 ${th ? th.bar : "bg-surface-container-highest"}`} />
         <select value={value} onChange={(e) => onChange(e.target.value)}
-          className="flex-1 min-w-0 appearance-none px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-[13px] font-medium text-slate-800 outline-none focus:border-brand-600 cursor-pointer">
-          <option value="">Xona tanlanmagan</option>
-          {activeRooms.map((rm) => <option key={rm.id} value={rm.id}>{rm.name} · {rm.capacity} o&apos;rin</option>)}
+          className="flex-1 min-w-0 appearance-none px-3 py-2.5 bg-surface-container-lowest border-2 border-outline-variant rounded-m3-md text-[13px] font-medium text-on-surface focus:outline-none focus:border-primary cursor-pointer">
+          <option value="">{t.roomNone}</option>
+          {activeRooms.map((rm) => <option key={rm.id} value={rm.id}>{t.roomOption(rm.name, rm.capacity)}</option>)}
         </select>
       </div>
     );
@@ -306,14 +463,14 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
 
   const handleSave = async () => {
     if (enabledDays.length === 0) {
-      toast.error("Kamida bitta kun tanlang.");
+      toast.error(t.pickAtLeastOneDay);
       return;
     }
     // Validate times on the proposed schedule (covers uniform + per-day).
     for (const s of proposed) {
       if (s.startTime >= s.endTime) {
-        const label = DAYS.find((d) => d.dayOfWeek === s.dayOfWeek)?.label || "";
-        toast.error(`${label}: boshlanish vaqti tugash vaqtidan oldin bo'lishi kerak.`);
+        const label = t.dayName[s.dayOfWeek] || "";
+        toast.error(t.startBeforeEnd(label));
         return;
       }
     }
@@ -324,10 +481,10 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
       await updateDoc(doc(db, "classes", classId), { schedule: proposed });
       onUpdate(proposed);
       setIsEditing(false);
-      toast.success("Dars jadvali saqlandi!");
+      toast.success(t.scheduleSaved);
     } catch (err) {
       console.error(err);
-      toast.error("Saqlashda xatolik yuz berdi.");
+      toast.error(t.saveError);
     } finally {
       setIsSaving(false);
     }
@@ -342,9 +499,9 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
   const weeklyHours = Math.floor(weeklyMinutes / 60);
   const weeklyRemMin = weeklyMinutes % 60;
 
-  const uniDuration = formatDuration(uniStart, uniEnd);
+  const uniDuration = formatDuration(uniStart, uniEnd, t);
   const uniInvalid = sameTime && !uniDuration;
-  const perDayInvalid = !sameTime && enabledDays.some((d) => !formatDuration(dayStates[d.dayOfWeek].startTime, dayStates[d.dayOfWeek].endTime));
+  const perDayInvalid = !sameTime && enabledDays.some((d) => !formatDuration(dayStates[d.dayOfWeek].startTime, dayStates[d.dayOfWeek].endTime, t));
   const canSave = enabledDays.length > 0 && !uniInvalid && !perDayInvalid;
 
   return (
@@ -352,13 +509,13 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
       {/* Card header: title (left) + actions (top-right) */}
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 shrink-0">
+          <div className="w-11 h-11 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container shrink-0">
             <CalendarDays size={20} />
           </div>
           <div>
-            <h3 className="text-[15px] font-semibold text-slate-900">Dars jadvali</h3>
-            <p className="text-[13px] text-slate-500 mt-0.5">
-              {isEditing ? "Kunlarni tanlang va vaqtni kiriting" : "Guruh qaysi kunlari o'qiydi"}
+            <h3 className="text-[15px] font-semibold text-on-surface">{t.headerTitle}</h3>
+            <p className="text-[13px] text-on-surface-variant mt-0.5">
+              {isEditing ? t.headerEditDesc : t.headerViewDesc}
             </p>
           </div>
         </div>
@@ -368,9 +525,9 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
           {!isEditing && sortedSchedule.length > 0 && (
             <button
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-brand-line hover:bg-brand-50 text-slate-700 font-medium text-[13px] rounded-full transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest border border-outline-variant hover:bg-state-hover text-on-surface font-medium text-[13px] rounded-full transition-colors"
             >
-              <Edit3 size={15} /> O&apos;zgartirish
+              <Edit3 size={15} /> {t.edit}
             </button>
           )}
           {isEditing && (
@@ -379,18 +536,18 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                 <button
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="px-4 py-2.5 text-[13px] font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+                  className="px-4 py-2.5 text-[13px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-state-hover rounded-m3-md transition-colors disabled:opacity-50"
                 >
-                  Bekor qilish
+                  {t.cancel}
                 </button>
               )}
               <button
                 onClick={handleSave}
                 disabled={isSaving || !canSave}
-                className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-[14px] rounded-full transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-brand-600/25"
+                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-on-primary font-bold text-[14px] rounded-full transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-elev-1"
               >
                 {isSaving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
-                Saqlash
+                {t.save}
               </button>
             </>
           )}
@@ -400,41 +557,40 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
       {/* ================= VIEW MODE ================= */}
       {!isEditing && (
         sortedSchedule.length === 0 ? (
-          <div className="py-16 flex flex-col items-center justify-center text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center border border-slate-200 mb-4">
-              <CalendarX2 size={26} className="text-slate-300" />
+          <div className="py-16 flex flex-col items-center justify-center text-center bg-surface-container-low rounded-m3-lg border border-dashed border-outline-variant">
+            <div className="w-14 h-14 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant mb-4">
+              <CalendarX2 size={26} className="text-on-surface-variant" />
             </div>
-            <h4 className="text-sm font-semibold text-slate-700">Hali jadval yo&apos;q</h4>
-            <p className="text-[13px] text-slate-500 mt-1.5 max-w-[260px]">
-              Guruh qaysi kunlari o&apos;qishini belgilab qo&apos;ying.
+            <h4 className="text-sm font-semibold text-on-surface">{t.emptyTitle}</h4>
+            <p className="text-[13px] text-on-surface-variant mt-1.5 max-w-[260px]">
+              {t.emptyDesc}
             </p>
             <button
               onClick={() => setIsEditing(true)}
-              className="mt-5 px-5 py-2.5 bg-brand-600 text-white hover:bg-brand-700 font-semibold text-[13px] rounded-full transition-colors active:scale-[0.98] shadow-sm shadow-brand-600/25"
+              className="mt-5 px-5 py-2.5 bg-primary text-on-primary font-semibold text-[13px] rounded-full transition-colors active:scale-[0.98] shadow-elev-1"
             >
-              Jadval qo&apos;shish
+              {t.addSchedule}
             </button>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {sortedSchedule.map((entry) => {
-                const dayObj = DAYS.find((d) => d.dayOfWeek === entry.dayOfWeek);
                 const weekend = isWeekend(entry.dayOfWeek);
-                const duration = formatDuration(entry.startTime, entry.endTime);
+                const duration = formatDuration(entry.startTime, entry.endTime, t);
                 return (
-                  <div key={entry.dayOfWeek} className="flex items-center justify-between gap-3 p-3 bg-white border border-brand-line rounded-2xl">
+                  <div key={entry.dayOfWeek} className="flex items-center justify-between gap-3 p-3 bg-surface-container-lowest border border-outline-variant rounded-m3-lg">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-[14px] font-bold shrink-0 ${
-                        weekend ? "bg-rose-50 text-rose-500" : "bg-brand-50 text-brand-700"
+                      <div className={`w-11 h-11 rounded-m3-md flex items-center justify-center text-[14px] font-bold shrink-0 ${
+                        weekend ? "bg-error-container text-on-error-container" : "bg-primary-container text-on-primary-container"
                       }`}>
-                        {dayObj?.short}
+                        {t.dayShort[entry.dayOfWeek]}
                       </div>
                       <div className="min-w-0">
-                        <span className="block text-sm font-semibold text-slate-900 truncate">{dayObj?.label}</span>
+                        <span className="block text-sm font-semibold text-on-surface truncate">{t.dayName[entry.dayOfWeek]}</span>
                         <div className="flex items-center gap-2 mt-0.5">
                           {duration && (
-                            <span className="flex items-center gap-1 text-xs text-slate-400">
+                            <span className="flex items-center gap-1 text-xs text-on-surface-variant">
                               <Hourglass size={11} /> {duration}
                             </span>
                           )}
@@ -446,10 +602,10 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded-lg shrink-0">
-                      <Clock size={14} className="text-brand-600" />
-                      <span className="text-[13px] font-bold text-slate-700 tabular-nums">
-                        {entry.startTime}<span className="text-slate-300 font-normal mx-0.5">–</span>{entry.endTime}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-container-low rounded-m3-sm shrink-0">
+                      <Clock size={14} className="text-primary" />
+                      <span className="text-[13px] font-bold text-on-surface tabular-nums">
+                        {entry.startTime}<span className="text-on-surface-variant font-normal mx-0.5">–</span>{entry.endTime}
                       </span>
                     </div>
                   </div>
@@ -457,13 +613,13 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
               })}
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 bg-brand-50/60 border border-brand-100 rounded-2xl">
-              <span className="flex items-center gap-2 text-[13px] font-semibold text-brand-800">
-                <CalendarDays size={15} /> Haftasiga {sortedSchedule.length} ta dars
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 bg-primary-container rounded-m3-lg">
+              <span className="flex items-center gap-2 text-[13px] font-semibold text-on-primary-container">
+                <CalendarDays size={15} /> {t.lessonsPerWeek(sortedSchedule.length)}
               </span>
               {weeklyMinutes > 0 && (
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-brand-800">
-                  <Hourglass size={15} /> Jami {weeklyHours > 0 && `${weeklyHours} soat`} {weeklyRemMin > 0 && `${weeklyRemMin} daq`}
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-on-primary-container">
+                  <Hourglass size={15} /> {t.weeklyTotal(weeklyHours, weeklyRemMin)}
                 </span>
               )}
             </div>
@@ -477,21 +633,21 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
 
           {/* Conflict warnings (soft — the manager can still save) */}
           {hasIssues && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <div className="flex items-center gap-2 text-amber-800 font-bold text-[13px] mb-2">
-                <AlertTriangle size={15} /> Diqqat: jadval ziddiyatlari
+            <div className="rounded-m3-lg bg-warning-container p-4">
+              <div className="flex items-center gap-2 text-on-warning-container font-bold text-[13px] mb-2">
+                <AlertTriangle size={15} /> {t.conflictsTitle}
               </div>
-              <ul className="space-y-1.5 text-[12.5px] text-amber-800">
+              <ul className="space-y-1.5 text-[12.5px] text-on-warning-container">
                 {conflicts.roomClashes.map((c, i) => (
                   <li key={`r${i}`} className="flex items-start gap-1.5">
                     <DoorOpen size={13} className="mt-0.5 shrink-0" />
-                    <span><b>{DAYS.find((d) => d.dayOfWeek === c.dayOfWeek)?.label}</b> {c.startTime}–{c.endTime} · «{c.roomName}» band: «{c.otherClassTitle}» ({c.otherStart}–{c.otherEnd})</span>
+                    <span><b>{t.dayName[c.dayOfWeek]}</b> {c.startTime}–{c.endTime} · {t.roomBusyLine(c.roomName ?? "", c.otherClassTitle ?? "", c.otherStart, c.otherEnd)}</span>
                   </li>
                 ))}
                 {conflicts.teacherClashes.map((c, i) => (
                   <li key={`t${i}`} className="flex items-start gap-1.5">
                     <User size={13} className="mt-0.5 shrink-0" />
-                    <span>O&apos;qituvchi band: <b>{DAYS.find((d) => d.dayOfWeek === c.dayOfWeek)?.label}</b> {c.startTime}–{c.endTime} · «{c.otherClassTitle}»</span>
+                    <span>{t.teacherBusy}: <b>{t.dayName[c.dayOfWeek]}</b> {c.startTime}–{c.endTime} · «{c.otherClassTitle}»</span>
                   </li>
                 ))}
                 {capacityWarnings.map((s, i) => {
@@ -499,7 +655,7 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                   return (
                     <li key={`c${i}`} className="flex items-start gap-1.5">
                       <User size={13} className="mt-0.5 shrink-0" />
-                      <span>Sig&apos;im yetarli emas: <b>{DAYS.find((d) => d.dayOfWeek === s.dayOfWeek)?.label}</b> · «{s.roomName}» ({studentCount} o&apos;quvchi &gt; {cap} o&apos;rin)</span>
+                      <span>{t.capacityShort}: <b>{t.dayName[s.dayOfWeek]}</b> · «{s.roomName}» ({t.capacityDetail(studentCount, cap)})</span>
                     </li>
                   );
                 })}
@@ -512,8 +668,8 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
           {/* LEFT — days */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-brand-600 text-white text-[12px] font-bold flex items-center justify-center">1</span>
-              <span className="text-[14px] font-semibold text-slate-800">Dars kunlarini tanlang</span>
+              <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-[12px] font-bold flex items-center justify-center">1</span>
+              <span className="text-[14px] font-semibold text-on-surface">{t.step1}</span>
             </div>
 
             <div className="grid grid-cols-7 gap-1.5">
@@ -526,20 +682,20 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
                     type="button"
                     onClick={() => toggleDay(d.dayOfWeek)}
                     aria-pressed={on}
-                    title={d.label}
+                    title={t.dayName[d.dayOfWeek]}
                     className="flex flex-col items-center gap-1.5 group"
                   >
-                    <span className={`w-full aspect-square rounded-2xl flex items-center justify-center text-[14px] font-bold transition-all ${
+                    <span className={`w-full aspect-square rounded-m3-lg flex items-center justify-center text-[14px] font-bold transition-all ${
                       on
                         ? weekend
-                          ? "bg-rose-500 text-white shadow-md shadow-rose-500/30 scale-105"
-                          : "bg-brand-600 text-white shadow-md shadow-brand-600/30 scale-105"
-                        : "bg-slate-50 text-slate-400 border border-slate-200 group-hover:border-brand-200 group-hover:text-slate-600"
+                          ? "bg-error text-on-error shadow-elev-2 scale-105"
+                          : "bg-primary text-on-primary shadow-elev-2 scale-105"
+                        : "bg-surface-container-low text-on-surface-variant border border-outline-variant group-hover:border-primary group-hover:text-on-surface"
                     }`}>
-                      {on ? <Check size={18} strokeWidth={3} /> : d.short}
+                      {on ? <Check size={18} strokeWidth={3} /> : t.dayShort[d.dayOfWeek]}
                     </span>
-                    <span className={`text-[10px] font-medium ${on ? (weekend ? "text-rose-600" : "text-brand-700") : "text-slate-400"}`}>
-                      {d.short}
+                    <span className={`text-[10px] font-medium ${on ? (weekend ? "text-error" : "text-primary") : "text-on-surface-variant"}`}>
+                      {t.dayShort[d.dayOfWeek]}
                     </span>
                   </button>
                 );
@@ -547,37 +703,37 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Sparkles size={14} className="text-brand-600" />
+              <Sparkles size={14} className="text-primary" />
               {PRESETS.map((p) => (
                 <button
-                  key={p.label}
+                  key={p.key}
                   type="button"
                   onClick={() => applyPreset(p.days)}
-                  className="px-3 py-1.5 bg-brand-50 text-brand-800 hover:bg-brand-100 text-[12px] font-semibold rounded-full transition-colors active:scale-95"
+                  className="px-3 py-1.5 bg-primary-container text-on-primary-container text-[12px] font-semibold rounded-full transition-colors active:scale-95"
                 >
-                  {p.label}
+                  {t.presets[p.key]}
                 </button>
               ))}
               {enabledDays.length > 0 && (
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="flex items-center gap-1 px-3 py-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 text-[12px] font-semibold rounded-full transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 text-on-surface-variant hover:text-on-error-container hover:bg-error-container text-[12px] font-semibold rounded-full transition-colors"
                 >
-                  <Trash2 size={13} /> Tozalash
+                  <Trash2 size={13} /> {t.clear}
                 </button>
               )}
             </div>
 
             {/* Live preview */}
             {enabledDays.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2.5 bg-slate-50 rounded-xl">
-                <span className="text-[12px] font-medium text-slate-500 mr-0.5">Tanlandi:</span>
+              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2.5 bg-surface-container-low rounded-m3-md">
+                <span className="text-[12px] font-medium text-on-surface-variant mr-0.5">{t.selected}</span>
                 {enabledDays.map((d) => (
                   <span key={d.dayOfWeek} className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${
-                    isWeekend(d.dayOfWeek) ? "bg-rose-100 text-rose-600" : "bg-brand-100 text-brand-800"
+                    isWeekend(d.dayOfWeek) ? "bg-error-container text-on-error-container" : "bg-primary-container text-on-primary-container"
                   }`}>
-                    {d.short}
+                    {t.dayShort[d.dayOfWeek]}
                   </span>
                 ))}
               </div>
@@ -588,39 +744,39 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
           <div className="lg:col-span-3 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-brand-600 text-white text-[12px] font-bold flex items-center justify-center">2</span>
-                <span className="text-[14px] font-semibold text-slate-800">Dars vaqtini kiriting</span>
+                <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-[12px] font-bold flex items-center justify-center">2</span>
+                <span className="text-[14px] font-semibold text-on-surface">{t.step2}</span>
               </div>
               <button
                 type="button"
                 onClick={toggleSameTime}
                 role="switch"
                 aria-checked={sameTime}
-                className="flex items-center gap-2 text-[12px] font-medium text-slate-500"
+                className="flex items-center gap-2 text-[12px] font-medium text-on-surface-variant"
               >
-                Har kuni bir xil
-                <span className={`relative w-9 h-5 rounded-full transition-colors ${sameTime ? "bg-brand-600" : "bg-slate-300"}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sameTime ? "translate-x-4" : ""}`} />
+                {t.sameTimeToggle}
+                <span className={`relative w-9 h-5 rounded-full transition-colors ${sameTime ? "bg-primary" : "bg-surface-container-highest"}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow transition-transform ${sameTime ? "translate-x-4 bg-on-primary" : "bg-outline"}`} />
                 </span>
               </button>
             </div>
 
             {enabledDays.length === 0 ? (
-              <div className="flex items-center gap-2 px-4 py-5 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-[13px] text-slate-400">
-                <CalendarDays size={16} /> Avval chapdan kunlarni tanlang
+              <div className="flex items-center gap-2 px-4 py-5 bg-surface-container-low border border-dashed border-outline-variant rounded-m3-md text-[13px] text-on-surface-variant">
+                <CalendarDays size={16} /> {t.pickDaysFirstLeft}
               </div>
             ) : sameTime ? (
-              <div className="p-4 bg-white border-2 border-slate-100 rounded-2xl">
+              <div className="p-4 bg-surface-container-lowest border-2 border-outline-variant rounded-m3-lg">
                 <div className="flex flex-wrap items-end gap-3">
-                  <TimeSelect icon={Sunrise} tone="bg-brand-100 text-brand-700" label="Boshlanishi" value={uniStart} onChange={setUniStart} invalid={uniInvalid} />
-                  <ArrowRight size={18} className="text-slate-300 mb-2.5 shrink-0" />
-                  <TimeSelect icon={Sunset} tone="bg-rose-100 text-rose-500" label="Tugashi" value={uniEnd} onChange={setUniEnd} invalid={uniInvalid} />
+                  <TimeSelect icon={Sunrise} tone="bg-primary-container text-on-primary-container" label={t.startLabel} value={uniStart} onChange={setUniStart} invalid={uniInvalid} t={t} />
+                  <ArrowRight size={18} className="text-on-surface-variant mb-2.5 shrink-0" />
+                  <TimeSelect icon={Sunset} tone="bg-error-container text-on-error-container" label={t.endLabel} value={uniEnd} onChange={setUniEnd} invalid={uniInvalid} t={t} />
                   <div className="ml-auto mb-1">
                     {uniInvalid ? (
-                      <span className="text-[12px] font-medium text-rose-500">Tugash vaqti kechroq bo&apos;lsin</span>
+                      <span className="text-[12px] font-medium text-error">{t.endLater}</span>
                     ) : (
-                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-100 text-brand-800 text-[12px] font-semibold rounded-full">
-                        <Hourglass size={12} /> Har dars {uniDuration}
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-container text-on-primary-container text-[12px] font-semibold rounded-full">
+                        <Hourglass size={12} /> {t.eachLesson(uniDuration || "")}
                       </span>
                     )}
                   </div>
@@ -630,28 +786,28 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {enabledDays.map((d) => {
                   const st = dayStates[d.dayOfWeek];
-                  const dur = formatDuration(st.startTime, st.endTime);
+                  const dur = formatDuration(st.startTime, st.endTime, t);
                   const invalid = !dur;
                   const weekend = isWeekend(d.dayOfWeek);
                   return (
-                    <div key={d.dayOfWeek} className="p-3 bg-white border-2 border-slate-100 rounded-xl">
+                    <div key={d.dayOfWeek} className="p-3 bg-surface-container-lowest border-2 border-outline-variant rounded-m3-md">
                       <div className="flex items-center gap-2 mb-2.5">
-                        <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold ${
-                          weekend ? "bg-rose-50 text-rose-500" : "bg-brand-50 text-brand-700"
+                        <span className={`w-7 h-7 rounded-m3-sm flex items-center justify-center text-[11px] font-bold ${
+                          weekend ? "bg-error-container text-on-error-container" : "bg-primary-container text-on-primary-container"
                         }`}>
-                          {d.short}
+                          {t.dayShort[d.dayOfWeek]}
                         </span>
-                        <span className="text-[13px] font-semibold text-slate-800">{d.label}</span>
+                        <span className="text-[13px] font-semibold text-on-surface">{t.dayName[d.dayOfWeek]}</span>
                         {dur && (
-                          <span className="ml-auto flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                          <span className="ml-auto flex items-center gap-1 text-[11px] font-medium text-on-surface-variant">
                             <Hourglass size={11} /> {dur}
                           </span>
                         )}
                       </div>
                       <div className="flex items-end gap-2">
-                        <TimeSelect icon={Sunrise} tone="bg-brand-100 text-brand-700" label="Boshlanishi" value={st.startTime} onChange={(v) => updateDayTime(d.dayOfWeek, "startTime", v)} invalid={invalid} />
-                        <ArrowRight size={16} className="text-slate-300 mb-2.5 shrink-0" />
-                        <TimeSelect icon={Sunset} tone="bg-rose-100 text-rose-500" label="Tugashi" value={st.endTime} onChange={(v) => updateDayTime(d.dayOfWeek, "endTime", v)} invalid={invalid} />
+                        <TimeSelect icon={Sunrise} tone="bg-primary-container text-on-primary-container" label={t.startLabel} value={st.startTime} onChange={(v) => updateDayTime(d.dayOfWeek, "startTime", v)} invalid={invalid} t={t} />
+                        <ArrowRight size={16} className="text-on-surface-variant mb-2.5 shrink-0" />
+                        <TimeSelect icon={Sunset} tone="bg-error-container text-on-error-container" label={t.endLabel} value={st.endTime} onChange={(v) => updateDayTime(d.dayOfWeek, "endTime", v)} invalid={invalid} t={t} />
                       </div>
                     </div>
                   );
@@ -665,42 +821,42 @@ export default function ScheduleTab({ classId, centerId, teacherId, studentCount
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-brand-600 text-white text-[12px] font-bold flex items-center justify-center">3</span>
-                <span className="text-[14px] font-semibold text-slate-800">Xonani biriktiring <span className="text-slate-400 font-normal">(ixtiyoriy)</span></span>
+                <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-[12px] font-bold flex items-center justify-center">3</span>
+                <span className="text-[14px] font-semibold text-on-surface">{t.step3} <span className="text-on-surface-variant font-normal">{t.optional}</span></span>
               </div>
               {enabledDays.length > 0 && activeRooms.length > 0 && (
                 <button type="button" onClick={toggleSameRoom} role="switch" aria-checked={sameRoom}
-                  className="flex items-center gap-2 text-[12px] font-medium text-slate-500">
-                  Hamma kun bir xona
-                  <span className={`relative w-9 h-5 rounded-full transition-colors ${sameRoom ? "bg-brand-600" : "bg-slate-300"}`}>
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sameRoom ? "translate-x-4" : ""}`} />
+                  className="flex items-center gap-2 text-[12px] font-medium text-on-surface-variant">
+                  {t.sameRoomToggle}
+                  <span className={`relative w-9 h-5 rounded-full transition-colors ${sameRoom ? "bg-primary" : "bg-surface-container-highest"}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow transition-transform ${sameRoom ? "translate-x-4 bg-on-primary" : "bg-outline"}`} />
                   </span>
                 </button>
               )}
             </div>
 
             {activeRooms.length === 0 ? (
-              <div className="flex items-center gap-2 px-4 py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-[13px] text-slate-500">
-                <DoorOpen size={16} className="text-slate-400" /> Hali xona qo&apos;shilmagan.
-                <Link href="/manager/rooms" className="font-semibold text-brand-700 hover:underline">Xona qo&apos;shish →</Link>
+              <div className="flex items-center gap-2 px-4 py-4 bg-surface-container-low border border-dashed border-outline-variant rounded-m3-md text-[13px] text-on-surface-variant">
+                <DoorOpen size={16} className="text-on-surface-variant" /> {t.noRoomsYet}
+                <Link href="/manager/rooms" className="font-semibold text-primary hover:underline">{t.addRoomLink}</Link>
               </div>
             ) : enabledDays.length === 0 ? (
-              <div className="flex items-center gap-2 px-4 py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-[13px] text-slate-400">
-                <DoorOpen size={16} /> Avval kunlarni tanlang
+              <div className="flex items-center gap-2 px-4 py-4 bg-surface-container-low border border-dashed border-outline-variant rounded-m3-md text-[13px] text-on-surface-variant">
+                <DoorOpen size={16} /> {t.pickDaysFirst}
               </div>
             ) : sameRoom ? (
               <div className="flex flex-wrap items-center gap-2">
                 {renderRoomSelect(uniRoom, setUniRoom)}
                 <button type="button" onClick={suggestFreeRoom}
-                  className="flex items-center gap-1.5 px-3 py-2.5 bg-brand-50 text-brand-800 hover:bg-brand-100 rounded-full text-[12.5px] font-semibold transition-colors shrink-0">
-                  <Wand2 size={14} /> Bo&apos;sh xona
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-primary-container text-on-primary-container rounded-full text-[12.5px] font-semibold transition-colors shrink-0">
+                  <Wand2 size={14} /> {t.suggestFreeRoom}
                 </button>
               </div>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {enabledDays.map((d) => (
-                  <div key={d.dayOfWeek} className="flex items-center gap-2 p-2.5 bg-white border border-brand-line rounded-2xl">
-                    <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold bg-slate-100 text-slate-600 shrink-0">{d.short}</span>
+                  <div key={d.dayOfWeek} className="flex items-center gap-2 p-2.5 bg-surface-container-lowest border border-outline-variant rounded-m3-lg">
+                    <span className="w-8 h-8 rounded-m3-sm flex items-center justify-center text-[11px] font-bold bg-surface-container text-on-surface-variant shrink-0">{t.dayShort[d.dayOfWeek]}</span>
                     {renderRoomSelect(dayStates[d.dayOfWeek].roomId || "", (v) => setDayRoom(d.dayOfWeek, v))}
                   </div>
                 ))}

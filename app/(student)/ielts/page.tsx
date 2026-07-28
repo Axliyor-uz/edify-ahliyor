@@ -15,16 +15,72 @@ import {
   Page, PageHeader, Card, Tile, Chip, Button, Banner,
   EmptyState, LoadingState, type TileProps,
 } from '@/components/student-ui';
+import { useStudentLanguage } from '../layout';
 
 // Extracted per architecture doc (Section 3-B)
 import JoinIeltsModal from './_components/JoinIeltsModal';
 
+// --- TRANSLATIONS ---
+const IELTS_TRANSLATIONS: any = {
+  uz: {
+    title: "IELTS Hub",
+    join: "Guruhga Qo'shilish",
+    subtitleMember: (n: number) => `${n} ta guruhga a'zosiz`,
+    subtitleEmpty: "O'qituvchingizning IELTS guruhiga qo'shiling.",
+    students: "O'quvchi",
+    tip: { before: "Yangi guruhga qo'shilish uchun", link: "bu yerni bosing", middle: "va yangi", after: "kodini kiriting." },
+    emptyTitle: "Hali hech qanday guruh yo'q",
+    emptyDesc: "O'qituvchingizdan I-XXXX formatidagi IELTS guruh kodini oling va quyidagi tugmani bosing.",
+    codeTip: { before: "Guruh kodi", after: "prefiksi bilan boshlanadi. Masalan:" },
+    skills: {
+      listening: "40 savoldan iborat, audio yozuvlarni tinglash",
+      reading: "40 savoldan iborat, matnlarni o'qish va tahlil",
+      writing: "Grafikni tavsiflash va insho yozish",
+      speaking: "Og'zaki intervyu, 3 qismdan iborat",
+    },
+  },
+  en: {
+    title: "IELTS Hub",
+    join: "Join a Group",
+    subtitleMember: (n: number) => `You are a member of ${n} ${n === 1 ? 'group' : 'groups'}`,
+    subtitleEmpty: "Join your teacher's IELTS group.",
+    students: "Students",
+    tip: { before: "To join a new group,", link: "click here", middle: "and enter a new", after: "code." },
+    emptyTitle: "No groups yet",
+    emptyDesc: "Get the I-XXXX IELTS group code from your teacher and press the button below.",
+    codeTip: { before: "The group code starts with the", after: "prefix. For example:" },
+    skills: {
+      listening: "40 questions, listening to audio recordings",
+      reading: "40 questions, reading and analyzing texts",
+      writing: "Describing a graph and writing an essay",
+      speaking: "Oral interview in 3 parts",
+    },
+  },
+  ru: {
+    title: "IELTS Hub",
+    join: "Вступить в группу",
+    subtitleMember: (n: number) => `Вы состоите в ${n} ${n === 1 ? 'группе' : 'группах'}`,
+    subtitleEmpty: "Присоединитесь к IELTS группе вашего учителя.",
+    students: "Учеников",
+    tip: { before: "Чтобы вступить в новую группу,", link: "нажмите здесь", middle: "и введите новый код", after: "" },
+    emptyTitle: "Пока нет ни одной группы",
+    emptyDesc: "Получите у учителя код IELTS группы в формате I-XXXX и нажмите кнопку ниже.",
+    codeTip: { before: "Код группы начинается с префикса", after: "— например:" },
+    skills: {
+      listening: "40 вопросов, прослушивание аудиозаписей",
+      reading: "40 вопросов, чтение и анализ текстов",
+      writing: "Описание графика и написание эссе",
+      speaking: "Устное интервью из 3 частей",
+    },
+  },
+};
+
 // ─── Static data ──────────────────────────────────────────────────────────────
-const SKILLS: { icon: typeof Headphones; label: string; desc: string; tone: TileProps['tone'] }[] = [
-  { icon: Headphones, label: 'Listening', desc: '40 savoldan iborat, audio yozuvlarni tinglash', tone: 'secondary' },
-  { icon: BookOpen,   label: 'Reading',   desc: "40 savoldan iborat, matnlarni o'qish va tahlil",  tone: 'success' },
-  { icon: PenLine,    label: 'Writing',   desc: 'Grafikni tavsiflash va insho yozish',               tone: 'gold' },
-  { icon: Mic,        label: 'Speaking',  desc: "Og'zaki intervyu, 3 qismdan iborat",                tone: 'primary' },
+const SKILLS: { icon: typeof Headphones; label: string; key: string; tone: TileProps['tone'] }[] = [
+  { icon: Headphones, label: 'Listening', key: 'listening', tone: 'secondary' },
+  { icon: BookOpen,   label: 'Reading',   key: 'reading',   tone: 'success' },
+  { icon: PenLine,    label: 'Writing',   key: 'writing',   tone: 'gold' },
+  { icon: Mic,        label: 'Speaking',  key: 'speaking',  tone: 'primary' },
 ];
 
 function bandBadgeStatus(band: number) {
@@ -34,7 +90,7 @@ function bandBadgeStatus(band: number) {
 }
 
 // ─── Group card ───────────────────────────────────────────────────────────────
-function GroupCard({ group }: { group: IeltsGroup }) {
+function GroupCard({ group, t }: { group: IeltsGroup; t: any }) {
   const band = Number(group.targetBand);
   return (
     <Card interactive flush className="group flex flex-col overflow-hidden">
@@ -68,7 +124,7 @@ function GroupCard({ group }: { group: IeltsGroup }) {
       <div className="mt-auto flex items-center justify-between gap-3 border-t border-outline-variant px-s-card py-4">
         <div className="flex items-center gap-1.5 text-[12px] font-black uppercase tracking-widest text-on-surface-variant">
           <Users size={14} strokeWidth={3} />
-          {group.studentIds?.length ?? 0} O'quvchi
+          {group.studentIds?.length ?? 0} {t.students}
         </div>
         <div className="flex items-center gap-1 font-mono text-[12px] font-black text-on-surface-variant">
           <Hash size={12} className="text-outline" />
@@ -83,6 +139,8 @@ function GroupCard({ group }: { group: IeltsGroup }) {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export default function StudentIeltsHubPage() {
   const { user } = useAuth();
+  const { lang } = useStudentLanguage();
+  const t = IELTS_TRANSLATIONS[lang] || IELTS_TRANSLATIONS.uz;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [groups, setGroups]   = useState<IeltsGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +179,7 @@ export default function StudentIeltsHubPage() {
 
   const joinButton = (
     <Button icon={<Plus size={18} strokeWidth={3} />} onClick={() => setIsModalOpen(true)}>
-      Guruhga Qo'shilish
+      {t.join}
     </Button>
   );
 
@@ -130,12 +188,8 @@ export default function StudentIeltsHubPage() {
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <PageHeader
-        title="IELTS Hub"
-        subtitle={
-          hasGroups
-            ? `${groups.length} ta guruhga a'zosiz`
-            : "O'qituvchingizning IELTS guruhiga qo'shiling."
-        }
+        title={t.title}
+        subtitle={hasGroups ? t.subtitleMember(groups.length) : t.subtitleEmpty}
         actions={joinButton}
       />
 
@@ -146,7 +200,7 @@ export default function StudentIeltsHubPage() {
         <div className="flex flex-col gap-s-section">
           <div className="grid gap-s-gap sm:grid-cols-2">
             {groups.map(g => (
-              <GroupCard key={g.id} group={g} />
+              <GroupCard key={g.id} group={g} t={t} />
             ))}
           </div>
 
@@ -156,14 +210,14 @@ export default function StudentIeltsHubPage() {
             icon="💡"
             title={
               <span className="font-bold">
-                Yangi guruhga qo'shilish uchun{' '}
+                {t.tip.before}{' '}
                 <button
                   onClick={() => setIsModalOpen(true)}
                   className="font-black underline underline-offset-2"
                 >
-                  bu yerni bosing
+                  {t.tip.link}
                 </button>{' '}
-                va yangi <span className="font-black">I-XXXX</span> kodini kiriting.
+                {t.tip.middle} <span className="font-black">I-XXXX</span> {t.tip.after}
               </span>
             }
           />
@@ -177,22 +231,22 @@ export default function StudentIeltsHubPage() {
           <Card>
             <EmptyState
               icon={<Target size={30} strokeWidth={2.5} />}
-              title="Hali hech qanday guruh yo'q"
-              description="O'qituvchingizdan I-XXXX formatidagi IELTS guruh kodini oling va quyidagi tugmani bosing."
+              title={t.emptyTitle}
+              description={t.emptyDesc}
               action={joinButton}
             />
           </Card>
 
           {/* Skills info tiles */}
           <div className="grid grid-cols-1 gap-s-gap sm:grid-cols-2">
-            {SKILLS.map(({ icon: Icon, label, desc, tone }) => (
+            {SKILLS.map(({ icon: Icon, label, key, tone }) => (
               <Card key={label} interactive className="flex items-start gap-4">
                 <Tile tone={tone}>
                   <Icon size={20} strokeWidth={2.5} />
                 </Tile>
                 <div className="min-w-0">
                   <p className="s-display text-[15px] font-bold">{label}</p>
-                  <p className="mt-0.5 text-[13px] font-bold leading-snug text-on-surface-variant">{desc}</p>
+                  <p className="mt-0.5 text-[13px] font-bold leading-snug text-on-surface-variant">{t.skills[key]}</p>
                 </div>
               </Card>
             ))}
@@ -204,8 +258,8 @@ export default function StudentIeltsHubPage() {
             icon="💡"
             title={
               <span className="font-bold">
-                Guruh kodi <span className="font-black">I-</span> prefiksi bilan
-                boshlanadi. Masalan:{' '}
+                {t.codeTip.before} <span className="font-black">I-</span>{' '}
+                {t.codeTip.after}{' '}
                 <span className="rounded-m3-sm bg-surface px-1.5 py-0.5 font-mono font-black text-on-surface">
                   I-X8K2
                 </span>
@@ -217,7 +271,7 @@ export default function StudentIeltsHubPage() {
       )}
 
       {/* ── Modal (Section 3-B) ── */}
-      <JoinIeltsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <JoinIeltsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} lang={lang} />
     </Page>
   );
 }

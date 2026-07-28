@@ -5,12 +5,19 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    // lib holds class-name bundles (e.g. lib/roomColors.ts) that appear
+    // nowhere else — without this glob Tailwind would not generate them.
+    "./lib/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       // 🟢 Asosiy shrift oilasini Jakarta ga almashtiramiz
       fontFamily: {
         sans: ['var(--font-jakarta)', 'sans-serif'],
+        // 🔵 Teacher switchboard faces — resolved per design.teacher.config.ts
+        // › Font_style via --t-font-* in components/ui/theme.css.
+        "t-body": ['var(--t-font-body)', 'sans-serif'],
+        "t-display": ['var(--t-font-display)', 'sans-serif'],
       },
       // 🟢 Moliya brend palitrasi ("Yashil CRM" dizayn yo'nalishi).
       // line = yashil-kulrang card border; ink = to'q yashil matn.
@@ -127,6 +134,12 @@ const config: Config = {
         "medal-silver": "var(--s-medal-silver)",
         "medal-bronze": "var(--s-medal-bronze)",
         "medal-ink": "var(--s-medal-ink)",
+        // 🔵 Teacher switchboard additions (components/ui/theme.css) —
+        // translucent/tinted surfaces the /opacity modifier can't produce.
+        "t-glass": "var(--t-glass-bg)",
+        "t-glass-border": "var(--t-glass-border)",
+        "t-bar-blur": "var(--t-bar-blur)",
+        "t-primary-soft": "var(--t-primary-soft)",
       },
       // M3 shape scale (new names only — default rounded-* stays untouched).
       borderRadius: {
@@ -139,6 +152,7 @@ const config: Config = {
         "m3-fab": "var(--m3-shape-fab)",
       },
       // 🎓 Student spacing rhythm — driven by design.config.ts › Density.
+      // 🔵 t-* entries: teacher rhythm — driven by design.teacher.config.ts.
       spacing: {
         "s-page-x": "var(--s-page-x)",
         "s-page-y": "var(--s-page-y)",
@@ -148,20 +162,35 @@ const config: Config = {
         "s-row": "var(--s-row-h)",
         "s-row-x": "var(--s-row-pad-x)",
         "s-section": "var(--s-section-gap)",
+        "t-page-x": "var(--t-page-x)",
+        "t-page-y": "var(--t-page-y)",
+        "t-card": "var(--t-card-pad)",
+        "t-gap": "var(--t-gap)",
+        "t-gap-lg": "var(--t-gap-lg)",
+        "t-control": "var(--t-control-h)",
+        "t-control-sm": "var(--t-control-h-sm)",
+        "t-control-lg": "var(--t-control-h-lg)",
+        "t-row": "var(--t-row-h)",
       },
       transitionTimingFunction: {
         "m3-std": "var(--s-e-std)",
         "m3-spring": "var(--s-e-spring)",
+        "t-std": "var(--t-ease-std)",
+        "t-spring": "var(--t-ease-spring)",
       },
       transitionDuration: {
         "m3-fast": "var(--s-t-fast)",
         "m3-med": "var(--s-t-med)",
         "m3-slow": "var(--s-t-slow)",
+        "t-fast": "var(--t-dur-fast)",
+        "t-med": "var(--t-dur-med)",
+        "t-slow": "var(--t-dur-slow)",
       },
       boxShadow: {
         "elev-1": "var(--m3-elev-1)",
         "elev-2": "var(--m3-elev-2)",
         "elev-3": "var(--m3-elev-3)",
+        "t-glow": "var(--t-glow)",
       },
     },
   },

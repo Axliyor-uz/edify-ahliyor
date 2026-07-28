@@ -211,8 +211,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <span
         className={cn(
           's-display truncate text-[17px] font-bold',
-          // The icon rail is too narrow for a wordmark; the drawer and top bar aren't.
-          DESIGN.App_shell_navigation === 'shell_a' && 'md:hidden',
+          // The icon rail is too narrow for a wordmark; the drawers and top bar aren't.
+          DESIGN.App_shell_navigation === 'rail' && 'md:hidden',
         )}
       >
         Edify<span className="text-primary">Student</span>

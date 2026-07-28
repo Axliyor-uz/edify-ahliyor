@@ -74,15 +74,15 @@ export default function ProfileTab({
 
           {/* 🟢 NEW SECTION: Professional Info */}
           <div className="col-span-2 border-t border-outline-variant pt-6 mt-2">
-            <label className="block text-[11px] font-black text-primary uppercase tracking-widest mb-3">Professional Info</label>
+            <label className="block text-[11px] font-black text-primary uppercase tracking-widest mb-3">{t.profile.professionalInfo}</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
               {/* Gender */}
               <div>
                 <select value={formData.gender || ''} onChange={(e) => setFormData({...formData, gender: e.target.value})} className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary outline-none transition-all">
                   <option value="">{t.profile.gender || "Jinsi (Gender)"}</option>
-                  <option value="male">Erkak (Male)</option>
-                  <option value="female">Ayol (Female)</option>
+                  <option value="male">{t.profile.male}</option>
+                  <option value="female">{t.profile.female}</option>
                 </select>
               </div>
 
@@ -90,17 +90,17 @@ export default function ProfileTab({
               <div>
                 <select value={formData.subject || ''} onChange={(e) => setFormData({...formData, subject: e.target.value})} className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[14px] font-bold text-on-surface focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary outline-none transition-all">
                   <option value="">{t.profile.subject || "Fani"}</option>
-                  <option value="matematika">Matematika</option>
-                  <option value="fizika">Fizika</option>
-                  <option value="kimyo">Kimyo</option>
-                  <option value="biologiya">Biologiya</option>
-                  <option value="informatika">Informatika</option>
-                  <option value="ona_tili">Ona tili va Adabiyot</option>
-                  <option value="tarix">Tarix</option>
-                  <option value="ingliz_tili">Ingliz tili</option>
-                  <option value="rus_tili">Rus tili</option>
-                  <option value="geografiya">Geografiya</option>
-                  <option value="other">Boshqa</option>
+                  <option value="matematika">{t.profile.subjects.matematika}</option>
+                  <option value="fizika">{t.profile.subjects.fizika}</option>
+                  <option value="kimyo">{t.profile.subjects.kimyo}</option>
+                  <option value="biologiya">{t.profile.subjects.biologiya}</option>
+                  <option value="informatika">{t.profile.subjects.informatika}</option>
+                  <option value="ona_tili">{t.profile.subjects.ona_tili}</option>
+                  <option value="tarix">{t.profile.subjects.tarix}</option>
+                  <option value="ingliz_tili">{t.profile.subjects.ingliz_tili}</option>
+                  <option value="rus_tili">{t.profile.subjects.rus_tili}</option>
+                  <option value="geografiya">{t.profile.subjects.geografiya}</option>
+                  <option value="other">{t.profile.subjects.other}</option>
                 </select>
               </div>
 

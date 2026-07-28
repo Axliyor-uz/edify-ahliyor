@@ -19,6 +19,8 @@ import {
 } from "@/services/financeService";
 import type { Charge, Expense, FinanceSettings, Payment } from "@/types/finance";
 import { getTodayKey, monthKeyOf } from "@/lib/dateUtils";
+import { Badge, Tabs } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
 import FinanceStats from "./_components/FinanceStats";
 import GenerateChargesBanner from "./_components/GenerateChargesBanner";
 import PaymentsTab from "./_components/PaymentsTab";
@@ -34,17 +36,95 @@ import { monthLabelOf, shiftMonthKey } from "./_components/financeFormat";
 
 type Tab = "payments" | "debtors" | "charges" | "payroll" | "expenses" | "settings";
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "payments", label: "To'lovlar" },
-  { key: "debtors", label: "Qarzdorlar" },
-  { key: "charges", label: "Hisob-kitob" },
-  { key: "payroll", label: "Oyliklar" },
-  { key: "expenses", label: "Xarajatlar" },
-  { key: "settings", label: "Sozlamalar" },
-];
+const TAB_KEYS: Tab[] = ["payments", "debtors", "charges", "payroll", "expenses", "settings"];
+
+const T_UZ = {
+  tabs: {
+    payments: "To'lovlar",
+    debtors: "Qarzdorlar",
+    charges: "Hisob-kitob",
+    payroll: "Oyliklar",
+    expenses: "Xarajatlar",
+    settings: "Sozlamalar",
+  },
+  settingsLoadError: "Sozlamalarni yuklashda xatolik.",
+  dataLoadError: "Ma'lumotlarni yuklashda xatolik.",
+  title: "Moliya",
+  subtitle: "To'lovlar, qarzdorlar va hisob-kitob",
+  guide: {
+    step1Title: "Guruh narxlarini belgilang",
+    step1Desc: "Har bir guruhga oylik narx qo'ying — hisob-kitob shu narxdan hisoblanadi.",
+    step1Action: "Narx belgilash",
+    step2Title: "Hisob-kitob yarating",
+    step2Desc: "Oyda bir marta bosiladi — kim qancha to'lashi kerakligi avtomatik hisoblanadi.",
+    step2Action: "Hisob-kitob",
+    step3Title: "To'lovlarni qabul qiling",
+    step3Desc: "O'quvchi pul olib kelganda shu yerga yozasiz — qarz avtomatik kamayadi.",
+    step3Action: "To'lov kiritish",
+  },
+  fabLabel: "To'lov qabul qilish",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    tabs: {
+      payments: "Payments",
+      debtors: "Debtors",
+      charges: "Billing",
+      payroll: "Payroll",
+      expenses: "Expenses",
+      settings: "Settings",
+    },
+    settingsLoadError: "Failed to load settings.",
+    dataLoadError: "Failed to load data.",
+    title: "Finance",
+    subtitle: "Payments, debtors and billing",
+    guide: {
+      step1Title: "Set group prices",
+      step1Desc: "Give each group a monthly price — billing is calculated from it.",
+      step1Action: "Set prices",
+      step2Title: "Generate charges",
+      step2Desc: "Click once a month — who owes how much is calculated automatically.",
+      step2Action: "Billing",
+      step3Title: "Record payments",
+      step3Desc: "When a student brings money, record it here — the debt shrinks automatically.",
+      step3Action: "Record payment",
+    },
+    fabLabel: "Record payment",
+  },
+  ru: {
+    tabs: {
+      payments: "Платежи",
+      debtors: "Должники",
+      charges: "Начисления",
+      payroll: "Зарплаты",
+      expenses: "Расходы",
+      settings: "Настройки",
+    },
+    settingsLoadError: "Не удалось загрузить настройки.",
+    dataLoadError: "Не удалось загрузить данные.",
+    title: "Финансы",
+    subtitle: "Платежи, должники и начисления",
+    guide: {
+      step1Title: "Установите цены групп",
+      step1Desc: "Задайте каждой группе месячную цену — начисления рассчитываются по ней.",
+      step1Action: "Установить цены",
+      step2Title: "Создайте начисления",
+      step2Desc: "Нажимается раз в месяц — кто сколько должен, рассчитывается автоматически.",
+      step2Action: "Начисления",
+      step3Title: "Принимайте платежи",
+      step3Desc: "Когда ученик приносит деньги, запишите их здесь — долг уменьшится автоматически.",
+      step3Action: "Внести платёж",
+    },
+    fabLabel: "Принять платёж",
+  },
+};
 
 export default function ManagerFinancePage() {
   const { user } = useAuth();
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [centerId, setCenterId] = useState<string | null>(null);
   const [settings, setSettings] = useState<FinanceSettings | null>(null);
   const { classes, refetch: refetchClasses } = useCenterClasses(centerId);
@@ -76,7 +156,8 @@ export default function ManagerFinancePage() {
     if (!centerId) return;
     fetchFinanceSettings(centerId)
       .then(setSettings)
-      .catch(() => toast.error("Sozlamalarni yuklashda xatolik."));
+      .catch(() => toast.error(t.settingsLoadError));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerId]);
 
   const anchor = settings?.billingAnchor;
@@ -98,13 +179,14 @@ export default function ManagerFinancePage() {
       setRecentPayments(rp);
       setAvansTotal(positives.reduce((s, p) => s + p.balance, 0));
       setExpenses(exp);
-      setBannerToken((t) => t + 1);
+      setBannerToken((tk) => tk + 1);
     } catch (err) {
       console.error("Finance load error:", err);
-      toast.error("Ma'lumotlarni yuklashda xatolik.");
+      toast.error(t.dataLoadError);
     } finally {
       setLoadingData(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerId, anchor, monthKey]);
 
   useEffect(() => {
@@ -149,7 +231,7 @@ export default function ManagerFinancePage() {
   );
 
   const debtorCount = useMemo(() => new Set(openCharges.map((c) => c.studentId)).size, [openCharges]);
-  const monthLabel = monthLabelOf(monthKey);
+  const monthLabel = monthLabelOf(monthKey, lang);
 
   // Onboarding: data-driven checklist, disappears once the center is fully set up.
   const guideSteps = useMemo(() => {
@@ -161,7 +243,7 @@ export default function ManagerFinancePage() {
 
   if (!centerId || !settings) {
     return (
-      <div className="py-24 flex justify-center text-slate-400">
+      <div className="py-24 flex justify-center text-on-surface-variant">
         <Loader2 size={24} className="animate-spin" />
       </div>
     );
@@ -170,8 +252,8 @@ export default function ManagerFinancePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Moliya</h1>
-        <p className="text-sm text-slate-500 mt-0.5">To&apos;lovlar, qarzdorlar va hisob-kitob</p>
+        <h1 className="text-xl md:text-2xl font-bold text-on-surface tracking-tight">{t.title}</h1>
+        <p className="text-sm text-on-surface-variant mt-0.5">{t.subtitle}</p>
       </div>
 
       {!loadingData && !guideSteps.allDone && (
@@ -179,23 +261,23 @@ export default function ManagerFinancePage() {
           steps={[
             {
               done: guideSteps.step1,
-              title: "Guruh narxlarini belgilang",
-              desc: "Har bir guruhga oylik narx qo'ying — hisob-kitob shu narxdan hisoblanadi.",
-              actionLabel: "Narx belgilash",
+              title: t.guide.step1Title,
+              desc: t.guide.step1Desc,
+              actionLabel: t.guide.step1Action,
               onAction: () => setTab("settings"),
             },
             {
               done: guideSteps.step2,
-              title: "Hisob-kitob yarating",
-              desc: "Oyda bir marta bosiladi — kim qancha to'lashi kerakligi avtomatik hisoblanadi.",
-              actionLabel: "Hisob-kitob",
+              title: t.guide.step2Title,
+              desc: t.guide.step2Desc,
+              actionLabel: t.guide.step2Action,
               onAction: () => setTab("charges"),
             },
             {
               done: guideSteps.step3,
-              title: "To'lovlarni qabul qiling",
-              desc: "O'quvchi pul olib kelganda shu yerga yozasiz — qarz avtomatik kamayadi.",
-              actionLabel: "To'lov kiritish",
+              title: t.guide.step3Title,
+              desc: t.guide.step3Desc,
+              actionLabel: t.guide.step3Action,
               onAction: () => setPayModal({ open: true }),
             },
           ]}
@@ -220,35 +302,23 @@ export default function ManagerFinancePage() {
         profit={stats.profit}
       />
 
-      {/* App-style tab bar: white pill container, green active pill; sticky under
-          the mobile top bar (56px) so it stays reachable while scrolling. */}
+      {/* Switchboard-driven tab bar; sticky under the mobile top bar (56px) so
+          it stays reachable while scrolling. */}
       <div className="sticky top-[60px] lg:top-2 z-30 -mx-1 px-1">
-        <div className="flex gap-0.5 bg-white border border-brand-line rounded-2xl p-1 w-fit max-w-full overflow-x-auto shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-4 py-2.5 rounded-xl text-[13px] font-bold whitespace-nowrap transition-colors ${
-                tab === t.key ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
-              }`}
-            >
-              {t.label}
-              {t.key === "debtors" && debtorCount > 0 && (
-                <span
-                  className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10.5px] ${
-                    tab === t.key ? "bg-white/25 text-white" : "bg-rose-100 text-rose-600"
-                  }`}
-                >
-                  {debtorCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="rounded-m3-md bg-surface-blur backdrop-blur"
+          tabs={TAB_KEYS.map((key) => ({
+            id: key,
+            label: t.tabs[key],
+            badge: key === "debtors" && debtorCount > 0 ? <Badge tone="error">{debtorCount}</Badge> : undefined,
+          }))}
+          value={tab}
+          onChange={(id) => setTab(id as Tab)}
+        />
       </div>
 
       {loadingData && tab !== "settings" ? (
-        <div className="py-16 flex justify-center text-slate-400">
+        <div className="py-16 flex justify-center text-on-surface-variant">
           <Loader2 size={22} className="animate-spin" />
         </div>
       ) : tab === "payments" ? (
@@ -306,8 +376,8 @@ export default function ManagerFinancePage() {
       {/* Mobile FAB — the #1 action (record a payment) is always one thumb away. */}
       <button
         onClick={() => setPayModal({ open: true })}
-        aria-label="To'lov qabul qilish"
-        className="sm:hidden fixed bottom-5 right-4 z-40 w-14 h-14 rounded-full bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/40 flex items-center justify-center active:scale-95 transition-transform"
+        aria-label={t.fabLabel}
+        className="sm:hidden fixed bottom-5 right-4 z-40 w-14 h-14 rounded-full bg-primary text-on-primary shadow-elev-3 flex items-center justify-center active:scale-95 transition-transform"
       >
         <Plus size={26} strokeWidth={2.5} />
       </button>

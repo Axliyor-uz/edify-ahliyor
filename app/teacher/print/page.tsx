@@ -655,7 +655,7 @@ export default function PrintStudioPage() {
       - Sidebar: fixed width, independent scroll
       - Preview: flex-1, overflow-hidden (its inner scroller handles scroll)
     */
-    <div className="h-screen overflow-hidden bg-surface flex flex-row font-sans text-on-surface print:bg-surface-container-lowest print:block print:h-auto print:overflow-visible">
+    <div className="h-screen overflow-hidden bg-surface flex flex-row font-t-body text-on-surface print:bg-surface-container-lowest print:block print:h-auto print:overflow-visible">
 
       {/* ── SIDEBAR ──────────────────────────────────────────────────────────── */}
       <aside className="w-80 shrink-0 bg-surface-container-low border-r border-outline-variant h-screen overflow-y-auto flex flex-col shadow-elev-2 z-20 print:hidden">

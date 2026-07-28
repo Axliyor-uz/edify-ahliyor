@@ -29,6 +29,8 @@ const AI_ANALYTICS_TRANSLATIONS = {
     loadMore: "Yana yuklash", backToChat: "Tahlilga qaytish",
     playVoice: "Ovozli eshitish", stopVoice: "To'xtatish",
     modeHistory: "Tarix", // 🟢 ADD THIS HERE
+    send: "Yuborish",
+    sttError: "Ovozni aniqlashda xatolik yuz berdi.", micDenied: "Mikrofonga ruxsat berilmagan.", ttsError: "Ovozni yuklashda xatolik yuz berdi.",
   },
   en: {
     title: "AI Analyst", subtitle: "Get deep insights into your classroom performance.",
@@ -43,7 +45,9 @@ const AI_ANALYTICS_TRANSLATIONS = {
     chipS1: "Parent update", chipS2: "Speed or accuracy?", chipS3: "Homework suggestion",
     loadMore: "Load More", backToChat: "Back to Analysis",
     modeHistory: "History",
-    playVoice: "Listen Aloud", stopVoice: "Stop"
+    playVoice: "Listen Aloud", stopVoice: "Stop",
+    send: "Send",
+    sttError: "Failed to recognize the audio.", micDenied: "Microphone access denied.", ttsError: "Failed to load the audio."
   },
   ru: {
     title: "ИИ Аналитик", subtitle: "Глубокий анализ результатов класса.",
@@ -58,7 +62,9 @@ const AI_ANALYTICS_TRANSLATIONS = {
     chipS1: "Отчет для родителей", chipS2: "Скорость или точность?", chipS3: "Рекомендация по домашке",
     loadMore: "Загрузить еще", backToChat: "Назад к анализу",
     modeHistory: "История",
-    playVoice: "Прослушать", stopVoice: "Остановить"
+    playVoice: "Прослушать", stopVoice: "Остановить",
+    send: "Отправить",
+    sttError: "Не удалось распознать голос.", micDenied: "Нет доступа к микрофону.", ttsError: "Не удалось загрузить аудио."
   }
 };
 
@@ -308,7 +314,7 @@ export default function AIAnalyticsPage() {
           const data = await res.json();
           setChatInput((prev) => (prev + " " + data.text).trim());
         } catch (error) {
-          toast.error("Ovozni aniqlashda xatolik yuz berdi.");
+          toast.error(t.sttError);
         } finally {
           setIsTranscribing(false);
         }
@@ -317,7 +323,7 @@ export default function AIAnalyticsPage() {
       mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
-      toast.error("Mikrofonga ruxsat berilmagan.");
+      toast.error(t.micDenied);
     }
   };
 
@@ -351,7 +357,7 @@ export default function AIAnalyticsPage() {
       audioRef.current.play();
       audioRef.current.onended = () => setIsPlaying(null);
     } catch (error) {
-      toast.error("Ovozni yuklashda xatolik yuz berdi.");
+      toast.error(t.ttsError);
       setIsPlaying(null);
     }
   };
@@ -360,7 +366,7 @@ export default function AIAnalyticsPage() {
   if (loading) return <div className="h-screen flex items-center justify-center"><Spinner size={40}/></div>;
 
   return (
-    <div className="min-h-screen bg-surface p-6 md:p-8 font-sans text-on-surface pb-20 relative">
+    <div className="min-h-screen bg-surface p-6 md:p-8 font-t-body text-on-surface pb-20 relative">
       
       {/* HEADER & HISTORY TOGGLE */}
       <div className="max-w-4xl mx-auto mb-10 flex flex-col md:flex-row items-center justify-between relative">
@@ -586,7 +592,7 @@ export default function AIAnalyticsPage() {
 
                   <IconButton
                     variant="filled"
-                    aria-label="Yuborish"
+                    aria-label={t.send}
                     onClick={() => handleSendMessage()}
                     disabled={!chatInput.trim() || isChatting || isRecording || isTranscribing}
                     className="absolute right-2"

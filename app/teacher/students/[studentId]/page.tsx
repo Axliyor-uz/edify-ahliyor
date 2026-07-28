@@ -33,7 +33,8 @@ const PROFILE_TRANSLATIONS: any = {
     institution: "Muassasa", grade: "Sinf / Kurs", location: "Joylashuv", 
     phone: "Telefon", email: "Email", birthDate: "Tug'ilgan Sana", 
     joined: "Qo'shilgan vaqti", lastActive: "Oxirgi faollik",
-    enrolledClasses: "Sinflari", noClasses: "Hech qanday sinfga a'zo emas."
+    enrolledClasses: "Sinflari", noClasses: "Hech qanday sinfga a'zo emas.",
+    loadError: "Profil ma'lumotlarini yuklab bo'lmadi"
   },
   en: {
     back: "Back", loading: "Loading data...", notFound: "Student not found",
@@ -43,7 +44,8 @@ const PROFILE_TRANSLATIONS: any = {
     institution: "Institution", grade: "Grade", location: "Location", 
     phone: "Phone", email: "Email", birthDate: "Birth Date", 
     joined: "Joined", lastActive: "Last Active",
-    enrolledClasses: "Enrolled Classes", noClasses: "Not enrolled in any classes."
+    enrolledClasses: "Enrolled Classes", noClasses: "Not enrolled in any classes.",
+    loadError: "Failed to load profile data"
   },
   ru: {
     back: "Назад", loading: "Загрузка...", notFound: "Ученик не найден",
@@ -53,7 +55,8 @@ const PROFILE_TRANSLATIONS: any = {
     institution: "Учреждение", grade: "Класс", location: "Локация", 
     phone: "Телефон", email: "Email", birthDate: "Дата Рождения", 
     joined: "Регистрация", lastActive: "Был(а) в сети",
-    enrolledClasses: "Классы", noClasses: "Не состоит ни в одном классе."
+    enrolledClasses: "Классы", noClasses: "Не состоит ни в одном классе.",
+    loadError: "Не удалось загрузить данные профиля"
   }
 };
 
@@ -134,7 +137,7 @@ export default function StudentProfilePage() {
           setProfile(null); 
         }
       } catch (e) {
-        toast.error("Failed to load profile data");
+        toast.error(t.loadError);
       } finally {
         setLoading(false);
       }
@@ -182,7 +185,7 @@ export default function StudentProfilePage() {
   const birthDate = profile.birthDate; 
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-[calc(2rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container pb-[calc(2rem+env(safe-area-inset-bottom))]">
 
       {/* 🟢 ULTRA MINIMALISTIC HEADER */}
       <header className="sticky top-0 z-30 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-xl border-b border-outline-variant px-4 py-3 flex items-center shadow-elev-1">

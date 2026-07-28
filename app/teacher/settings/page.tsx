@@ -22,26 +22,26 @@ import AboutTab from './_components/AboutTab';
 const SETTINGS_TRANSLATIONS: any = {
   uz: {
     title: "Hisob Sozlamalari", tabs: { profile: "Profil", security: "Xavfsizlik", about: "Dastur haqida" },
-    profile: { title: "Shaxsiy Ma'lumotlar", subtitle: "Shaxsingiz va aloqa ma'lumotlarini boshqaring.", fullName: "To'liq Ism", username: "Username", usernameTaken: "Band qilingan", usernameAvail: "Mavjud!", bio: "Men haqimda", bioPlace: "O'zingiz haqingizda...", email: "Email", phone: "Telefon", phonePlace: "+998 (90) 123-45-67", institution: "Muassasa", dob: "Tug'ilgan Sana", year: "Yil", month: "Oy", day: "Kun", location: "Joylashuv", region: "Viloyat", district: "Tuman", gender: "Jinsi", subject: "Fani", experience: "Tajriba (Yil)", save: "Saqlash", saving: "Saqlanmoqda..." },
-    security: { manageClasses: "Sinflarni Boshqarish", manageSub: "Faol sinflarni ko'ring yoki o'chiring.", noClasses: "Sinf yo'q.", centerManaged: "Markaz guruhi — faqat menejer o'chira oladi.", students: "O'quvchi", passwordTitle: "Parol", passwordSub: "Kirish ma'lumotlari.", currentPass: "Joriy Parol", currentPlace: "Joriy parolni kiriting", newPass: "Yangi Parol", newPlace: "Kamida 6 belgi", confirmPass: "Tasdiqlash", confirmPlace: "Qayta kiriting", updateBtn: "Yangilash", updating: "Yangilanmoqda...", dangerTitle: "Xavfli Hudud", dangerSub: "Qaytarib bo'lmaydigan amallar.", deleteAccount: "Hisobni O'chirish", deleteWarning: "Bu sizning barcha ma'lumotlaringizni o'chiradi.", confirmDelete: "Tasdiqlash", googleConfirm: "Google orqali tasdiqlang.", passConfirm: "Parol orqali tasdiqlang.", cancel: "Bekor qilish", yesDelete: "O'chirish" },
+    profile: { title: "Shaxsiy Ma'lumotlar", subtitle: "Shaxsingiz va aloqa ma'lumotlarini boshqaring.", fullName: "To'liq Ism", username: "Username", usernameTaken: "Band qilingan", usernameAvail: "Mavjud!", bio: "Men haqimda", bioPlace: "O'zingiz haqingizda...", email: "Email", phone: "Telefon", phonePlace: "+998 (90) 123-45-67", institution: "Muassasa", dob: "Tug'ilgan Sana", year: "Yil", month: "Oy", day: "Kun", location: "Joylashuv", region: "Viloyat", district: "Tuman", gender: "Jinsi", subject: "Fani", experience: "Tajriba (Yil)", save: "Saqlash", saving: "Saqlanmoqda...", professionalInfo: "Kasbiy Ma'lumotlar", male: "Erkak (Male)", female: "Ayol (Female)", subjects: { matematika: "Matematika", fizika: "Fizika", kimyo: "Kimyo", biologiya: "Biologiya", informatika: "Informatika", ona_tili: "Ona tili va Adabiyot", tarix: "Tarix", ingliz_tili: "Ingliz tili", rus_tili: "Rus tili", geografiya: "Geografiya", other: "Boshqa" } },
+    security: { manageClasses: "Sinflarni Boshqarish", manageSub: "Faol sinflarni ko'ring yoki o'chiring.", noClasses: "Sinf yo'q.", centerManaged: "Markaz guruhi — faqat menejer o'chira oladi.", students: "O'quvchi", passwordTitle: "Parol", passwordSub: "Kirish ma'lumotlari.", currentPass: "Joriy Parol", currentPlace: "Joriy parolni kiriting", newPass: "Yangi Parol", newPlace: "Kamida 6 belgi", confirmPass: "Tasdiqlash", confirmPlace: "Qayta kiriting", updateBtn: "Yangilash", updating: "Yangilanmoqda...", dangerTitle: "Xavfli Hudud", dangerSub: "Qaytarib bo'lmaydigan amallar.", deleteAccount: "Hisobni O'chirish", deleteWarning: "Bu sizning barcha ma'lumotlaringizni o'chiradi.", confirmDelete: "Tasdiqlash", googleConfirm: "Google orqali tasdiqlang.", passConfirm: "Parol orqali tasdiqlang.", cancel: "Bekor qilish", yesDelete: "O'chirish", deleteClassAria: "Sinfni o'chirish", showPassAria: "Parolni ko'rsatish", hidePassAria: "Parolni yashirish" },
     about: { title: "Platforma Info", descTitle: "AI bilan Ta'lim", desc: "Edify o'qituvchilarga o'quv materiallarini yaratishda yordam beradigan vositadir.", support: "Yordam", hotline: "Tezkor aloqa", dev: "Ishlab chiquvchi", version: "v1.0.0", rights: "Barcha huquqlar himoyalangan." },
-    toasts: { saved: "Profil saqlandi!", failSave: "Xatolik", passChanged: "Parol o'zgartirildi!", wrongPass: "Joriy parol noto'g'ri", classDeleted: "Sinf o'chirildi", deleted: "Hisob o'chirildi", reqPass: "Parol talab qilinadi" },
+    toasts: { saved: "Profil saqlandi!", failSave: "Xatolik", passChanged: "Parol o'zgartirildi!", wrongPass: "Joriy parol noto'g'ri", classDeleted: "Sinf o'chirildi", deleted: "Hisob o'chirildi", reqPass: "Parol talab qilinadi", failLoad: "Profilni yuklashda xatolik", wiping: "Hisob va barcha ma'lumotlar o'chirilmoqda...", deleteFailed: "O'chirishda xatolik yuz berdi.", checkFields: "Maydonlarni tekshiring.", failChange: "Parolni o'zgartirib bo'lmadi", deletingClass: "Sinf o'chirilmoqda...", failDeleteClass: "Sinfni to'liq o'chirib bo'lmadi." },
     deleteModal: { title: "Sinfni O'chirish?", desc: "\"{title}\"ni o'chirmoqchimisiz? Qaytarib bo'lmaydi." }
   },
   en: {
     title: "Account Settings", tabs: { profile: "Profile", security: "Security", about: "About" },
-    profile: { title: "Personal Info", subtitle: "Manage your identity.", fullName: "Full Name", username: "Username", usernameTaken: "Taken", usernameAvail: "Available!", bio: "Bio", bioPlace: "About me...", email: "Email", phone: "Phone", phonePlace: "+998 (90) 123-45-67", institution: "Institution", dob: "Date of Birth", year: "Year", month: "Month", day: "Day", location: "Location", region: "Region", district: "District", gender: "Gender", subject: "Subject", experience: "Experience (Years)", save: "Save", saving: "Saving..." },
-    security: { manageClasses: "Manage Classes", manageSub: "Review or delete classes.", noClasses: "No classes yet.", centerManaged: "Center group — only the manager can delete it.", students: "Students", passwordTitle: "Password", passwordSub: "Update credentials.", currentPass: "Current Password", currentPlace: "Current password", newPass: "New Password", newPlace: "Min 6 chars", confirmPass: "Confirm", confirmPlace: "Retype new", updateBtn: "Update", updating: "Updating...", dangerTitle: "Danger Zone", dangerSub: "Irreversible actions.", deleteAccount: "Delete Account", deleteWarning: "This deletes everything.", confirmDelete: "Confirm", googleConfirm: "Confirm with Google.", passConfirm: "Confirm with password.", cancel: "Cancel", yesDelete: "Delete" },
+    profile: { title: "Personal Info", subtitle: "Manage your identity.", fullName: "Full Name", username: "Username", usernameTaken: "Taken", usernameAvail: "Available!", bio: "Bio", bioPlace: "About me...", email: "Email", phone: "Phone", phonePlace: "+998 (90) 123-45-67", institution: "Institution", dob: "Date of Birth", year: "Year", month: "Month", day: "Day", location: "Location", region: "Region", district: "District", gender: "Gender", subject: "Subject", experience: "Experience (Years)", save: "Save", saving: "Saving...", professionalInfo: "Professional Info", male: "Male", female: "Female", subjects: { matematika: "Mathematics", fizika: "Physics", kimyo: "Chemistry", biologiya: "Biology", informatika: "Computer Science", ona_tili: "Native Language & Literature", tarix: "History", ingliz_tili: "English", rus_tili: "Russian", geografiya: "Geography", other: "Other" } },
+    security: { manageClasses: "Manage Classes", manageSub: "Review or delete classes.", noClasses: "No classes yet.", centerManaged: "Center group — only the manager can delete it.", students: "Students", passwordTitle: "Password", passwordSub: "Update credentials.", currentPass: "Current Password", currentPlace: "Current password", newPass: "New Password", newPlace: "Min 6 chars", confirmPass: "Confirm", confirmPlace: "Retype new", updateBtn: "Update", updating: "Updating...", dangerTitle: "Danger Zone", dangerSub: "Irreversible actions.", deleteAccount: "Delete Account", deleteWarning: "This deletes everything.", confirmDelete: "Confirm", googleConfirm: "Confirm with Google.", passConfirm: "Confirm with password.", cancel: "Cancel", yesDelete: "Delete", deleteClassAria: "Delete class", showPassAria: "Show password", hidePassAria: "Hide password" },
     about: { title: "Platform Info", descTitle: "Education with AI", desc: "Edify is a next-generation educational tool for teachers.", support: "Support", hotline: "Hotline", dev: "Developed By", version: "v1.0.0", rights: "All rights reserved." },
-    toasts: { saved: "Saved!", failSave: "Failed to save", passChanged: "Password changed!", wrongPass: "Incorrect current password", classDeleted: "Class deleted", deleted: "Account deleted", reqPass: "Password required" },
+    toasts: { saved: "Saved!", failSave: "Failed to save", passChanged: "Password changed!", wrongPass: "Incorrect current password", classDeleted: "Class deleted", deleted: "Account deleted", reqPass: "Password required", failLoad: "Failed to load profile", wiping: "Wiping account and all data securely...", deleteFailed: "Deletion failed.", checkFields: "Please check fields.", failChange: "Failed to change", deletingClass: "Deleting class securely...", failDeleteClass: "Failed to delete class completely." },
     deleteModal: { title: "Delete Class?", desc: "Delete \"{title}\"? Cannot be undone." }
   },
   ru: {
     title: "Настройки Аккаунта", tabs: { profile: "Профиль", security: "Безопасность", about: "О Программе" },
-    profile: { title: "Личная Информация", subtitle: "Управление данными.", fullName: "Имя", username: "Имя пользователя", usernameTaken: "Занято", usernameAvail: "Доступно!", bio: "Обо мне", bioPlace: "О себе...", email: "Email", phone: "Телефон", phonePlace: "+998 (90) 123-45-67", institution: "Учреждение", dob: "Дата Рождения", year: "Год", month: "Месяц", day: "День", location: "Локация", region: "Регион", district: "Район", gender: "Пол", subject: "Предмет", experience: "Опыт (Лет)", save: "Сохранить", saving: "Сохранение..." },
-    security: { manageClasses: "Классы", manageSub: "Управление классами.", noClasses: "Нет классов.", centerManaged: "Группа центра — удалить может только менеджер.", students: "Учеников", passwordTitle: "Пароль", passwordSub: "Обновление входа.", currentPass: "Текущий Пароль", currentPlace: "Текущий пароль", newPass: "Новый", newPlace: "Мин. 6 симв.", confirmPass: "Подтвердить", confirmPlace: "Повторите", updateBtn: "Обновить", updating: "Обновление...", dangerTitle: "Опасная Зона", dangerSub: "Необратимо.", deleteAccount: "Удалить Аккаунт", deleteWarning: "Удалит все данные.", confirmDelete: "Подтверждение", googleConfirm: "Подтвердите Google.", passConfirm: "Подтвердите паролем.", cancel: "Отмена", yesDelete: "Удалить Всё" },
+    profile: { title: "Личная Информация", subtitle: "Управление данными.", fullName: "Имя", username: "Имя пользователя", usernameTaken: "Занято", usernameAvail: "Доступно!", bio: "Обо мне", bioPlace: "О себе...", email: "Email", phone: "Телефон", phonePlace: "+998 (90) 123-45-67", institution: "Учреждение", dob: "Дата Рождения", year: "Год", month: "Месяц", day: "День", location: "Локация", region: "Регион", district: "Район", gender: "Пол", subject: "Предмет", experience: "Опыт (Лет)", save: "Сохранить", saving: "Сохранение...", professionalInfo: "Профессиональная информация", male: "Мужской", female: "Женский", subjects: { matematika: "Математика", fizika: "Физика", kimyo: "Химия", biologiya: "Биология", informatika: "Информатика", ona_tili: "Родной язык и литература", tarix: "История", ingliz_tili: "Английский язык", rus_tili: "Русский язык", geografiya: "География", other: "Другое" } },
+    security: { manageClasses: "Классы", manageSub: "Управление классами.", noClasses: "Нет классов.", centerManaged: "Группа центра — удалить может только менеджер.", students: "Учеников", passwordTitle: "Пароль", passwordSub: "Обновление входа.", currentPass: "Текущий Пароль", currentPlace: "Текущий пароль", newPass: "Новый", newPlace: "Мин. 6 симв.", confirmPass: "Подтвердить", confirmPlace: "Повторите", updateBtn: "Обновить", updating: "Обновление...", dangerTitle: "Опасная Зона", dangerSub: "Необратимо.", deleteAccount: "Удалить Аккаунт", deleteWarning: "Удалит все данные.", confirmDelete: "Подтверждение", googleConfirm: "Подтвердите Google.", passConfirm: "Подтвердите паролем.", cancel: "Отмена", yesDelete: "Удалить Всё", deleteClassAria: "Удалить класс", showPassAria: "Показать пароль", hidePassAria: "Скрыть пароль" },
     about: { title: "Инфо", descTitle: "Образование с ИИ", desc: "Edify — инструмент для создания учебных материалов.", support: "Поддержка", hotline: "Горячая линия", dev: "Разработано", version: "v1.0.0", rights: "Все права защищены." },
-    toasts: { saved: "Сохранено!", failSave: "Ошибка", passChanged: "Пароль изменен!", wrongPass: "Неверный текущий", classDeleted: "Класс удален", deleted: "Аккаунт удален.", reqPass: "Нужен пароль" },
+    toasts: { saved: "Сохранено!", failSave: "Ошибка", passChanged: "Пароль изменен!", wrongPass: "Неверный текущий", classDeleted: "Класс удален", deleted: "Аккаунт удален.", reqPass: "Нужен пароль", failLoad: "Не удалось загрузить профиль", wiping: "Идёт безопасное удаление аккаунта и всех данных...", deleteFailed: "Ошибка удаления.", checkFields: "Проверьте поля.", failChange: "Не удалось изменить пароль", deletingClass: "Класс удаляется...", failDeleteClass: "Не удалось полностью удалить класс." },
     deleteModal: { title: "Удалить Класс?", desc: "Удалить \"{title}\"? Это нельзя отменить." }
   }
 };
@@ -127,7 +127,7 @@ export default function SettingsPage() {
           });
         }
       } catch (e) { 
-        toast.error("Failed to load profile"); 
+        toast.error(t.toasts.failLoad);
       } finally { 
         setLoading(false); 
       }
@@ -157,7 +157,7 @@ export default function SettingsPage() {
     if (!user) return;
     if (!isGoogleUser && !deletePassword) return toast.error(t.toasts.reqPass);
     setIsDeleting(true); 
-    const toastId = toast.loading("Wiping account and all data securely...");
+    const toastId = toast.loading(t.toasts.wiping);
     
     try {
       // 1. Re-authenticate to ensure it's really them
@@ -182,7 +182,7 @@ export default function SettingsPage() {
 
     } catch (error: any) { 
       console.error("Deletion error:", error);
-      toast.error(error?.message || "Deletion failed.", { id: toastId }); 
+      toast.error(error?.message || t.toasts.deleteFailed, { id: toastId });
     } finally { 
       setIsDeleting(false); 
     }
@@ -211,7 +211,7 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async () => {
     if (!user) return;
-    if (!formData.displayName.trim() || usernameStatus !== 'valid') return toast.error("Please check fields.");
+    if (!formData.displayName.trim() || usernameStatus !== 'valid') return toast.error(t.toasts.checkFields);
     
     setSaving(true);
     try {
@@ -273,7 +273,7 @@ export default function SettingsPage() {
       await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, passwords.current));
       await updatePassword(user, passwords.new);
       toast.success(t.toasts.passChanged); setPasswords({ current: '', new: '', confirm: '' });
-    } catch (error: any) { toast.error(error.code === 'auth/invalid-credential' ? t.toasts.wrongPass : "Failed to change"); } 
+    } catch (error: any) { toast.error(error.code === 'auth/invalid-credential' ? t.toasts.wrongPass : t.toasts.failChange); }
     finally { setSaving(false); }
   };
 
@@ -289,7 +289,7 @@ export default function SettingsPage() {
       return;
     }
 
-    const toastId = toast.loading("Deleting class securely...");
+    const toastId = toast.loading(t.toasts.deletingClass);
     
     try { 
       // 🚀 Trigger the backend robot to wipe the class and subcollections safely
@@ -304,14 +304,14 @@ export default function SettingsPage() {
       setClassToDelete(null); 
     } catch (error) {
       console.error(error);
-      toast.error("Failed to delete class completely.", { id: toastId });
+      toast.error(t.toasts.failDeleteClass, { id: toastId });
     }
   };
 
   if (loading) return <div className="min-h-[100dvh] bg-surface flex items-center justify-center"><Spinner size={32}/></div>;
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container pb-20">
+    <div className="min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container pb-20">
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 md:py-10 space-y-6">
         
         {/* HEADER & TABS */}

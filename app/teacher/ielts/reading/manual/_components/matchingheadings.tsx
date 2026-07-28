@@ -2,13 +2,49 @@
 
 import { Plus, Trash2, X, ChevronDown, ChevronUp, Edit3 } from 'lucide-react';
 import { useState } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
+
+const TRANSLATIONS = {
+  uz: {
+    instructionsPh: "Yo'riqnoma...",
+    hideHeadings: "Sarlavhalar ro'yxatini yashirish",
+    editHeadings: "Sarlavhalar ro'yxatini tahrirlash",
+    headingPh: "Sarlavhalar ro'yxatini shu yerga joylashtiring...",
+    addHeading: "Sarlavha qo'shish",
+    paragraph: "Paragraf",
+    select: "Tanlang...",
+    addTarget: "Paragraf qo'shish",
+  },
+  en: {
+    instructionsPh: "Instructions...",
+    hideHeadings: "Hide Headings List",
+    editHeadings: "Edit Headings List",
+    headingPh: "Paste list of headings here...",
+    addHeading: "Add Heading",
+    paragraph: "Paragraph",
+    select: "Select...",
+    addTarget: "Add Target Paragraph",
+  },
+  ru: {
+    instructionsPh: "Инструкция...",
+    hideHeadings: "Скрыть список заголовков",
+    editHeadings: "Редактировать список заголовков",
+    headingPh: "Вставьте список заголовков сюда...",
+    addHeading: "Добавить заголовок",
+    paragraph: "Абзац",
+    select: "Выберите...",
+    addTarget: "Добавить абзац",
+  },
+};
 
 // Helper array for auto-generating Roman Numerals
 const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv'];
 
 export default function MatchingHeadingsBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [showOptions, setShowOptions] = useState(true);
 
   // ==========================================================================
@@ -100,15 +136,15 @@ export default function MatchingHeadingsBlock({ qb, qbIdx, updateBlock, deleteBl
       <div className="p-3">
         {/* INSTRUCTIONS */}
         <input 
-          type="text" placeholder="Instructions..." value={qb.instructions} 
-          onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)} 
+          type="text" placeholder={t.instructionsPh} value={qb.instructions}
+          onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
           className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none mb-2 p-0"
         />
 
         {/* 2. OPTIONS EDITOR (List of Headings) */}
         <div className="mb-4 bg-surface-container p-2 rounded-m3-sm border border-outline-variant transition-colors hover:border-outline">
           <button onClick={() => setShowOptions(!showOptions)} className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant hover:text-primary uppercase tracking-wider mb-1 transition-colors">
-            <Edit3 size={10} /> {showOptions ? 'Hide Headings List' : 'Edit Headings List'} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            <Edit3 size={10} /> {showOptions ? t.hideHeadings : t.editHeadings} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
           </button>
 
           {showOptions && (
@@ -121,7 +157,7 @@ export default function MatchingHeadingsBlock({ qb, qbIdx, updateBlock, deleteBl
                     className="w-10 text-[10px] font-black tracking-wider text-primary bg-surface-container-lowest border border-outline-variant px-1 py-1.5 rounded-m3-sm text-center outline-none focus:border-primary"
                   />
                   <input
-                    type="text" value={opt.text} placeholder="Paste list of headings here..."
+                    type="text" value={opt.text} placeholder={t.headingPh}
                     onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }}
                     onPaste={e => handlePasteOptions(e, oIdx)}
                     className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-sm py-1.5 px-2 text-[11px] font-medium text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary placeholder:text-on-surface-variant"
@@ -130,7 +166,7 @@ export default function MatchingHeadingsBlock({ qb, qbIdx, updateBlock, deleteBl
                 </div>
               ))}
               <Button variant="text" size="sm" icon={<Plus />} onClick={addOption} className="mt-2">
-                Add Heading
+                {t.addHeading}
               </Button>
             </div>
           )}
@@ -143,7 +179,7 @@ export default function MatchingHeadingsBlock({ qb, qbIdx, updateBlock, deleteBl
               <span className="w-8 h-7 flex items-center justify-center text-[11px] font-black text-on-surface-variant bg-surface-container-high rounded-m3-xs shadow-elev-1 shrink-0">{row.question_number}</span>
 
               <div className="flex-1 flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2">
-                <span className="text-[11px] font-bold text-on-surface-variant">Paragraph</span>
+                <span className="text-[11px] font-bold text-on-surface-variant">{t.paragraph}</span>
                 <input
                   type="text" placeholder="A" value={row.target_paragraph}
                   onChange={e => updateRow(rIdx, 'target_paragraph', e.target.value.toUpperCase())}
@@ -157,7 +193,7 @@ export default function MatchingHeadingsBlock({ qb, qbIdx, updateBlock, deleteBl
                 value={row.correct_answer} onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)}
                 className="w-24 h-7 text-[10px] font-black bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-1 outline-none text-success focus:border-primary cursor-pointer shrink-0"
               >
-                <option value="">Select...</option>
+                <option value="">{t.select}</option>
                 {qb.options.map((o: any) => <option key={o.id} value={o.id}>{o.id}</option>)}
               </select>
 
@@ -166,7 +202,7 @@ export default function MatchingHeadingsBlock({ qb, qbIdx, updateBlock, deleteBl
           ))}
         </div>
         <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
-          Add Target Paragraph
+          {t.addTarget}
         </Button>
       </div>
     </div>

@@ -7,6 +7,59 @@ import { db } from "@/lib/firebase";
 import { CenterTeacher } from "@/hooks/useCenterClasses";
 import toast from "react-hot-toast";
 import ManagerSheet from "@/app/manager/_components/ManagerSheet";
+import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+
+const TRANSLATIONS = {
+  uz: {
+    createSuccess: "Guruh muvaffaqiyatli yaratildi!",
+    createError: "Guruh yaratishda xatolik yuz berdi.",
+    title: "Yangi guruh yaratish",
+    subtitle: "O'qituvchini tanlang va guruh nomini kiriting.",
+    nameLabel: "Guruh nomi",
+    namePlaceholder: "Masalan: Algebra 9-B",
+    descriptionLabel: "Tavsif (ixtiyoriy)",
+    descriptionPlaceholder: "Ertalabki guruh...",
+    teacherLabel: "O'qituvchi",
+    teacherPlaceholder: "O'qituvchini tanlang...",
+    noTeachersHint: "Avval \"O'qituvchilar\" bo'limidan o'qituvchi qo'shing.",
+    cancel: "Bekor qilish",
+    creating: "Yaratilmoqda...",
+    create: "Yaratish",
+  },
+  en: {
+    createSuccess: "Group created successfully!",
+    createError: "Something went wrong while creating the group.",
+    title: "Create a new group",
+    subtitle: "Pick a teacher and enter the group name.",
+    nameLabel: "Group name",
+    namePlaceholder: "e.g. Algebra 9-B",
+    descriptionLabel: "Description (optional)",
+    descriptionPlaceholder: "Morning group...",
+    teacherLabel: "Teacher",
+    teacherPlaceholder: "Select a teacher...",
+    noTeachersHint: "Add a teacher in the \"Teachers\" section first.",
+    cancel: "Cancel",
+    creating: "Creating...",
+    create: "Create",
+  },
+  ru: {
+    createSuccess: "Группа успешно создана!",
+    createError: "Не удалось создать группу.",
+    title: "Создание новой группы",
+    subtitle: "Выберите учителя и введите название группы.",
+    nameLabel: "Название группы",
+    namePlaceholder: "Например: Алгебра 9-Б",
+    descriptionLabel: "Описание (необязательно)",
+    descriptionPlaceholder: "Утренняя группа...",
+    teacherLabel: "Учитель",
+    teacherPlaceholder: "Выберите учителя...",
+    noTeachersHint: "Сначала добавьте учителя в разделе «Учителя».",
+    cancel: "Отмена",
+    creating: "Создание...",
+    create: "Создать",
+  },
+};
+type T = typeof TRANSLATIONS.uz;
 
 interface Props {
   centerId: string;
@@ -16,6 +69,8 @@ interface Props {
 }
 
 export default function CreateGroupModal({ centerId, teachers, onClose, onSuccess }: Props) {
+  const { lang } = useManagerLanguage();
+  const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
@@ -39,6 +94,7 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
     try {
       // Get the selected teacher's name
       const selectedTeacher = teachers.find((t) => t.teacherId === selectedTeacherId);
+      // Stored Firestore value — kept language-independent on purpose.
       const teacherName = selectedTeacher?.teacherName || "Noma'lum O'qituvchi";
       const joinCode = generateJoinCode();
 
@@ -55,11 +111,11 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
         createdAt: serverTimestamp(),
       });
 
-      toast.success("Guruh muvaffaqiyatli yaratildi!");
+      toast.success(t.createSuccess);
       onSuccess();
     } catch (error: any) {
       console.error("Create Group Error:", error);
-      toast.error("Guruh yaratishda xatolik yuz berdi.");
+      toast.error(t.createError);
     } finally {
       setIsSubmitting(false);
     }
@@ -71,15 +127,15 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 shrink-0">
+          <div className="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container shrink-0">
             <Layers size={24} strokeWidth={2.5} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-              Yangi guruh yaratish
+            <h2 className="text-lg font-bold text-on-surface tracking-tight">
+              {t.title}
             </h2>
-            <p className="text-[13px] text-slate-500 font-medium">
-              O'qituvchini tanlang va guruh nomini kiriting.
+            <p className="text-[13px] text-on-surface-variant font-medium">
+              {t.subtitle}
             </p>
           </div>
         </div>
@@ -88,8 +144,8 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
 
           {/* Title Input */}
           <div className="space-y-1.5">
-            <label className="text-[13px] font-bold text-slate-700 ml-1">
-              Guruh nomi <span className="text-red-400">*</span>
+            <label className="text-[13px] font-bold text-on-surface-variant ml-1">
+              {t.nameLabel} <span className="text-error">*</span>
             </label>
             <input
               type="text"
@@ -97,30 +153,30 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isSubmitting}
-              placeholder="Masalan: Algebra 9-B"
-              className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all disabled:opacity-60 placeholder:text-slate-400"
+              placeholder={t.namePlaceholder}
+              className="w-full px-4 h-t-control bg-surface-container-low border border-outline-variant rounded-m3-md text-[14px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60 placeholder:text-on-surface-variant"
             />
           </div>
 
           {/* Description Input */}
           <div className="space-y-1.5">
-            <label className="text-[13px] font-bold text-slate-700 ml-1">
-              Tavsif (ixtiyoriy)
+            <label className="text-[13px] font-bold text-on-surface-variant ml-1">
+              {t.descriptionLabel}
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={isSubmitting}
-              placeholder="Ertalabki guruh..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all resize-none disabled:opacity-60 placeholder:text-slate-400"
+              placeholder={t.descriptionPlaceholder}
+              className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-m3-md text-[14px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none disabled:opacity-60 placeholder:text-on-surface-variant"
             />
           </div>
 
           {/* Teacher Selector */}
           <div className="space-y-1.5">
-            <label className="text-[13px] font-bold text-slate-700 ml-1">
-              O'qituvchi <span className="text-red-400">*</span>
+            <label className="text-[13px] font-bold text-on-surface-variant ml-1">
+              {t.teacherLabel} <span className="text-error">*</span>
             </label>
             <div className="relative">
               <select
@@ -128,22 +184,22 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
                 value={selectedTeacherId}
                 onChange={(e) => setSelectedTeacherId(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all disabled:opacity-60 appearance-none cursor-pointer"
+                className="w-full px-4 h-t-control bg-surface-container-low border border-outline-variant rounded-m3-md text-[14px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60 appearance-none cursor-pointer"
               >
-                <option value="">O'qituvchini tanlang...</option>
+                <option value="">{t.teacherPlaceholder}</option>
                 {teachers.map((t) => (
                   <option key={t.teacherId} value={t.teacherId}>
                     {t.teacherName} ({t.teacherEmail})
                   </option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
+              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-on-surface-variant">
                 <ChevronDown size={18} />
               </div>
             </div>
             {teachers.length === 0 && (
-              <p className="text-[12px] font-bold text-amber-600 mt-1.5 px-1">
-                Avval "O'qituvchilar" bo'limidan o'qituvchi qo'shing.
+              <p className="text-[12px] font-bold text-warning mt-1.5 px-1">
+                {t.noTeachersHint}
               </p>
             )}
           </div>
@@ -154,22 +210,22 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-colors disabled:opacity-60"
+              className="flex-1 h-t-control flex items-center justify-center bg-surface-container hover:bg-state-hover text-on-surface font-bold rounded-full transition-colors disabled:opacity-60"
             >
-              Bekor qilish
+              {t.cancel}
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !title.trim() || !selectedTeacherId}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-full transition-colors disabled:opacity-60 shadow-sm shadow-brand-600/25"
+              className="flex-1 h-t-control flex items-center justify-center gap-2 bg-primary text-on-primary font-bold rounded-full transition-colors disabled:opacity-60 shadow-elev-1"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  Yaratilmoqda...
+                  {t.creating}
                 </>
               ) : (
-                "Yaratish"
+                t.create
               )}
             </button>
           </div>

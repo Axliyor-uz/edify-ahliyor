@@ -8,8 +8,75 @@ import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/fire
 import { BookOpen, Plus, Search, Sparkles, Database, Clock, MoreVertical, FileText, Globe, Trash2, Copy, Send, Eye, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button, IconButton, Spinner, SearchBar, EmptyState } from '@/components/ui';
+
+const TRANSLATIONS = {
+  uz: {
+    subtitle: "Matnli testlarni yarating yoki bazadan foydalaning.",
+    newTest: "Yangi Test",
+    manualEntry: "Qo'lda kiritish",
+    manualDesc: "Noldan o'zingiz tuzing",
+    myTests: "Mening Testlarim",
+    database: "Baza",
+    searchPlaceholder: "Qidirish...",
+    wordsSuffix: "ta so'z",
+    questionsSuffix: "savol",
+    view: "Ko'rish",
+    edit: "Tahrirlash",
+    moreActions: "Qo'shimcha amallar",
+    delete: "O'chirish",
+    noResults: "Natija topilmadi",
+    untitled: "Nomsiz test",
+    loadError: "Testlarni yuklashda xatolik yuz berdi.",
+    deleteConfirm: "Haqiqatan ham bu testni butunlay o'chirib tashlamoqchimisiz?",
+    deleteSuccess: "Test muvaffaqiyatli o'chirildi!",
+    deleteError: "O'chirishda xatolik yuz berdi.",
+  },
+  en: {
+    subtitle: "Create reading tests or use the database.",
+    newTest: "New Test",
+    manualEntry: "Manual entry",
+    manualDesc: "Build it yourself from scratch",
+    myTests: "My Tests",
+    database: "Database",
+    searchPlaceholder: "Search...",
+    wordsSuffix: "words",
+    questionsSuffix: "questions",
+    view: "View",
+    edit: "Edit",
+    moreActions: "More actions",
+    delete: "Delete",
+    noResults: "No results found",
+    untitled: "Untitled Test",
+    loadError: "Failed to load tests.",
+    deleteConfirm: "Are you sure you want to permanently delete this test?",
+    deleteSuccess: "Test deleted successfully!",
+    deleteError: "Failed to delete.",
+  },
+  ru: {
+    subtitle: "Создавайте текстовые тесты или используйте базу.",
+    newTest: "Новый тест",
+    manualEntry: "Ручной ввод",
+    manualDesc: "Составьте самостоятельно с нуля",
+    myTests: "Мои тесты",
+    database: "База",
+    searchPlaceholder: "Поиск...",
+    wordsSuffix: "слов",
+    questionsSuffix: "вопросов",
+    view: "Просмотр",
+    edit: "Редактировать",
+    moreActions: "Дополнительные действия",
+    delete: "Удалить",
+    noResults: "Ничего не найдено",
+    untitled: "Тест без названия",
+    loadError: "Не удалось загрузить тесты.",
+    deleteConfirm: "Вы действительно хотите полностью удалить этот тест?",
+    deleteSuccess: "Тест успешно удалён!",
+    deleteError: "Не удалось удалить.",
+  },
+};
 
 const DATABASE_TESTS = [
   { id: '101', title: 'Cambridge Vol 18 - Test 1', difficulty: 'hard', wordCount: 2450, qCount: 40, date: 'System' },
@@ -17,6 +84,8 @@ const DATABASE_TESTS = [
 
 export default function ReadingDashboard() {
   const { user } = useAuth() as any;
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
 
   const [activeTab, setActiveTab] = useState<'myTests' | 'database'>('myTests');
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,7 +112,7 @@ export default function ReadingDashboard() {
         const totalWords = data.passages?.reduce((acc: number, p: any) => acc + (p.word_count || 0), 0) || 0;
         return {
           id: doc.id,
-          title: data.test_title || 'Untitled Test',
+          title: data.test_title || t.untitled,
           difficulty: data.passages?.[0]?.difficulty || 'medium',
           wordCount: totalWords,
           qCount: data.total_questions || 0,
@@ -54,7 +123,7 @@ export default function ReadingDashboard() {
       fetched.sort((a, b) => b.rawDate - a.rawDate);
       setMyTests(fetched);
     } catch (error) {
-      toast.error("Testlarni yuklashda xatolik yuz berdi.");
+      toast.error(t.loadError);
     } finally {
       setIsLoading(false);
     }
@@ -65,14 +134,14 @@ export default function ReadingDashboard() {
   // 🌟 FIREBASE DELETE FUNCTION
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Haqiqatan ham bu testni butunlay o'chirib tashlamoqchimisiz?")) return;
+    if (!confirm(t.deleteConfirm)) return;
 
     try {
       await deleteDoc(doc(db, 'ielts_reading_tests', id));
       setMyTests(prev => prev.filter(test => test.id !== id));
-      toast.success("Test muvaffaqiyatli o'chirildi!");
+      toast.success(t.deleteSuccess);
     } catch (error) {
-      toast.error("O'chirishda xatolik yuz berdi.");
+      toast.error(t.deleteError);
     }
     setOpenDropdownId(null);
   };
@@ -82,7 +151,7 @@ export default function ReadingDashboard() {
   );
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto w-full animate-in fade-in duration-500 font-sans text-on-surface">
+    <div className="p-6 md:p-10 max-w-6xl mx-auto w-full animate-in fade-in duration-500 font-t-body text-on-surface">
 
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
@@ -96,13 +165,13 @@ export default function ReadingDashboard() {
             </div>
             <h1 className="text-2xl md:text-3xl font-black text-on-surface tracking-tight">IELTS Reading</h1>
           </div>
-          <p className="text-[14px] font-medium text-on-surface-variant">Matnli testlarni yarating yoki bazadan foydalaning.</p>
+          <p className="text-[14px] font-medium text-on-surface-variant">{t.subtitle}</p>
         </div>
 
         {/* CREATION BUTTON WITH DROPDOWN */}
         <div className="relative" onClick={(e) => e.stopPropagation()}>
           <Button variant="filled" icon={<Plus />} onClick={() => setShowCreateMenu(!showCreateMenu)}>
-            Yangi Test
+            {t.newTest}
           </Button>
 
           <AnimatePresence>
@@ -111,8 +180,8 @@ export default function ReadingDashboard() {
                 <Link href="/teacher/ielts/reading/manual" className="flex items-start gap-3 p-3 rounded-m3-md hover:bg-state-hover group transition-colors mt-1">
                   <div className="w-8 h-8 rounded-m3-sm bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0"><FileText size={16} /></div>
                   <div>
-                    <h4 className="text-[13px] font-bold text-on-surface group-hover:text-primary">Qo'lda kiritish</h4>
-                    <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">Noldan o'zingiz tuzing</p>
+                    <h4 className="text-[13px] font-bold text-on-surface group-hover:text-primary">{t.manualEntry}</h4>
+                    <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">{t.manualDesc}</p>
                   </div>
                 </Link>
               </motion.div>
@@ -125,14 +194,14 @@ export default function ReadingDashboard() {
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
         <div className="flex p-1 bg-surface-container rounded-m3-md w-full md:w-auto border border-outline-variant">
           <button onClick={() => setActiveTab('myTests')} className={`flex-1 md:w-40 py-2 text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'myTests' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
-            <BookOpen size={14} /> Mening Testlarim
+            <BookOpen size={14} /> {t.myTests}
           </button>
           <button onClick={() => setActiveTab('database')} className={`flex-1 md:w-40 py-2 text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'database' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
-            <Database size={14} /> Baza
+            <Database size={14} /> {t.database}
           </button>
         </div>
 
-        <SearchBar placeholder="Qidirish..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full md:w-72" />
+        <SearchBar placeholder={t.searchPlaceholder} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full md:w-72" />
       </div>
 
       {/* DATA LIST */}
@@ -155,8 +224,8 @@ export default function ReadingDashboard() {
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className={`px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-widest ${test.difficulty === 'easy' ? 'bg-success-container text-on-success-container' : test.difficulty === 'medium' ? 'bg-warning-container text-on-warning-container' : 'bg-error-container text-on-error-container'}`}>{test.difficulty}</span>
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant"><BookOpen size={12} /> {test.wordCount} ta so'z</span>
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant"><Clock size={12} /> {test.qCount} savol</span>
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant"><BookOpen size={12} /> {test.wordCount} {t.wordsSuffix}</span>
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant"><Clock size={12} /> {test.qCount} {t.questionsSuffix}</span>
                     </div>
                   </div>
                 </div>
@@ -165,17 +234,17 @@ export default function ReadingDashboard() {
 
                   {/* 🌟 VIEW BUTTON ROUTED TO NEW PAGE */}
                   <Link href={`/teacher/ielts/reading/view/${test.id}`} className="m3-interactive px-3 py-2 bg-secondary-container text-on-secondary-container text-[12px] font-bold rounded-m3-sm transition-colors flex items-center gap-1.5">
-                    <Eye size={14} /> Ko'rish
+                    <Eye size={14} /> {t.view}
                   </Link>
 
                   <Link href={`/teacher/ielts/reading/manual/${test.id}`} className="m3-interactive px-4 py-2 bg-surface-container-lowest ring-1 ring-inset ring-outline-variant text-on-surface text-[12px] font-bold rounded-m3-sm transition-colors">
-                    Tahrirlash
+                    {t.edit}
                   </Link>
 
                   {/* 🌟 DELETE DROPDOWN */}
                   {activeTab === 'myTests' && (
                     <div onClick={(e) => e.stopPropagation()}>
-                      <IconButton size="sm" aria-label="Qo'shimcha amallar" onClick={() => setOpenDropdownId(openDropdownId === test.id ? null : test.id)}>
+                      <IconButton size="sm" aria-label={t.moreActions} onClick={() => setOpenDropdownId(openDropdownId === test.id ? null : test.id)}>
                         <MoreVertical />
                       </IconButton>
 
@@ -183,7 +252,7 @@ export default function ReadingDashboard() {
                         {openDropdownId === test.id && (
                           <motion.div initial={{ opacity: 0, scale: 0.95, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 5 }} className="absolute right-0 top-full mt-1 w-40 bg-surface-container-low rounded-m3-md shadow-elev-2 border border-outline-variant py-1.5 z-50">
                             <button onClick={(e) => handleDelete(test.id, e)} className="w-full px-3 py-2 flex items-center gap-2 text-[12px] font-bold text-error hover:bg-error-container transition-colors">
-                              <Trash2 size={14} /> O'chirish
+                              <Trash2 size={14} /> {t.delete}
                             </button>
                           </motion.div>
                         )}
@@ -196,7 +265,7 @@ export default function ReadingDashboard() {
             ))}
           </div>
         ) : (
-          <EmptyState icon={<Search />} title="Natija topilmadi" className="h-[300px] justify-center" />
+          <EmptyState icon={<Search />} title={t.noResults} className="h-[300px] justify-center" />
         )}
       </div>
     </div>

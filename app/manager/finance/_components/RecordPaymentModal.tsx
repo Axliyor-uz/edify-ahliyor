@@ -12,17 +12,18 @@ import {
   openAmountOf,
   recordPaymentApi,
 } from "@/services/financeService";
-import {
-  PAYMENT_METHOD_LABELS,
-  type Charge,
-  type PaymentMethod,
-  type PaymentType,
-  type RecordPaymentResult,
-  type StudentFinanceProfile,
+import type {
+  Charge,
+  PaymentMethod,
+  PaymentType,
+  RecordPaymentResult,
+  StudentFinanceProfile,
 } from "@/types/finance";
 import { formatUZS } from "@/lib/finance/money";
 import { getTodayKey } from "@/lib/dateUtils";
-import { periodLabelOf } from "./financeFormat";
+import { Button } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
+import { PAYMENT_METHOD_KEYS, PAYMENT_METHOD_T, periodLabelOf } from "./financeFormat";
 
 interface Props {
   centerId: string;
@@ -31,6 +32,83 @@ interface Props {
   onClose: () => void;
   onDone: () => void;
 }
+
+const T_UZ = {
+  loadError: "Ma'lumotlarni yuklashda xatolik.",
+  refundNoteRequired: "Qaytarim uchun izoh majburiy.",
+  saveError: "To'lovni saqlashda xatolik.",
+  paymentAccepted: "To'lov qabul qilindi",
+  refundSaved: "Qaytarim saqlandi",
+  avansLine: "Avans (keyingi oylarga)",
+  newBalance: "Yangi balans:",
+  close: "Yopish",
+  recordPayment: "To'lov qabul qilish",
+  searchPlaceholder: "O'quvchini qidiring...",
+  studentNotFound: "O'quvchi topilmadi",
+  balance: "Balans:",
+  discount: (n: number) => `Chegirma ${n}%`,
+  frozen: "Muzlatilgan",
+  totalDebt: "Jami qarz",
+  typePayment: "To'lov",
+  typeRefund: "Qaytarim",
+  amountPlaceholder: "Summa (so'm)",
+  noteRequired: "Izoh (majburiy)",
+  noteOptional: "Izoh (ixtiyoriy)",
+  submitPayment: "To'lovni qabul qilish",
+  submitRefund: "Qaytarimni saqlash",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    loadError: "Failed to load data.",
+    refundNoteRequired: "A note is required for a refund.",
+    saveError: "Failed to save the payment.",
+    paymentAccepted: "Payment recorded",
+    refundSaved: "Refund saved",
+    avansLine: "Prepaid (toward future months)",
+    newBalance: "New balance:",
+    close: "Close",
+    recordPayment: "Record payment",
+    searchPlaceholder: "Search for a student...",
+    studentNotFound: "No students found",
+    balance: "Balance:",
+    discount: (n: number) => `Discount ${n}%`,
+    frozen: "Frozen",
+    totalDebt: "Total debt",
+    typePayment: "Payment",
+    typeRefund: "Refund",
+    amountPlaceholder: "Amount (so'm)",
+    noteRequired: "Note (required)",
+    noteOptional: "Note (optional)",
+    submitPayment: "Record payment",
+    submitRefund: "Save refund",
+  },
+  ru: {
+    loadError: "Не удалось загрузить данные.",
+    refundNoteRequired: "Для возврата комментарий обязателен.",
+    saveError: "Не удалось сохранить платёж.",
+    paymentAccepted: "Платёж принят",
+    refundSaved: "Возврат сохранён",
+    avansLine: "Аванс (в счёт будущих месяцев)",
+    newBalance: "Новый баланс:",
+    close: "Закрыть",
+    recordPayment: "Принять платёж",
+    searchPlaceholder: "Поиск ученика...",
+    studentNotFound: "Ученик не найден",
+    balance: "Баланс:",
+    discount: (n: number) => `Скидка ${n}%`,
+    frozen: "Заморожен",
+    totalDebt: "Общий долг",
+    typePayment: "Платёж",
+    typeRefund: "Возврат",
+    amountPlaceholder: "Сумма (so'm)",
+    noteRequired: "Комментарий (обязательно)",
+    noteOptional: "Комментарий (необязательно)",
+    submitPayment: "Принять платёж",
+    submitRefund: "Сохранить возврат",
+  },
+};
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -41,6 +119,8 @@ function initialsOf(name: string): string {
 
 /** Search a student → see their open charges → enter amount+method → done in ~5s. */
 export default function RecordPaymentModal({ centerId, classes, preselectUid, onClose, onDone }: Props) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [roster, setRoster] = useState<RosterStudent[] | null>(null);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<RosterStudent | null>(null);
@@ -90,11 +170,12 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
             .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
         );
       })
-      .catch(() => mounted && toast.error("Ma'lumotlarni yuklashda xatolik."))
+      .catch(() => mounted && toast.error(t.loadError))
       .finally(() => mounted && setLoadingStudent(false));
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerId, selected]);
 
   const filteredRoster = useMemo(() => {
@@ -118,7 +199,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
   const submit = async () => {
     if (!selected || !amountValid || submitting) return;
     if (type === "refund" && !note.trim()) {
-      toast.error("Qaytarim uchun izoh majburiy.");
+      toast.error(t.refundNoteRequired);
       return;
     }
     setSubmitting(true);
@@ -133,7 +214,7 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
       });
       setResult(res);
     } catch (e: any) {
-      toast.error(e.message || "To'lovni saqlashda xatolik.");
+      toast.error(e.message || t.saveError);
     } finally {
       setSubmitting(false);
     }
@@ -144,50 +225,47 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
     return (
       <ManagerSheet onClose={onDone}>
         <div className="p-6 sm:p-7 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 rounded-m3-lg bg-success-container text-on-success-container flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 size={28} />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">
-            {type === "payment" ? "To'lov qabul qilindi" : "Qaytarim saqlandi"}
+          <h3 className="text-lg font-bold text-on-surface">
+            {type === "payment" ? t.paymentAccepted : t.refundSaved}
           </h3>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-on-surface-variant mt-1">
             {selected.displayName} · {formatUZS(parsedAmount)}
           </p>
 
           {result.allocations.length > 0 && (
-            <div className="mt-4 bg-slate-50 border border-slate-100 rounded-2xl p-4 text-left space-y-1.5">
+            <div className="mt-4 bg-surface-container-low border border-outline-variant rounded-m3-lg p-4 text-left space-y-1.5">
               {result.allocations.map((a) => {
                 const charge = openCharges.find((c) => c.id === a.chargeId);
                 return (
                   <div key={a.chargeId} className="flex justify-between text-[13px]">
-                    <span className="text-slate-600">
-                      {charge ? `${periodLabelOf(charge)} · ${charge.classTitle}` : a.chargeId}
+                    <span className="text-on-surface-variant">
+                      {charge ? `${periodLabelOf(charge, lang)} · ${charge.classTitle}` : a.chargeId}
                     </span>
-                    <span className="font-bold text-brand-700 tabular-nums">{formatUZS(a.amount)}</span>
+                    <span className="font-bold text-success tabular-nums">{formatUZS(a.amount)}</span>
                   </div>
                 );
               })}
               {result.unallocatedAmount > 0 && (
-                <div className="flex justify-between text-[13px] pt-1.5 border-t border-slate-200">
-                  <span className="text-slate-600">Avans (keyingi oylarga)</span>
-                  <span className="font-bold text-violet-600 tabular-nums">{formatUZS(result.unallocatedAmount)}</span>
+                <div className="flex justify-between text-[13px] pt-1.5 border-t border-outline-variant">
+                  <span className="text-on-surface-variant">{t.avansLine}</span>
+                  <span className="font-bold text-tertiary tabular-nums">{formatUZS(result.unallocatedAmount)}</span>
                 </div>
               )}
             </div>
           )}
 
-          <p className="text-[13px] text-slate-500 mt-4">
-            Yangi balans:{" "}
-            <span className={`font-bold ${result.newBalance < 0 ? "text-rose-600" : "text-brand-700"}`}>
+          <p className="text-[13px] text-on-surface-variant mt-4">
+            {t.newBalance}{" "}
+            <span className={`font-bold ${result.newBalance < 0 ? "text-error" : "text-success"}`}>
               {formatUZS(result.newBalance)}
             </span>
           </p>
-          <button
-            onClick={onDone}
-            className="mt-5 w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors"
-          >
-            Yopish
-          </button>
+          <Button onClick={onDone} className="mt-5 w-full">
+            {t.close}
+          </Button>
         </div>
       </ManagerSheet>
     );
@@ -199,42 +277,42 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
         {/* ── Step 1: pick a student ── */}
         {!selected ? (
           <>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-3">To&apos;lov qabul qilish</h3>
+            <h3 className="text-lg font-bold text-on-surface tracking-tight mb-3">{t.recordPayment}</h3>
             <div className="relative">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
               <input
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="O'quvchini qidiring..."
-                className="w-full pl-10 pr-3.5 py-2.5 border border-brand-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                placeholder={t.searchPlaceholder}
+                className="w-full pl-10 pr-3.5 py-2.5 bg-transparent border border-outline-variant rounded-m3-md text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
             <div className="mt-3 max-h-[45dvh] overflow-y-auto space-y-1">
               {roster === null ? (
-                <div className="py-10 flex justify-center text-slate-400">
+                <div className="py-10 flex justify-center text-on-surface-variant">
                   <Loader2 size={20} className="animate-spin" />
                 </div>
               ) : filteredRoster.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-400">O&apos;quvchi topilmadi</p>
+                <p className="py-8 text-center text-sm text-on-surface-variant">{t.studentNotFound}</p>
               ) : (
                 filteredRoster.map((s) => (
                   <button
                     key={s.uid}
                     onClick={() => setSelected(s)}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-brand-25 transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-2.5 rounded-m3-md hover:bg-state-hover transition-colors text-left"
                   >
                     {s.photoURL ? (
                       // eslint-disable-next-line @next/next/no-img-element -- photos come from arbitrary auth providers (Google etc.); plain <img> like the rest of the manager panel
                       <img src={s.photoURL} alt="" width={36} height={36} className="w-9 h-9 rounded-full object-cover" />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[12px] font-bold">
+                      <div className="w-9 h-9 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center text-[12px] font-bold">
                         {initialsOf(s.displayName)}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-800 truncate">{s.displayName}</p>
-                      {s.username && <p className="text-[12px] text-slate-400 truncate">@{s.username}</p>}
+                      <p className="text-sm font-bold text-on-surface truncate">{s.displayName}</p>
+                      {s.username && <p className="text-[12px] text-on-surface-variant truncate">@{s.username}</p>}
                     </div>
                   </button>
                 ))
@@ -248,26 +326,26 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
               {!preselectUid && (
                 <button
                   onClick={() => setSelected(null)}
-                  className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500"
+                  className="w-8 h-8 rounded-m3-sm hover:bg-state-hover flex items-center justify-center text-on-surface-variant"
                 >
                   <ChevronLeft size={18} />
                 </button>
               )}
               <div className="min-w-0">
-                <h3 className="text-[16px] font-bold text-slate-900 truncate">{selected.displayName}</h3>
+                <h3 className="text-[16px] font-bold text-on-surface truncate">{selected.displayName}</h3>
                 {profile && (
                   <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                    <p className={`text-[12.5px] font-semibold ${profile.balance < 0 ? "text-rose-600" : "text-brand-700"}`}>
-                      Balans: {formatUZS(profile.balance)}
+                    <p className={`text-[12.5px] font-semibold ${profile.balance < 0 ? "text-error" : "text-success"}`}>
+                      {t.balance} {formatUZS(profile.balance)}
                     </p>
                     {(profile.discountPercent || 0) > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-600 rounded-full text-[11px] font-bold">
-                        <BadgePercent size={11} /> Chegirma {profile.discountPercent}%
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-tertiary-container text-on-tertiary-container rounded-full text-[11px] font-bold">
+                        <BadgePercent size={11} /> {t.discount(profile.discountPercent!)}
                       </span>
                     )}
                     {profile.financeStatus === "frozen" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 text-sky-600 rounded-full text-[11px] font-bold">
-                        <Snowflake size={11} /> Muzlatilgan
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-tertiary-container text-on-tertiary-container rounded-full text-[11px] font-bold">
+                        <Snowflake size={11} /> {t.frozen}
                       </span>
                     )}
                   </div>
@@ -276,43 +354,43 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
             </div>
 
             {loadingStudent ? (
-              <div className="py-10 flex justify-center text-slate-400">
+              <div className="py-10 flex justify-center text-on-surface-variant">
                 <Loader2 size={20} className="animate-spin" />
               </div>
             ) : (
               <div className="space-y-4">
                 {openCharges.length > 0 && type === "payment" && (
-                  <div className="bg-rose-50/60 border border-rose-100 rounded-2xl p-3.5 space-y-1.5">
+                  <div className="bg-error-container rounded-m3-lg p-3.5 space-y-1.5">
                     {openCharges.map((c) => (
                       <div key={c.id} className="flex justify-between text-[13px]">
-                        <span className="text-slate-600 truncate mr-2">
-                          {periodLabelOf(c)} · {c.classTitle}
+                        <span className="text-on-error-container truncate mr-2">
+                          {periodLabelOf(c, lang)} · {c.classTitle}
                         </span>
-                        <span className="font-bold text-rose-600 tabular-nums shrink-0">
+                        <span className="font-bold text-on-error-container tabular-nums shrink-0">
                           {formatUZS(openAmountOf(c))}
                         </span>
                       </div>
                     ))}
-                    <div className="flex justify-between text-[13px] pt-1.5 border-t border-rose-100">
-                      <span className="font-bold text-slate-700">Jami qarz</span>
-                      <span className="font-bold text-rose-700 tabular-nums">{formatUZS(totalDebt)}</span>
+                    <div className="flex justify-between text-[13px] pt-1.5 border-t border-outline-variant">
+                      <span className="font-bold text-on-error-container">{t.totalDebt}</span>
+                      <span className="font-bold text-on-error-container tabular-nums">{formatUZS(totalDebt)}</span>
                     </div>
                   </div>
                 )}
 
                 {/* type toggle */}
-                <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+                <div className="flex gap-1 bg-surface-container rounded-m3-md p-1">
                   {(
                     [
-                      ["payment", "To'lov"],
-                      ["refund", "Qaytarim"],
+                      ["payment", t.typePayment],
+                      ["refund", t.typeRefund],
                     ] as [PaymentType, string][]
-                  ).map(([t, label]) => (
+                  ).map(([ty, label]) => (
                     <button
-                      key={t}
-                      onClick={() => setType(t)}
-                      className={`flex-1 py-2 rounded-lg text-[13px] font-bold transition-colors ${
-                        type === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                      key={ty}
+                      onClick={() => setType(ty)}
+                      className={`flex-1 py-2 rounded-m3-sm text-[13px] font-bold transition-colors ${
+                        type === ty ? "bg-surface-container-lowest text-on-surface shadow-elev-1" : "text-on-surface-variant"
                       }`}
                     >
                       {label}
@@ -329,24 +407,24 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                     step={1000}
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="Summa (so'm)"
-                    className="w-full px-3.5 py-3 border border-brand-line rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
+                    placeholder={t.amountPlaceholder}
+                    className="w-full px-3.5 py-3 bg-transparent border border-outline-variant rounded-m3-md text-[16px] font-bold text-on-surface tabular-nums focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   />
                   {type === "payment" && totalDebt > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       <button
                         onClick={() => setAmount(String(totalDebt))}
-                        className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 rounded-lg text-[12px] font-bold text-brand-800"
+                        className="px-3 py-1.5 bg-secondary-container text-on-secondary-container hover:shadow-elev-1 rounded-m3-md text-[12px] font-bold transition-shadow"
                       >
-                        Jami qarz · {formatUZS(totalDebt)}
+                        {t.totalDebt} · {formatUZS(totalDebt)}
                       </button>
                       {openCharges.slice(0, 2).map((c) => (
                         <button
                           key={c.id}
                           onClick={() => setAmount(String(openAmountOf(c)))}
-                          className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 rounded-lg text-[12px] font-bold text-brand-800"
+                          className="px-3 py-1.5 bg-secondary-container text-on-secondary-container hover:shadow-elev-1 rounded-m3-md text-[12px] font-bold transition-shadow"
                         >
-                          {periodLabelOf(c)} · {formatUZS(openAmountOf(c))}
+                          {periodLabelOf(c, lang)} · {formatUZS(openAmountOf(c))}
                         </button>
                       ))}
                     </div>
@@ -355,17 +433,17 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
 
                 {/* method */}
                 <div className="flex flex-wrap gap-1.5">
-                  {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]).map(([m, label]) => (
+                  {PAYMENT_METHOD_KEYS.map((m) => (
                     <button
                       key={m}
                       onClick={() => setMethod(m)}
-                      className={`px-3.5 py-2 rounded-xl text-[13px] font-bold border transition-colors ${
+                      className={`px-3.5 py-2 rounded-m3-md text-[13px] font-bold border transition-colors ${
                         method === m
-                          ? "bg-brand-600 text-white border-brand-600"
-                          : "bg-white text-slate-600 border-brand-line hover:border-brand-200"
+                          ? "bg-primary text-on-primary border-primary"
+                          : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-primary"
                       }`}
                     >
-                      {label}
+                      {PAYMENT_METHOD_T[lang][m]}
                     </button>
                   ))}
                 </div>
@@ -377,27 +455,26 @@ export default function RecordPaymentModal({ centerId, classes, preselectUid, on
                     value={paidAt}
                     max={todayKey}
                     onChange={(e) => setPaidAt(e.target.value)}
-                    className="px-3 py-2.5 border border-brand-line rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                    className="px-3 py-2.5 bg-transparent border border-outline-variant rounded-m3-md text-[13px] text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   />
                   <input
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder={type === "refund" ? "Izoh (majburiy)" : "Izoh (ixtiyoriy)"}
-                    className="px-3 py-2.5 border border-brand-line rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                    placeholder={type === "refund" ? t.noteRequired : t.noteOptional}
+                    className="px-3 py-2.5 bg-transparent border border-outline-variant rounded-m3-md text-[13px] text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   />
                 </div>
 
-                <button
+                <Button
+                  variant={type === "payment" ? "filled" : "danger"}
                   onClick={submit}
-                  disabled={!amountValid || submitting}
-                  className={`w-full py-3.5 font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-white ${
-                    type === "payment" ? "bg-brand-600 hover:bg-brand-700" : "bg-rose-600 hover:bg-rose-700"
-                  }`}
+                  disabled={!amountValid}
+                  loading={submitting}
+                  className="w-full"
                 >
-                  {submitting && <Loader2 size={16} className="animate-spin" />}
-                  {type === "payment" ? "To'lovni qabul qilish" : "Qaytarimni saqlash"}
+                  {type === "payment" ? t.submitPayment : t.submitRefund}
                   {amountValid && ` · ${formatUZS(parsedAmount)}`}
-                </button>
+                </Button>
               </div>
             )}
           </>

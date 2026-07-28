@@ -5,7 +5,7 @@
 > same change whenever you alter behavior described here.
 > Index: [README.md](README.md). Student *logic* lives in [STUDENT.md](STUDENT.md).
 
-**Last verified:** 2026-07-20 (system introduced; whole student tree migrated).
+**Last verified:** 2026-07-23 (shell variants extended: 9 desktop + 5 mobile, recipe-driven via shellStyles.ts).
 
 ## The one thing to know
 
@@ -15,7 +15,7 @@ gamification widgets, motion, density. Nothing else needs editing.
 
 ```ts
 Color_palette: 'nebula',        // 10 M3 palettes
-App_shell_navigation: 'shell_a',// icon rail | drawer | top bar
+App_shell_navigation: 'sidebar',// 9 desktop shells (6 recipes + floating/rail/topbar)
 Card_style: 'filled',           // filled | elevated | outlined | gradient | glass
 Button_style: 'game',           // game | pill | squircle | elevated
 Layout_density: 'platform',     // edge-to-edge software vs floating cards
@@ -48,6 +48,8 @@ their own styling — see [UI_KIT.md](UI_KIT.md) for the separate teacher kit.
 | `components/student-ui/config.ts` | Bridges the config to the kit (`themeAttributes()`, `MOTION_ON`, `springTransition`). |
 | `components/student-ui/StudentThemeProvider.tsx` | Stamps `data-palette/-shape/-density/-layout/-motion/-mode` on the shell root. |
 | `components/student-ui/*.tsx` | The kit. Barrel: `index.ts`. |
+| `components/student-ui/shellStyles.ts` | Pure-data sidebar recipes (`SIDE_STYLES`) shared by `Shell.tsx` and the gallery. |
+| `app/theme-check-student/page.tsx` | Dev-only, unguarded shell gallery (`/theme-check-student?palette=X&mode=dark`). Safe to delete. |
 | `tailwind.config.ts` | Maps tokens to utilities (**additive only** — teacher mappings untouched). |
 
 ## How the switches actually work
@@ -64,6 +66,53 @@ their own styling — see [UI_KIT.md](UI_KIT.md) for the separate teacher kit.
    `<Card variant="gradient">` on one hero card leaves the rest alone.
 3. **Shell switches** (`App_shell_navigation`, `Mobile_navigation`) pick which
    nav `Shell.tsx` renders. Pages never know which is active.
+
+## Shell variants
+
+**Desktop (`App_shell_navigation`, 9 values).** Six are *recipes* — pure data
+in `components/student-ui/shellStyles.ts` (`SIDE_STYLES`), all rendered by the
+same `RecipeDrawer` in `Shell.tsx`:
+
+> Renamed 2026-07-23: the opaque `shell_a` / `shell_b` / `shell_c` values became
+> `rail` / `sidebar` / `topbar` (same looks; `sidebar` stays the default).
+
+- `sidebar` ⭐ (default) — neutral drawer, gliding `primary-container` pill
+  behind the active row
+- `classic` — sliding left accent **bar** + `color-mix()` tinted active row
+- `tonal` — panel washed in `secondary-container`, raised `bg-surface` pill
+- `inverse` — `inverse-surface` panel, `inverse-on-surface` idle text
+- `gradient` — `--s-grad-a/b` gradient panel; idle text is `on-primary`, which
+  is correct in both modes (the gradient is saturated in light, pastel in dark)
+- `minimal` — transparent chromeless panel, sliding **dot** indicator
+
+The other three are *containers*, not recipes: `floating` = the `sidebar`
+recipe inside a detached glass card (`bg-surface-glass`, `shadow-elev-2`,
+`rounded-m3-lg`, 12px margin); `rail` = icon-only strip with tooltips;
+`topbar` = top tabs, no side panel. `resolveSideStyle()` maps any value to its
+recipe (non-recipes → `sidebar`).
+
+Recipe fields: `panel`, `headerBorder`, `brandWrap` (chips the wordmark on a
+surface so it stays legible on colored panels), `itemShape`, `idle`, `active`,
+`activeRowBg`, `iconActive`, `indicator` (`pill | bar | dot`), `indicatorCls`.
+The active indicator is a framer-motion `layoutId` element gliding between
+rows — positions use **fixed offsets, never translate-based centering**
+(framer's layout animation owns `transform`), and its transition is gated on
+`MOTION_ON`.
+
+**Mobile (`Mobile_navigation`, 5 values).** `dock` ⭐ (edge-to-edge bar),
+`floating` (detached pill), `iconic` (icon-only compact bar — every item
+carries `aria-label`), `topline` (sliding `h-[3px]` accent line along the TOP
+edge of the bar), `drawer` (hamburger slide-in). All bar variants share the M3
+5-destination cap (`hideOnMobile`), and `<main>` reserves per-variant bottom
+padding off `--s-dock-h` so content never hides under the bar.
+
+The recipes are previewed at **`/theme-check-student`** — an unguarded,
+data-free gallery whose `MiniSidebar`/`MiniBar` consume the real `SIDE_STYLES`,
+so the gallery cannot drift from the shell. It lives outside `app/(student)`,
+so it imports `theme.css` itself (the documented "only the layout imports it"
+rule applies to pages *under* the student layout) and re-scopes
+`?palette=X&mode=dark` overrides by nesting `data-palette`/`data-mode` on an
+inner wrapper.
 
 `Color_mode: 'system'` is resolved at runtime and keeps following the OS if the
 student flips their theme mid-session.
@@ -154,9 +203,9 @@ Loading them in the root (server) layout avoids calling `next/font` from the
 `--m3-primary` resolves. Then:
 
 1. **Re-skin smoke test** — change `Color_palette` to `sunset`, save: every page
-   shifts hue. Change `App_shell_navigation` to `shell_b`: the rail becomes a
-   labelled drawer. Change `Card_style` to `outlined`: every card loses its fill.
-   Revert.
+   shifts hue. Change `App_shell_navigation` to `rail`: the drawer becomes an
+   icon rail (try `gradient` or `floating` too). Change `Card_style` to
+   `outlined`: every card loses its fill. Revert.
 2. **Typo test** — set a bogus value; `npx tsc --noEmit` must fail with a
    "did you mean" hint.
 3. **Dark mode** — toggle the OS theme; `Color_mode: 'system'` must follow live.

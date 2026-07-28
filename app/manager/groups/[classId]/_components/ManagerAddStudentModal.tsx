@@ -13,6 +13,71 @@ import { useCenterClasses } from "@/hooks/useCenterClasses";
 import ManagerSheet from "@/app/manager/_components/ManagerSheet";
 import { patchStudentFinanceApi } from "@/services/financeService";
 import { getTodayKey } from "@/lib/dateUtils";
+import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+
+const TRANSLATIONS = {
+  uz: {
+    unknown: "Noma'lum",
+    alreadyInGroup: "Bu o'quvchi allaqachon guruhda.",
+    onlyStudents: "Faqat o'quvchilarni qo'shish mumkin.",
+    userDataNotFound: "Foydalanuvchi ma'lumotlari topilmadi.",
+    userNotFound: "Foydalanuvchi topilmadi.",
+    searchError: "Qidiruvda xatolik yuz berdi.",
+    studentFallback: "O'quvchi",
+    added: (name: string) => `${name} qo'shildi!`,
+    addError: "O'quvchini qo'shishda xatolik yuz berdi.",
+    title: "O'quvchi qo'shish",
+    subtitle: "Ro'yxatdan tanlang yoki qidiring",
+    searchPlaceholder: "Ism, username yoki email...",
+    exactSearchTitle: "Aniq username/email bo'yicha qidirish",
+    add: "Qo'shish",
+    centerStudents: "Markaz o'quvchilari",
+    noCenterStudents: "Boshqa guruhlarda qo'shilmagan o'quvchi yo'q. Yuqoridan qidirib qo'shing.",
+    noListMatch: "Ro'yxatda topilmadi — aniq username/email bilan qidirib ko'ring.",
+    addToGroupTitle: "Guruhga qo'shish",
+  },
+  en: {
+    unknown: "Unknown",
+    alreadyInGroup: "This student is already in the group.",
+    onlyStudents: "Only students can be added.",
+    userDataNotFound: "User details could not be found.",
+    userNotFound: "User not found.",
+    searchError: "Something went wrong during the search.",
+    studentFallback: "Student",
+    added: (name: string) => `${name} has been added!`,
+    addError: "Something went wrong while adding the student.",
+    title: "Add student",
+    subtitle: "Pick from the list or search",
+    searchPlaceholder: "Name, username or email...",
+    exactSearchTitle: "Search by exact username/email",
+    add: "Add",
+    centerStudents: "Center students",
+    noCenterStudents: "No unassigned students in other groups. Search above to add one.",
+    noListMatch: "Not found in the list — try searching by exact username/email.",
+    addToGroupTitle: "Add to group",
+  },
+  ru: {
+    unknown: "Неизвестно",
+    alreadyInGroup: "Этот ученик уже состоит в группе.",
+    onlyStudents: "Добавлять можно только учеников.",
+    userDataNotFound: "Данные пользователя не найдены.",
+    userNotFound: "Пользователь не найден.",
+    searchError: "Произошла ошибка при поиске.",
+    studentFallback: "Ученик",
+    added: (name: string) => `${name} добавлен(а)!`,
+    addError: "Не удалось добавить ученика.",
+    title: "Добавить ученика",
+    subtitle: "Выберите из списка или найдите",
+    searchPlaceholder: "Имя, username или email...",
+    exactSearchTitle: "Поиск по точному username/email",
+    add: "Добавить",
+    centerStudents: "Ученики центра",
+    noCenterStudents: "Нет учеников из других групп, которых можно добавить. Найдите через поиск выше.",
+    noListMatch: "В списке не найдено — попробуйте поиск по точному username/email.",
+    addToGroupTitle: "Добавить в группу",
+  },
+};
+type T = typeof TRANSLATIONS.uz;
 
 interface Props {
   classId: string;
@@ -37,6 +102,8 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 export default function ManagerAddStudentModal({ classId, centerId, existingStudentIds, onClose, onAdded }: Props) {
+  const { lang } = useManagerLanguage();
+  const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [searchInput, setSearchInput] = useState("");
   const [foundUser, setFoundUser] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -73,7 +140,7 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
             const data = d.data();
             return {
               uid: d.id,
-              displayName: data.displayName || "Noma'lum",
+              displayName: data.displayName || t.unknown,
               username: data.username || "",
               email: data.email || "",
             };
@@ -130,7 +197,7 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
 
       if (uidToFetch) {
         if (existingStudentIds.includes(uidToFetch)) {
-          toast.error("Bu o'quvchi allaqachon guruhda.");
+          toast.error(t.alreadyInGroup);
           setIsSearching(false);
           return;
         }
@@ -140,21 +207,21 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
           const userData = userSnap.data();
 
           if (userData.role !== "student") {
-            toast.error("Faqat o'quvchilarni qo'shish mumkin.");
+            toast.error(t.onlyStudents);
             setIsSearching(false);
             return;
           }
 
           setFoundUser({ uid: uidToFetch, ...userData });
         } else {
-          toast.error("Foydalanuvchi ma'lumotlari topilmadi.");
+          toast.error(t.userDataNotFound);
         }
       } else {
-        toast.error("Foydalanuvchi topilmadi.");
+        toast.error(t.userNotFound);
       }
     } catch (error) {
       console.error("Search failed:", error);
-      toast.error("Qidiruvda xatolik yuz berdi.");
+      toast.error(t.searchError);
     } finally {
       setIsSearching(false);
     }
@@ -178,14 +245,14 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
       // proration). Best-effort — generation falls back to a full charge if missing.
       patchStudentFinanceApi(uid, { enrollmentDates: { [classId]: getTodayKey() } }).catch(() => {});
 
-      toast.success(`${displayName || "O'quvchi"} qo'shildi!`);
+      toast.success(t.added(displayName || t.studentFallback));
       setFoundUser(null);
       setSearchInput("");
       setCenterStudents((prev) => prev.filter((s) => s.uid !== uid));
       onAdded();
     } catch (error) {
       console.error("Add student failed:", error);
-      toast.error("O'quvchini qo'shishda xatolik yuz berdi.");
+      toast.error(t.addError);
     } finally {
       setAddingUid(null);
     }
@@ -197,19 +264,19 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
   return (
     <ManagerSheet onClose={onClose} dismissible={!isBusy}>
       {/* HEADER */}
-      <div className="px-5 sm:px-7 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+      <div className="px-5 sm:px-7 py-4 sm:py-5 border-b border-outline-variant flex justify-between items-center sticky top-0 bg-surface-container-lowest z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 shrink-0">
+          <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container shrink-0">
             <UserPlus size={19} strokeWidth={2.5} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">O&apos;quvchi qo&apos;shish</h2>
-            <p className="text-xs text-slate-400 font-medium">Ro&apos;yxatdan tanlang yoki qidiring</p>
+            <h2 className="text-base font-bold text-on-surface tracking-tight">{t.title}</h2>
+            <p className="text-xs text-on-surface-variant font-medium">{t.subtitle}</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="w-9 h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+          className="w-9 h-9 flex items-center justify-center bg-surface-container-low hover:bg-state-hover border border-outline-variant rounded-full text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
         >
           <X size={17} strokeWidth={2.5} />
         </button>
@@ -218,23 +285,23 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
       {/* BODY */}
       <div className="p-5 sm:p-7">
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors" size={17} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors" size={17} />
           <input
             type="text"
-            placeholder="Ism, username yoki email..."
+            placeholder={t.searchPlaceholder}
             value={searchInput}
             onChange={(e) => { setSearchInput(e.target.value); setFoundUser(null); }}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="w-full pl-11 pr-14 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 outline-none transition-all"
+            className="w-full pl-11 pr-14 py-3.5 bg-surface-container-low border border-outline-variant rounded-m3-md text-sm font-medium text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
           />
           <button
             onClick={handleSearch}
             disabled={isSearching || !hasInput}
-            title="Aniq username/email bo'yicha qidirish"
+            title={t.exactSearchTitle}
             className={`absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
               hasInput && !isSearching
-                ? "bg-brand-600 text-white hover:bg-brand-700 active:scale-95"
-                : "bg-slate-100 text-slate-400 border border-slate-200"
+                ? "bg-primary text-on-primary hover:shadow-elev-1 active:scale-95"
+                : "bg-surface-container text-on-surface-variant border border-outline-variant"
             }`}
           >
             {isSearching ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} strokeWidth={2.5} />}
@@ -243,72 +310,72 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
 
         {/* Exact search result */}
         {foundUser && (
-          <div className="mt-4 bg-brand-25 border border-brand-200 p-3.5 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <div className="w-11 h-11 bg-brand-600 rounded-full flex items-center justify-center font-bold text-white text-base shrink-0">
+          <div className="mt-4 bg-primary-container border border-outline-variant p-3.5 rounded-m3-md flex items-center gap-3">
+            <div className="w-11 h-11 bg-primary rounded-full flex items-center justify-center font-bold text-on-primary text-base shrink-0">
               {foundUser.displayName?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-slate-900 text-sm truncate">{foundUser.displayName || "Noma'lum"}</p>
-              <p className="text-xs font-medium text-slate-500 truncate">
+              <p className="font-bold text-on-primary-container text-sm truncate">{foundUser.displayName || t.unknown}</p>
+              <p className="text-xs font-medium text-on-primary-container truncate">
                 {foundUser.username ? `@${foundUser.username}` : foundUser.email}
               </p>
             </div>
             <button
               onClick={() => handleAddStudent(foundUser.uid, foundUser.displayName)}
               disabled={isBusy}
-              className="h-10 px-4 bg-brand-600 hover:bg-brand-700 text-white text-[13px] font-bold rounded-full transition-all disabled:opacity-50 active:scale-95 flex items-center gap-1.5 shrink-0"
+              className="h-10 px-4 bg-primary text-on-primary text-[13px] font-bold rounded-full transition-all disabled:opacity-50 active:scale-95 flex items-center gap-1.5 shrink-0"
             >
               {addingUid === foundUser.uid ? <Loader2 className="animate-spin" size={16} /> : <UserPlus size={16} />}
-              Qo&apos;shish
+              {t.add}
             </button>
           </div>
         )}
 
         {/* Center students */}
         <div className="mt-5">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <Users size={13} /> Markaz o&apos;quvchilari
+          <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <Users size={13} /> {t.centerStudents}
             {!loadingStudents && centerStudents.length > 0 && (
-              <span className="text-slate-300 font-semibold normal-case tracking-normal">· {visibleCenterStudents.length}</span>
+              <span className="text-on-surface-variant font-semibold normal-case tracking-normal">· {visibleCenterStudents.length}</span>
             )}
           </p>
 
           {loadingStudents || loadingClasses ? (
             <div className="space-y-2 animate-pulse">
               {Array(3).fill(0).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                  <div className="w-10 h-10 bg-slate-200 rounded-xl shrink-0" />
+                <div key={i} className="flex items-center gap-3 p-3 bg-surface-container-low rounded-m3-md">
+                  <div className="w-10 h-10 bg-surface-container-highest rounded-m3-md shrink-0" />
                   <div className="flex-1 space-y-1.5">
-                    <div className="h-3 bg-slate-200 rounded w-1/2" />
-                    <div className="h-2.5 bg-slate-100 rounded w-1/3" />
+                    <div className="h-3 bg-surface-container-highest rounded w-1/2" />
+                    <div className="h-2.5 bg-surface-container rounded w-1/3" />
                   </div>
                 </div>
               ))}
             </div>
           ) : centerStudents.length === 0 ? (
-            <p className="text-[13px] text-slate-400 py-4 text-center bg-slate-50 rounded-xl">
-              Boshqa guruhlarda qo&apos;shilmagan o&apos;quvchi yo&apos;q. Yuqoridan qidirib qo&apos;shing.
+            <p className="text-[13px] text-on-surface-variant py-4 text-center bg-surface-container-low rounded-m3-md">
+              {t.noCenterStudents}
             </p>
           ) : visibleCenterStudents.length === 0 ? (
-            <p className="text-[13px] text-slate-400 py-4 text-center bg-slate-50 rounded-xl">
-              Ro&apos;yxatda topilmadi — aniq username/email bilan qidirib ko&apos;ring.
+            <p className="text-[13px] text-on-surface-variant py-4 text-center bg-surface-container-low rounded-m3-md">
+              {t.noListMatch}
             </p>
           ) : (
             <div className="max-h-[40dvh] overflow-y-auto overscroll-contain -mx-1 px-1 space-y-2">
               {visibleCenterStudents.map((s) => (
-                <div key={s.uid} className="flex items-center gap-3 p-3 bg-white border border-brand-line rounded-2xl hover:border-brand-200 transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-800 flex items-center justify-center font-bold text-sm shrink-0">
+                <div key={s.uid} className="flex items-center gap-3 p-3 bg-surface-container-lowest border border-outline-variant rounded-m3-lg hover:border-primary transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm shrink-0">
                     {s.displayName.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-slate-900 truncate">{s.displayName}</p>
-                    <p className="text-xs text-slate-500 truncate">{s.username ? `@${s.username}` : s.email}</p>
+                    <p className="text-sm font-bold text-on-surface truncate">{s.displayName}</p>
+                    <p className="text-xs text-on-surface-variant truncate">{s.username ? `@${s.username}` : s.email}</p>
                   </div>
                   <button
                     onClick={() => handleAddStudent(s.uid, s.displayName)}
                     disabled={isBusy}
-                    title="Guruhga qo'shish"
-                    className="w-9 h-9 rounded-full bg-brand-50 text-brand-700 hover:bg-brand-600 hover:text-white flex items-center justify-center transition-colors disabled:opacity-50 shrink-0"
+                    title={t.addToGroupTitle}
+                    className="w-9 h-9 rounded-full bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary flex items-center justify-center transition-colors disabled:opacity-50 shrink-0"
                   >
                     {addingUid === s.uid ? <Loader2 className="animate-spin" size={16} /> : <UserPlus size={16} />}
                   </button>

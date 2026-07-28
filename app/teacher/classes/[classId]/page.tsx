@@ -154,7 +154,7 @@ export default function ClassDetailsPage() {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans selection:bg-primary-container selection:text-on-primary-container flex flex-col relative">
+    <div className="min-h-[100dvh] bg-surface font-t-body selection:bg-primary-container selection:text-on-primary-container flex flex-col relative">
       
       {/* --- MODALS --- */}
       {/* Markaz guruhida qo'shish/sozlamalar menejerniki — modallar umuman mount qilinmaydi. */}

@@ -25,6 +25,134 @@ import AiMonthlyLimitCard from "@/app/teacher/create/_components/AiMonthlyLimitC
 
 import maktabMap from "@/data/maktab/structure.json";
 import ixtisosMap from "@/data/ixtisoslashtirilgan_maktab/structure.json";
+import { useTeacherLanguage } from "@/app/teacher/layout";
+
+// --- TRANSLATION DICTIONARY ---
+const BSB_TRANSLATIONS: Record<string, any> = {
+  uz: {
+    thinkingTitle: "AI Studiya ishlamoqda",
+    thinkingPhrases: [
+      "Matritsa tahlil qilinmoqda...",
+      "Mavzularga oid ma'lumotlar o'qilmoqda...",
+      "Qiyinlik darajasi moslashtirilmoqda...",
+      "Savollar va javoblar yozilmoqda...",
+      "Formula va chizmalar tekshirilmoqda...",
+      "Yakuniy imtihon qog'ozi yig'ilmoqda..."
+    ],
+    deleteQuestion: "Savolni o'chirish", pointsUnit: "Ball", answerLabel: "Javob:",
+    trueLabel: "Rost", falseLabel: "Yolg'on",
+    sampleSolution: "Namuna Yechim", rubricLabel: "Baholash Mezoni",
+    qTypes: { mcq: "Test (MCQ)", short_answer: "Qisqa javob", open_ended: "Ochiq (Tahlil)", matching: "Moslashtirish", true_false: "Rost / Yolg'on" },
+    diffLabels: { "Aralash": "Aralash", "Oson": "Oson", "O'rta": "O'rta", "Qiyin": "Qiyin" },
+    toasts: {
+      syllabusNotFound: "Syllabus topilmadi!",
+      selectClassSubject: "Sinf va fanni tanlang.",
+      selectTopic: "Kamida bitta mavzuni tanlang.",
+      enableQuestionType: "Kamida bitta savol turini faollashtiring.",
+      created: (n: number) => `${n} ta savol yaratildi!`,
+      readError: "Savollarni o'qishda xatolik.",
+      enterTitle: "Test nomini kiriting",
+      saved: "Imtihon muvaffaqiyatli saqlandi!",
+      saveError: "Saqlashda xatolik yuz berdi."
+    },
+    limitNeeded: (needed: number, remaining: number) => `Ushbu imtihon uchun ${needed} ta savol kerak, lekin sizda ${remaining} ta limit qolgan. Matritsani qisqartiring yoki tarifni oshiring.`,
+    limitReached: "Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.",
+    headerTitle: "BSB/CHSB Generatori", headerSave: "Saqlash", studioMode: "Studiya Rejimi",
+    schoolGeneral: "Umumta'lim", schoolSpecialized: "Ixtisos",
+    step1: "1. Sinf va Fan", notSelected: "Tanlanmagan",
+    step2: "2. Mavzular", selectedCount: (n: number) => `${n} ta tanlandi`,
+    step3: "3. Matritsa", matrixDesc: "Savollar va ballarni sozlang",
+    totalQuestions: "Jami Savol", totalPoints: "Jami Ball", generateBtn: "Imtihonni Yaratish",
+    paperTitle: "Imtihon Qog'ozi", paperDesc: "Savollarni tekshiring. Noto'g'ri savollarni o'chirishingiz mumkin.",
+    confirmedPoints: (n: number) => `Tasdiqlangan: ${n} Ball`,
+    premiumFeature: "Premium Xususiyat", viewPlans: "Tariflarni ko'rish", close: "Yopish",
+    classSubjectModal: { title: "Sinf va Fan", selectClass: "1. Sinfni tanlang", selectSubject: "2. Fanni tanlang", confirm: "Tasdiqlash" },
+    topicsModal: { title: "Qamrov (Mavzular)", empty: "Dastur yuklanmadi. Fan tanlang.", confirm: "Tanlovni Tasdiqlash" },
+    titleModal: { title: "Hujjat nomi", desc: "O'quvchilarga ko'rinadigan rasmiy nomni yozing.", placeholder: "Masalan: 7-sinf Biologiya CHSB", cancel: "Bekor qilish", saving: "Saqlanmoqda...", save: "Saqlash" }
+  },
+  en: {
+    thinkingTitle: "AI Studio is working",
+    thinkingPhrases: [
+      "Analyzing the matrix...",
+      "Reading topic materials...",
+      "Adjusting the difficulty level...",
+      "Writing questions and answers...",
+      "Checking formulas and diagrams...",
+      "Assembling the final exam paper..."
+    ],
+    deleteQuestion: "Delete question", pointsUnit: "Pts", answerLabel: "Answer:",
+    trueLabel: "True", falseLabel: "False",
+    sampleSolution: "Sample Solution", rubricLabel: "Grading Rubric",
+    qTypes: { mcq: "Test (MCQ)", short_answer: "Short answer", open_ended: "Open (Analysis)", matching: "Matching", true_false: "True / False" },
+    diffLabels: { "Aralash": "Mixed", "Oson": "Easy", "O'rta": "Medium", "Qiyin": "Hard" },
+    toasts: {
+      syllabusNotFound: "Syllabus not found!",
+      selectClassSubject: "Select a grade and subject.",
+      selectTopic: "Select at least one topic.",
+      enableQuestionType: "Enable at least one question type.",
+      created: (n: number) => `${n} questions created!`,
+      readError: "Error reading the questions.",
+      enterTitle: "Enter a test title",
+      saved: "Exam saved successfully!",
+      saveError: "An error occurred while saving."
+    },
+    limitNeeded: (needed: number, remaining: number) => `This exam needs ${needed} questions, but you only have ${remaining} left in your limit. Reduce the matrix or upgrade your plan.`,
+    limitReached: "Your monthly AI limit is not enough. Upgrade your plan or wait for next month.",
+    headerTitle: "BSB/CHSB Generator", headerSave: "Save", studioMode: "Studio Mode",
+    schoolGeneral: "General", schoolSpecialized: "Specialized",
+    step1: "1. Grade & Subject", notSelected: "Not selected",
+    step2: "2. Topics", selectedCount: (n: number) => `${n} selected`,
+    step3: "3. Matrix", matrixDesc: "Configure questions and points",
+    totalQuestions: "Total Questions", totalPoints: "Total Points", generateBtn: "Generate Exam",
+    paperTitle: "Exam Paper", paperDesc: "Review the questions. You can delete incorrect ones.",
+    confirmedPoints: (n: number) => `Confirmed: ${n} Pts`,
+    premiumFeature: "Premium Feature", viewPlans: "View plans", close: "Close",
+    classSubjectModal: { title: "Grade & Subject", selectClass: "1. Select a grade", selectSubject: "2. Select a subject", confirm: "Confirm" },
+    topicsModal: { title: "Coverage (Topics)", empty: "Syllabus not loaded. Select a subject.", confirm: "Confirm Selection" },
+    titleModal: { title: "Document title", desc: "Write the official name visible to students.", placeholder: "E.g.: Grade 7 Biology CHSB", cancel: "Cancel", saving: "Saving...", save: "Save" }
+  },
+  ru: {
+    thinkingTitle: "AI Студия работает",
+    thinkingPhrases: [
+      "Анализ матрицы...",
+      "Чтение материалов по темам...",
+      "Настройка уровня сложности...",
+      "Составление вопросов и ответов...",
+      "Проверка формул и схем...",
+      "Сборка итоговой экзаменационной работы..."
+    ],
+    deleteQuestion: "Удалить вопрос", pointsUnit: "Балл", answerLabel: "Ответ:",
+    trueLabel: "Верно", falseLabel: "Неверно",
+    sampleSolution: "Пример решения", rubricLabel: "Критерии оценивания",
+    qTypes: { mcq: "Тест (MCQ)", short_answer: "Краткий ответ", open_ended: "Открытый (Анализ)", matching: "Сопоставление", true_false: "Верно / Неверно" },
+    diffLabels: { "Aralash": "Смешанный", "Oson": "Лёгкий", "O'rta": "Средний", "Qiyin": "Сложный" },
+    toasts: {
+      syllabusNotFound: "Учебная программа не найдена!",
+      selectClassSubject: "Выберите класс и предмет.",
+      selectTopic: "Выберите хотя бы одну тему.",
+      enableQuestionType: "Включите хотя бы один тип вопросов.",
+      created: (n: number) => `Создано вопросов: ${n}!`,
+      readError: "Ошибка при чтении вопросов.",
+      enterTitle: "Введите название теста",
+      saved: "Экзамен успешно сохранён!",
+      saveError: "Произошла ошибка при сохранении."
+    },
+    limitNeeded: (needed: number, remaining: number) => `Для этого экзамена нужно ${needed} вопросов, но в вашем лимите осталось ${remaining}. Сократите матрицу или повысьте тариф.`,
+    limitReached: "Вашего месячного AI-лимита недостаточно. Повысьте тариф или дождитесь следующего месяца.",
+    headerTitle: "Генератор BSB/CHSB", headerSave: "Сохранить", studioMode: "Режим Студии",
+    schoolGeneral: "Общеобразовательная", schoolSpecialized: "Специализированная",
+    step1: "1. Класс и Предмет", notSelected: "Не выбрано",
+    step2: "2. Темы", selectedCount: (n: number) => `Выбрано: ${n}`,
+    step3: "3. Матрица", matrixDesc: "Настройте вопросы и баллы",
+    totalQuestions: "Всего вопросов", totalPoints: "Всего баллов", generateBtn: "Создать экзамен",
+    paperTitle: "Экзаменационная работа", paperDesc: "Проверьте вопросы. Неверные вопросы можно удалить.",
+    confirmedPoints: (n: number) => `Подтверждено: ${n} Балл.`,
+    premiumFeature: "Премиум-функция", viewPlans: "Посмотреть тарифы", close: "Закрыть",
+    classSubjectModal: { title: "Класс и Предмет", selectClass: "1. Выберите класс", selectSubject: "2. Выберите предмет", confirm: "Подтвердить" },
+    topicsModal: { title: "Охват (Темы)", empty: "Программа не загружена. Выберите предмет.", confirm: "Подтвердить выбор" },
+    titleModal: { title: "Название документа", desc: "Напишите официальное название, видимое ученикам.", placeholder: "Например: 7 класс Биология CHSB", cancel: "Отмена", saving: "Сохранение...", save: "Сохранить" }
+  }
+};
 
 type SchoolType = "maktab" | "ixtisos";
 type AssessmentType = "BSB" | "CHSB";
@@ -40,17 +168,12 @@ interface QuestionConfig {
 }
 
 const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
+  const { lang } = useTeacherLanguage();
+  const t = BSB_TRANSLATIONS[lang] || BSB_TRANSLATIONS['uz'];
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  
-  const phrases = [
-    "Matritsa tahlil qilinmoqda...",
-    "Mavzularga oid ma'lumotlar o'qilmoqda...",
-    "Qiyinlik darajasi moslashtirilmoqda...",
-    "Savollar va javoblar yozilmoqda...",
-    "Formula va chizmalar tekshirilmoqda...",
-    "Yakuniy imtihon qog'ozi yig'ilmoqda..."
-  ];
+
+  const phrases: string[] = t.thinkingPhrases;
   const [phraseIndex, setPhraseIndex] = useState(0);
 
   useEffect(() => {
@@ -76,7 +199,7 @@ const AiThinkingModal = ({ isVisible }: { isVisible: boolean }) => {
                 <Sparkles size={16} className="absolute -top-2 -right-2 text-warning animate-pulse" />
               </div>
             </div>
-            <h3 className="text-[18px] font-black text-on-surface mb-2 relative z-10 tracking-tight text-center">AI Studiya ishlamoqda</h3>
+            <h3 className="text-[18px] font-black text-on-surface mb-2 relative z-10 tracking-tight text-center">{t.thinkingTitle}</h3>
             <div className="h-5 relative z-10 overflow-hidden flex items-center justify-center w-full">
               <motion.p key={phraseIndex} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.4 }} className="text-[13px] font-bold text-on-surface-variant absolute text-center w-full">{phrases[phraseIndex]}</motion.p>
             </div>
@@ -125,12 +248,14 @@ const FormattedText = ({ text }: { text: any }) => {
 };
 
 const ExamQuestionCard = ({ q, idx, onRemove }: { q: any, idx: number, onRemove: (id: string) => void }) => {
+  const { lang } = useTeacherLanguage();
+  const t = BSB_TRANSLATIONS[lang] || BSB_TRANSLATIONS['uz'];
   const getText = (field: any) => field?.uz || field || "";
 
   return (
     <div className="bg-surface-container-low p-5 md:p-8 rounded-m3-lg shadow-elev-1 relative group mb-5 hover:shadow-elev-2 transition-shadow">
       <div className="absolute top-4 right-4 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onRemove(q.id)} className="m3-interactive p-2 text-on-surface-variant hover:text-error hover:bg-error-container rounded-m3-md transition-colors" title="Savolni o'chirish">
+        <button onClick={() => onRemove(q.id)} className="m3-interactive p-2 text-on-surface-variant hover:text-error hover:bg-error-container rounded-m3-md transition-colors" title={t.deleteQuestion}>
           <Trash2 size={16} strokeWidth={2.5} />
         </button>
       </div>
@@ -138,7 +263,7 @@ const ExamQuestionCard = ({ q, idx, onRemove }: { q: any, idx: number, onRemove:
       <div className="flex items-center gap-2 mb-4 pr-8">
         <span className="bg-secondary text-on-secondary text-[11px] font-black px-2.5 py-1 rounded-m3-xs shrink-0">{idx + 1}</span>
         <span className="text-[10px] font-black text-on-surface-variant px-2 py-1 rounded-m3-xs uppercase tracking-widest bg-surface-container-high truncate">
-          {q.type.replace('_', ' ')} • {q.points} Ball
+          {q.type.replace('_', ' ')} • {q.points} {t.pointsUnit}
         </span>
       </div>
 
@@ -163,15 +288,15 @@ const ExamQuestionCard = ({ q, idx, onRemove }: { q: any, idx: number, onRemove:
 
         {q.type === "short_answer" && (
           <div className="bg-surface-container p-3.5 rounded-m3-md border border-outline-variant flex items-center gap-3">
-            <span className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest">Javob:</span>
+            <span className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest">{t.answerLabel}</span>
             <span className="text-[14px] font-bold text-primary"><FormattedText text={getText(q.answer)} /></span>
           </div>
         )}
 
         {q.type === "true_false" && (
           <div className="flex gap-2.5">
-            <div className={`flex-1 md:flex-none px-5 py-2.5 rounded-m3-md text-[13px] text-center font-bold border ${q.answer === true ? 'bg-success-container border-transparent text-on-success-container shadow-elev-1' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant'}`}>Rost</div>
-            <div className={`flex-1 md:flex-none px-5 py-2.5 rounded-m3-md text-[13px] text-center font-bold border ${q.answer === false ? 'bg-error-container border-transparent text-on-error-container shadow-elev-1' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant'}`}>Yolg'on</div>
+            <div className={`flex-1 md:flex-none px-5 py-2.5 rounded-m3-md text-[13px] text-center font-bold border ${q.answer === true ? 'bg-success-container border-transparent text-on-success-container shadow-elev-1' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant'}`}>{t.trueLabel}</div>
+            <div className={`flex-1 md:flex-none px-5 py-2.5 rounded-m3-md text-[13px] text-center font-bold border ${q.answer === false ? 'bg-error-container border-transparent text-on-error-container shadow-elev-1' : 'bg-surface-container-lowest border-outline-variant text-on-surface-variant'}`}>{t.falseLabel}</div>
           </div>
         )}
 
@@ -190,12 +315,12 @@ const ExamQuestionCard = ({ q, idx, onRemove }: { q: any, idx: number, onRemove:
         {q.type === "open_ended" && (
           <div className="space-y-3">
             <div className="bg-surface-container p-4 rounded-m3-md border border-outline-variant">
-              <span className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-1.5 block">Namuna Yechim</span>
+              <span className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-1.5 block">{t.sampleSolution}</span>
               <p className="text-[13px] font-medium text-on-surface leading-relaxed"><FormattedText text={getText(q.answer)} /></p>
             </div>
             {q.rubric && (
               <div className="bg-tertiary-container p-4 rounded-m3-md">
-                <span className="text-[11px] font-black text-on-tertiary-container uppercase tracking-widest mb-1.5 block">Baholash Mezoni</span>
+                <span className="text-[11px] font-black text-on-tertiary-container uppercase tracking-widest mb-1.5 block">{t.rubricLabel}</span>
                 <p className="text-[13px] font-bold text-on-tertiary-container leading-relaxed"><FormattedText text={getText(q.rubric)} /></p>
               </div>
             )}
@@ -210,6 +335,8 @@ const ExamQuestionCard = ({ q, idx, onRemove }: { q: any, idx: number, onRemove:
 export default function BsbChsbGeneratorPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang } = useTeacherLanguage();
+  const t = BSB_TRANSLATIONS[lang] || BSB_TRANSLATIONS['uz'];
   const aiData = useMonthlyLimit(); // 🟢 NEW LIMIT HOOK
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -273,7 +400,7 @@ export default function BsbChsbGeneratorPage() {
             if(data[0].chapters?.length > 0) setExpandedChapters([data[0].chapters[0].chapter]);
           }
         })
-        .catch(() => toast.error("Syllabus topilmadi!"))
+        .catch(() => toast.error(t.toasts.syllabusNotFound))
         .finally(() => setIsLoadingSyllabus(false));
     }
   }, [selectedClass, selectedSubject, schoolType]);
@@ -304,13 +431,13 @@ export default function BsbChsbGeneratorPage() {
   };
 
   const handleGenerate = async () => {
-    if (!selectedClass || !selectedSubject) return toast.error("Sinf va fanni tanlang.");
-    if (selectedScopes.length === 0) return toast.error(`Kamida bitta mavzuni tanlang.`);
-    if (totalQuestions === 0) return toast.error("Kamida bitta savol turini faollashtiring.");
-    
+    if (!selectedClass || !selectedSubject) return toast.error(t.toasts.selectClassSubject);
+    if (selectedScopes.length === 0) return toast.error(t.toasts.selectTopic);
+    if (totalQuestions === 0) return toast.error(t.toasts.enableQuestionType);
+
     // 🟢 PRE-CHECK LIMITS
     if (!aiData.isUnlimited && aiData.remaining < totalQuestions) {
-      setLimitModalMessage(`Ushbu imtihon uchun ${totalQuestions} ta savol kerak, lekin sizda ${aiData.remaining} ta limit qolgan. Matritsani qisqartiring yoki tarifni oshiring.`);
+      setLimitModalMessage(t.limitNeeded(totalQuestions, aiData.remaining));
       setIsLimitModalOpen(true);
       return;
     }
@@ -344,7 +471,7 @@ export default function BsbChsbGeneratorPage() {
         // 🟢 GATEKEEPER ERROR HANDLING
         if (!response.ok) {
           if (data.code === 'LIMIT_REACHED') {
-            setLimitModalMessage("Oylik AI limitingiz yetarli emas. Tarifingizni oshiring yoki keyingi oyni kuting.");
+            setLimitModalMessage(t.limitReached);
             setIsLimitModalOpen(true);
             return;
           }
@@ -366,16 +493,16 @@ export default function BsbChsbGeneratorPage() {
     try {
       const enrichedQuestions = data.questions.map((q: any) => ({ ...q, id: `temp_${Math.random().toString(36).substr(2, 9)}` }));
       setGeneratedQuestions(enrichedQuestions);
-      toast.success(`${totalQuestions} ta savol yaratildi!`);
+      toast.success(t.toasts.created(totalQuestions));
     } catch(err) {
-      toast.error("Savollarni o'qishda xatolik.");
+      toast.error(t.toasts.readError);
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleFinalPublish = async () => {
-    if (!testTitle.trim()) return toast.error("Test nomini kiriting");
+    if (!testTitle.trim()) return toast.error(t.toasts.enterTitle);
     if (!user) return;
     setIsPublishing(true);
     
@@ -389,18 +516,18 @@ export default function BsbChsbGeneratorPage() {
       };
 
       await writeBatch(db).set(newTestRef, examPaper).commit();
-      toast.success("Imtihon muvaffaqiyatli saqlandi!");
+      toast.success(t.toasts.saved);
       setIsTitleModalOpen(false);
       router.push("/teacher/library/assessments"); 
     } catch (error) {
-      toast.error("Saqlashda xatolik yuz berdi.");
+      toast.error(t.toasts.saveError);
     } finally {
       setIsPublishing(false);
     }
   };
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-[100px] text-on-surface selection:bg-primary-container selection:text-on-primary-container pt-[64px] md:pt-[72px]">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-[100px] text-on-surface selection:bg-primary-container selection:text-on-primary-container pt-[64px] md:pt-[72px]">
       
       <AiThinkingModal isVisible={isGenerating} />
       
@@ -412,7 +539,7 @@ export default function BsbChsbGeneratorPage() {
             </button>
             <div className="w-px h-5 bg-outline-variant hidden sm:block"></div>
             <h1 className="text-[14px] sm:text-[16px] font-black text-on-surface tracking-tight flex items-center gap-2 truncate">
-              <FileText size={16} className="text-primary hidden sm:block" /> BSB/CHSB Generatori
+              <FileText size={16} className="text-primary hidden sm:block" /> {t.headerTitle}
             </h1>
           </div>
 
@@ -431,7 +558,7 @@ export default function BsbChsbGeneratorPage() {
                   className="m3-interactive bg-primary text-on-primary px-3 sm:px-5 py-2 sm:py-2.5 rounded-m3-btn font-black transition-all active:scale-95 flex items-center gap-2 shadow-elev-2 text-[12px] sm:text-[14px]"
                 >
                   <CheckCircle2 size={16} strokeWidth={2.5} />
-                  <span className="hidden sm:block">Saqlash</span>
+                  <span className="hidden sm:block">{t.headerSave}</span>
                 </motion.button>
               )}
             </AnimatePresence>
@@ -442,7 +569,7 @@ export default function BsbChsbGeneratorPage() {
 
       {mounted && createPortal(
         <div className="fixed bottom-0 left-0 right-0 h-[calc(env(safe-area-inset-bottom)+70px)] bg-surface z-[99998] sm:hidden flex items-center justify-center border-t border-outline-variant">
-           <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest relative -top-3">Studiya Rejimi</span>
+           <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest relative -top-3">{t.studioMode}</span>
         </div>,
         document.body
       )}
@@ -453,10 +580,10 @@ export default function BsbChsbGeneratorPage() {
           <div className="bg-surface-container-low rounded-m3-xl p-5 md:p-6 shadow-elev-1">
             <div className="flex bg-surface-container-high p-1.5 rounded-m3-md mb-6">
               <button onClick={() => setSchoolType('maktab')} className={`m3-interactive flex-1 py-2 text-[12px] md:text-[13px] font-bold rounded-m3-sm flex items-center justify-center gap-2 transition-all ${schoolType === 'maktab' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                <Building2 size={16}/> Umumta'lim
+                <Building2 size={16}/> {t.schoolGeneral}
               </button>
               <button onClick={() => setSchoolType('ixtisos')} className={`m3-interactive flex-1 py-2 text-[12px] md:text-[13px] font-bold rounded-m3-sm flex items-center justify-center gap-2 transition-all ${schoolType === 'ixtisos' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                <GraduationCap size={16}/> Ixtisos
+                <GraduationCap size={16}/> {t.schoolSpecialized}
               </button>
             </div>
 
@@ -468,8 +595,8 @@ export default function BsbChsbGeneratorPage() {
             <div className="space-y-2.5">
               <div onClick={() => setIsClassSubjectModalOpen(true)} className="group border border-outline-variant hover:border-primary rounded-m3-lg p-4 flex justify-between items-center bg-surface-container hover:bg-state-hover cursor-pointer transition-all active:scale-[0.98]">
                 <div>
-                  <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-1 group-hover:text-primary transition-colors">1. Sinf va Fan</p>
-                  <p className="text-[14px] font-bold text-on-surface">{selectedClass && selectedSubject ? `${selectedClass} • ${selectedSubject.replace(/-/g, ' ')}` : "Tanlanmagan"}</p>
+                  <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-1 group-hover:text-primary transition-colors">{t.step1}</p>
+                  <p className="text-[14px] font-bold text-on-surface">{selectedClass && selectedSubject ? `${selectedClass} • ${selectedSubject.replace(/-/g, ' ')}` : t.notSelected}</p>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-surface-container-lowest border border-outline-variant flex items-center justify-center group-hover:border-primary shadow-elev-1"><ChevronRight size={16} className="text-on-surface-variant group-hover:text-primary" /></div>
               </div>
@@ -477,10 +604,10 @@ export default function BsbChsbGeneratorPage() {
               <div onClick={() => setIsTopicsModalOpen(true)} className={`group border border-outline-variant hover:border-primary rounded-m3-lg p-4 flex justify-between items-center bg-surface-container hover:bg-state-hover cursor-pointer transition-all active:scale-[0.98] ${(!selectedClass || !selectedSubject) ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest group-hover:text-primary transition-colors">2. Mavzular</p>
+                    <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest group-hover:text-primary transition-colors">{t.step2}</p>
                     {isLoadingSyllabus && <Spinner size={12} />}
                   </div>
-                  <p className="text-[14px] font-bold text-on-surface">{selectedScopes.length > 0 ? `${selectedScopes.length} ta tanlandi` : "Tanlanmagan"}</p>
+                  <p className="text-[14px] font-bold text-on-surface">{selectedScopes.length > 0 ? t.selectedCount(selectedScopes.length) : t.notSelected}</p>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-surface-container-lowest border border-outline-variant flex items-center justify-center group-hover:border-primary shadow-elev-1"><ChevronRight size={16} className="text-on-surface-variant group-hover:text-primary" /></div>
               </div>
@@ -493,12 +620,12 @@ export default function BsbChsbGeneratorPage() {
 
             <div className="p-5 md:p-6 border-b border-outline-variant bg-surface-container flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
               <div>
-                <h2 className="text-[16px] md:text-[18px] font-black text-on-surface">3. Matritsa</h2>
-                <p className="text-[12px] font-bold text-on-surface-variant mt-0.5">Savollar va ballarni sozlang</p>
+                <h2 className="text-[16px] md:text-[18px] font-black text-on-surface">{t.step3}</h2>
+                <p className="text-[12px] font-bold text-on-surface-variant mt-0.5">{t.matrixDesc}</p>
               </div>
               <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-md p-1 flex shadow-elev-1 w-full sm:w-auto">
                 {['Aralash', 'Oson', "O'rta", 'Qiyin'].map((diff) => (
-                  <button key={diff} onClick={() => setDifficulty(diff as Difficulty)} className={`m3-interactive flex-1 sm:flex-none px-3 py-1.5 text-[11px] font-black rounded-m3-sm transition-colors uppercase tracking-wide ${difficulty === diff ? 'bg-secondary text-on-secondary' : 'text-on-surface-variant hover:text-on-surface'}`}>{diff}</button>
+                  <button key={diff} onClick={() => setDifficulty(diff as Difficulty)} className={`m3-interactive flex-1 sm:flex-none px-3 py-1.5 text-[11px] font-black rounded-m3-sm transition-colors uppercase tracking-wide ${difficulty === diff ? 'bg-secondary text-on-secondary' : 'text-on-surface-variant hover:text-on-surface'}`}>{t.diffLabels[diff]}</button>
                 ))}
               </div>
             </div>
@@ -512,7 +639,7 @@ export default function BsbChsbGeneratorPage() {
                       <input type="checkbox" checked={item.enabled} onChange={() => updateDistribution(item.id, 'enabled', !item.enabled)} className="w-5 h-5 text-primary rounded-m3-xs border-outline shadow-elev-1" />
                       <div className="flex items-center gap-2.5">
                         <div className={`p-1.5 rounded-m3-sm shrink-0 ${item.enabled ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-high text-on-surface-variant'}`}><item.icon size={16} strokeWidth={2.5}/></div>
-                        <span className={`text-[13px] md:text-[14px] font-bold ${item.enabled ? 'text-on-surface' : 'text-on-surface-variant'}`}>{item.label}</span>
+                        <span className={`text-[13px] md:text-[14px] font-bold ${item.enabled ? 'text-on-surface' : 'text-on-surface-variant'}`}>{t.qTypes[item.id] || item.label}</span>
                       </div>
                     </div>
 
@@ -524,7 +651,7 @@ export default function BsbChsbGeneratorPage() {
                       </div>
                       <div className="flex items-center gap-1.5 bg-surface-container-lowest border border-outline-variant rounded-m3-md px-2.5 shadow-elev-1 h-9">
                         <input type="number" min="1" max="20" value={item.points} onChange={(e) => updateDistribution(item.id, 'points', parseInt(e.target.value) || 1)} className="w-6 text-center bg-transparent text-[13px] font-black text-on-surface outline-none" />
-                        <span className="text-[10px] font-bold text-on-surface-variant uppercase">Ball</span>
+                        <span className="text-[10px] font-bold text-on-surface-variant uppercase">{t.pointsUnit}</span>
                       </div>
                     </div>
 
@@ -536,11 +663,11 @@ export default function BsbChsbGeneratorPage() {
             <div className="p-5 md:p-6 border-t border-outline-variant bg-surface-container shrink-0">
               <div className="flex justify-between items-center mb-5 px-1">
                 <div>
-                  <p className="text-[10px] text-on-surface-variant uppercase font-black tracking-widest mb-0.5">Jami Savol</p>
+                  <p className="text-[10px] text-on-surface-variant uppercase font-black tracking-widest mb-0.5">{t.totalQuestions}</p>
                   <p className="text-[22px] font-black text-on-surface leading-none">{totalQuestions}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-on-surface-variant uppercase font-black tracking-widest mb-0.5">Jami Ball</p>
+                  <p className="text-[10px] text-on-surface-variant uppercase font-black tracking-widest mb-0.5">{t.totalPoints}</p>
                   <p className="text-[22px] font-black text-primary leading-none">{totalPoints}</p>
                 </div>
               </div>
@@ -552,7 +679,7 @@ export default function BsbChsbGeneratorPage() {
                 disabled={isGenerating || totalQuestions === 0 || selectedScopes.length === 0}
                 icon={<Wand2 size={18} strokeWidth={2.5} />}
               >
-                Imtihonni Yaratish
+                {t.generateBtn}
               </Button>
             </div>
 
@@ -565,11 +692,11 @@ export default function BsbChsbGeneratorPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-[900px] mx-auto px-4 sm:px-6 mt-12">
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
-                <h2 className="text-[20px] md:text-[24px] font-black text-on-surface">Imtihon Qog'ozi</h2>
-                <p className="text-[13px] font-medium text-on-surface-variant mt-1">Savollarni tekshiring. Noto'g'ri savollarni o'chirishingiz mumkin.</p>
+                <h2 className="text-[20px] md:text-[24px] font-black text-on-surface">{t.paperTitle}</h2>
+                <p className="text-[13px] font-medium text-on-surface-variant mt-1">{t.paperDesc}</p>
               </div>
               <div className="text-[12px] font-black text-on-primary-container bg-primary-container px-4 py-2 rounded-m3-md shadow-elev-1 self-start sm:self-auto uppercase tracking-wide">
-                Tasdiqlangan: {generatedQuestions.reduce((acc, q) => acc + (q.points || 0), 0)} Ball
+                {t.confirmedPoints(generatedQuestions.reduce((acc, q) => acc + (q.points || 0), 0))}
               </div>
             </div>
 
@@ -593,13 +720,13 @@ export default function BsbChsbGeneratorPage() {
                 <div className="w-14 h-14 bg-primary-container rounded-m3-md flex items-center justify-center mb-4">
                   <Crown size={28} className="text-warning" />
                 </div>
-                <h3 className="text-[18px] font-black text-on-surface mb-2">Premium Xususiyat</h3>
+                <h3 className="text-[18px] font-black text-on-surface mb-2">{t.premiumFeature}</h3>
                 <p className="text-[13px] text-on-surface-variant mb-6 font-medium leading-relaxed px-2">
                   {limitModalMessage}
                 </p>
                 <div className="w-full flex flex-col gap-2.5">
-                  <Button variant="filled" size="lg" className="w-full" onClick={() => router.push('/teacher/subscription')}>Tariflarni ko'rish</Button>
-                  <Button variant="outlined" size="lg" className="w-full" onClick={() => setIsLimitModalOpen(false)}>Yopish</Button>
+                  <Button variant="filled" size="lg" className="w-full" onClick={() => router.push('/teacher/subscription')}>{t.viewPlans}</Button>
+                  <Button variant="outlined" size="lg" className="w-full" onClick={() => setIsLimitModalOpen(false)}>{t.close}</Button>
                 </div>
               </motion.div>
             </div>
@@ -616,13 +743,13 @@ export default function BsbChsbGeneratorPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsClassSubjectModalOpen(false)} />
               <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative bg-surface-container-low rounded-t-m3-xl sm:rounded-m3-xl p-6 md:p-8 w-full max-w-md shadow-elev-3 z-10 flex flex-col max-h-[90dvh]">
                 <div className="flex justify-between items-center mb-6 shrink-0">
-                  <h3 className="text-[18px] font-black text-on-surface">Sinf va Fan</h3>
+                  <h3 className="text-[18px] font-black text-on-surface">{t.classSubjectModal.title}</h3>
                   <button onClick={() => setIsClassSubjectModalOpen(false)} className="m3-interactive p-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors"><X size={20}/></button>
                 </div>
 
                 <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2 pb-6">
                   <div>
-                    <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 block">1. Sinfni tanlang</label>
+                    <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 block">{t.classSubjectModal.selectClass}</label>
                     <div className="flex flex-wrap gap-2">
                       {availableClasses.map(c => (
                         <button key={c} onClick={() => { setSelectedClass(c); setSelectedSubject(""); }} className={`m3-interactive px-4 py-2.5 rounded-m3-md text-[14px] font-bold border transition-colors ${selectedClass === c ? 'bg-primary border-primary text-on-primary shadow-elev-2' : 'bg-surface-container-lowest border-outline-variant text-on-surface hover:bg-state-hover'}`}>{c}</button>
@@ -630,7 +757,7 @@ export default function BsbChsbGeneratorPage() {
                     </div>
                   </div>
                   <div className={`transition-opacity duration-300 ${!selectedClass ? 'opacity-30 pointer-events-none' : ''}`}>
-                    <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 block">2. Fanni tanlang</label>
+                    <label className="text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 block">{t.classSubjectModal.selectSubject}</label>
                     <div className="flex flex-wrap gap-2">
                       {availableSubjects.map((s: string) => (
                         <button key={s} onClick={() => setSelectedSubject(s)} className={`m3-interactive px-4 py-2.5 rounded-m3-md text-[13px] font-bold border capitalize transition-colors ${selectedSubject === s ? 'bg-primary border-primary text-on-primary shadow-elev-2' : 'bg-surface-container-lowest border-outline-variant text-on-surface hover:bg-state-hover'}`}>{s.replace(/-/g, ' ')}</button>
@@ -640,7 +767,7 @@ export default function BsbChsbGeneratorPage() {
                 </div>
 
                 <div className="pt-4 border-t border-outline-variant shrink-0 mt-auto">
-                  <Button variant="filled" size="lg" className="w-full" onClick={() => setIsClassSubjectModalOpen(false)}>Tasdiqlash</Button>
+                  <Button variant="filled" size="lg" className="w-full" onClick={() => setIsClassSubjectModalOpen(false)}>{t.classSubjectModal.confirm}</Button>
                 </div>
               </motion.div>
             </div>
@@ -658,14 +785,14 @@ export default function BsbChsbGeneratorPage() {
 
                 <div className="p-5 md:p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-low shrink-0 z-20 shadow-elev-1">
                   <div className="min-w-0 pr-4">
-                    <h3 className="text-[17px] md:text-[18px] font-black text-on-surface truncate">Qamrov (Mavzular)</h3>
+                    <h3 className="text-[17px] md:text-[18px] font-black text-on-surface truncate">{t.topicsModal.title}</h3>
                     <p className="text-[12px] font-bold text-primary mt-0.5 truncate">{selectedClass} • {selectedSubject.replace(/-/g, ' ')}</p>
                   </div>
                   <button onClick={() => setIsTopicsModalOpen(false)} className="m3-interactive p-2 bg-surface-container text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors shrink-0"><X size={20}/></button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 bg-surface-container">
-                  {!syllabusData && !isLoadingSyllabus && <div className="text-center py-10 text-on-surface-variant text-[13px] font-bold">Dastur yuklanmadi. Fan tanlang.</div>}
+                  {!syllabusData && !isLoadingSyllabus && <div className="text-center py-10 text-on-surface-variant text-[13px] font-bold">{t.topicsModal.empty}</div>}
                   {isLoadingSyllabus && <div className="flex justify-center py-10"><Spinner size={24}/></div>}
                   
                   {syllabusData?.chapters?.map((chapter: any, cIdx: number) => {
@@ -712,7 +839,7 @@ export default function BsbChsbGeneratorPage() {
                 </div>
 
                 <div className="p-4 md:p-5 border-t border-outline-variant bg-surface-container-low shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5">
-                  <Button variant="filled" size="lg" className="w-full" onClick={() => setIsTopicsModalOpen(false)}>Tanlovni Tasdiqlash</Button>
+                  <Button variant="filled" size="lg" className="w-full" onClick={() => setIsTopicsModalOpen(false)}>{t.topicsModal.confirm}</Button>
                 </div>
 
               </motion.div>
@@ -729,15 +856,15 @@ export default function BsbChsbGeneratorPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-surface-container-low rounded-m3-xl p-6 md:p-8 w-full max-w-sm shadow-elev-3 z-10">
                 <div className="w-14 h-14 bg-primary-container rounded-m3-md flex items-center justify-center mb-5"><BookOpen size={24} className="text-on-primary-container" /></div>
-                <h3 className="text-[18px] font-black text-on-surface mb-1.5">Hujjat nomi</h3>
-                <p className="text-[12px] font-bold text-on-surface-variant mb-6">O'quvchilarga ko'rinadigan rasmiy nomni yozing.</p>
+                <h3 className="text-[18px] font-black text-on-surface mb-1.5">{t.titleModal.title}</h3>
+                <p className="text-[12px] font-bold text-on-surface-variant mb-6">{t.titleModal.desc}</p>
 
-                <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[14px] font-black text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] transition-all mb-6" autoFocus placeholder="Masalan: 7-sinf Biologiya CHSB"/>
+                <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-m3-md text-[14px] font-black text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-[color-mix(in_oklab,var(--m3-primary)_20%,transparent)] transition-all mb-6" autoFocus placeholder={t.titleModal.placeholder}/>
 
                 <div className="flex flex-col-reverse sm:flex-row gap-3">
-                  <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>Bekor qilish</Button>
+                  <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>{t.titleModal.cancel}</Button>
                   <Button variant="filled" className="w-full" onClick={handleFinalPublish} loading={isPublishing} icon={<CheckCircle2 size={16}/>}>
-                    {isPublishing ? "Saqlanmoqda..." : "Saqlash"}
+                    {isPublishing ? t.titleModal.saving : t.titleModal.save}
                   </Button>
                 </div>
               </motion.div>

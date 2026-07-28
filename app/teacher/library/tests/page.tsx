@@ -23,7 +23,8 @@ const LIBRARY_TRANSLATIONS: any = {
     empty: { title: "Testlar topilmadi", desc: "Boshlash uchun yangi test yarating." },
     loadMore: "Yana yuklash",
     items: "Ta",
-    createTest: "Yangi Test Yaratish"
+    createTest: "Yangi Test Yaratish",
+    loadError: "Testlarni yuklashda xatolik."
   },
   en: {
     title: "My Library",
@@ -32,7 +33,8 @@ const LIBRARY_TRANSLATIONS: any = {
     empty: { title: "No tests found", desc: "Create a new test to get started." },
     loadMore: "Load More",
     items: "Items",
-    createTest: "Create New Test"
+    createTest: "Create New Test",
+    loadError: "Failed to load tests."
   },
   ru: {
     title: "Моя Библиотека",
@@ -41,7 +43,8 @@ const LIBRARY_TRANSLATIONS: any = {
     empty: { title: "Тесты не найдены", desc: "Создайте новый тест, чтобы начать." },
     loadMore: "Загрузить еще",
     items: "Шт",
-    createTest: "Создать Тест"
+    createTest: "Создать Тест",
+    loadError: "Не удалось загрузить тесты."
   }
 };
 
@@ -118,7 +121,7 @@ export default function LibraryPage() {
       }
     } catch (error: any) {
       console.error("Error fetching tests:", error);
-      toast.error("Failed to load tests.");
+      toast.error(t.loadError);
     } finally {
       setIsLoadingData(false);
       setIsLoadingMore(false);
@@ -152,7 +155,7 @@ export default function LibraryPage() {
   const THEMES = ['primary', 'secondary', 'tertiary'];
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-[100px] md:pb-12">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-[100px] md:pb-12">
 
       {selectedTest && <EditTestModal key={selectedTest.id} isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); fetchTests(false); }} test={selectedTest} />}
 

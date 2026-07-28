@@ -28,10 +28,37 @@ const EDIT_TEST_TRANSLATIONS: Record<string, any> = {
       always: { title: "Darhol", desc: "Topshirgach ochiladi." },
       danger: "Xavfli Hudud", archive: "Arxivlash", restore: "Tiklash", delete: "O'chirish"
     },
-    questions: { empty: "Savollar mavjud emas." }, buttons: { save: "Saqlash", saving: "Saqlanmoqda..." },
+    questions: { empty: "Savollar mavjud emas." }, buttons: { save: "Saqlash", saving: "Saqlanmoqda...", close: "Yopish" },
     toasts: { saved: "Saqlandi!", failSave: "Xatolik", archived: "Arxivlandi", restored: "Tiklandi", failStatus: "Xatolik", deleted: "O'chirildi", failDelete: "Xatolik", confirmDelete: "Ishonchingiz komilmi? Qaytarib bo'lmaydi." }
   },
-  // ... (Add EN and RU dicts back here to save space)
+  en: {
+    title: "Manage Test", tabs: { settings: "Settings", questions: "Questions" },
+    settings: {
+      name: "Test Name", duration: "Time", mins: "min", none: "No limit", custom: "CUSTOM", unlimited: "(No limit)",
+      shuffleTitle: "Shuffle Questions", shuffleDesc: "Change the order for every student",
+      securityTitle: "Answer Security",
+      afterDue: { title: "After due date", desc: "Revealed once the deadline passes." },
+      never: { title: "Never", desc: "Final score only." },
+      always: { title: "Immediately", desc: "Revealed upon submission." },
+      danger: "Danger Zone", archive: "Archive", restore: "Restore", delete: "Delete"
+    },
+    questions: { empty: "No questions available." }, buttons: { save: "Save", saving: "Saving...", close: "Close" },
+    toasts: { saved: "Saved!", failSave: "Error", archived: "Archived", restored: "Restored", failStatus: "Error", deleted: "Deleted", failDelete: "Error", confirmDelete: "Are you sure? This cannot be undone." }
+  },
+  ru: {
+    title: "Управление Тестом", tabs: { settings: "Настройки", questions: "Вопросы" },
+    settings: {
+      name: "Название Теста", duration: "Время", mins: "мин", none: "Без лимита", custom: "СВОЁ", unlimited: "(Без лимита)",
+      shuffleTitle: "Перемешать Вопросы", shuffleDesc: "Менять порядок для каждого ученика",
+      securityTitle: "Безопасность Ответов",
+      afterDue: { title: "После дедлайна", desc: "Откроются после срока сдачи." },
+      never: { title: "Никогда", desc: "Только итоговый балл." },
+      always: { title: "Сразу", desc: "Откроются после отправки." },
+      danger: "Опасная Зона", archive: "Архивировать", restore: "Восстановить", delete: "Удалить"
+    },
+    questions: { empty: "Вопросов нет." }, buttons: { save: "Сохранить", saving: "Сохранение...", close: "Закрыть" },
+    toasts: { saved: "Сохранено!", failSave: "Ошибка", archived: "В архиве", restored: "Восстановлено", failStatus: "Ошибка", deleted: "Удалено", failDelete: "Ошибка", confirmDelete: "Вы уверены? Это нельзя отменить." }
+  }
 };
 
 interface Props { test: any; isOpen: boolean; onClose: () => void; }
@@ -139,7 +166,7 @@ export default function EditTestModal({ test, isOpen, onClose }: Props) {
                   <span className="bg-surface-container text-primary font-mono text-[11px] font-black px-2 py-0.5 rounded-m3-xs border border-outline-variant">{test.accessCode}</span>
                 </div>
               </div>
-              <IconButton aria-label="Yopish" onClick={onClose} className="shrink-0">
+              <IconButton aria-label={t.buttons.close} onClick={onClose} className="shrink-0">
                 <X size={20}/>
               </IconButton>
             </div>

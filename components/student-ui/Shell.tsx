@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from './cn';
 import { DESIGN, MOTION_ON, springTransition } from './config';
+import { resolveSideStyle, type SideStyle } from './shellStyles';
 
 export interface NavItem {
   href: string;
@@ -30,23 +31,40 @@ export interface ShellProps {
  * The app frame.
  *
  * Renders whichever navigation design.config.ts › App_shell_navigation and
- * › Mobile_navigation select. All three desktop shells and all three mobile
- * navigations share this one component so pages never care which is active.
+ * › Mobile_navigation select. All desktop shells and all mobile navigations
+ * share this one component so pages never care which is active.
+ *
+ * Desktop: `rail` (icon rail) and `topbar` (top tabs) keep bespoke markup;
+ * every other variant is the same RecipeDrawer styled purely by its
+ * shellStyles.ts recipe — `floating` puts that drawer inside a detached card.
  */
 export function Shell({ items, isActive, brand, topbar, children, onOpenMobileNav }: ShellProps) {
   const desktop = DESIGN.App_shell_navigation;
   const mobile = DESIGN.Mobile_navigation;
+  const isSide = desktop !== 'rail' && desktop !== 'topbar';
+  const isBar = mobile !== 'drawer';
+  const sideStyle = resolveSideStyle(desktop);
 
   return (
     <div className="flex min-h-[100dvh] bg-background text-on-surface">
-      {desktop === 'shell_a' && <IconRail items={items} isActive={isActive} brand={brand} />}
-      {desktop === 'shell_b' && <LabelledDrawer items={items} isActive={isActive} brand={brand} />}
+      {desktop === 'rail' && <IconRail items={items} isActive={isActive} brand={brand} />}
+      {isSide && (
+        <RecipeDrawer
+          items={items}
+          isActive={isActive}
+          brand={brand}
+          style={sideStyle}
+          floating={desktop === 'floating'}
+        />
+      )}
 
       <div
         className={cn(
           'flex min-w-0 flex-1 flex-col',
-          desktop === 'shell_a' && 'md:pl-[var(--s-rail-w)]',
-          desktop === 'shell_b' && 'md:pl-[var(--s-drawer-w)]',
+          desktop === 'rail' && 'md:pl-[var(--s-rail-w)]',
+          isSide && desktop !== 'floating' && 'md:pl-[var(--s-drawer-w)]',
+          // The floating card sits 12px in from the edge, so clear that too.
+          desktop === 'floating' && 'md:pl-[calc(var(--s-drawer-w)+20px)]',
         )}
       >
         <header
@@ -70,31 +88,34 @@ export function Shell({ items, isActive, brand, topbar, children, onOpenMobileNa
                 </svg>
               </button>
             )}
-            <div className={cn(desktop !== 'shell_c' && 'md:hidden')}>{brand}</div>
+            {/* Side shells and the rail already show the brand in their panel. */}
+            <div className={cn(desktop !== 'topbar' && 'md:hidden')}>{brand}</div>
           </div>
           {topbar}
         </header>
 
-        {desktop === 'shell_c' && <TopTabs items={items} isActive={isActive} />}
+        {desktop === 'topbar' && <TopTabs items={items} isActive={isActive} />}
 
         <main
           className={cn(
             'relative flex-1',
-            // Clears the phone dock so content is never trapped underneath it.
-            mobile !== 'drawer' && 'pb-[calc(var(--s-dock-h)+var(--s-safe-b)+16px)] md:pb-8',
+            // Clears the phone bar so content is never trapped underneath it.
+            isBar && 'pb-[calc(var(--s-dock-h)+var(--s-safe-b)+16px)] md:pb-8',
             mobile === 'floating' && 'pb-[calc(var(--s-dock-h)+var(--s-safe-b)+28px)] md:pb-8',
+            // The iconic bar is ~8px shorter than the dock.
+            mobile === 'iconic' && 'pb-[calc(var(--s-dock-h)+var(--s-safe-b)+4px)] md:pb-8',
           )}
         >
           {children}
         </main>
       </div>
 
-      {mobile !== 'drawer' && <MobileDock items={items} isActive={isActive} floating={mobile === 'floating'} />}
+      {isBar && <MobileDock items={items} isActive={isActive} variant={mobile} />}
     </div>
   );
 }
 
-/* ── SHELL-A · icon rail ─────────────────────────────────────────────────── */
+/* ── rail · icon rail ────────────────────────────────────────────────────── */
 
 function IconRail({ items, isActive, brand }: Pick<ShellProps, 'items' | 'isActive' | 'brand'>) {
   return (
@@ -136,16 +157,66 @@ function IconRail({ items, isActive, brand }: Pick<ShellProps, 'items' | 'isActi
   );
 }
 
-/* ── SHELL-B · labelled drawer ───────────────────────────────────────────── */
+/* ── Recipe drawer · sidebar/classic/tonal/inverse/gradient/minimal/floating ─
+ *
+ * One labelled drawer whose entire look comes from its SIDE_STYLES recipe.
+ * The active indicator is a framer-motion layoutId element, so it glides
+ * between rows. Positions use fixed offsets, never translate-based centering —
+ * framer's layout animation owns `transform`. */
 
-function LabelledDrawer({ items, isActive, brand }: Pick<ShellProps, 'items' | 'isActive' | 'brand'>) {
+function SideIndicator({ style }: { style: SideStyle }) {
+  const transition = MOTION_ON ? springTransition : { duration: 0 };
+  if (style.indicator === 'pill') {
+    return (
+      <motion.span
+        layoutId="s-side-ind"
+        transition={transition}
+        className={cn('absolute inset-0', style.itemShape, style.indicatorCls)}
+      />
+    );
+  }
+  if (style.indicator === 'bar') {
+    return (
+      <motion.span
+        layoutId="s-side-ind"
+        transition={transition}
+        className={cn('absolute left-0 top-[13px] h-5 w-1 rounded-r-full', style.indicatorCls)}
+      />
+    );
+  }
+  // dot
+  return (
+    <motion.span
+      layoutId="s-side-ind"
+      transition={transition}
+      className={cn('absolute left-1.5 top-[19px] h-1.5 w-1.5 rounded-full', style.indicatorCls)}
+    />
+  );
+}
+
+function RecipeDrawer({
+  items,
+  isActive,
+  brand,
+  style,
+  floating,
+}: Pick<ShellProps, 'items' | 'isActive' | 'brand'> & { style: SideStyle; floating: boolean }) {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-y-0 left-0 z-40 hidden w-[var(--s-drawer-w)] flex-col border-r border-outline-variant bg-surface md:flex"
+      className={cn(
+        'z-40 hidden flex-col md:flex',
+        floating
+          ? cn(
+              // Detached glass card with breathing room on every side.
+              'fixed bottom-3 left-3 top-3 w-[var(--s-drawer-w)] overflow-hidden',
+              'rounded-m3-lg border border-outline-variant bg-surface-glass shadow-elev-2 backdrop-blur-xl',
+            )
+          : cn('fixed inset-y-0 left-0 w-[var(--s-drawer-w)]', style.panel),
+      )}
     >
-      <div className="flex h-[var(--s-topbar-h)] shrink-0 items-center gap-2.5 border-b border-outline-variant px-4">
-        {brand}
+      <div className={cn('flex h-[var(--s-topbar-h)] shrink-0 items-center gap-2.5 px-4', style.headerBorder)}>
+        {style.brandWrap ? <div className={cn('min-w-0', style.brandWrap)}>{brand}</div> : brand}
       </div>
       <div className="s-scroll flex flex-1 flex-col gap-1 overflow-y-auto p-3">
         {items.map((item) => {
@@ -156,15 +227,21 @@ function LabelledDrawer({ items, isActive, brand }: Pick<ShellProps, 'items' | '
               href={item.href}
               aria-current={on ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-3.5 rounded-m3-btn px-4 py-3 text-[14.5px] font-extrabold',
+                'relative flex items-center gap-3.5 px-4 py-3 text-[14.5px] font-extrabold',
                 'transition-colors duration-m3-fast ease-m3-std',
-                on
-                  ? 'bg-primary-container text-on-primary-container'
-                  : 'text-on-surface-variant hover:bg-state-hover hover:text-on-surface',
+                style.itemShape,
+                // Edge indicators need extra room so they never kiss the icon.
+                (style.indicator === 'bar' || style.indicator === 'dot') && 'pl-5',
+                on ? cn(style.active, style.activeRowBg) : style.idle,
               )}
             >
-              <item.icon size={21} strokeWidth={on ? 2.6 : 2.2} />
-              <span className="truncate">{item.label}</span>
+              {on && <SideIndicator style={style} />}
+              <item.icon
+                size={21}
+                strokeWidth={on ? 2.6 : 2.2}
+                className={cn('relative z-10 shrink-0', on && style.iconActive)}
+              />
+              <span className="relative z-10 truncate">{item.label}</span>
             </Link>
           );
         })}
@@ -173,7 +250,7 @@ function LabelledDrawer({ items, isActive, brand }: Pick<ShellProps, 'items' | '
   );
 }
 
-/* ── SHELL-C · top tabs ──────────────────────────────────────────────────── */
+/* ── topbar · top tabs ───────────────────────────────────────────────────── */
 
 function TopTabs({ items, isActive }: Pick<ShellProps, 'items' | 'isActive'>) {
   return (
@@ -205,15 +282,104 @@ function TopTabs({ items, isActive }: Pick<ShellProps, 'items' | 'isActive'>) {
   );
 }
 
-/* ── Mobile dock ─────────────────────────────────────────────────────────── */
+/* ── Mobile bars · dock / floating / iconic / topline ────────────────────── */
+
+type MobileBarVariant = 'dock' | 'floating' | 'iconic' | 'topline';
 
 function MobileDock({
   items,
   isActive,
-  floating,
-}: Pick<ShellProps, 'items' | 'isActive'> & { floating: boolean }) {
+  variant,
+}: Pick<ShellProps, 'items' | 'isActive'> & { variant: MobileBarVariant }) {
+  // M3 caps a bottom bar at 5 destinations — applies to every bar variant.
   const visible = items.filter((i) => !i.hideOnMobile);
+  const transition = MOTION_ON ? springTransition : { duration: 0 };
 
+  if (variant === 'iconic') {
+    return (
+      <nav
+        aria-label="Main"
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around md:hidden',
+          'border-t border-outline-variant bg-surface-blur px-2 pb-[var(--s-safe-b)] pt-1 backdrop-blur-xl',
+        )}
+      >
+        {visible.map((item) => {
+          const on = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-label={item.label}
+              aria-current={on ? 'page' : undefined}
+              className="relative grid h-[52px] min-w-0 flex-1 place-items-center"
+            >
+              {on && (
+                <motion.span
+                  layoutId="s-dock-pill"
+                  transition={transition}
+                  className="absolute inset-x-0 inset-y-2 mx-auto w-[52px] rounded-full bg-primary-container"
+                />
+              )}
+              <item.icon
+                size={22}
+                strokeWidth={on ? 2.7 : 2.2}
+                className={cn('relative', on ? 'text-on-primary-container' : 'text-on-surface-variant')}
+              />
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  }
+
+  if (variant === 'topline') {
+    return (
+      <nav
+        aria-label="Main"
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around md:hidden',
+          'border-t border-outline-variant bg-surface-blur px-2 pb-[var(--s-safe-b)] backdrop-blur-xl',
+        )}
+      >
+        {visible.map((item) => {
+          const on = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={on ? 'page' : undefined}
+              className="relative flex min-w-0 flex-1 flex-col items-center gap-1 pb-1.5 pt-2.5"
+            >
+              {on && (
+                <motion.span
+                  layoutId="s-dock-pill"
+                  transition={transition}
+                  className="absolute inset-x-0 top-0 mx-auto h-[3px] w-9 rounded-b-full bg-primary"
+                />
+              )}
+              <item.icon
+                size={21}
+                strokeWidth={on ? 2.7 : 2.2}
+                className={cn('relative', on ? 'text-primary' : 'text-on-surface-variant')}
+              />
+              <span
+                className={cn(
+                  'max-w-full truncate text-[10px] font-black',
+                  on ? 'text-primary' : 'text-on-surface-variant',
+                )}
+              >
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  }
+
+  // dock + floating
+  const floating = variant === 'floating';
   return (
     <nav
       aria-label="Main"
@@ -245,7 +411,7 @@ function MobileDock({
               {on && (
                 <motion.span
                   layoutId="s-dock-pill"
-                  transition={MOTION_ON ? springTransition : { duration: 0 }}
+                  transition={transition}
                   className="absolute inset-0 rounded-full bg-primary-container"
                 />
               )}

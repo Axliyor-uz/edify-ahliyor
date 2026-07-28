@@ -9,18 +9,18 @@ import {
   Clock3,
   FileText,
   HandCoins,
-  Loader2,
   Pencil,
   XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ManagerSheet from "../../_components/ManagerSheet";
 import type { Charge, ChargeStatus } from "@/types/finance";
-import { CHARGE_STATUS_LABELS } from "@/types/finance";
 import type { ClassData } from "@/hooks/useCenterClasses";
 import { adjustChargeApi, cancelChargeApi, openAmountOf, waiveChargeApi } from "@/services/financeService";
 import { formatUZS } from "@/lib/finance/money";
-import { periodLabelOf } from "./financeFormat";
+import { Banner, Button, EmptyState } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
+import { CHARGE_STATUS_T, periodLabelOf } from "./financeFormat";
 import FilterSelect from "../../_components/FilterSelect";
 import MonthNav from "./MonthNav";
 import ReasonDialog from "./ReasonDialog";
@@ -37,13 +37,132 @@ interface Props {
   onChanged: () => void;
 }
 
+const T_UZ = {
+  searchPlaceholder: "O'quvchi yoki guruhni qidiring...",
+  allTeachers: "Barcha o'qituvchilar",
+  allGroups: "Barcha guruhlar",
+  chargeCount: (n: number) => `${n} ta hisob`,
+  charged: "Hisoblangan",
+  paid: "To'langan",
+  remaining: "Qoldiq",
+  unbilledPrefix: (n: number) => `${n} ta guruhda oylik narx belgilanmagan`,
+  unbilledSuffix: "— ular hisob-kitobga kirmaydi.",
+  unbilledLink: "Guruh sozlamalarida narx qo'ying",
+  emptySearchTitle: "Hech narsa topilmadi",
+  emptyTitle: "Bu davr uchun hisoblar yo'q",
+  emptySearchDesc: "Filtr yoki qidiruvni o'zgartirib ko'ring",
+  emptyDesc: "Hisob-kitob yaratilganda ro'yxat shu yerda ko'rinadi",
+  studentInfoTitle: "O'quvchi haqida to'liq ma'lumot",
+  discountTag: (amount: string) => `chegirma ${amount}`,
+  proratedTag: "qisman oy",
+  paidPartial: (amount: string) => `To'landi ${amount}`,
+  adjustTitle: "Summani o'zgartirish",
+  cancelTitle: "Bekor qilish",
+  waiveTitle: "Qoldiqni kechirish",
+  waiveMessage: (name: string, period: string, amount: string) =>
+    `${name} — ${period} uchun ${amount} kechiriladi. To'langan qism saqlanadi.`,
+  waiveConfirm: "Kechirish",
+  waived: "Qoldiq kechirildi.",
+  cancelChargeTitle: "Hisobni bekor qilish",
+  cancelChargeMessage: (name: string, period: string, amount: string) =>
+    `${name} — ${period} uchun ${amount} hisob bekor qilinadi.`,
+  cancelConfirm: "Bekor qilish",
+  chargeCancelled: "Hisob bekor qilindi.",
+  genericError: "Xatolik yuz berdi.",
+  adjustSubtitle: (name: string, period: string, amount: string) => `${name} · ${period} · hozirgi: ${amount}`,
+  notePlaceholder: "Izoh (ixtiyoriy)",
+  cancel: "Bekor qilish",
+  save: "Saqlash",
+  amountChanged: "Summa o'zgartirildi.",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    searchPlaceholder: "Search for a student or group...",
+    allTeachers: "All teachers",
+    allGroups: "All groups",
+    chargeCount: (n: number) => `${n} charges`,
+    charged: "Charged",
+    paid: "Paid",
+    remaining: "Remaining",
+    unbilledPrefix: (n: number) => `${n} groups have no monthly price`,
+    unbilledSuffix: "— they are not included in billing.",
+    unbilledLink: "Set prices in group settings",
+    emptySearchTitle: "Nothing found",
+    emptyTitle: "No charges for this period",
+    emptySearchDesc: "Try changing the filter or search",
+    emptyDesc: "Once charges are generated, the list will appear here",
+    studentInfoTitle: "Full student details",
+    discountTag: (amount: string) => `discount ${amount}`,
+    proratedTag: "partial month",
+    paidPartial: (amount: string) => `Paid ${amount}`,
+    adjustTitle: "Change amount",
+    cancelTitle: "Cancel",
+    waiveTitle: "Waive remainder",
+    waiveMessage: (name: string, period: string, amount: string) =>
+      `${name} — ${amount} for ${period} will be waived. The paid part is kept.`,
+    waiveConfirm: "Waive",
+    waived: "Remainder waived.",
+    cancelChargeTitle: "Cancel charge",
+    cancelChargeMessage: (name: string, period: string, amount: string) =>
+      `${name} — the ${amount} charge for ${period} will be cancelled.`,
+    cancelConfirm: "Cancel charge",
+    chargeCancelled: "Charge cancelled.",
+    genericError: "Something went wrong.",
+    adjustSubtitle: (name: string, period: string, amount: string) => `${name} · ${period} · current: ${amount}`,
+    notePlaceholder: "Note (optional)",
+    cancel: "Cancel",
+    save: "Save",
+    amountChanged: "Amount changed.",
+  },
+  ru: {
+    searchPlaceholder: "Поиск ученика или группы...",
+    allTeachers: "Все учителя",
+    allGroups: "Все группы",
+    chargeCount: (n: number) => `Начислений: ${n}`,
+    charged: "Начислено",
+    paid: "Оплачено",
+    remaining: "Остаток",
+    unbilledPrefix: (n: number) => `В ${n} группах не задана месячная цена`,
+    unbilledSuffix: "— они не участвуют в начислениях.",
+    unbilledLink: "Задайте цену в настройках группы",
+    emptySearchTitle: "Ничего не найдено",
+    emptyTitle: "За этот период начислений нет",
+    emptySearchDesc: "Попробуйте изменить фильтр или запрос",
+    emptyDesc: "Когда начисления будут созданы, список появится здесь",
+    studentInfoTitle: "Подробная информация об ученике",
+    discountTag: (amount: string) => `скидка ${amount}`,
+    proratedTag: "неполный месяц",
+    paidPartial: (amount: string) => `Оплачено ${amount}`,
+    adjustTitle: "Изменить сумму",
+    cancelTitle: "Отменить",
+    waiveTitle: "Простить остаток",
+    waiveMessage: (name: string, period: string, amount: string) =>
+      `${name} — за ${period} будет прощено ${amount}. Оплаченная часть сохраняется.`,
+    waiveConfirm: "Простить",
+    waived: "Остаток прощён.",
+    cancelChargeTitle: "Отменить начисление",
+    cancelChargeMessage: (name: string, period: string, amount: string) =>
+      `${name} — начисление ${amount} за ${period} будет отменено.`,
+    cancelConfirm: "Отменить",
+    chargeCancelled: "Начисление отменено.",
+    genericError: "Произошла ошибка.",
+    adjustSubtitle: (name: string, period: string, amount: string) => `${name} · ${period} · текущая: ${amount}`,
+    notePlaceholder: "Комментарий (необязательно)",
+    cancel: "Отмена",
+    save: "Сохранить",
+    amountChanged: "Сумма изменена.",
+  },
+};
+
 /** MD3 leading-avatar + status-text colors per charge state. */
 const STATUS_META: Record<ChargeStatus, { Icon: LucideIcon; avatar: string; text: string }> = {
-  pending: { Icon: Clock3, avatar: "bg-rose-50 text-rose-600", text: "text-rose-600" },
-  partial: { Icon: CircleDollarSign, avatar: "bg-amber-50 text-amber-600", text: "text-amber-600" },
-  paid: { Icon: CheckCircle2, avatar: "bg-brand-100 text-brand-700", text: "text-brand-700" },
-  waived: { Icon: HandCoins, avatar: "bg-violet-50 text-violet-500", text: "text-violet-500" },
-  cancelled: { Icon: XCircle, avatar: "bg-slate-100 text-slate-400", text: "text-slate-400" },
+  pending: { Icon: Clock3, avatar: "bg-error-container text-on-error-container", text: "text-error" },
+  partial: { Icon: CircleDollarSign, avatar: "bg-warning-container text-on-warning-container", text: "text-warning" },
+  paid: { Icon: CheckCircle2, avatar: "bg-success-container text-on-success-container", text: "text-success" },
+  waived: { Icon: HandCoins, avatar: "bg-tertiary-container text-on-tertiary-container", text: "text-tertiary" },
+  cancelled: { Icon: XCircle, avatar: "bg-surface-container-highest text-on-surface-variant", text: "text-on-surface-variant" },
 };
 
 /** Month's charge register: totals, per-charge status, waive/cancel/adjust actions. */
@@ -56,6 +175,8 @@ export default function ChargesTab({
   onShowStudent,
   onChanged,
 }: Props) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [waiveTarget, setWaiveTarget] = useState<Charge | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Charge | null>(null);
   const [adjustTarget, setAdjustTarget] = useState<Charge | null>(null);
@@ -109,7 +230,7 @@ export default function ChargesTab({
       <div className="flex items-center justify-between flex-wrap gap-2">
         <MonthNav label={monthLabel} onShift={onShiftMonth} />
         {charges.length > 5 && (
-          <SearchInput value={search} onChange={setSearch} placeholder="O'quvchi yoki guruhni qidiring..." />
+          <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
         )}
       </div>
 
@@ -123,74 +244,66 @@ export default function ChargesTab({
               if (v && classFilter && classById.get(classFilter)?.teacherId !== v) setClassFilter("");
             }}
             options={teacherOptions}
-            allLabel="Barcha o'qituvchilar"
+            allLabel={t.allTeachers}
           />
           <FilterSelect
             value={classFilter}
             onChange={setClassFilter}
             options={classOptions}
-            allLabel="Barcha guruhlar"
+            allLabel={t.allGroups}
           />
           {hasFilters && (
-            <p className="text-[12.5px] text-slate-500 ml-auto">{filtered.length} ta hisob</p>
+            <p className="text-[12.5px] text-on-surface-variant ml-auto">{t.chargeCount(filtered.length)}</p>
           )}
         </div>
       )}
 
-      <div className="bg-white border border-brand-line rounded-3xl px-4 py-3 grid grid-cols-3 divide-x divide-slate-100">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl px-4 py-3 grid grid-cols-3 divide-x divide-outline-variant">
         <div className="pr-3">
-          <p className="text-[11.5px] font-semibold text-slate-400">Hisoblangan</p>
-          <p className="text-[13.5px] font-bold text-slate-800 tabular-nums mt-0.5 truncate">
+          <p className="text-[11.5px] font-semibold text-on-surface-variant">{t.charged}</p>
+          <p className="text-[13.5px] font-bold text-on-surface tabular-nums mt-0.5 truncate">
             {formatUZS(totals.charged)}
           </p>
         </div>
         <div className="px-3">
-          <p className="text-[11.5px] font-semibold text-slate-400">To&apos;langan</p>
-          <p className="text-[13.5px] font-bold text-brand-700 tabular-nums mt-0.5 truncate">
+          <p className="text-[11.5px] font-semibold text-on-surface-variant">{t.paid}</p>
+          <p className="text-[13.5px] font-bold text-success tabular-nums mt-0.5 truncate">
             {formatUZS(totals.paid)}
           </p>
         </div>
         <div className="pl-3">
-          <p className="text-[11.5px] font-semibold text-slate-400">Qoldiq</p>
-          <p className={`text-[13.5px] font-bold tabular-nums mt-0.5 truncate ${totals.open > 0 ? "text-rose-600" : "text-slate-800"}`}>
+          <p className="text-[11.5px] font-semibold text-on-surface-variant">{t.remaining}</p>
+          <p className={`text-[13.5px] font-bold tabular-nums mt-0.5 truncate ${totals.open > 0 ? "text-error" : "text-on-surface"}`}>
             {formatUZS(totals.open)}
           </p>
         </div>
       </div>
 
       {unbilledClassTitles.length > 0 && (
-        <div className="bg-sky-50 border border-sky-100 rounded-3xl px-4 py-3 text-[12.5px] text-sky-700">
-          {unbilledClassTitles.length} ta guruhda oylik narx belgilanmagan ({unbilledClassTitles.slice(0, 3).join(", ")}
-          {unbilledClassTitles.length > 3 && "..."}) — ular hisob-kitobga kirmaydi.{" "}
+        <Banner tone="info">
+          {t.unbilledPrefix(unbilledClassTitles.length)} ({unbilledClassTitles.slice(0, 3).join(", ")}
+          {unbilledClassTitles.length > 3 && "..."}) {t.unbilledSuffix}{" "}
           <Link href="/manager/groups" className="font-bold underline">
-            Guruh sozlamalarida narx qo&apos;ying
+            {t.unbilledLink}
           </Link>
-        </div>
+        </Banner>
       )}
 
-      <div className="bg-white border border-brand-line rounded-3xl divide-y divide-slate-100 overflow-hidden">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl divide-y divide-outline-variant overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="py-14 px-6 text-center">
-            <div className="w-12 h-12 mx-auto rounded-full bg-brand-50 text-brand-700 flex items-center justify-center">
-              <FileText size={22} />
-            </div>
-            <p className="text-sm font-bold text-slate-800 mt-3">
-              {hasFilters ? "Hech narsa topilmadi" : "Bu davr uchun hisoblar yo'q"}
-            </p>
-            <p className="text-[13px] text-slate-400 mt-1">
-              {hasFilters
-                ? "Filtr yoki qidiruvni o'zgartirib ko'ring"
-                : "Hisob-kitob yaratilganda ro'yxat shu yerda ko'rinadi"}
-            </p>
-          </div>
+          <EmptyState
+            icon={<FileText />}
+            title={hasFilters ? t.emptySearchTitle : t.emptyTitle}
+            description={hasFilters ? t.emptySearchDesc : t.emptyDesc}
+          />
         ) : (
           filtered.map((c) => {
             const meta = STATUS_META[c.status];
             return (
-              <div key={c.id} className="flex items-center gap-3 px-4 py-3 hover:bg-brand-25 transition-colors">
+              <div key={c.id} className="flex items-center gap-3 px-4 py-3 hover:bg-state-hover transition-colors">
                 <button
                   onClick={() => onShowStudent(c.studentId, c.studentName)}
-                  title="O'quvchi haqida to'liq ma'lumot"
+                  title={t.studentInfoTitle}
                   className="flex items-center gap-3 flex-1 min-w-0 text-left group"
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${meta.avatar}`}>
@@ -198,31 +311,31 @@ export default function ChargesTab({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`text-[14.5px] font-semibold truncate group-hover:text-brand-800 transition-colors ${
-                        c.status === "cancelled" ? "text-slate-400 line-through" : "text-slate-900"
+                      className={`text-[14.5px] font-semibold truncate group-hover:text-primary transition-colors ${
+                        c.status === "cancelled" ? "text-on-surface-variant line-through" : "text-on-surface"
                       }`}
                     >
                       {c.studentName}
                     </p>
-                    <p className="text-[12.5px] text-slate-500 mt-0.5 truncate">
-                      {c.classTitle} · {periodLabelOf(c)}
-                      {c.discountAmount > 0 && ` · chegirma ${formatUZS(c.discountAmount)}`}
-                      {c.proratedFrom && " · qisman oy"}
+                    <p className="text-[12.5px] text-on-surface-variant mt-0.5 truncate">
+                      {c.classTitle} · {periodLabelOf(c, lang)}
+                      {c.discountAmount > 0 && ` · ${t.discountTag(formatUZS(c.discountAmount))}`}
+                      {c.proratedFrom && ` · ${t.proratedTag}`}
                     </p>
                   </div>
                 </button>
                 <div className="text-right shrink-0">
                   <p
                     className={`text-[14.5px] font-bold tabular-nums ${
-                      c.status === "cancelled" ? "text-slate-300 line-through" : "text-slate-900"
+                      c.status === "cancelled" ? "text-on-surface-variant line-through" : "text-on-surface"
                     }`}
                   >
                     {formatUZS(c.amount)}
                   </p>
                   <p className={`text-[11.5px] font-bold mt-0.5 ${meta.text}`}>
                     {c.status === "partial"
-                      ? `To'landi ${formatUZS(c.paidAmount || 0)}`
-                      : CHARGE_STATUS_LABELS[c.status]}
+                      ? t.paidPartial(formatUZS(c.paidAmount || 0))
+                      : CHARGE_STATUS_T[lang][c.status]}
                   </p>
                 </div>
                 <div className="flex gap-0.5 shrink-0">
@@ -230,15 +343,15 @@ export default function ChargesTab({
                     <>
                       <button
                         onClick={() => setAdjustTarget(c)}
-                        title="Summani o'zgartirish"
-                        className="w-9 h-9 rounded-full hover:bg-slate-100 text-slate-300 hover:text-slate-600 flex items-center justify-center transition-colors"
+                        title={t.adjustTitle}
+                        className="w-9 h-9 rounded-full hover:bg-state-hover text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => setCancelTarget(c)}
-                        title="Bekor qilish"
-                        className="w-9 h-9 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 flex items-center justify-center transition-colors"
+                        title={t.cancelTitle}
+                        className="w-9 h-9 rounded-full hover:bg-error-container text-on-surface-variant hover:text-error flex items-center justify-center transition-colors"
                       >
                         <XCircle size={14} />
                       </button>
@@ -247,8 +360,8 @@ export default function ChargesTab({
                   {(c.status === "pending" || c.status === "partial") && (
                     <button
                       onClick={() => setWaiveTarget(c)}
-                      title="Qoldiqni kechirish"
-                      className="w-9 h-9 rounded-full hover:bg-violet-50 text-slate-300 hover:text-violet-500 flex items-center justify-center transition-colors"
+                      title={t.waiveTitle}
+                      className="w-9 h-9 rounded-full hover:bg-tertiary-container text-on-surface-variant hover:text-tertiary flex items-center justify-center transition-colors"
                     >
                       <HandCoins size={14} />
                     </button>
@@ -262,36 +375,44 @@ export default function ChargesTab({
 
       {waiveTarget && (
         <ReasonDialog
-          title="Qoldiqni kechirish"
-          message={`${waiveTarget.studentName} — ${periodLabelOf(waiveTarget)} uchun ${formatUZS(openAmountOf(waiveTarget))} kechiriladi. To'langan qism saqlanadi.`}
-          confirmLabel="Kechirish"
+          title={t.waiveTitle}
+          message={t.waiveMessage(
+            waiveTarget.studentName,
+            periodLabelOf(waiveTarget, lang),
+            formatUZS(openAmountOf(waiveTarget))
+          )}
+          confirmLabel={t.waiveConfirm}
           onClose={() => setWaiveTarget(null)}
           onConfirm={async (reason) => {
             try {
               await waiveChargeApi(waiveTarget.id, reason);
-              toast.success("Qoldiq kechirildi.");
+              toast.success(t.waived);
               setWaiveTarget(null);
               onChanged();
             } catch (e: any) {
-              toast.error(e.message || "Xatolik yuz berdi.");
+              toast.error(e.message || t.genericError);
             }
           }}
         />
       )}
       {cancelTarget && (
         <ReasonDialog
-          title="Hisobni bekor qilish"
-          message={`${cancelTarget.studentName} — ${periodLabelOf(cancelTarget)} uchun ${formatUZS(cancelTarget.amount)} hisob bekor qilinadi.`}
-          confirmLabel="Bekor qilish"
+          title={t.cancelChargeTitle}
+          message={t.cancelChargeMessage(
+            cancelTarget.studentName,
+            periodLabelOf(cancelTarget, lang),
+            formatUZS(cancelTarget.amount)
+          )}
+          confirmLabel={t.cancelConfirm}
           onClose={() => setCancelTarget(null)}
           onConfirm={async (reason) => {
             try {
               await cancelChargeApi(cancelTarget.id, reason);
-              toast.success("Hisob bekor qilindi.");
+              toast.success(t.chargeCancelled);
               setCancelTarget(null);
               onChanged();
             } catch (e: any) {
-              toast.error(e.message || "Xatolik yuz berdi.");
+              toast.error(e.message || t.genericError);
             }
           }}
         />
@@ -311,6 +432,8 @@ export default function ChargesTab({
 }
 
 function AdjustDialog({ charge, onClose, onDone }: { charge: Charge; onClose: () => void; onDone: () => void }) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [amount, setAmount] = useState(String(charge.amount));
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -322,10 +445,10 @@ function AdjustDialog({ charge, onClose, onDone }: { charge: Charge; onClose: ()
     setSubmitting(true);
     try {
       await adjustChargeApi(charge.id, parsed, note.trim() || undefined);
-      toast.success("Summa o'zgartirildi.");
+      toast.success(t.amountChanged);
       onDone();
     } catch (e: any) {
-      toast.error(e.message || "Xatolik yuz berdi.");
+      toast.error(e.message || t.genericError);
       setSubmitting(false);
     }
   };
@@ -333,9 +456,9 @@ function AdjustDialog({ charge, onClose, onDone }: { charge: Charge; onClose: ()
   return (
     <ManagerSheet onClose={onClose} dismissible={!submitting}>
       <div className="p-6 sm:p-7">
-        <h3 className="text-lg font-bold text-slate-900 tracking-tight">Summani o&apos;zgartirish</h3>
-        <p className="text-sm text-slate-500 mt-1.5">
-          {charge.studentName} · {periodLabelOf(charge)} · hozirgi: {formatUZS(charge.amount)}
+        <h3 className="text-lg font-bold text-on-surface tracking-tight">{t.adjustTitle}</h3>
+        <p className="text-sm text-on-surface-variant mt-1.5">
+          {t.adjustSubtitle(charge.studentName, periodLabelOf(charge, lang), formatUZS(charge.amount))}
         </p>
         <input
           type="number"
@@ -344,30 +467,21 @@ function AdjustDialog({ charge, onClose, onDone }: { charge: Charge; onClose: ()
           step={1000}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="mt-4 w-full px-3.5 py-3 border border-slate-200 rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
+          className="mt-4 w-full px-3.5 py-3 bg-transparent border border-outline-variant rounded-m3-md text-[16px] font-bold text-on-surface tabular-nums focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
         />
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Izoh (ixtiyoriy)"
-          className="mt-2.5 w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+          placeholder={t.notePlaceholder}
+          className="mt-2.5 w-full px-3.5 py-2.5 bg-transparent border border-outline-variant rounded-m3-md text-[13px] text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
         />
         <div className="flex gap-3 mt-5">
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-colors disabled:opacity-60"
-          >
-            Bekor qilish
-          </button>
-          <button
-            onClick={submit}
-            disabled={!valid || submitting}
-            className="flex-1 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {submitting && <Loader2 size={16} className="animate-spin" />}
-            Saqlash
-          </button>
+          <Button variant="tonal" onClick={onClose} disabled={submitting} className="flex-1">
+            {t.cancel}
+          </Button>
+          <Button onClick={submit} disabled={!valid} loading={submitting} className="flex-1">
+            {t.save}
+          </Button>
         </div>
       </div>
     </ManagerSheet>

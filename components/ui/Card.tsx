@@ -1,28 +1,35 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { TEACHER_DESIGN } from "./config";
 import { cn } from "./cn";
 
-export type CardVariant = "elevated" | "tonal" | "outlined";
+/** Switchboard values (design.teacher.config.ts › Card_style) plus the legacy
+ *  "tonal" value kept so existing call sites keep compiling. */
+export type CardVariant = "elevated" | "filled" | "outlined" | "glass" | "flat" | "tonal";
 
 const VARIANT: Record<CardVariant, string> = {
-  elevated: "bg-surface-container-low shadow-elev-1",
+  elevated: "bg-surface-container-lowest shadow-elev-1",
+  filled: "bg-surface-container-low",
+  outlined: "bg-surface-container-lowest border border-outline-variant",
+  glass: "bg-t-glass backdrop-blur-xl border border-t-glass-border",
+  flat: "bg-surface-container-low border-0 shadow-none",
+  // Legacy (pre-switchboard) value — not part of Card_style.
   tonal: "bg-surface-container-high",
-  outlined: "bg-surface ring-1 ring-inset ring-outline-variant",
 };
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  /** App-wide default is "elevated" (chosen design). Override sparingly. */
+  /** App-wide default comes from TEACHER_DESIGN.Card_style. Override sparingly. */
   variant?: CardVariant;
   /** Lifts on hover — use for clickable/linked cards. */
   hoverable?: boolean;
 }
 
-export function Card({ variant = "elevated", hoverable = false, className, ...rest }: CardProps) {
+export function Card({ variant = TEACHER_DESIGN.Card_style, hoverable = false, className, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-m3-lg p-5",
+        "rounded-m3-lg p-t-card",
         VARIANT[variant],
-        hoverable && "transition-shadow hover:shadow-elev-2",
+        hoverable && "transition-shadow duration-t-fast hover:shadow-elev-2",
         className,
       )}
       {...rest}

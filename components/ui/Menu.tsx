@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "./cn";
+import { popIn } from "./config";
 
 export interface MenuItemDef {
   label: ReactNode;
@@ -46,38 +48,41 @@ export function Menu({ trigger, items, align = "right", className }: MenuProps) 
       <span className="inline-flex" onClick={() => setOpen((o) => !o)}>
         {trigger}
       </span>
-      {open && (
-        <div
-          role="menu"
-          className={cn(
-            "absolute top-full z-50 mt-1 w-52 rounded-m3-sm bg-surface-container py-1.5 shadow-elev-2",
-            align === "right" ? "right-0" : "left-0",
-          )}
-        >
-          {items.map((item, i) =>
-            item === "divider" ? (
-              <div key={i} aria-hidden className="my-1.5 h-px bg-outline-variant" />
-            ) : (
-              <button
-                key={i}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  item.onClick();
-                }}
-                className={cn(
-                  "m3-interactive flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm [&_svg]:h-4 [&_svg]:w-4",
-                  item.danger ? "text-error" : "text-on-surface [&_svg]:text-on-surface-variant",
-                )}
-              >
-                {item.icon}
-                {item.label}
-              </button>
-            ),
-          )}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            {...popIn}
+            className={cn(
+              "absolute top-full z-50 mt-1 w-52 rounded-m3-lg border border-outline-variant bg-surface-container p-1.5 shadow-elev-3",
+              align === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left",
+            )}
+          >
+            {items.map((item, i) =>
+              item === "divider" ? (
+                <div key={i} aria-hidden className="-mx-1.5 my-1.5 h-px bg-outline-variant" />
+              ) : (
+                <button
+                  key={i}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    item.onClick();
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-m3-sm px-t-gap py-2.5 text-left text-sm transition-colors hover:bg-state-hover [&_svg]:h-4 [&_svg]:w-4",
+                    item.danger ? "text-error" : "text-on-surface [&_svg]:text-on-surface-variant",
+                  )}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ),
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

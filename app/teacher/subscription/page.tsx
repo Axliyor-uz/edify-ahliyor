@@ -219,7 +219,7 @@ export default function SubscriptionPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-20 selection:bg-primary-container selection:text-on-primary-container relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-20 selection:bg-primary-container selection:text-on-primary-container relative overflow-hidden">
 
       <div className="absolute top-0 inset-x-0 h-[40vh] bg-gradient-to-b from-surface-container to-transparent pointer-events-none z-0"></div>
 

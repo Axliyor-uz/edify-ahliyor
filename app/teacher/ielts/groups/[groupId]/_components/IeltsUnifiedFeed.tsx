@@ -4,6 +4,31 @@ import { useState } from 'react';
 import { Headphones, BookOpen, PenTool, Mic, Crown, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { IeltsAssignment, IeltsGroup } from '@/types/ielts';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTeacherLanguage } from '@/app/teacher/layout';
+
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    all: "Barchasi",
+    dueLabel: "Topshirish:",
+    submitted: "topshirdi",
+    view: "Ko'rish",
+    noAssignments: "Bu bo'limda hozircha topshiriqlar yo'q.",
+  },
+  en: {
+    all: "All",
+    dueLabel: "Due:",
+    submitted: "submitted",
+    view: "View",
+    noAssignments: "There are no assignments in this section yet.",
+  },
+  ru: {
+    all: "Все",
+    dueLabel: "Сдать до:",
+    submitted: "сдали",
+    view: "Открыть",
+    noAssignments: "В этом разделе пока нет заданий.",
+  },
+};
 
 const MOCK_ASSIGNMENTS: (Omit<IeltsAssignment, 'skill'> & { skill: 'listening' | 'reading' | 'writing' | 'speaking' | 'mock' })[] = [
   { id: '1', testId: 't1', testTitle: 'Cambridge 16 - Test 1', skill: 'listening', assignedAt: new Date(Date.now() - 86400000 * 3), dueAt: new Date(Date.now() - 86400000 * 2), completedBy: ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11', 's12', 's13', 's14'] },
@@ -37,6 +62,8 @@ interface Props {
 }
 
 export default function IeltsUnifiedFeed({ group }: Props) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [filter, setFilter] = useState<SkillFilter>('all');
 
   const totalStudents = group.studentIds?.length || 18; // Fallback to 18 if empty for mock realism
@@ -58,7 +85,7 @@ export default function IeltsUnifiedFeed({ group }: Props) {
               }`}
           >
             {f.icon && <span>{f.icon}</span>}
-            <span>{f.label}</span>
+            <span>{f.id === 'all' ? t.all : f.label}</span>
           </button>
         ))}
       </div>
@@ -100,7 +127,7 @@ export default function IeltsUnifiedFeed({ group }: Props) {
                       {assignment.testTitle}
                     </h4>
                     <p className="text-[13px] font-bold text-on-surface-variant">
-                      Topshirish: <span className="text-on-surface">{dateStr}</span>
+                      {t.dueLabel} <span className="text-on-surface">{dateStr}</span>
                     </p>
                   </div>
                 </div>
@@ -110,11 +137,11 @@ export default function IeltsUnifiedFeed({ group }: Props) {
                   <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-m3-sm border text-[12px] font-black ${isFullyCompleted ? 'bg-success-container text-on-success-container border-transparent' : 'bg-surface-container-high text-on-surface border-outline-variant'
                     }`}>
                     {isFullyCompleted ? <CheckCircle2 size={14} strokeWidth={3} /> : null}
-                    {ratio} topshirdi
+                    {ratio} {t.submitted}
                   </div>
 
                   <button className="m3-interactive flex items-center gap-1.5 px-4 py-2 bg-surface-container-high hover:bg-state-hover text-on-surface rounded-m3-md font-black text-[13px] transition-colors group-hover:bg-primary group-hover:text-on-primary">
-                    Ko'rish <ArrowRight size={14} strokeWidth={3} />
+                    {t.view} <ArrowRight size={14} strokeWidth={3} />
                   </button>
                 </div>
 
@@ -125,7 +152,7 @@ export default function IeltsUnifiedFeed({ group }: Props) {
 
         {filtered.length === 0 && (
           <div className="text-center py-12 bg-surface-container-low border-2 border-outline-variant border-dashed rounded-m3-xl">
-            <p className="text-[14px] font-bold text-on-surface-variant">Bu bo'limda hozircha topshiriqlar yo'q.</p>
+            <p className="text-[14px] font-bold text-on-surface-variant">{t.noAssignments}</p>
           </div>
         )}
       </div>

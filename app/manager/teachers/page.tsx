@@ -9,8 +9,134 @@ import { getUserProfile } from "@/services/userService";
 import { getContactOf, lookupByEmail } from "@/lib/directory";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import toast from "react-hot-toast";
+import { Button } from "@/components/manager-ui";
 import ManagerTeacherInfoPanel from "./_components/ManagerTeacherInfoPanel";
 import CreateTeacherModal from "./_components/CreateTeacherModal";
+import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+
+const TRANSLATIONS = {
+  uz: {
+    dateLocale: "uz-UZ",
+    loadError: "O'qituvchilarni yuklashda xatolik yuz berdi.",
+    addedSuccess: "O'qituvchi muvaffaqiyatli qo'shildi!",
+    deletedSuccess: "O'qituvchi o'chirildi.",
+    deleteError: "O'qituvchini o'chirishda xatolik yuz berdi.",
+    noCenterInfo: "Markaz ma'lumotlari topilmadi.",
+    notTeacher: "Bu foydalanuvchi o'qituvchi emas.",
+    linkedOtherCenter: "Bu o'qituvchi boshqa markazga biriktirilgan. Avval u markazdan chiqarilishi kerak.",
+    alreadyAdded: "Bu o'qituvchi markazga allaqachon qo'shilgan.",
+    genericError: "Xatolik yuz berdi. Qaytadan urinib ko'ring.",
+    title: "O'qituvchilar",
+    subtitle: "Markazdagi barcha o'qituvchilar",
+    teacherCount: (n: number) => `${n} o'qituvchi`,
+    addTeacher: "O'qituvchi qo'shish",
+    emptyTitle: "Hali o'qituvchilar yo'q",
+    emptyDesc: "Birinchi o'qituvchini email orqali qo'shing",
+    verified: "Tasdiqlangan",
+    experienceLabel: (n: number) => `${n} yil tajriba`,
+    addedOn: "Qo'shilgan:",
+    justNow: "hozirgina",
+    groupsWord: "guruh",
+    studentsWord: "o'quvchi",
+    deleteTeacherTitle: "O'qituvchini markazdan o'chirish",
+    viewProfile: "Profilni ko'rish",
+    createNewAccount: "Yangi hisob yaratish",
+    createNewAccountDesc: "Login va parol bilan tayyor hisob tuziladi",
+    addExistingAccount: "Mavjud hisobni qo'shish",
+    addExistingAccountDesc: "Ro'yxatdan o'tgan o'qituvchini email orqali topish",
+    addModalDesc: "Emailini kiriting — tizimdan topib qo'shamiz.",
+    teacherEmailLabel: "O'qituvchi emaili",
+    emailPlaceholder: "misol@gmail.com",
+    cancel: "Bekor qilish",
+    searching: "Qidirilmoqda...",
+    add: "Qo'shish",
+    deleteConfirmTitle: "O'chirishni tasdiqlang",
+    deleteConfirmSuffix: "markazdan o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.",
+    deleting: "O'chirilmoqda...",
+    delete: "O'chirish",
+  },
+  en: {
+    dateLocale: "en-US",
+    loadError: "Failed to load teachers.",
+    addedSuccess: "Teacher added successfully!",
+    deletedSuccess: "Teacher removed.",
+    deleteError: "Failed to remove the teacher.",
+    noCenterInfo: "Center information not found.",
+    notTeacher: "This user is not a teacher.",
+    linkedOtherCenter: "This teacher is linked to another center. They must be removed from that center first.",
+    alreadyAdded: "This teacher has already been added to the center.",
+    genericError: "Something went wrong. Please try again.",
+    title: "Teachers",
+    subtitle: "All teachers in the center",
+    teacherCount: (n: number) => `${n} teachers`,
+    addTeacher: "Add teacher",
+    emptyTitle: "No teachers yet",
+    emptyDesc: "Add your first teacher by email",
+    verified: "Verified",
+    experienceLabel: (n: number) => `${n} years experience`,
+    addedOn: "Added:",
+    justNow: "just now",
+    groupsWord: "groups",
+    studentsWord: "students",
+    deleteTeacherTitle: "Remove teacher from center",
+    viewProfile: "View profile",
+    createNewAccount: "Create new account",
+    createNewAccountDesc: "A ready account with a login and password is created",
+    addExistingAccount: "Add existing account",
+    addExistingAccountDesc: "Find a registered teacher by email",
+    addModalDesc: "Enter their email — we'll find and add them.",
+    teacherEmailLabel: "Teacher's email",
+    emailPlaceholder: "example@gmail.com",
+    cancel: "Cancel",
+    searching: "Searching...",
+    add: "Add",
+    deleteConfirmTitle: "Confirm removal",
+    deleteConfirmSuffix: "will be removed from the center. This action cannot be undone.",
+    deleting: "Removing...",
+    delete: "Remove",
+  },
+  ru: {
+    dateLocale: "ru-RU",
+    loadError: "Не удалось загрузить учителей.",
+    addedSuccess: "Учитель успешно добавлен!",
+    deletedSuccess: "Учитель удалён.",
+    deleteError: "Не удалось удалить учителя.",
+    noCenterInfo: "Информация о центре не найдена.",
+    notTeacher: "Этот пользователь не является учителем.",
+    linkedOtherCenter: "Этот учитель привязан к другому центру. Сначала его нужно открепить от того центра.",
+    alreadyAdded: "Этот учитель уже добавлен в центр.",
+    genericError: "Произошла ошибка. Попробуйте ещё раз.",
+    title: "Учителя",
+    subtitle: "Все учителя центра",
+    teacherCount: (n: number) => `${n} учителей`,
+    addTeacher: "Добавить учителя",
+    emptyTitle: "Учителей пока нет",
+    emptyDesc: "Добавьте первого учителя по email",
+    verified: "Подтверждён",
+    experienceLabel: (n: number) => `${n} лет опыта`,
+    addedOn: "Добавлен:",
+    justNow: "только что",
+    groupsWord: "групп",
+    studentsWord: "учеников",
+    deleteTeacherTitle: "Удалить учителя из центра",
+    viewProfile: "Просмотреть профиль",
+    createNewAccount: "Создать новый аккаунт",
+    createNewAccountDesc: "Готовый аккаунт с логином и паролем",
+    addExistingAccount: "Добавить существующий аккаунт",
+    addExistingAccountDesc: "Найти зарегистрированного учителя по email",
+    addModalDesc: "Введите email — мы найдём и добавим его.",
+    teacherEmailLabel: "Email учителя",
+    emailPlaceholder: "primer@gmail.com",
+    cancel: "Отмена",
+    searching: "Поиск...",
+    add: "Добавить",
+    deleteConfirmTitle: "Подтвердите удаление",
+    deleteConfirmSuffix: "будет удалён из центра. Это действие нельзя отменить.",
+    deleting: "Удаление...",
+    delete: "Удалить",
+  },
+};
+type T = typeof TRANSLATIONS.uz;
 
 interface CenterTeacher {
   id?: string;
@@ -30,15 +156,12 @@ interface TeacherProfile {
   verifiedTeacher?: boolean;
 }
 
-// Deterministic tonal gradient for teachers without a photo.
+// Deterministic tonal fill for teachers without a photo (token containers).
 const AVATAR_TINTS = [
-  "from-indigo-100 to-indigo-200 text-indigo-700",
-  "from-violet-100 to-violet-200 text-violet-700",
-  "from-teal-100 to-teal-200 text-teal-700",
-  "from-amber-100 to-amber-200 text-amber-700",
-  "from-rose-100 to-rose-200 text-rose-700",
-  "from-sky-100 to-sky-200 text-sky-700",
-  "from-emerald-100 to-emerald-200 text-emerald-700",
+  "bg-primary-container text-on-primary-container",
+  "bg-secondary-container text-on-secondary-container",
+  "bg-tertiary-container text-on-tertiary-container",
+  "bg-surface-container-highest text-on-surface-variant",
 ];
 function tintFor(id: string) {
   let h = 0;
@@ -55,6 +178,8 @@ function getInitials(name: string): string {
 
 export default function TeachersPage() {
   const { user } = useAuth() as any;
+  const { lang } = useManagerLanguage();
+  const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [centerId, setCenterId] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<CenterTeacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +255,7 @@ export default function TeachersPage() {
       setLoading(false);
     }, (error) => {
       console.error("Error fetching teachers:", error);
-      toast.error("O'qituvchilarni yuklashda xatolik yuz berdi.");
+      toast.error(t.loadError);
       setLoading(false);
     });
 
@@ -175,7 +300,7 @@ export default function TeachersPage() {
   const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!centerId) {
-        setModalError("Markaz ma'lumotlari topilmadi.");
+        setModalError(t.noCenterInfo);
         return;
     }
     
@@ -193,7 +318,7 @@ export default function TeachersPage() {
 
       // 2. Validation 1 (Role)
       if (foundUserData.role !== "teacher") {
-        throw new Error("Bu foydalanuvchi o'qituvchi emas.");
+        throw new Error(t.notTeacher);
       }
       
       // 3. Membership check (doc ID = teacher uid, so one center per teacher).
@@ -206,16 +331,16 @@ export default function TeachersPage() {
         existingMembership = await getDoc(ctDocRef);
       } catch (err: any) {
         if (err?.code === "permission-denied") {
-          throw new Error("Bu o'qituvchi boshqa markazga biriktirilgan. Avval u markazdan chiqarilishi kerak.");
+          throw new Error(t.linkedOtherCenter);
         }
         throw err;
       }
 
       if (existingMembership.exists()) {
         if (existingMembership.data().centerId === centerId) {
-          throw new Error("Bu o'qituvchi markazga allaqachon qo'shilgan.");
+          throw new Error(t.alreadyAdded);
         }
-        throw new Error("Bu o'qituvchi boshqa markazga biriktirilgan. Avval u markazdan chiqarilishi kerak.");
+        throw new Error(t.linkedOtherCenter);
       }
       
       // 4. The Write
@@ -228,13 +353,13 @@ export default function TeachersPage() {
       });
       
       // Success
-      toast.success("O'qituvchi muvaffaqiyatli qo'shildi!");
+      toast.success(t.addedSuccess);
       setIsModalOpen(false);
       setEmailInput("");
       
     } catch (error: any) {
       console.error("Add Teacher Error:", error);
-      setModalError(error.message || "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+      setModalError(error.message || t.genericError);
     } finally {
       setIsSubmitting(false);
     }
@@ -246,11 +371,11 @@ export default function TeachersPage() {
     setIsDeleting(true);
     try {
       await deleteDoc(doc(db, "center_teachers", teacherToDelete.id));
-      toast.success("O'qituvchi o'chirildi.");
+      toast.success(t.deletedSuccess);
       setTeacherToDelete(null);
     } catch (error) {
       console.error("Error deleting teacher:", error);
-      toast.error("O'qituvchini o'chirishda xatolik yuz berdi.");
+      toast.error(t.deleteError);
     } finally {
       setIsDeleting(false);
     }
@@ -262,24 +387,20 @@ export default function TeachersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-            O&apos;qituvchilar
+          <h1 className="text-xl md:text-2xl font-bold text-on-surface tracking-tight">
+            {t.title}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">Markazdagi barcha o&apos;qituvchilar</p>
+          <p className="text-sm text-on-surface-variant mt-0.5">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           {!loading && teachers.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-brand-line rounded-full text-[12px] font-semibold text-slate-600">
-              <User size={14} className="text-slate-400" /> {teachers.length} o&apos;qituvchi
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-full text-[12px] font-semibold text-on-surface-variant">
+              <User size={14} className="text-on-surface-variant" /> {t.teacherCount(teachers.length)}
             </span>
           )}
-        <button
-          onClick={() => setIsChooserOpen(true)}
-          className="flex items-center justify-center gap-2 pl-4 pr-5 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-full transition-all shadow-sm shadow-brand-600/25 active:scale-[0.98]"
-        >
-          <Plus size={18} strokeWidth={2.5} />
-          O&apos;qituvchi qo&apos;shish
-        </button>
+        <Button onClick={() => setIsChooserOpen(true)} icon={<Plus size={18} strokeWidth={2.5} />}>
+          {t.addTeacher}
+        </Button>
         </div>
       </div>
 
@@ -287,26 +408,26 @@ export default function TeachersPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {Array(6).fill(0).map((_, i) => (
-            <div key={i} className="bg-white border border-brand-line rounded-3xl p-5 animate-pulse">
+            <div key={i} className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl p-5 animate-pulse">
               <div className="flex items-start gap-4">
-                <div className="w-20 h-20 bg-slate-200 rounded-2xl shrink-0" />
+                <div className="w-20 h-20 bg-surface-container-highest rounded-m3-lg shrink-0" />
                 <div className="flex-1 space-y-2 pt-1">
-                  <div className="h-4 bg-slate-200 rounded w-3/4" />
-                  <div className="h-3 bg-slate-200 rounded w-1/2" />
-                  <div className="h-3 bg-slate-200 rounded w-2/3" />
+                  <div className="h-4 bg-surface-container-highest rounded w-3/4" />
+                  <div className="h-3 bg-surface-container-highest rounded w-1/2" />
+                  <div className="h-3 bg-surface-container-highest rounded w-2/3" />
                 </div>
               </div>
-              <div className="h-9 bg-slate-100 rounded-xl mt-5" />
+              <div className="h-9 bg-surface-container rounded-m3-md mt-5" />
             </div>
           ))}
         </div>
       ) : teachers.length === 0 ? (
-        <div className="bg-white border border-brand-line rounded-3xl p-14 flex flex-col items-center justify-center text-center">
-          <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3">
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl p-14 flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container mb-3">
             <User size={22} />
           </div>
-          <h3 className="text-sm font-bold text-slate-800">Hali o&apos;qituvchilar yo&apos;q</h3>
-          <p className="text-[13px] text-slate-400 mt-1 max-w-[250px]">Birinchi o&apos;qituvchini email orqali qo&apos;shing</p>
+          <h3 className="text-sm font-bold text-on-surface">{t.emptyTitle}</h3>
+          <p className="text-[13px] text-on-surface-variant mt-1 max-w-[250px]">{t.emptyDesc}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -315,7 +436,7 @@ export default function TeachersPage() {
             const stats = teacherStats.get(teacher.teacherId);
             return (
               <div key={teacher.id}
-                className="group bg-white rounded-3xl border border-brand-line hover:shadow-md hover:shadow-slate-200/60 hover:-translate-y-0.5 hover:border-brand-200 transition-all overflow-hidden flex flex-col">
+                className="group bg-surface-container-lowest rounded-m3-xl border border-outline-variant hover:shadow-elev-2 hover:-translate-y-0.5 hover:border-primary transition-all overflow-hidden flex flex-col">
                 {/* Clickable profile body */}
                 <button type="button" onClick={() => setViewingTeacher(teacher)} className="flex-1 text-left p-5">
                   <div className="flex items-start gap-4">
@@ -323,49 +444,49 @@ export default function TeachersPage() {
                     {p.photoURL ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.photoURL} alt={teacher.teacherName}
-                        className="w-20 h-20 rounded-2xl object-cover shrink-0 border border-slate-100" />
+                        className="w-20 h-20 rounded-m3-lg object-cover shrink-0 border border-outline-variant" />
                     ) : (
-                      <div className={`w-20 h-20 rounded-2xl shrink-0 bg-gradient-to-br flex items-center justify-center font-black text-[22px] ${tintFor(teacher.teacherId)}`}>
+                      <div className={`w-20 h-20 rounded-m3-lg shrink-0 flex items-center justify-center font-black text-[22px] ${tintFor(teacher.teacherId)}`}>
                         {getInitials(teacher.teacherName)}
                       </div>
                     )}
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="text-[15.5px] font-bold text-slate-900 truncate group-hover:text-brand-700 transition-colors">
+                        <h3 className="text-[15.5px] font-bold text-on-surface truncate group-hover:text-primary transition-colors">
                           {teacher.teacherName}
                         </h3>
                         {p.verifiedTeacher && (
-                          <BadgeCheck size={16} className="text-sky-500 shrink-0" aria-label="Tasdiqlangan" />
+                          <BadgeCheck size={16} className="text-tertiary shrink-0" aria-label={t.verified} />
                         )}
                       </div>
 
                       {/* Subject + experience */}
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                         {p.subject && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-50 text-brand-800 rounded-full text-[11px] font-bold capitalize">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-container text-on-primary-container rounded-full text-[11px] font-bold capitalize">
                             <BookOpen size={11} /> {p.subject}
                           </span>
                         )}
                         {typeof p.experience === "number" && p.experience > 0 && (
-                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[11px] font-bold">
-                            {p.experience} yil tajriba
+                          <span className="px-2 py-0.5 bg-surface-container-highest text-on-surface-variant rounded-full text-[11px] font-bold">
+                            {t.experienceLabel(p.experience)}
                           </span>
                         )}
                       </div>
 
                       {/* Contact */}
                       <div className="mt-2.5 space-y-1">
-                        <p className="flex items-center gap-1.5 text-[12px] text-slate-500 truncate">
-                          <Mail size={12} className="text-slate-400 shrink-0" /> {teacher.teacherEmail}
+                        <p className="flex items-center gap-1.5 text-[12px] text-on-surface-variant truncate">
+                          <Mail size={12} className="text-on-surface-variant shrink-0" /> {teacher.teacherEmail}
                         </p>
                         {p.phone && (
-                          <p className="flex items-center gap-1.5 text-[12px] text-slate-500 truncate">
-                            <Phone size={12} className="text-slate-400 shrink-0" /> {p.phone}
+                          <p className="flex items-center gap-1.5 text-[12px] text-on-surface-variant truncate">
+                            <Phone size={12} className="text-on-surface-variant shrink-0" /> {p.phone}
                           </p>
                         )}
-                        <p className="text-[11px] text-slate-400">
-                          Qo&apos;shilgan: {teacher.addedAt?.toDate ? teacher.addedAt.toDate().toLocaleDateString("uz-UZ") : "hozirgina"}
+                        <p className="text-[11px] text-on-surface-variant">
+                          {t.addedOn} {teacher.addedAt?.toDate ? teacher.addedAt.toDate().toLocaleDateString(t.dateLocale) : t.justNow}
                         </p>
                       </div>
                     </div>
@@ -373,26 +494,26 @@ export default function TeachersPage() {
                 </button>
 
                 {/* Footer: stats + actions */}
-                <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
-                  <div className="flex items-center gap-3 text-[12px] font-semibold text-slate-600">
+                <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-outline-variant bg-surface-container-low">
+                  <div className="flex items-center gap-3 text-[12px] font-semibold text-on-surface-variant">
                     <span className="flex items-center gap-1.5">
-                      <Layers size={13} className="text-slate-400" />
-                      <span className="tabular-nums">{stats?.groups || 0}</span> guruh
+                      <Layers size={13} className="text-on-surface-variant" />
+                      <span className="tabular-nums">{stats?.groups || 0}</span> {t.groupsWord}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <Users size={13} className="text-slate-400" />
-                      <span className="tabular-nums">{stats?.students || 0}</span> o&apos;quvchi
+                      <Users size={13} className="text-on-surface-variant" />
+                      <span className="tabular-nums">{stats?.students || 0}</span> {t.studentsWord}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => setTeacherToDelete(teacher)}
-                      title="O'qituvchini markazdan o'chirish"
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors">
+                      title={t.deleteTeacherTitle}
+                      className="p-2 text-on-surface-variant hover:text-on-error-container hover:bg-error-container rounded-full transition-colors">
                       <Trash2 size={16} />
                     </button>
                     <button type="button" onClick={() => setViewingTeacher(teacher)}
-                      title="Profilni ko'rish"
-                      className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500 group-hover:bg-brand-600 group-hover:text-white transition-colors">
+                      title={t.viewProfile}
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-highest text-on-surface-variant group-hover:bg-primary group-hover:text-on-primary transition-colors">
                       <ArrowRight size={15} />
                     </button>
                   </div>
@@ -406,39 +527,39 @@ export default function TeachersPage() {
       {/* Add-method chooser: create a new account vs link an existing one */}
       {isChooserOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsChooserOpen(false)}></div>
-          <div className="relative bg-white w-full max-w-md rounded-[2rem] p-6 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-200">
+          <div className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsChooserOpen(false)}></div>
+          <div className="relative bg-surface-container-lowest w-full max-w-md rounded-m3-xl p-6 shadow-elev-3">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight">O&apos;qituvchi qo&apos;shish</h2>
+              <h2 className="text-lg font-bold text-on-surface tracking-tight">{t.addTeacher}</h2>
               <button type="button" onClick={() => setIsChooserOpen(false)}
-                className="w-9 h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-full transition-colors">
+                className="w-9 h-9 flex items-center justify-center bg-surface-container-low hover:bg-state-hover text-on-surface-variant rounded-full transition-colors">
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
             <div className="space-y-3">
               <button type="button"
                 onClick={() => { setIsChooserOpen(false); setIsCreateOpen(true); }}
-                className="w-full flex items-center gap-4 p-4 bg-brand-50/60 hover:bg-brand-50 border border-brand-100 rounded-2xl text-left transition-colors active:scale-[0.99]">
-                <div className="w-12 h-12 bg-brand-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm shadow-brand-600/25">
+                className="w-full flex items-center gap-4 p-4 bg-primary-container rounded-m3-lg text-left transition-colors active:scale-[0.99]">
+                <div className="w-12 h-12 bg-primary rounded-m3-lg flex items-center justify-center text-on-primary shrink-0 shadow-elev-1">
                   <UserPlus size={22} strokeWidth={2.2} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14.5px] font-bold text-slate-900">Yangi hisob yaratish</p>
-                  <p className="text-[12.5px] text-slate-500 mt-0.5">Login va parol bilan tayyor hisob tuziladi</p>
+                  <p className="text-[14.5px] font-bold text-on-primary-container">{t.createNewAccount}</p>
+                  <p className="text-[12.5px] text-on-primary-container mt-0.5">{t.createNewAccountDesc}</p>
                 </div>
-                <ArrowRight size={18} className="text-brand-400 shrink-0" />
+                <ArrowRight size={18} className="text-on-primary-container shrink-0" />
               </button>
               <button type="button"
                 onClick={() => { setIsChooserOpen(false); setIsModalOpen(true); }}
-                className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl text-left transition-colors active:scale-[0.99]">
-                <div className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-500 shrink-0">
+                className="w-full flex items-center gap-4 p-4 bg-surface-container-low hover:bg-state-hover border border-outline-variant rounded-m3-lg text-left transition-colors active:scale-[0.99]">
+                <div className="w-12 h-12 bg-surface-container-lowest border border-outline-variant rounded-m3-lg flex items-center justify-center text-on-surface-variant shrink-0">
                   <Search size={22} strokeWidth={2.2} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14.5px] font-bold text-slate-900">Mavjud hisobni qo&apos;shish</p>
-                  <p className="text-[12.5px] text-slate-500 mt-0.5">Ro&apos;yxatdan o&apos;tgan o&apos;qituvchini email orqali topish</p>
+                  <p className="text-[14.5px] font-bold text-on-surface">{t.addExistingAccount}</p>
+                  <p className="text-[12.5px] text-on-surface-variant mt-0.5">{t.addExistingAccountDesc}</p>
                 </div>
-                <ArrowRight size={18} className="text-slate-300 shrink-0" />
+                <ArrowRight size={18} className="text-on-surface-variant shrink-0" />
               </button>
             </div>
           </div>
@@ -453,25 +574,25 @@ export default function TeachersPage() {
       {/* Add Teacher Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => !isSubmitting && setIsModalOpen(false)}></div>
-          <div className="relative bg-white w-full max-w-md rounded-[2rem] p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => !isSubmitting && setIsModalOpen(false)}></div>
+          <div className="relative bg-surface-container-lowest w-full max-w-md rounded-m3-xl p-6 sm:p-8 shadow-elev-3">
             
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 shrink-0">
+              <div className="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container shrink-0">
                 <User size={24} strokeWidth={2.5} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight">O&apos;qituvchi qo&apos;shish</h2>
-                <p className="text-[13px] text-slate-500">Emailini kiriting — tizimdan topib qo&apos;shamiz.</p>
+                <h2 className="text-lg font-bold text-on-surface tracking-tight">{t.addTeacher}</h2>
+                <p className="text-[13px] text-on-surface-variant">{t.addModalDesc}</p>
               </div>
             </div>
 
             <form onSubmit={handleAddTeacher} className="space-y-4">
               
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-[13px] font-bold text-slate-700 ml-1">O&apos;qituvchi emaili</label>
+                <label htmlFor="email" className="text-[13px] font-bold text-on-surface-variant ml-1">{t.teacherEmailLabel}</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface-variant">
                     <Mail size={18} />
                   </div>
                   <input
@@ -481,12 +602,12 @@ export default function TeachersPage() {
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     disabled={isSubmitting}
-                    placeholder="misol@gmail.com"
-                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium text-slate-900 outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-200 transition-all disabled:opacity-60"
+                    placeholder={t.emailPlaceholder}
+                    className="w-full pl-11 pr-4 py-3.5 bg-surface-container-low border border-outline-variant rounded-m3-md text-[14px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60"
                   />
                 </div>
                 {modalError && (
-                  <p className="text-[13px] font-bold text-red-500 mt-2 px-1 animate-in slide-in-from-top-1">
+                  <p className="text-[13px] font-bold text-error mt-2 px-1">
                     {modalError}
                   </p>
                 )}
@@ -497,22 +618,22 @@ export default function TeachersPage() {
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   disabled={isSubmitting}
-                  className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-colors disabled:opacity-60"
+                  className="flex-1 py-3.5 bg-surface-container hover:bg-state-hover text-on-surface font-bold rounded-full transition-colors disabled:opacity-60"
                 >
-                  Bekor qilish
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !emailInput.trim()}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-full transition-colors disabled:opacity-60 shadow-sm shadow-brand-600/25"
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-primary text-on-primary font-bold rounded-full transition-colors disabled:opacity-60 shadow-elev-1"
                 >
                   {isSubmitting ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      Qidirilmoqda...
+                      {t.searching}
                     </>
                   ) : (
-                    "Qo'shish"
+                    t.add
                   )}
                 </button>
               </div>
@@ -541,37 +662,37 @@ export default function TeachersPage() {
       {teacherToDelete && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div 
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-scrim backdrop-blur-sm"
             onClick={() => !isDeleting && setTeacherToDelete(null)}
           ></div>
-          <div className="relative bg-white w-full max-w-sm rounded-[2rem] p-6 text-center shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mx-auto mb-4 border border-red-100">
+          <div className="relative bg-surface-container-lowest w-full max-w-sm rounded-m3-xl p-6 text-center shadow-elev-3">
+            <div className="w-16 h-16 bg-error-container rounded-full flex items-center justify-center text-on-error-container mx-auto mb-4">
               <Trash2 size={28} strokeWidth={2.5} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-2">O&apos;chirishni tasdiqlang</h3>
-            <p className="text-sm text-slate-500 mb-8">
-              <span className="font-bold text-slate-800">{teacherToDelete.teacherName}</span> markazdan o&apos;chiriladi. Bu amalni ortga qaytarib bo&apos;lmaydi.
+            <h3 className="text-lg font-bold text-on-surface tracking-tight mb-2">{t.deleteConfirmTitle}</h3>
+            <p className="text-sm text-on-surface-variant mb-8">
+              <span className="font-bold text-on-surface">{teacherToDelete.teacherName}</span> {t.deleteConfirmSuffix}
             </p>
             <div className="flex gap-3">
               <button 
                 onClick={() => setTeacherToDelete(null)}
                 disabled={isDeleting}
-                className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-colors disabled:opacity-50"
+                className="flex-1 py-3.5 bg-surface-container hover:bg-state-hover text-on-surface font-bold rounded-full transition-colors disabled:opacity-50"
               >
-                Bekor qilish
+                {t.cancel}
               </button>
-              <button 
+              <button
                 onClick={confirmDeleteTeacher}
                 disabled={isDeleting}
-                className="flex-1 py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-full shadow-md shadow-rose-500/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex-1 py-3.5 bg-error text-on-error font-bold rounded-full shadow-elev-2 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isDeleting ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    O&apos;chirilmoqda...
+                    {t.deleting}
                   </>
                 ) : (
-                  "O'chirish"
+                  t.delete
                 )}
               </button>
             </div>

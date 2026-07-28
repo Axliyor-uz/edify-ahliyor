@@ -27,7 +27,7 @@ export function Chip({
       type={type ?? "button"}
       className={cn(
         "m3-interactive inline-flex flex-none select-none items-center rounded-m3-xs font-medium",
-        size === "md" ? "h-8 gap-1.5 px-3.5 text-[13px] [&_svg]:h-4 [&_svg]:w-4" : "h-[26px] gap-1 px-2.5 text-xs [&_svg]:h-3.5 [&_svg]:w-3.5",
+        size === "md" ? "h-t-control-sm gap-1.5 px-3.5 text-[13px] [&_svg]:h-4 [&_svg]:w-4" : "h-[26px] gap-1 px-2.5 text-xs [&_svg]:h-3.5 [&_svg]:w-3.5",
         selected
           ? "bg-secondary-container font-semibold text-on-secondary-container"
           : "text-on-surface-variant ring-1 ring-inset ring-outline-variant",

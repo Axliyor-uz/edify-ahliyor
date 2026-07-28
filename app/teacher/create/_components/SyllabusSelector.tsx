@@ -4,12 +4,48 @@ import { useState, useEffect } from 'react';
 import rawSyllabusData from '@/data/syllabus.json';
 
 import { Select, cn } from '@/components/ui';
+import { useTeacherLanguage } from '@/app/teacher/layout';
+
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    subjectTopic: "Fan mavzusi",
+    selectTopic: "Mavzuni tanlang...",
+    chapter: "Bo'lim",
+    selectChapter: "Bo'limni tanlang...",
+    subtopic: "Kichik mavzu",
+    selectSubtopic: "Kichik mavzuni tanlang...",
+    difficultyLevel: "Murakkablik darajasi",
+    difficulties: { Easy: "Oson", Medium: "O'rtacha", Hard: "Murakkab" },
+  },
+  en: {
+    subjectTopic: "Subject Topic",
+    selectTopic: "Select a Topic...",
+    chapter: "Chapter",
+    selectChapter: "Select Chapter...",
+    subtopic: "Subtopic",
+    selectSubtopic: "Select Subtopic...",
+    difficultyLevel: "Difficulty Level",
+    difficulties: { Easy: "Easy", Medium: "Medium", Hard: "Hard" },
+  },
+  ru: {
+    subjectTopic: "Тема предмета",
+    selectTopic: "Выберите тему...",
+    chapter: "Раздел",
+    selectChapter: "Выберите раздел...",
+    subtopic: "Подтема",
+    selectSubtopic: "Выберите подтему...",
+    difficultyLevel: "Уровень сложности",
+    difficulties: { Easy: "Лёгкий", Medium: "Средний", Hard: "Сложный" },
+  },
+};
 
 interface Props {
   onChange: (selection: any) => void;
 }
 
 export default function SyllabusSelector({ onChange }: Props) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const categories: any[] = Array.isArray(rawSyllabusData) ? rawSyllabusData : [];
 
   const [selectedTopic, setSelectedTopic] = useState<any | null>(null);
@@ -31,7 +67,7 @@ export default function SyllabusSelector({ onChange }: Props) {
 
       {/* TOPIC */}
       <Select
-        label="Subject Topic"
+        label={t.subjectTopic}
         value={selectedTopic?.index || ""}
         onChange={(e) => {
           const topic = categories.find(c => c.index === Number(e.target.value)) || null;
@@ -40,14 +76,14 @@ export default function SyllabusSelector({ onChange }: Props) {
           setSelectedSubtopic(null);
         }}
       >
-        <option value="" disabled>Select a Topic...</option>
+        <option value="" disabled>{t.selectTopic}</option>
         {categories.map(cat => <option key={cat.index} value={cat.index}>{cat.category}</option>)}
       </Select>
 
       <div className="grid grid-cols-1 gap-4">
         {/* CHAPTER */}
         <Select
-          label="Chapter"
+          label={t.chapter}
           disabled={!selectedTopic}
           value={selectedChapter?.index || ""}
           onChange={(e) => {
@@ -56,13 +92,13 @@ export default function SyllabusSelector({ onChange }: Props) {
             setSelectedSubtopic(null);
           }}
         >
-          <option value="" disabled>Select Chapter...</option>
+          <option value="" disabled>{t.selectChapter}</option>
           {selectedTopic?.chapters?.map((chap: any) => <option key={chap.index} value={chap.index}>{chap.chapter}</option>)}
         </Select>
 
         {/* SUBTOPIC */}
         <Select
-          label="Subtopic"
+          label={t.subtopic}
           disabled={!selectedChapter}
           value={selectedSubtopic?.index || ""}
           onChange={(e) => {
@@ -70,14 +106,14 @@ export default function SyllabusSelector({ onChange }: Props) {
             setSelectedSubtopic(sub);
           }}
         >
-          <option value="" disabled>Select Subtopic...</option>
+          <option value="" disabled>{t.selectSubtopic}</option>
           {selectedChapter?.subtopics?.map((sub: any) => <option key={sub.index} value={sub.index}>{sub.name}</option>)}
         </Select>
       </div>
 
       {/* DIFFICULTY */}
       <div className="pt-3 border-t border-outline-variant mt-2">
-        <label className="text-xs font-bold text-on-surface-variant mb-2 block">Difficulty Level</label>
+        <label className="text-xs font-bold text-on-surface-variant mb-2 block">{t.difficultyLevel}</label>
         <div className="flex gap-2">
           {['Easy', 'Medium', 'Hard'].map((lvl: any) => (
             <button
@@ -91,7 +127,7 @@ export default function SyllabusSelector({ onChange }: Props) {
                   : "bg-surface-container-lowest ring-1 ring-inset ring-outline-variant text-on-surface-variant hover:text-on-surface",
               )}
             >
-              {lvl}
+              {t.difficulties[lvl] || lvl}
             </button>
           ))}
         </div>

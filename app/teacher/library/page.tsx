@@ -138,7 +138,7 @@ export default function LibraryHubPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col font-sans relative overflow-hidden pb-[100px]">
+    <div className="min-h-screen bg-surface flex flex-col font-t-body relative overflow-hidden pb-[100px]">
 
       {/* 🟢 AMBIENT BACKGROUND GLOWS */}
       <div className="absolute top-0 inset-x-0 h-[40vh] bg-gradient-to-b from-surface-container to-transparent pointer-events-none z-0"></div>

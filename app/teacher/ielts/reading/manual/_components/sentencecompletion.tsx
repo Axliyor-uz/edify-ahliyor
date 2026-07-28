@@ -2,13 +2,44 @@
 
 import { Plus, Trash2, X, SquareSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Button } from '@/components/ui';
+
+const TRANSLATIONS = {
+  uz: {
+    sentencePh: "Gapni yozing... ([] kiritsangiz, bo'sh joy avtomatik qo'yiladi)",
+    addBlank: "Bo'sh joy qo'shish",
+    addBlankTitle: "Ushbu gapga bo'sh joy qavsini qo'shish",
+    answersPh: "Qabul qilinadigan javoblar (vergul bilan ajrating)",
+    refPh: "Ref (ixt)",
+    instructionsPh: "Yo'riqnoma (masalan: Choose NO MORE THAN TWO WORDS...)",
+    addSentence: "Gap qo'shish",
+  },
+  en: {
+    sentencePh: "Type sentence... (Type [] to auto-insert blank)",
+    addBlank: "Add Blank",
+    addBlankTitle: "Add a blank bracket to this sentence",
+    answersPh: "Accepted Answers (comma separated)",
+    refPh: "Ref (opt)",
+    instructionsPh: "Instructions (e.g. Choose NO MORE THAN TWO WORDS...)",
+    addSentence: "Add Sentence",
+  },
+  ru: {
+    sentencePh: "Введите предложение... (Введите [], чтобы вставить пропуск)",
+    addBlank: "Добавить пропуск",
+    addBlankTitle: "Добавить пропуск в это предложение",
+    answersPh: "Допустимые ответы (через запятую)",
+    refPh: "Ref (необяз.)",
+    instructionsPh: "Инструкция (например: Choose NO MORE THAN TWO WORDS...)",
+    addSentence: "Добавить предложение",
+  },
+};
 
 // ==========================================================================
 // INDIVIDUAL ROW COMPONENT (Fixes the Comma Typing Issue)
 // ==========================================================================
-const SentenceRow = ({ row, rIdx, updateRow, deleteRow, insertBlank, totalRows }: any) => {
+const SentenceRow = ({ row, rIdx, updateRow, deleteRow, insertBlank, totalRows, t }: any) => {
   // Local state allows smooth typing with commas
   const [ansText, setAnsText] = useState(row.correct_answer.join(', '));
 
@@ -33,7 +64,7 @@ const SentenceRow = ({ row, rIdx, updateRow, deleteRow, insertBlank, totalRows }
         </span>
 
         <textarea
-          placeholder="Type sentence... (Type [] to auto-insert blank)"
+          placeholder={t.sentencePh}
           value={row.sentence}
           onChange={e => {
             updateRow(rIdx, 'sentence', e.target.value);
@@ -47,15 +78,15 @@ const SentenceRow = ({ row, rIdx, updateRow, deleteRow, insertBlank, totalRows }
         <button
           onClick={() => insertBlank(rIdx)}
           className="m3-interactive mt-0.5 px-2 py-1 flex items-center gap-1.5 text-[10px] font-bold text-on-tertiary-container bg-tertiary-container rounded-m3-xs shadow-elev-1 shrink-0 transition-colors border border-transparent"
-          title="Add a blank bracket to this sentence"
+          title={t.addBlankTitle}
         >
-          <SquareSquare size={12} /> Add Blank
+          <SquareSquare size={12} /> {t.addBlank}
         </button>
       </div>
 
       <div className="pl-8 flex items-center gap-2">
         <input
-          type="text" placeholder="Accepted Answers (comma separated)"
+          type="text" placeholder={t.answersPh}
           value={ansText}
           onChange={e => setAnsText(e.target.value)}
           onBlur={handleAnsBlur}
@@ -65,7 +96,7 @@ const SentenceRow = ({ row, rIdx, updateRow, deleteRow, insertBlank, totalRows }
 
         {/* GHOST REFERENCE INPUT */}
         <input
-          type="text" placeholder="Ref (opt)"
+          type="text" placeholder={t.refPh}
           value={row.passage_reference || ''}
           onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())}
           className={`w-14 h-7 text-[10px] text-center font-bold rounded-m3-sm outline-none uppercase shrink-0 transition-colors
@@ -84,7 +115,9 @@ const SentenceRow = ({ row, rIdx, updateRow, deleteRow, insertBlank, totalRows }
 // MAIN COMPONENT BLOCK
 // ==========================================================================
 export default function SentenceCompletionBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
-  
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+
   // 🌟 MAGIC AUTO-HEALING REGEX ENGINE (Per Row)
   useEffect(() => {
     let needsUpdate = false;
@@ -161,7 +194,7 @@ export default function SentenceCompletionBlock({ qb, qbIdx, updateBlock, delete
       <div className="p-3">
         {/* INSTRUCTIONS */}
         <input
-          type="text" placeholder="Instructions (e.g. Choose NO MORE THAN TWO WORDS...)"
+          type="text" placeholder={t.instructionsPh}
           value={qb.instructions}
           onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
           className="w-full bg-transparent border-none text-[11px] font-bold text-on-surface outline-none mb-3 p-0"
@@ -176,14 +209,15 @@ export default function SentenceCompletionBlock({ qb, qbIdx, updateBlock, delete
               rIdx={rIdx} 
               updateRow={updateRow} 
               deleteRow={deleteRow} 
-              insertBlank={insertBlank} 
-              totalRows={qb.questions.length} 
+              insertBlank={insertBlank}
+              totalRows={qb.questions.length}
+              t={t}
             />
           ))}
         </div>
         
         <Button variant="text" size="sm" icon={<Plus />} onClick={addRow} className="mt-3">
-          Add Sentence
+          {t.addSentence}
         </Button>
       </div>
     </div>

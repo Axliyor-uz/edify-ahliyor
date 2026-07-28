@@ -87,7 +87,7 @@ export function TestResults({ state, classId, assignmentId, isPastDeadline, rout
            </div>
 
            <div className="flex flex-col items-center justify-center rounded-m3-lg border border-outline-variant bg-surface p-4">
-              <span className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">Accuracy</span>
+              <span className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-on-surface-variant">{t.result.accuracy}</span>
               <span className={cn('s-display s-num text-[24px] font-bold', accuracy >= 80 ? 'text-success' : accuracy >= 60 ? 'text-gold' : 'text-error')}>
                 {accuracy}%
               </span>

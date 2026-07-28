@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
   Home,
-  Loader2,
   Megaphone,
   Package,
   Plus,
@@ -19,6 +18,8 @@ import type { Expense } from "@/types/finance";
 import { cancelExpenseApi, createExpenseApi } from "@/services/financeService";
 import { formatUZS } from "@/lib/finance/money";
 import { getTodayKey } from "@/lib/dateUtils";
+import { Button, EmptyState, StatusChip } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
 import { shortDateLabel } from "./financeFormat";
 import MonthNav from "./MonthNav";
 import ReasonDialog from "./ReasonDialog";
@@ -32,29 +33,118 @@ interface Props {
   onChanged: () => void;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  salary: "Oylik",
-  ijara: "Ijara",
-  kommunal: "Kommunal",
-  marketing: "Marketing",
-  jihozlar: "Jihozlar",
-  boshqa: "Boshqa",
+// Keys are the stored category values — never translated.
+const CATEGORY_LABELS: Record<LangType, Record<string, string>> = {
+  uz: {
+    salary: "Oylik",
+    ijara: "Ijara",
+    kommunal: "Kommunal",
+    marketing: "Marketing",
+    jihozlar: "Jihozlar",
+    boshqa: "Boshqa",
+  },
+  en: {
+    salary: "Salary",
+    ijara: "Rent",
+    kommunal: "Utilities",
+    marketing: "Marketing",
+    jihozlar: "Equipment",
+    boshqa: "Other",
+  },
+  ru: {
+    salary: "Зарплата",
+    ijara: "Аренда",
+    kommunal: "Коммунальные",
+    marketing: "Маркетинг",
+    jihozlar: "Оборудование",
+    boshqa: "Прочее",
+  },
 };
-const categoryLabel = (c: string) => CATEGORY_LABELS[c] || c;
+const categoryLabel = (c: string, lang: LangType) => CATEGORY_LABELS[lang][c] || c;
+
+const T_UZ = {
+  addExpense: "Xarajat qo'shish",
+  searchPlaceholder: "Kategoriya yoki izohni qidiring...",
+  total: (amount: string) => `Jami: ${amount}`,
+  emptySearchTitle: "Hech narsa topilmadi",
+  emptyTitle: "Bu oyda xarajatlar yo'q",
+  emptySearchDesc: "Qidiruvni o'zgartirib ko'ring",
+  emptyDesc: "Ijara, kommunal va boshqa sarflarni shu yerga yozib boring",
+  cancelledChip: "Bekor qilingan",
+  cancelExpenseTitle: "Xarajatni bekor qilish",
+  cancelMessage: (category: string, amount: string) =>
+    `${category} — ${amount}. Xarajat o'chirilmaydi, "bekor qilingan" deb belgilanadi.`,
+  cancelConfirm: "Bekor qilish",
+  expenseCancelled: "Xarajat bekor qilindi.",
+  genericError: "Xatolik yuz berdi.",
+  amountPlaceholder: "Summa (so'm)",
+  notePlaceholder: "Izoh (ixtiyoriy)",
+  save: "Saqlash",
+  expenseSaved: "Xarajat saqlandi.",
+  saveError: "Saqlashda xatolik.",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    addExpense: "Add expense",
+    searchPlaceholder: "Search by category or note...",
+    total: (amount: string) => `Total: ${amount}`,
+    emptySearchTitle: "Nothing found",
+    emptyTitle: "No expenses this month",
+    emptySearchDesc: "Try changing your search",
+    emptyDesc: "Record rent, utilities and other spending here",
+    cancelledChip: "Cancelled",
+    cancelExpenseTitle: "Cancel expense",
+    cancelMessage: (category: string, amount: string) =>
+      `${category} — ${amount}. The expense is not deleted — it is marked "cancelled".`,
+    cancelConfirm: "Cancel expense",
+    expenseCancelled: "Expense cancelled.",
+    genericError: "Something went wrong.",
+    amountPlaceholder: "Amount (so'm)",
+    notePlaceholder: "Note (optional)",
+    save: "Save",
+    expenseSaved: "Expense saved.",
+    saveError: "Failed to save.",
+  },
+  ru: {
+    addExpense: "Добавить расход",
+    searchPlaceholder: "Поиск по категории или комментарию...",
+    total: (amount: string) => `Всего: ${amount}`,
+    emptySearchTitle: "Ничего не найдено",
+    emptyTitle: "В этом месяце расходов нет",
+    emptySearchDesc: "Попробуйте изменить запрос",
+    emptyDesc: "Записывайте здесь аренду, коммунальные и прочие траты",
+    cancelledChip: "Отменён",
+    cancelExpenseTitle: "Отменить расход",
+    cancelMessage: (category: string, amount: string) =>
+      `${category} — ${amount}. Расход не удаляется — он помечается как «отменён».`,
+    cancelConfirm: "Отменить",
+    expenseCancelled: "Расход отменён.",
+    genericError: "Произошла ошибка.",
+    amountPlaceholder: "Сумма (so'm)",
+    notePlaceholder: "Комментарий (необязательно)",
+    save: "Сохранить",
+    expenseSaved: "Расход сохранён.",
+    saveError: "Не удалось сохранить.",
+  },
+};
 
 /** MD3 leading avatar per category: own icon + tonal color, so rows scan at a glance. */
 const CATEGORY_META: Record<string, { Icon: LucideIcon; avatar: string }> = {
-  salary: { Icon: Users, avatar: "bg-teal-50 text-teal-600" },
-  ijara: { Icon: Home, avatar: "bg-sky-50 text-sky-600" },
-  kommunal: { Icon: Zap, avatar: "bg-amber-50 text-amber-600" },
-  marketing: { Icon: Megaphone, avatar: "bg-violet-50 text-violet-600" },
-  jihozlar: { Icon: Package, avatar: "bg-orange-50 text-orange-600" },
-  boshqa: { Icon: Wallet, avatar: "bg-slate-100 text-slate-500" },
+  salary: { Icon: Users, avatar: "bg-success-container text-on-success-container" },
+  ijara: { Icon: Home, avatar: "bg-tertiary-container text-on-tertiary-container" },
+  kommunal: { Icon: Zap, avatar: "bg-warning-container text-on-warning-container" },
+  marketing: { Icon: Megaphone, avatar: "bg-secondary-container text-on-secondary-container" },
+  jihozlar: { Icon: Package, avatar: "bg-primary-container text-on-primary-container" },
+  boshqa: { Icon: Wallet, avatar: "bg-surface-container-highest text-on-surface-variant" },
 };
 const categoryMeta = (c: string) => CATEGORY_META[c] || CATEGORY_META.boshqa;
 
 /** Month's expenses: per-category totals, add, cancel. Salary rows come from payroll and are protected. */
 export default function ExpensesTab({ expenses, categories, monthLabel, onShiftMonth, onChanged }: Props) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [showAdd, setShowAdd] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Expense | null>(null);
   const [search, setSearch] = useState("");
@@ -63,9 +153,9 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
     const q = search.trim().toLowerCase();
     if (!q) return expenses;
     return expenses.filter(
-      (e) => categoryLabel(e.category).toLowerCase().includes(q) || (e.note || "").toLowerCase().includes(q)
+      (e) => categoryLabel(e.category, lang).toLowerCase().includes(q) || (e.note || "").toLowerCase().includes(q)
     );
-  }, [expenses, search]);
+  }, [expenses, search, lang]);
 
   const active = useMemo(() => filtered.filter((e) => e.status === "active"), [filtered]);
   const byCategory = useMemo(() => {
@@ -79,58 +169,47 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <MonthNav label={monthLabel} onShift={onShiftMonth} />
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 pl-4 pr-5 py-3 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-bold text-sm rounded-full transition-all shadow-sm shadow-brand-600/25"
-        >
-          <Plus size={16} /> Xarajat qo&apos;shish
-        </button>
+        <Button icon={<Plus />} onClick={() => setShowAdd(true)}>
+          {t.addExpense}
+        </Button>
       </div>
 
       {expenses.length > 5 && (
-        <SearchInput value={search} onChange={setSearch} placeholder="Kategoriya yoki izohni qidiring..." />
+        <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
       )}
 
       {byCategory.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          <span className="px-3.5 py-1.5 bg-brand-ink text-white rounded-full text-[12px] font-bold tabular-nums">
-            Jami: {formatUZS(total)}
+          <span className="px-3.5 py-1.5 bg-inverse-surface text-inverse-on-surface rounded-full text-[12px] font-bold tabular-nums">
+            {t.total(formatUZS(total))}
           </span>
           {byCategory.map(([cat, sum]) => (
             <span
               key={cat}
-              className="px-3.5 py-1.5 bg-white border border-brand-line text-slate-600 rounded-full text-[12px] font-bold tabular-nums"
+              className="px-3.5 py-1.5 bg-surface-container-lowest border border-outline-variant text-on-surface-variant rounded-full text-[12px] font-bold tabular-nums"
             >
-              {categoryLabel(cat)}: {formatUZS(sum)}
+              {categoryLabel(cat, lang)}: {formatUZS(sum)}
             </span>
           ))}
         </div>
       )}
 
-      <div className="bg-white border border-brand-line rounded-3xl divide-y divide-slate-100 overflow-hidden">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl divide-y divide-outline-variant overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="py-14 px-6 text-center">
-            <div className="w-12 h-12 mx-auto rounded-full bg-brand-50 text-brand-700 flex items-center justify-center">
-              <Wallet size={22} />
-            </div>
-            <p className="text-sm font-bold text-slate-800 mt-3">
-              {search ? "Hech narsa topilmadi" : "Bu oyda xarajatlar yo'q"}
-            </p>
-            <p className="text-[13px] text-slate-400 mt-1">
-              {search
-                ? "Qidiruvni o'zgartirib ko'ring"
-                : "Ijara, kommunal va boshqa sarflarni shu yerga yozib boring"}
-            </p>
-          </div>
+          <EmptyState
+            icon={<Wallet />}
+            title={search ? t.emptySearchTitle : t.emptyTitle}
+            description={search ? t.emptySearchDesc : t.emptyDesc}
+          />
         ) : (
           filtered.map((e) => {
             const cancelled = e.status === "cancelled";
             const meta = categoryMeta(e.category);
             return (
-              <div key={e.id} className="flex items-center gap-3 px-4 py-3 hover:bg-brand-25 transition-colors">
+              <div key={e.id} className="flex items-center gap-3 px-4 py-3 hover:bg-state-hover transition-colors">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                    cancelled ? "bg-slate-100 text-slate-400" : meta.avatar
+                    cancelled ? "bg-surface-container-highest text-on-surface-variant" : meta.avatar
                   }`}
                 >
                   <meta.Icon size={18} strokeWidth={2.1} />
@@ -138,22 +217,22 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
                 <div className="flex-1 min-w-0">
                   <p
                     className={`text-[14.5px] font-semibold truncate ${
-                      cancelled ? "text-slate-400 line-through" : "text-slate-900"
+                      cancelled ? "text-on-surface-variant line-through" : "text-on-surface"
                     }`}
                   >
-                    {categoryLabel(e.category)}
-                    {e.note && <span className="font-medium text-slate-500"> · {e.note}</span>}
+                    {categoryLabel(e.category, lang)}
+                    {e.note && <span className="font-medium text-on-surface-variant"> · {e.note}</span>}
                   </p>
-                  <p className="text-[12.5px] text-slate-500 mt-0.5">{shortDateLabel(e.date)}</p>
+                  <p className="text-[12.5px] text-on-surface-variant mt-0.5">{shortDateLabel(e.date, lang)}</p>
                 </div>
                 {cancelled && (
-                  <span className="px-2.5 py-1 bg-slate-100 text-slate-400 rounded-full text-[11px] font-bold shrink-0">
-                    Bekor qilingan
-                  </span>
+                  <StatusChip tone="muted" noDot className="shrink-0">
+                    {t.cancelledChip}
+                  </StatusChip>
                 )}
                 <p
                   className={`text-[14.5px] font-bold tabular-nums shrink-0 ${
-                    cancelled ? "text-slate-300 line-through" : "text-slate-900"
+                    cancelled ? "text-on-surface-variant line-through" : "text-on-surface"
                   }`}
                 >
                   −{formatUZS(e.amount)}
@@ -161,8 +240,8 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
                 {!cancelled && !e.payoutId && (
                   <button
                     onClick={() => setCancelTarget(e)}
-                    title="Xarajatni bekor qilish"
-                    className="w-9 h-9 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 flex items-center justify-center transition-colors shrink-0"
+                    title={t.cancelExpenseTitle}
+                    className="w-9 h-9 rounded-full hover:bg-error-container text-on-surface-variant hover:text-error flex items-center justify-center transition-colors shrink-0"
                   >
                     <Undo2 size={15} />
                   </button>
@@ -185,18 +264,18 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
       )}
       {cancelTarget && (
         <ReasonDialog
-          title="Xarajatni bekor qilish"
-          message={`${categoryLabel(cancelTarget.category)} — ${formatUZS(cancelTarget.amount)}. Xarajat o'chirilmaydi, "bekor qilingan" deb belgilanadi.`}
-          confirmLabel="Bekor qilish"
+          title={t.cancelExpenseTitle}
+          message={t.cancelMessage(categoryLabel(cancelTarget.category, lang), formatUZS(cancelTarget.amount))}
+          confirmLabel={t.cancelConfirm}
           onClose={() => setCancelTarget(null)}
           onConfirm={async (reason) => {
             try {
               await cancelExpenseApi(cancelTarget.id, reason);
-              toast.success("Xarajat bekor qilindi.");
+              toast.success(t.expenseCancelled);
               setCancelTarget(null);
               onChanged();
             } catch (e: any) {
-              toast.error(e.message || "Xatolik yuz berdi.");
+              toast.error(e.message || t.genericError);
             }
           }}
         />
@@ -214,6 +293,8 @@ function AddExpenseModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const todayKey = getTodayKey();
   const options = categories.filter((c) => c !== "salary");
   const [category, setCategory] = useState(options[0] || "boshqa");
@@ -235,10 +316,10 @@ function AddExpenseModal({
         ...(date !== todayKey ? { date } : {}),
         ...(note.trim() ? { note: note.trim() } : {}),
       });
-      toast.success("Xarajat saqlandi.");
+      toast.success(t.expenseSaved);
       onDone();
     } catch (e: any) {
-      toast.error(e.message || "Saqlashda xatolik.");
+      toast.error(e.message || t.saveError);
       setSubmitting(false);
     }
   };
@@ -246,20 +327,20 @@ function AddExpenseModal({
   return (
     <ManagerSheet onClose={onClose} dismissible={!submitting}>
       <div className="p-6 sm:p-7 space-y-4">
-        <h3 className="text-lg font-bold text-slate-900 tracking-tight">Xarajat qo&apos;shish</h3>
+        <h3 className="text-lg font-bold text-on-surface tracking-tight">{t.addExpense}</h3>
 
         <div className="flex flex-wrap gap-1.5">
           {options.map((c) => (
             <button
               key={c}
               onClick={() => setCategory(c)}
-              className={`px-3.5 py-2.5 rounded-xl text-[13px] font-bold border transition-colors ${
+              className={`px-3.5 py-2.5 rounded-m3-md text-[13px] font-bold border transition-colors ${
                 category === c
-                  ? "bg-brand-600 text-white border-brand-600"
-                  : "bg-white text-slate-600 border-brand-line hover:border-brand-600"
+                  ? "bg-primary text-on-primary border-primary"
+                  : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-primary"
               }`}
             >
-              {categoryLabel(c)}
+              {categoryLabel(c, lang)}
             </button>
           ))}
         </div>
@@ -271,8 +352,8 @@ function AddExpenseModal({
           step={1000}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="Summa (so'm)"
-          className="w-full px-3.5 py-3 border border-slate-200 rounded-xl text-[16px] font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-200"
+          placeholder={t.amountPlaceholder}
+          className="w-full px-3.5 py-3 bg-transparent border border-outline-variant rounded-m3-md text-[16px] font-bold text-on-surface tabular-nums focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
         />
 
         <div className="grid grid-cols-2 gap-2.5">
@@ -281,24 +362,19 @@ function AddExpenseModal({
             value={date}
             max={todayKey}
             onChange={(e) => setDate(e.target.value)}
-            className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+            className="px-3 py-2.5 bg-transparent border border-outline-variant rounded-m3-md text-[13px] text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Izoh (ixtiyoriy)"
-            className="px-3 py-2.5 border border-slate-200 rounded-xl text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
+            placeholder={t.notePlaceholder}
+            className="px-3 py-2.5 bg-transparent border border-outline-variant rounded-m3-md text-[13px] text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </div>
 
-        <button
-          onClick={submit}
-          disabled={!valid || submitting}
-          className="w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {submitting && <Loader2 size={16} className="animate-spin" />}
-          Saqlash
-        </button>
+        <Button onClick={submit} disabled={!valid} loading={submitting} className="w-full">
+          {t.save}
+        </Button>
       </div>
     </ManagerSheet>
   );

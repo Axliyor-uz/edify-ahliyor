@@ -6,6 +6,8 @@ import type { Charge } from "@/types/finance";
 import type { ClassData } from "@/hooks/useCenterClasses";
 import { openAmountOf } from "@/services/financeService";
 import { formatUZS } from "@/lib/finance/money";
+import { Button, EmptyState, StatusChip } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
 import { initialsOf, periodLabelOf } from "./financeFormat";
 import FilterSelect from "../../_components/FilterSelect";
 import SearchInput from "../../_components/SearchInput";
@@ -28,6 +30,56 @@ interface DebtorRow {
   charges: Charge[];
 }
 
+const T_UZ = {
+  noDebtorsTitle: "Qarzdorlar yo'q",
+  noDebtorsDesc: "Barcha hisoblar to'langan",
+  searchPlaceholder: "Qarzdorni qidiring...",
+  allTeachers: "Barcha o'qituvchilar",
+  allGroups: "Barcha guruhlar",
+  summary: (n: number) => `${n} ta qarzdor · jami`,
+  emptySearchTitle: "Hech narsa topilmadi",
+  emptyFilterDesc: "Filtr yoki qidiruvni o'zgartirib ko'ring",
+  emptySearchDesc: "Qidiruvni o'zgartirib ko'ring",
+  studentInfoTitle: "O'quvchi haqida to'liq ma'lumot",
+  overdue: "Muddati o'tgan",
+  attendance: (rate: number) => `Davomat ${rate}%`,
+  payButton: "To'lov",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    noDebtorsTitle: "No debtors",
+    noDebtorsDesc: "All charges are paid",
+    searchPlaceholder: "Search for a debtor...",
+    allTeachers: "All teachers",
+    allGroups: "All groups",
+    summary: (n: number) => `${n} debtors · total`,
+    emptySearchTitle: "Nothing found",
+    emptyFilterDesc: "Try changing the filter or search",
+    emptySearchDesc: "Try changing your search",
+    studentInfoTitle: "Full student details",
+    overdue: "Overdue",
+    attendance: (rate: number) => `Attendance ${rate}%`,
+    payButton: "Payment",
+  },
+  ru: {
+    noDebtorsTitle: "Должников нет",
+    noDebtorsDesc: "Все начисления оплачены",
+    searchPlaceholder: "Поиск должника...",
+    allTeachers: "Все учителя",
+    allGroups: "Все группы",
+    summary: (n: number) => `Должников: ${n} · всего`,
+    emptySearchTitle: "Ничего не найдено",
+    emptyFilterDesc: "Попробуйте изменить фильтр или запрос",
+    emptySearchDesc: "Попробуйте изменить запрос",
+    studentInfoTitle: "Подробная информация об ученике",
+    overdue: "Просрочен",
+    attendance: (rate: number) => `Посещаемость ${rate}%`,
+    payButton: "Платёж",
+  },
+};
+
 /** Debtor list grouped by student — attendance % beside the debt (FINANCE.md §"edge cases"). */
 export default function DebtorsTab({
   openCharges,
@@ -37,6 +89,8 @@ export default function DebtorsTab({
   onRecordPayment,
   onShowStudent,
 }: Props) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [teacherFilter, setTeacherFilter] = useState("");
@@ -99,12 +153,12 @@ export default function DebtorsTab({
 
   if (openCharges.length === 0) {
     return (
-      <div className="bg-white border border-brand-line rounded-3xl py-14 px-6 text-center">
-        <div className="w-12 h-12 mx-auto rounded-full bg-brand-100 text-brand-700 flex items-center justify-center">
-          <PartyPopper size={22} />
-        </div>
-        <p className="text-sm font-bold text-slate-800 mt-3">Qarzdorlar yo&apos;q</p>
-        <p className="text-[13px] text-slate-400 mt-1">Barcha hisoblar to&apos;langan</p>
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl">
+        <EmptyState
+          icon={<PartyPopper />}
+          title={t.noDebtorsTitle}
+          description={t.noDebtorsDesc}
+        />
       </div>
     );
   }
@@ -115,7 +169,7 @@ export default function DebtorsTab({
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         {debtors.length > 5 && (
-          <SearchInput value={search} onChange={setSearch} placeholder="Qarzdorni qidiring..." />
+          <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
         )}
         {classes.length > 1 && (
           <>
@@ -127,98 +181,94 @@ export default function DebtorsTab({
                 if (v && classFilter && classById.get(classFilter)?.teacherId !== v) setClassFilter("");
               }}
               options={teacherOptions}
-              allLabel="Barcha o'qituvchilar"
+              allLabel={t.allTeachers}
             />
             <FilterSelect
               value={classFilter}
               onChange={setClassFilter}
               options={classOptions}
-              allLabel="Barcha guruhlar"
+              allLabel={t.allGroups}
             />
           </>
         )}
-        <p className="text-[13px] text-slate-500 ml-auto">
-          {filtered.length} ta qarzdor · jami{" "}
-          <span className="font-bold text-rose-600 tabular-nums">{formatUZS(grandTotal)}</span>
+        <p className="text-[13px] text-on-surface-variant ml-auto">
+          {t.summary(filtered.length)}{" "}
+          <span className="font-bold text-error tabular-nums">{formatUZS(grandTotal)}</span>
         </p>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white border border-brand-line rounded-3xl py-12 px-6 text-center">
-          <p className="text-sm font-bold text-slate-800">Hech narsa topilmadi</p>
-          <p className="text-[13px] text-slate-400 mt-1">
-            {hasFilters ? "Filtr yoki qidiruvni o'zgartirib ko'ring" : "Qidiruvni o'zgartirib ko'ring"}
-          </p>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl">
+          <EmptyState
+            icon={<UserRound />}
+            title={t.emptySearchTitle}
+            description={hasFilters ? t.emptyFilterDesc : t.emptySearchDesc}
+          />
         </div>
       ) : (
-        <div className="bg-white border border-brand-line rounded-3xl divide-y divide-slate-100 overflow-hidden">
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl divide-y divide-outline-variant overflow-hidden">
           {filtered.map((d) => {
             const rate = attendanceRates?.[d.studentId];
             return (
-              <div key={d.studentId} className="px-4 py-3.5 hover:bg-brand-25 transition-colors">
+              <div key={d.studentId} className="px-4 py-3.5 hover:bg-state-hover transition-colors">
                 <div className="flex items-start gap-3">
                   <button
                     onClick={() => onShowStudent(d.studentId, d.studentName)}
                     className="flex items-start gap-3 flex-1 min-w-0 text-left group"
-                    title="O'quvchi haqida to'liq ma'lumot"
+                    title={t.studentInfoTitle}
                   >
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${
-                        d.overdue ? "bg-rose-50 text-rose-600" : "bg-brand-100 text-brand-800"
+                        d.overdue ? "bg-error-container text-on-error-container" : "bg-primary-container text-on-primary-container"
                       }`}
                     >
                       {initialsOf(d.studentName)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-[14.5px] font-semibold text-slate-900 truncate group-hover:text-brand-800 transition-colors">
+                        <p className="text-[14.5px] font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
                           {d.studentName}
                         </p>
                         {d.overdue && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-600 rounded-full text-[11px] font-bold">
-                            <AlertCircle size={11} /> Muddati o&apos;tgan
-                          </span>
+                          <StatusChip tone="error" noDot>
+                            <AlertCircle size={11} /> {t.overdue}
+                          </StatusChip>
                         )}
                         {typeof rate === "number" && (
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                              rate >= 80 ? "bg-brand-100 text-brand-800" : "bg-amber-50 text-amber-600"
-                            }`}
-                          >
-                            Davomat {rate}%
-                          </span>
+                          <StatusChip tone={rate >= 80 ? "success" : "warning"} noDot>
+                            {t.attendance(rate)}
+                          </StatusChip>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {d.charges.map((c) => (
                           <span
                             key={c.id}
-                            className={`px-2.5 py-1 rounded-lg text-[11.5px] font-semibold ${
-                              c.dueDate < todayKey ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-600"
+                            className={`px-2.5 py-1 rounded-m3-md text-[11.5px] font-semibold ${
+                              c.dueDate < todayKey
+                                ? "bg-error-container text-on-error-container"
+                                : "bg-surface-container-highest text-on-surface-variant"
                             }`}
                           >
-                            {periodLabelOf(c)} · {c.classTitle} · {formatUZS(openAmountOf(c))}
+                            {periodLabelOf(c, lang)} · {c.classTitle} · {formatUZS(openAmountOf(c))}
                           </span>
                         ))}
                       </div>
                     </div>
                   </button>
                   <div className="text-right shrink-0">
-                    <p className="text-[15px] font-bold text-rose-600 tabular-nums">{formatUZS(d.total)}</p>
+                    <p className="text-[15px] font-bold text-error tabular-nums">{formatUZS(d.total)}</p>
                     <div className="flex items-center gap-1.5 mt-2 justify-end">
                       <button
                         onClick={() => onShowStudent(d.studentId, d.studentName)}
-                        title="O'quvchi haqida to'liq ma'lumot"
-                        className="w-8 h-8 rounded-full border border-brand-line hover:border-brand-600 text-slate-400 hover:text-brand-700 flex items-center justify-center transition-colors"
+                        title={t.studentInfoTitle}
+                        className="w-8 h-8 rounded-full border border-outline-variant hover:border-primary text-on-surface-variant hover:text-primary flex items-center justify-center transition-colors"
                       >
                         <UserRound size={14} />
                       </button>
-                      <button
-                        onClick={() => onRecordPayment(d.studentId)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 active:scale-95 text-white rounded-full text-[12px] font-bold transition-all"
-                      >
-                        <Banknote size={13} /> To&apos;lov
-                      </button>
+                      <Button size="sm" icon={<Banknote />} onClick={() => onRecordPayment(d.studentId)}>
+                        {t.payButton}
+                      </Button>
                     </div>
                   </div>
                 </div>

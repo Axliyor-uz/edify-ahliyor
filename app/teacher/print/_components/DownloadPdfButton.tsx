@@ -5,6 +5,34 @@ import { Download } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui";
+import { useTeacherLanguage } from "@/app/teacher/layout";
+
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    download: "PDF Yuklab Olish",
+    generating: "PDF Yaratilmoqda...",
+    noContainer: "Preview oynasi topilmadi!",
+    noPages: "Yuklab olish uchun sahifalar yo'q!",
+    success: "PDF muvaffaqiyatli yuklandi!",
+    error: "PDF yaratishda xatolik yuz berdi.",
+  },
+  en: {
+    download: "Download PDF",
+    generating: "Generating PDF...",
+    noContainer: "Preview container not found!",
+    noPages: "No pages to capture!",
+    success: "PDF downloaded successfully!",
+    error: "An error occurred while generating the PDF.",
+  },
+  ru: {
+    download: "Скачать PDF",
+    generating: "Создание PDF...",
+    noContainer: "Окно предпросмотра не найдено!",
+    noPages: "Нет страниц для сохранения!",
+    success: "PDF успешно загружен!",
+    error: "Произошла ошибка при создании PDF.",
+  },
+};
 
 interface DownloadPdfButtonProps {
   targetRef: React.RefObject<HTMLDivElement>;
@@ -19,8 +47,10 @@ const A4_H_PX = 1123;
 export default function DownloadPdfButton({
   targetRef,
   fileName = "Edify_Test_Document.pdf",
-  buttonText = "PDF Yuklab Olish",
+  buttonText,
 }: DownloadPdfButtonProps) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownload = async () => {
@@ -35,13 +65,13 @@ export default function DownloadPdfButton({
 
       const scaler = document.getElementById("preview-pages-scaler");
       if (!scaler) {
-        toast.error("Preview container not found!");
+        toast.error(t.noContainer);
         return;
       }
 
       const previewPages = scaler.querySelectorAll<HTMLElement>(".a4-capture-page");
       if (previewPages.length === 0) {
-        toast.error("No pages to capture!");
+        toast.error(t.noPages);
         return;
       }
 
@@ -102,10 +132,10 @@ export default function DownloadPdfButton({
       scaler.style.minHeight = origMinHeight;
 
       pdf.save(fileName);
-      toast.success("PDF muvaffaqiyatli yuklandi!");
+      toast.success(t.success);
     } catch (error) {
       console.error("PDF generation error:", error);
-      toast.error("PDF yaratishda xatolik yuz berdi.");
+      toast.error(t.error);
     } finally {
       setIsGenerating(false);
     }
@@ -120,7 +150,7 @@ export default function DownloadPdfButton({
       icon={<Download />}
       className="w-full"
     >
-      {isGenerating ? "PDF Yaratilmoqda..." : buttonText}
+      {isGenerating ? t.generating : (buttonText ?? t.download)}
     </Button>
   );
 }

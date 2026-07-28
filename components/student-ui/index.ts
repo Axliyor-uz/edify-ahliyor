@@ -65,6 +65,8 @@ export type { TabsProps, TabItem } from './Tabs';
 
 export { Shell, MobileDrawer } from './Shell';
 export type { ShellProps, NavItem } from './Shell';
+export { SIDE_STYLES, resolveSideStyle } from './shellStyles';
+export type { SideStyle, SideVariant, IndicatorKind } from './shellStyles';
 
 export {
   XpProgress,

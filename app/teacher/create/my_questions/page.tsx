@@ -31,9 +31,154 @@ import { Button, IconButton, Spinner, Skeleton } from "@/components/ui";
 // list. Firestore bills only the docs returned — no extra reads. The lists live
 // in types/question.ts because the Rasch builder's picker filters on them too.
 
+// --- TRANSLATION DICTIONARY ---
+const PAGE_TRANSLATIONS = {
+  uz: {
+    noData: "Ma'lumot yo'q",
+    indexError: "Firebase Index xatosi! Konsolga qarab index yarating.",
+    deleted: "Savol o'chirildi",
+    deleteError: "O'chirishda xatolik yuz berdi",
+    enterTitleErr: "Test nomini kiriting",
+    noSelectedFound: "Tanlangan savollar topilmadi",
+    testCreated: "Test muvaffaqiyatli yaratildi!",
+    createError: "Test yaratishda xatolik",
+    bankTitle: "Savollar Bazasi",
+    countSuffix: "ta savol",
+    filterAll: "Barchasi",
+    filterAi: "Smart AI",
+    filterImage: "Rasm orqali",
+    easy: "Oson", medium: "O'rta", hard: "Qiyin",
+    notFound: "Savollar topilmadi",
+    notFoundDesc: "Ushbu filtr bo'yicha bazangizda savollar yo'q.",
+    showAll: "Barcha savollarni ko'rish",
+    subjectFallback: "Umumiy Fan",
+    methodCustom: "Maxsus",
+    methodImage: "Rasm",
+    methodAi: "AI",
+    blockLabel: (n: number) => `Blok · ${n} savol`,
+    imageQuestion: "Rasmli savol",
+    correctedBy: "Tuzatgan:",
+    recently: "Yaqinda",
+    viewFull: "To'liq ko'rish",
+    edit: "Tahrirlash",
+    allLoaded: "Barcha savollar yuklandi",
+    selectedWord1: "savol",
+    selectedWord2: "tanlandi",
+    createTest: "Topshiriq yaratish",
+    fullInfo: "To'liq Ma'lumot",
+    questionTextLabel: "Savol Matni",
+    questionsCount: (n: number) => `Savollar (${n})`,
+    variants: "Variantlar",
+    correctAnswer: "To'g'ri Javob",
+    solutionExp: "Yechim / Izoh",
+    deleteConfirm: "O'chirishni tasdiqlaysizmi?",
+    deleteConfirmDesc: "Bu savol bazadan butunlay o'chiriladi. Bu jarayonni orqaga qaytarib bo'lmaydi.",
+    cancel: "Bekor qilish",
+    delete: "O'chirish",
+    titleModalTitle: "Test nomini kiriting",
+    titleModalDesc: (n: number) => `Tanlangan ${n} ta savoldan iborat test uchun nom bering.`,
+    titlePlaceholder: "Masalan: Aralash savollar to'plami",
+    continue: "Davom etish"
+  },
+  en: {
+    noData: "No data",
+    indexError: "Firebase Index error! Check the console and create the index.",
+    deleted: "Question deleted",
+    deleteError: "An error occurred while deleting",
+    enterTitleErr: "Enter a test title",
+    noSelectedFound: "Selected questions not found",
+    testCreated: "Test created successfully!",
+    createError: "An error occurred while creating the test",
+    bankTitle: "Question Bank",
+    countSuffix: "questions",
+    filterAll: "All",
+    filterAi: "Smart AI",
+    filterImage: "By Image",
+    easy: "Easy", medium: "Medium", hard: "Hard",
+    notFound: "No questions found",
+    notFoundDesc: "There are no questions in your bank for this filter.",
+    showAll: "Show all questions",
+    subjectFallback: "General Subject",
+    methodCustom: "Custom",
+    methodImage: "Image",
+    methodAi: "AI",
+    blockLabel: (n: number) => `Block · ${n} questions`,
+    imageQuestion: "Image question",
+    correctedBy: "Corrected by:",
+    recently: "Recently",
+    viewFull: "View full",
+    edit: "Edit",
+    allLoaded: "All questions loaded",
+    selectedWord1: "questions",
+    selectedWord2: "selected",
+    createTest: "Create Test",
+    fullInfo: "Full Details",
+    questionTextLabel: "Question Text",
+    questionsCount: (n: number) => `Questions (${n})`,
+    variants: "Options",
+    correctAnswer: "Correct Answer",
+    solutionExp: "Solution / Explanation",
+    deleteConfirm: "Confirm deletion?",
+    deleteConfirmDesc: "This question will be permanently deleted from the bank. This action cannot be undone.",
+    cancel: "Cancel",
+    delete: "Delete",
+    titleModalTitle: "Enter a test title",
+    titleModalDesc: (n: number) => `Give a title for the test made up of ${n} selected questions.`,
+    titlePlaceholder: "e.g., Mixed question set",
+    continue: "Continue"
+  },
+  ru: {
+    noData: "Нет данных",
+    indexError: "Ошибка индекса Firebase! Проверьте консоль и создайте индекс.",
+    deleted: "Вопрос удалён",
+    deleteError: "Произошла ошибка при удалении",
+    enterTitleErr: "Введите название теста",
+    noSelectedFound: "Выбранные вопросы не найдены",
+    testCreated: "Тест успешно создан!",
+    createError: "Произошла ошибка при создании теста",
+    bankTitle: "База вопросов",
+    countSuffix: "вопросов",
+    filterAll: "Все",
+    filterAi: "Smart AI",
+    filterImage: "По фото",
+    easy: "Легкий", medium: "Средний", hard: "Сложный",
+    notFound: "Вопросы не найдены",
+    notFoundDesc: "В вашей базе нет вопросов по этому фильтру.",
+    showAll: "Показать все вопросы",
+    subjectFallback: "Общий предмет",
+    methodCustom: "Свой",
+    methodImage: "Фото",
+    methodAi: "AI",
+    blockLabel: (n: number) => `Блок · ${n} вопросов`,
+    imageQuestion: "Вопрос с картинкой",
+    correctedBy: "Исправил:",
+    recently: "Недавно",
+    viewFull: "Подробнее",
+    edit: "Редактировать",
+    allLoaded: "Все вопросы загружены",
+    selectedWord1: "вопросов",
+    selectedWord2: "выбрано",
+    createTest: "Создать тест",
+    fullInfo: "Полная информация",
+    questionTextLabel: "Текст вопроса",
+    questionsCount: (n: number) => `Вопросы (${n})`,
+    variants: "Варианты",
+    correctAnswer: "Правильный ответ",
+    solutionExp: "Решение / Пояснение",
+    deleteConfirm: "Подтвердить удаление?",
+    deleteConfirmDesc: "Этот вопрос будет полностью удалён из базы. Это действие нельзя отменить.",
+    cancel: "Отмена",
+    delete: "Удалить",
+    titleModalTitle: "Введите название теста",
+    titleModalDesc: (n: number) => `Дайте название тесту из ${n} выбранных вопросов.`,
+    titlePlaceholder: "Например: Сборник смешанных вопросов",
+    continue: "Продолжить"
+  }
+};
+
 // --- LATEX FORMATTER ---
-const FormattedText = ({ text }: { text: any }) => {
-  if (!text) return <span className="text-on-surface-variant italic">Ma'lumot yo'q</span>;
+const FormattedText = ({ text, empty = "" }: { text: any, empty?: string }) => {
+  if (!text) return <span className="text-on-surface-variant italic">{empty}</span>;
   let content = typeof text === 'string' ? text : JSON.stringify(text);
   const hasMathCommands = /\\frac|\\pi|\\sin|\\cos|\\tan|\\ge|\\le|\\cup|\\cap|\\in|\\begin|\\sqrt|\\empty/.test(content);
   if (!content.includes('$') && hasMathCommands) content = `$${content}$`;
@@ -66,6 +211,8 @@ const FormattedText = ({ text }: { text: any }) => {
 export default function MyQuestionsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang } = useTeacherLanguage();
+  const t = PAGE_TRANSLATIONS[lang] || PAGE_TRANSLATIONS['en'];
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -140,7 +287,7 @@ export default function MyQuestionsPage() {
       
     } catch (error: any) {
       console.error("Error fetching questions:", error);
-      if (error.message.includes("requires an index")) toast.error("Firebase Index xatosi! Konsolga qarab index yarating.");
+      if (error.message.includes("requires an index")) toast.error(t.indexError);
     } finally {
       setLoading(false);
     }
@@ -212,11 +359,11 @@ export default function MyQuestionsPage() {
       newSet.delete(deleteModalId);
       setSelectedQuestions(newSet);
       
-      toast.success("Savol o'chirildi");
+      toast.success(t.deleted);
     } catch (error: any) {
       // 🟢 ASL XATONING NIMALIGINI KONSOLGA CHIQARAMIZ:
-      console.error("ASL XATOLIK:", error); 
-      toast.error(error.message || "O'chirishda xatolik yuz berdi");
+      console.error("ASL XATOLIK:", error);
+      toast.error(error.message || t.deleteError);
     } finally {
       setDeleteModalId(null);
     }
@@ -228,7 +375,7 @@ export default function MyQuestionsPage() {
   };
 
   const handleTitleSubmit = () => {
-    if (!testTitle.trim()) return toast.error("Test nomini kiriting");
+    if (!testTitle.trim()) return toast.error(t.enterTitleErr);
     setIsTitleModalOpen(false);
     setIsConfigModalOpen(true);
   };
@@ -240,7 +387,7 @@ export default function MyQuestionsPage() {
     const selectedQsData = questions.filter(q => selectedQuestions.has(q.id));
     if (selectedQsData.length === 0) {
       setIsPublishing(false);
-      return toast.error("Tanlangan savollar topilmadi");
+      return toast.error(t.noSelectedFound);
     }
 
     try {
@@ -271,14 +418,14 @@ export default function MyQuestionsPage() {
         questionCount: selectedQsData.length,
       });
 
-      toast.success("Test muvaffaqiyatli yaratildi!");
+      toast.success(t.testCreated);
       setSelectedQuestions(new Set());
       setIsConfigModalOpen(false);
       setTestTitle("");
       router.push("/teacher/dashboard");
     } catch (error) {
       console.error(error);
-      toast.error("Test yaratishda xatolik");
+      toast.error(t.createError);
     } finally {
       setIsPublishing(false);
     }
@@ -286,7 +433,7 @@ export default function MyQuestionsPage() {
 
   // --- HELPERS ---
   const getText = (field: any): string => {
-    if (!field) return "Ma'lumot yo'q";
+    if (!field) return t.noData;
     if (typeof field === "string") return field;
     if (field.uz && typeof field.uz === "string") return field.uz;
     if (field.uz && field.uz.uz) return field.uz.uz; 
@@ -295,7 +442,7 @@ export default function MyQuestionsPage() {
 
   // --- UI RENDER ---
   return (
-    <div className="min-h-[100dvh] bg-surface font-sans pb-32">
+    <div className="min-h-[100dvh] bg-surface font-t-body pb-32">
 
       {/* 🟢 TOP HEADER */}
       <div className="bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant sticky top-0 z-30 shadow-elev-1">
@@ -307,31 +454,31 @@ export default function MyQuestionsPage() {
               </IconButton>
               <div>
                 <h1 className="text-[14px] md:text-[16px] font-black text-on-surface tracking-tight flex items-center gap-1.5 md:gap-2">
-                  <Database size={16} className="text-primary" /> Savollar Bazasi
+                  <Database size={16} className="text-primary" /> {t.bankTitle}
                 </h1>
               </div>
             </div>
             <div className="text-[10px] md:text-[12px] font-bold text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-m3-xs border border-outline-variant">
-              {questions.length} ta savol
+              {questions.length} {t.countSuffix}
             </div>
           </div>
 
           {/* 🟢 SMART PILL FILTERS */}
           <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-3 px-3 md:mx-0 md:px-0">
             <button onClick={() => setActiveFilter("all")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "all" ? "bg-primary text-on-primary shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>
-              <Layers size={12}/> Barchasi
+              <Layers size={12}/> {t.filterAll}
             </button>
             <div className="w-px h-4 bg-outline-variant shrink-0 mx-1"></div>
             <button onClick={() => setActiveFilter("ai")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "ai" ? "bg-secondary text-on-secondary shadow-elev-1" : "bg-secondary-container border border-transparent text-on-secondary-container"}`}>
-              <Sparkles size={12}/> Smart AI
+              <Sparkles size={12}/> {t.filterAi}
             </button>
             <button onClick={() => setActiveFilter("image")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${activeFilter === "image" ? "bg-tertiary text-on-tertiary shadow-elev-1" : "bg-tertiary-container border border-transparent text-on-tertiary-container"}`}>
-              <Eye size={12}/> Rasm orqali
+              <Eye size={12}/> {t.filterImage}
             </button>
             <div className="w-px h-4 bg-outline-variant shrink-0 mx-1"></div>
-            <button onClick={() => setActiveFilter("easy")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "easy" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>Oson</button>
-            <button onClick={() => setActiveFilter("medium")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "medium" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>O'rta</button>
-            <button onClick={() => setActiveFilter("hard")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "hard" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>Qiyin</button>
+            <button onClick={() => setActiveFilter("easy")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "easy" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>{t.easy}</button>
+            <button onClick={() => setActiveFilter("medium")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "medium" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>{t.medium}</button>
+            <button onClick={() => setActiveFilter("hard")} className={`m3-interactive px-3 py-1.5 rounded-m3-sm text-[10px] md:text-[11px] font-bold whitespace-nowrap transition-colors ${activeFilter === "hard" ? "bg-inverse-surface text-inverse-on-surface shadow-elev-1" : "bg-surface-container-lowest border border-outline-variant text-on-surface-variant"}`}>{t.hard}</button>
           </div>
         </div>
       </div>
@@ -351,25 +498,25 @@ export default function MyQuestionsPage() {
         ) : questions.length === 0 ? (
           <div className="bg-surface-container-low rounded-m3-xl border border-outline-variant p-8 md:p-12 text-center shadow-elev-1 mt-8">
             <div className="w-14 h-14 bg-surface-container border border-outline-variant rounded-m3-lg flex items-center justify-center mx-auto mb-4"><Filter size={24} className="text-on-surface-variant" /></div>
-            <h2 className="text-[15px] md:text-[16px] font-black text-on-surface mb-1.5">Savollar topilmadi</h2>
-            <p className="text-[11px] md:text-[13px] text-on-surface-variant mb-6 max-w-sm mx-auto">Ushbu filtr bo'yicha bazangizda savollar yo'q.</p>
-            <Button variant="tonal" size="sm" onClick={() => setActiveFilter("all")}>Barcha savollarni ko'rish</Button>
+            <h2 className="text-[15px] md:text-[16px] font-black text-on-surface mb-1.5">{t.notFound}</h2>
+            <p className="text-[11px] md:text-[13px] text-on-surface-variant mb-6 max-w-sm mx-auto">{t.notFoundDesc}</p>
+            <Button variant="tonal" size="sm" onClick={() => setActiveFilter("all")}>{t.showAll}</Button>
           </div>
         ) : (
           <div className="space-y-3 md:space-y-4">
             {questions.map((q, index) => {
               const isSelected = selectedQuestions.has(q.id);
               const questionText = getText(q.question);
-              const subject = q.subject && q.subject !== "by_image" ? q.subject : "Umumiy Fan";
+              const subject = q.subject && q.subject !== "by_image" ? q.subject : t.subjectFallback;
               const diff = q.difficulty || "medium";
               const method = q.creationMethod || "custom";
 
               // Method styling
               let methodStyle = "bg-surface-container-high text-on-surface-variant border-transparent";
-              let methodLabel = "Maxsus";
+              let methodLabel = t.methodCustom;
               let MethodIcon = Layers;
-              if (method === "by_image") { methodStyle = "bg-tertiary-container text-on-tertiary-container border-transparent"; methodLabel = "Rasm"; MethodIcon = Eye; }
-              else if (method.includes("ai")) { methodStyle = "bg-secondary-container text-on-secondary-container border-transparent"; methodLabel = "AI"; MethodIcon = Sparkles; }
+              if (method === "by_image") { methodStyle = "bg-tertiary-container text-on-tertiary-container border-transparent"; methodLabel = t.methodImage; MethodIcon = Eye; }
+              else if (method.includes("ai")) { methodStyle = "bg-secondary-container text-on-secondary-container border-transparent"; methodLabel = t.methodAi; MethodIcon = Sparkles; }
 
               const cardContent = (
                 <div className={`bg-surface-container-low p-3.5 md:p-5 rounded-m3-lg border-[2px] transition-all duration-200 group relative ${isSelected ? 'border-primary shadow-elev-2 ring-4 ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)]' : 'border-outline-variant shadow-elev-1 hover:shadow-elev-2 hover:border-outline'}`}>
@@ -398,7 +545,7 @@ export default function MyQuestionsPage() {
                         normal question whose answer is missing. */}
                     {q.isBlock && (
                       <span className="bg-primary-container text-on-primary-container text-[9px] md:text-[10px] font-black px-2 py-1 rounded-m3-xs uppercase flex items-center gap-1">
-                        <Layers size={10} /> Blok · {q.parts.length} savol
+                        <Layers size={10} /> {t.blockLabel(q.parts.length)}
                       </span>
                     )}
                   </div>
@@ -411,7 +558,7 @@ export default function MyQuestionsPage() {
                         <FormattedText text={questionText} />
                       ) : (
                         <span className="text-on-surface-variant italic flex items-center gap-1.5">
-                          <ImageIcon size={13} /> Rasmli savol
+                          <ImageIcon size={13} /> {t.imageQuestion}
                         </span>
                       )}
                     </div>
@@ -442,14 +589,14 @@ export default function MyQuestionsPage() {
 
                   {q.correctedBy && (
                     <p className="mt-2 text-[9px] md:text-[10px] font-medium text-on-surface-variant italic flex items-center gap-1">
-                      <Pencil size={9} /> Tuzatgan: {q.correctedBy}
+                      <Pencil size={9} /> {t.correctedBy} {q.correctedBy}
                     </p>
                   )}
 
                   <div className="mt-3 md:mt-4 pt-3 border-t border-outline-variant flex items-center justify-between gap-2">
                     <span className="min-w-0 text-[9px] md:text-[10px] font-medium text-on-surface-variant flex items-center gap-2 flex-wrap">
                       <span className="flex items-center gap-1">
-                        <Calendar size={10} /> {q.createdAt?.toDate ? q.createdAt.toDate().toLocaleDateString('uz-UZ') : "Yaqinda"}
+                        <Calendar size={10} /> {q.createdAt?.toDate ? q.createdAt.toDate().toLocaleDateString('uz-UZ') : t.recently}
                       </span>
                       {q.creatorName && (
                         <span className="flex items-center gap-1 min-w-0">
@@ -460,14 +607,14 @@ export default function MyQuestionsPage() {
 
                     <div className="flex items-center gap-1.5">
                       <button onClick={(e) => { e.stopPropagation(); setInfoModalData(q); }} className="m3-interactive px-2.5 py-1 bg-surface-container hover:text-primary text-on-surface-variant border border-outline-variant rounded-m3-sm text-[10px] md:text-[11px] font-bold transition-colors flex items-center gap-1">
-                        <Eye size={12}/> To'liq ko'rish
+                        <Eye size={12}/> {t.viewFull}
                       </button>
                       {/* Fix a broken question — opens it in the builder, writing back to the
                           same doc. ⚠️ A BLOCK must open the BLOCK editor: the single-question
                           builder has no concept of `parts` and would drop every sub-question.
                           The question is handed over in memory, so the editor reads 0 docs. */}
                       <button onClick={(e) => { e.stopPropagation(); cacheQuestion(q); router.push(`${q.isBlock ? '/teacher/create/block' : '/teacher/create/question'}?edit=${q.id}`); }} className="m3-interactive px-2.5 py-1 bg-surface-container hover:text-primary text-on-surface-variant border border-outline-variant rounded-m3-sm text-[10px] md:text-[11px] font-bold transition-colors flex items-center gap-1">
-                        <Pencil size={12}/> Tahrirlash
+                        <Pencil size={12}/> {t.edit}
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); setDeleteModalId(q.id); }} className="p-1 md:p-1.5 bg-surface-container hover:bg-error-container text-on-surface-variant hover:text-error border border-outline-variant rounded-m3-sm transition-colors">
                         <Trash2 size={12} className="md:w-3.5 md:h-3.5" />
@@ -486,7 +633,7 @@ export default function MyQuestionsPage() {
 
             <div className="pt-4 pb-12 flex justify-center text-on-surface-variant">
               {loadingMore && <Spinner size={20} />}
-              {!hasMore && questions.length > 0 && <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Barcha savollar yuklandi</p>}
+              {!hasMore && questions.length > 0 && <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-widest">{t.allLoaded}</p>}
             </div>
           </div>
         )}
@@ -504,7 +651,7 @@ export default function MyQuestionsPage() {
                 <div className="w-8 h-8 md:w-10 md:h-10 bg-inverse-primary text-inverse-surface rounded-full flex items-center justify-center text-[12px] md:text-[14px] font-black shadow-inner">
                   {selectedQuestions.size}
                 </div>
-                <span className="text-[10px] md:text-[12px] font-medium text-inverse-on-surface leading-tight">savol<br/>tanlandi</span>
+                <span className="text-[10px] md:text-[12px] font-medium text-inverse-on-surface leading-tight">{t.selectedWord1}<br/>{t.selectedWord2}</span>
               </div>
 
               <Button
@@ -513,7 +660,7 @@ export default function MyQuestionsPage() {
                 icon={<CheckCircle2 />}
                 onClick={handleCreateTestInitiate}
               >
-                Topshiriq yaratish
+                {t.createTest}
               </Button>
             </div>
           </motion.div>
@@ -537,11 +684,11 @@ export default function MyQuestionsPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-m3-sm bg-primary-container text-on-primary-container flex items-center justify-center"><Eye size={16} /></div>
                       <div>
-                        <h3 className="text-[14px] md:text-[16px] font-black text-on-surface leading-tight">To'liq Ma'lumot</h3>
+                        <h3 className="text-[14px] md:text-[16px] font-black text-on-surface leading-tight">{t.fullInfo}</h3>
                         <p className="text-[9px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mt-0.5">{infoModalData.id}</p>
                         {infoModalData.correctedBy && (
                           <p className="text-[10px] md:text-[11px] font-medium text-on-surface-variant italic flex items-center gap-1 mt-1">
-                            <Pencil size={10} /> Tuzatgan: {infoModalData.correctedBy}
+                            <Pencil size={10} /> {t.correctedBy} {infoModalData.correctedBy}
                           </p>
                         )}
                       </div>
@@ -553,7 +700,7 @@ export default function MyQuestionsPage() {
                     
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1.5 md:gap-2 mb-5 md:mb-6">
-                      <span className="bg-surface-container-high text-on-surface-variant text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs border border-outline-variant uppercase"><Folder size={12} className="inline mr-1"/> {infoModalData.subject || "Umumiy Fan"}</span>
+                      <span className="bg-surface-container-high text-on-surface-variant text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs border border-outline-variant uppercase"><Folder size={12} className="inline mr-1"/> {infoModalData.subject || t.subjectFallback}</span>
                       {infoModalData.topic && <span className="bg-surface-container-high text-on-surface-variant text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs border border-outline-variant uppercase"><Target size={12} className="inline mr-1"/> {infoModalData.topic}</span>}
                       {infoModalData.chapter && <span className="bg-surface-container-high text-on-surface-variant text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs border border-outline-variant uppercase"><BookMarked size={12} className="inline mr-1"/> {infoModalData.chapter}</span>}
                       <span className="bg-inverse-surface text-inverse-on-surface text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-m3-xs uppercase">{infoModalData.difficulty || "medium"}</span>
@@ -561,7 +708,7 @@ export default function MyQuestionsPage() {
 
                     {/* Question */}
                     <div className="mb-6 md:mb-8">
-                      <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2 border-b border-outline-variant pb-2">Savol Matni</h4>
+                      <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2 border-b border-outline-variant pb-2">{t.questionTextLabel}</h4>
                       <p className="font-semibold text-[14px] md:text-[16px] text-on-surface leading-relaxed"><FormattedText text={getText(infoModalData.question)} /></p>
                       {infoModalData.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -573,13 +720,13 @@ export default function MyQuestionsPage() {
                     {infoModalData.isBlock ? (
                       <div className="mb-6 md:mb-8">
                         <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">
-                          Savollar ({infoModalData.parts.length})
+                          {t.questionsCount(infoModalData.parts.length)}
                         </h4>
                         <QuestionPartsPreview question={infoModalData} />
                       </div>
                     ) : infoModalData.optionList.length > 0 ? (
                       <div className="mb-6 md:mb-8">
-                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">Variantlar</h4>
+                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">{t.variants}</h4>
                         <div className="flex flex-col gap-2">
                           {infoModalData.optionList.map((opt: any) => {
                             const correctLetters = Array.isArray(infoModalData.correctAnswer.value) ? infoModalData.correctAnswer.value : [infoModalData.answer];
@@ -594,7 +741,7 @@ export default function MyQuestionsPage() {
                                     <img src={opt.imageUrl} alt="" className="mt-1.5 max-h-[90px] w-auto rounded-m3-xs border border-outline-variant object-contain bg-surface" />
                                   )}
                                 </div>
-                                {isCorrect && <div className="ml-auto bg-success text-surface-container-lowest text-[9px] font-black px-2 py-1 rounded-m3-xs border border-transparent uppercase tracking-widest mt-0.5">To'g'ri Javob</div>}
+                                {isCorrect && <div className="ml-auto bg-success text-surface-container-lowest text-[9px] font-black px-2 py-1 rounded-m3-xs border border-transparent uppercase tracking-widest mt-0.5">{t.correctAnswer}</div>}
                               </div>
                             );
                           })}
@@ -603,10 +750,10 @@ export default function MyQuestionsPage() {
                     ) : (
                       /* Text-answer types (open / numeric) have no options — show the expected answer. */
                       <div className="mb-6 md:mb-8">
-                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">To'g'ri Javob</h4>
+                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-3 border-b border-outline-variant pb-2">{t.correctAnswer}</h4>
                         <div className="flex flex-wrap gap-2">
                           <div className="bg-success-container border border-success text-on-success-container text-[13px] font-bold px-3 py-2 rounded-m3-md">
-                            <FormattedText text={String(infoModalData.correctAnswer.value || "")} />
+                            <FormattedText text={String(infoModalData.correctAnswer.value || "")} empty={t.noData} />
                           </div>
                           {infoModalData.correctAnswer.acceptedAnswers.map((alt: string) => (
                             <div key={alt} className="bg-surface-container-lowest border border-outline-variant text-on-surface-variant text-[13px] font-medium px-3 py-2 rounded-m3-md">
@@ -620,7 +767,7 @@ export default function MyQuestionsPage() {
                     {/* Explanation */}
                     {getText(infoModalData.explanation).trim().length > 0 && (
                       <div>
-                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2 border-b border-outline-variant pb-2">Yechim / Izoh</h4>
+                        <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2 border-b border-outline-variant pb-2">{t.solutionExp}</h4>
                         <div className="bg-tertiary-container border border-transparent p-4 rounded-m3-md">
                           <p className="text-[12px] md:text-[14px] text-on-tertiary-container leading-relaxed font-medium"><FormattedText text={getText(infoModalData.explanation)} /></p>
                         </div>
@@ -639,11 +786,11 @@ export default function MyQuestionsPage() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setDeleteModalId(null)} />
                 <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-6 max-w-[320px] w-full text-center shadow-elev-3 z-10 border border-outline-variant">
                   <div className="w-14 h-14 bg-error-container border border-transparent rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={24} className="text-on-error-container" /></div>
-                  <h3 className="text-[16px] font-black text-on-surface mb-2">O'chirishni tasdiqlaysizmi?</h3>
-                  <p className="text-[12px] text-on-surface-variant mb-6 font-medium leading-relaxed">Bu savol bazadan butunlay o'chiriladi. Bu jarayonni orqaga qaytarib bo'lmaydi.</p>
+                  <h3 className="text-[16px] font-black text-on-surface mb-2">{t.deleteConfirm}</h3>
+                  <p className="text-[12px] text-on-surface-variant mb-6 font-medium leading-relaxed">{t.deleteConfirmDesc}</p>
                   <div className="flex gap-2">
-                    <Button variant="tonal" className="flex-1" onClick={() => setDeleteModalId(null)}>Bekor qilish</Button>
-                    <Button variant="danger" className="flex-1" icon={<Trash2 />} onClick={handleDelete}>O'chirish</Button>
+                    <Button variant="tonal" className="flex-1" onClick={() => setDeleteModalId(null)}>{t.cancel}</Button>
+                    <Button variant="danger" className="flex-1" icon={<Trash2 />} onClick={handleDelete}>{t.delete}</Button>
                   </div>
                 </motion.div>
               </div>
@@ -657,13 +804,13 @@ export default function MyQuestionsPage() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsTitleModalOpen(false)} />
                 <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="relative bg-surface-container-low rounded-m3-xl p-5 md:p-8 w-full max-w-[320px] md:max-w-sm shadow-elev-3 border border-outline-variant z-10">
                   <div className="w-14 h-14 md:w-16 md:h-16 bg-primary-container rounded-m3-md md:rounded-m3-lg flex items-center justify-center mb-4 md:mb-5 border border-transparent"><BookOpen size={24} strokeWidth={2.5} className="text-on-primary-container md:w-7 md:h-7" /></div>
-                  <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-1.5">Test nomini kiriting</h3>
-                  <p className="text-[11px] md:text-[13px] font-medium text-on-surface-variant mb-5 md:mb-6 leading-relaxed">Tanlangan {selectedQuestions.size} ta savoldan iborat test uchun nom bering.</p>
-                  <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-black text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] transition-all mb-6 md:mb-8 placeholder:font-medium placeholder:text-on-surface-variant" autoFocus placeholder="Masalan: Aralash savollar to'plami"/>
+                  <h3 className="text-lg md:text-xl font-black text-on-surface mb-1 md:mb-1.5">{t.titleModalTitle}</h3>
+                  <p className="text-[11px] md:text-[13px] font-medium text-on-surface-variant mb-5 md:mb-6 leading-relaxed">{t.titleModalDesc(selectedQuestions.size)}</p>
+                  <input type="text" value={testTitle} onChange={e => setTestTitle(e.target.value)} className="w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-surface-container border border-outline-variant rounded-m3-md text-[13px] md:text-[14px] font-black text-on-surface outline-none focus:bg-surface-container-lowest focus:border-primary focus:ring-4 focus:ring-[color-mix(in_oklab,var(--m3-primary)_10%,transparent)] transition-all mb-6 md:mb-8 placeholder:font-medium placeholder:text-on-surface-variant" autoFocus placeholder={t.titlePlaceholder}/>
                   <div className="flex flex-col-reverse sm:flex-row gap-2 md:gap-3">
-                    <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>Bekor qilish</Button>
+                    <Button variant="tonal" className="w-full" onClick={() => setIsTitleModalOpen(false)}>{t.cancel}</Button>
                     <Button variant="filled" className="w-full" onClick={handleTitleSubmit}>
-                      Davom etish <ChevronRight strokeWidth={2.5}/>
+                      {t.continue} <ChevronRight strokeWidth={2.5}/>
                     </Button>
                   </div>
                 </motion.div>

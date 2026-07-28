@@ -10,14 +10,140 @@ import { fetchCenterSessions } from "@/services/attendanceService";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import { getTodayKey, parseDateKey } from "@/lib/dateUtils";
 import { Users, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight, Plus, UserPlus, Search, X, ArrowRight } from "lucide-react";
+import { Button } from "@/components/manager-ui";
 import ManagerStudentInfoPanel from "./_components/ManagerStudentInfoPanel";
 import CreateStudentModal from "./_components/CreateStudentModal";
 import AddExistingStudentModal from "./_components/AddExistingStudentModal";
 import SearchInput from "../_components/SearchInput";
 import FilterSelect from "../_components/FilterSelect";
+import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
 
 type TodayStatus = "present" | "late" | "absent" | "unmarked" | "nolesson";
 type AttendanceStatus = "present" | "late" | "absent";
+
+const TRANSLATIONS = {
+  uz: {
+    weekdayShort: ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"],
+    weekdayFull: ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"],
+    status: {
+      present: "Keldi",
+      late: "Kech qoldi",
+      absent: "Kelmadi",
+      unmarked: "Belgilanmagan",
+      nolesson: "Bugun dars yo'q",
+    } as Record<TodayStatus, string>,
+    unknown: "Noma'lum",
+    title: "O'quvchilar",
+    subtitle: "Markazdagi barcha o'quvchilar, guruhlari va bugungi davomat",
+    todayLine: (weekday: string, day: number) => `${weekday}, ${day}-kun`,
+    addStudent: "O'quvchi qo'shish",
+    statTotal: "Jami o'quvchi",
+    statHasLesson: "Bugun darsi bor",
+    statPresent: "Bugun keldi",
+    statAbsent: "Bugun kelmadi",
+    searchPlaceholder: "Ism yoki @username bo'yicha qidiring...",
+    allGroups: "Barcha guruhlar",
+    quickAll: "Hammasi",
+    quickToday: "Bugun darsi bor",
+    quickAbsent: "Kelmaganlar",
+    emptyTitle: "O'quvchilar yo'q",
+    emptyDesc: "«O'quvchi qo'shish» tugmasi orqali yangi hisob yarating yoki mavjudini qo'shing.",
+    noResultsTitle: "Topilmadi",
+    noResultsDesc: "Qidiruv yoki filtrlarga mos o'quvchi yo'q.",
+    thStudent: "O'quvchi",
+    thGroup: "Guruh",
+    thDays: "Dars kunlari",
+    thToday: "Bugun",
+    noGroup: "Guruhsiz",
+    noSchedule: "— jadval yo'q",
+    chooserTitle: "O'quvchi qo'shish",
+    createTitle: "Yangi hisob yaratish",
+    createDesc: "Login va parol bilan tayyor hisob tuziladi",
+    linkTitle: "Mavjud hisobni qo'shish",
+    linkDesc: "Email yoki @username orqali topish — guruhsiz ham",
+  },
+  en: {
+    weekdayShort: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+    weekdayFull: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    status: {
+      present: "Present",
+      late: "Late",
+      absent: "Absent",
+      unmarked: "Not marked",
+      nolesson: "No lesson today",
+    } as Record<TodayStatus, string>,
+    unknown: "Unknown",
+    title: "Students",
+    subtitle: "All students of the center, their groups and today's attendance",
+    todayLine: (weekday: string, day: number) => `${weekday}, day ${day}`,
+    addStudent: "Add student",
+    statTotal: "Total students",
+    statHasLesson: "Have a lesson today",
+    statPresent: "Came today",
+    statAbsent: "Absent today",
+    searchPlaceholder: "Search by name or @username...",
+    allGroups: "All groups",
+    quickAll: "All",
+    quickToday: "Lesson today",
+    quickAbsent: "Absent",
+    emptyTitle: "No students",
+    emptyDesc: "Use the \"Add student\" button to create a new account or add an existing one.",
+    noResultsTitle: "Not found",
+    noResultsDesc: "No student matches the search or filters.",
+    thStudent: "Student",
+    thGroup: "Group",
+    thDays: "Lesson days",
+    thToday: "Today",
+    noGroup: "No group",
+    noSchedule: "— no schedule",
+    chooserTitle: "Add student",
+    createTitle: "Create a new account",
+    createDesc: "A ready-made account with a login and password",
+    linkTitle: "Add an existing account",
+    linkDesc: "Find by email or @username — even without a group",
+  },
+  ru: {
+    weekdayShort: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+    weekdayFull: ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"],
+    status: {
+      present: "Пришёл",
+      late: "Опоздал",
+      absent: "Не пришёл",
+      unmarked: "Не отмечен",
+      nolesson: "Сегодня нет занятий",
+    } as Record<TodayStatus, string>,
+    unknown: "Неизвестно",
+    title: "Ученики",
+    subtitle: "Все ученики центра, их группы и сегодняшняя посещаемость",
+    todayLine: (weekday: string, day: number) => `${weekday}, ${day}-е число`,
+    addStudent: "Добавить ученика",
+    statTotal: "Всего учеников",
+    statHasLesson: "Сегодня есть занятие",
+    statPresent: "Сегодня пришли",
+    statAbsent: "Сегодня не пришли",
+    searchPlaceholder: "Поиск по имени или @username...",
+    allGroups: "Все группы",
+    quickAll: "Все",
+    quickToday: "Сегодня занятие",
+    quickAbsent: "Отсутствующие",
+    emptyTitle: "Учеников нет",
+    emptyDesc: "Нажмите «Добавить ученика», чтобы создать новый аккаунт или добавить существующий.",
+    noResultsTitle: "Не найдено",
+    noResultsDesc: "Нет учеников, соответствующих поиску или фильтрам.",
+    thStudent: "Ученик",
+    thGroup: "Группа",
+    thDays: "Дни занятий",
+    thToday: "Сегодня",
+    noGroup: "Без группы",
+    noSchedule: "— нет расписания",
+    chooserTitle: "Добавить ученика",
+    createTitle: "Создать новый аккаунт",
+    createDesc: "Готовый аккаунт с логином и паролем",
+    linkTitle: "Добавить существующий аккаунт",
+    linkDesc: "Поиск по email или @username — можно и без группы",
+  },
+};
+type T = typeof TRANSLATIONS.uz;
 
 interface StudentRow {
   id: string;
@@ -30,8 +156,6 @@ interface StudentRow {
   todayStatus: TodayStatus;
 }
 
-const WEEKDAY_SHORT = ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"];
-const WEEKDAY_FULL = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 const isWeekend = (d: number) => d === 0 || d === 6;
@@ -49,16 +173,19 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-const STATUS_UI: Record<TodayStatus, { label: string; cls: string; dot: string }> = {
-  present:  { label: "Keldi",           cls: "bg-brand-100 text-brand-800",  dot: "bg-brand-600" },
-  late:     { label: "Kech qoldi",      cls: "bg-amber-50 text-amber-700",   dot: "bg-amber-500" },
-  absent:   { label: "Kelmadi",         cls: "bg-rose-50 text-rose-700",     dot: "bg-rose-500" },
-  unmarked: { label: "Belgilanmagan",   cls: "bg-slate-100 text-slate-500",  dot: "bg-slate-300" },
-  nolesson: { label: "Bugun dars yo'q", cls: "bg-slate-50 text-slate-400",   dot: "bg-slate-200" },
+// Status → tone classes (labels come from the language dict).
+const STATUS_STYLE: Record<TodayStatus, { cls: string; dot: string }> = {
+  present:  { cls: "bg-success-container text-on-success-container",  dot: "bg-success" },
+  late:     { cls: "bg-warning-container text-on-warning-container",   dot: "bg-warning" },
+  absent:   { cls: "bg-error-container text-on-error-container",     dot: "bg-error" },
+  unmarked: { cls: "bg-surface-container-highest text-on-surface-variant",  dot: "bg-outline" },
+  nolesson: { cls: "bg-surface-container text-on-surface-variant",   dot: "bg-outline-variant" },
 };
 
 export default function ManagerStudentsPage() {
   const { user } = useAuth();
+  const { lang } = useManagerLanguage();
+  const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [centerId, setCenterId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -117,7 +244,7 @@ export default function ManagerStudentsPage() {
             const snap = await getDocs(query(collection(db, "users"), where(documentId(), "in", part)));
             snap.docs.forEach((d) => {
               profileMap[d.id] = {
-                displayName: d.data()?.displayName || "Noma'lum",
+                displayName: d.data()?.displayName || t.unknown,
                 username: d.data()?.username,
                 photoURL: d.data()?.photoURL || undefined,
               };
@@ -181,7 +308,7 @@ export default function ManagerStudentsPage() {
       const prof = profiles[l.studentId];
       byStudent.set(l.studentId, {
         id: l.studentId,
-        displayName: prof?.displayName || l.studentName || "Noma'lum",
+        displayName: prof?.displayName || l.studentName || t.unknown,
         username: prof?.username,
         photoURL: prof?.photoURL,
         groups: [], scheduleDays: [], uniformTime: null, todayStatus: "nolesson",
@@ -274,51 +401,47 @@ export default function ManagerStudentsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">O&apos;quvchilar</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Markazdagi barcha o&apos;quvchilar, guruhlari va bugungi davomat</p>
+          <h1 className="text-xl md:text-2xl font-bold text-on-surface tracking-tight">{t.title}</h1>
+          <p className="text-sm text-on-surface-variant mt-0.5">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden sm:block capitalize text-[13px] font-medium text-slate-500">
-            {WEEKDAY_FULL[todayWeekday]}, {new Date().getDate()}-kun
+          <span className="hidden sm:block capitalize text-[13px] font-medium text-on-surface-variant">
+            {t.todayLine(t.weekdayFull[todayWeekday], new Date().getDate())}
           </span>
-          <button
-            onClick={() => setIsChooserOpen(true)}
-            className="flex items-center justify-center gap-2 pl-4 pr-5 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-full transition-all shadow-sm shadow-brand-600/25 active:scale-[0.98]"
-          >
-            <Plus size={18} strokeWidth={2.5} />
-            O&apos;quvchi qo&apos;shish
-          </button>
+          <Button onClick={() => setIsChooserOpen(true)} icon={<Plus size={18} strokeWidth={2.5} />}>
+            {t.addStudent}
+          </Button>
         </div>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={<Users size={16} />} tone="bg-brand-100 text-brand-700" value={rows.length} label="Jami o'quvchi" />
-        <StatCard icon={<CalendarCheck size={16} />} tone="bg-sky-50 text-sky-600" value={haveLessonToday} label="Bugun darsi bor" />
-        <StatCard icon={<span className="w-2.5 h-2.5 rounded-full bg-brand-600" />} tone="bg-brand-50" value={presentToday} label="Bugun keldi" />
-        <StatCard icon={<span className="w-2.5 h-2.5 rounded-full bg-rose-500" />} tone="bg-rose-50" value={absentToday} label="Bugun kelmadi" />
+        <StatCard icon={<Users size={16} />} tone="bg-primary-container text-on-primary-container" value={rows.length} label={t.statTotal} />
+        <StatCard icon={<CalendarCheck size={16} />} tone="bg-tertiary-container text-on-tertiary-container" value={haveLessonToday} label={t.statHasLesson} />
+        <StatCard icon={<span className="w-2.5 h-2.5 rounded-full bg-success" />} tone="bg-success-container" value={presentToday} label={t.statPresent} />
+        <StatCard icon={<span className="w-2.5 h-2.5 rounded-full bg-error" />} tone="bg-error-container" value={absentToday} label={t.statAbsent} />
       </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <SearchInput value={search} onChange={setSearch} placeholder="Ism yoki @username bo'yicha qidiring..." />
+        <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
 
         {classes.length > 1 && (
           <FilterSelect
             value={groupFilter}
             onChange={setGroupFilter}
             options={groupOptions}
-            allLabel="Barcha guruhlar"
+            allLabel={t.allGroups}
           />
         )}
 
-        <div className="flex items-center gap-0.5 p-1 bg-white border border-brand-line rounded-full">
-          {([["all", "Hammasi"], ["today", "Bugun darsi bor"], ["absent", "Kelmaganlar"]] as const).map(([key, label]) => (
+        <div className="flex items-center gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-full">
+          {([["all", t.quickAll], ["today", t.quickToday], ["absent", t.quickAbsent]] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setQuick(key)}
               className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
-                quick === key ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
+                quick === key ? "bg-primary text-on-primary shadow-elev-1" : "text-on-surface-variant hover:bg-state-hover hover:text-on-surface"
               }`}
             >
               {label}
@@ -328,50 +451,50 @@ export default function ManagerStudentsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-brand-line rounded-3xl overflow-hidden">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-slate-400" size={28} /></div>
+          <div className="flex items-center justify-center py-24"><Loader2 className="animate-spin text-on-surface-variant" size={28} /></div>
         ) : rows.length === 0 ? (
-          <EmptyState title="O'quvchilar yo'q" subtitle="«O'quvchi qo'shish» tugmasi orqali yangi hisob yarating yoki mavjudini qo'shing." />
+          <EmptyState title={t.emptyTitle} subtitle={t.emptyDesc} />
         ) : filtered.length === 0 ? (
-          <EmptyState title="Topilmadi" subtitle="Qidiruv yoki filtrlarga mos o'quvchi yo'q." />
+          <EmptyState title={t.noResultsTitle} subtitle={t.noResultsDesc} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 text-[11px] font-semibold uppercase tracking-wide border-b border-slate-100">
+                <tr className="bg-surface-container-low text-on-surface-variant text-[11px] font-semibold uppercase tracking-wide border-b border-outline-variant">
                   <th className="py-3 pl-5 pr-2 w-10">#</th>
-                  <th className="py-3 px-2">O&apos;quvchi</th>
-                  <th className="py-3 px-2">Guruh</th>
-                  <th className="py-3 px-2">Dars kunlari</th>
-                  <th className="py-3 px-2 pr-5 text-right">Bugun</th>
+                  <th className="py-3 px-2">{t.thStudent}</th>
+                  <th className="py-3 px-2">{t.thGroup}</th>
+                  <th className="py-3 px-2">{t.thDays}</th>
+                  <th className="py-3 px-2 pr-5 text-right">{t.thToday}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-outline-variant">
                 {filtered.map((r, i) => {
-                  const st = STATUS_UI[r.todayStatus];
+                  const st = STATUS_STYLE[r.todayStatus];
                   return (
                     <tr
                       key={r.id}
                       onClick={() => setViewingStudent(r)}
-                      className="hover:bg-brand-25 transition-colors cursor-pointer"
+                      className="hover:bg-state-hover transition-colors cursor-pointer"
                     >
-                      <td className="py-2.5 pl-5 pr-2 text-[12px] font-semibold text-slate-400 tabular-nums">{i + 1}</td>
+                      <td className="py-2.5 pl-5 pr-2 text-[12px] font-semibold text-on-surface-variant tabular-nums">{i + 1}</td>
 
                       {/* Student */}
                       <td className="py-2.5 px-2">
                         <div className="flex items-center gap-2.5 min-w-0">
                           {r.photoURL ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={r.photoURL} alt={r.displayName} className="w-8 h-8 shrink-0 rounded-full object-cover border border-slate-100" />
+                            <img src={r.photoURL} alt={r.displayName} className="w-8 h-8 shrink-0 rounded-full object-cover border border-outline-variant" />
                           ) : (
-                            <span className="w-8 h-8 shrink-0 rounded-full bg-brand-100 text-brand-800 font-bold text-[11px] flex items-center justify-center">
+                            <span className="w-8 h-8 shrink-0 rounded-full bg-primary-container text-on-primary-container font-bold text-[11px] flex items-center justify-center">
                               {getInitials(r.displayName)}
                             </span>
                           )}
                           <div className="min-w-0">
-                            <p className="text-[13px] font-semibold text-slate-900 truncate">{r.displayName}</p>
-                            {r.username && <p className="text-[11px] text-slate-400 truncate">@{r.username}</p>}
+                            <p className="text-[13px] font-semibold text-on-surface truncate">{r.displayName}</p>
+                            {r.username && <p className="text-[11px] text-on-surface-variant truncate">@{r.username}</p>}
                           </div>
                         </div>
                       </td>
@@ -380,8 +503,8 @@ export default function ManagerStudentsPage() {
                       <td className="py-2.5 px-2">
                         <div className="flex flex-wrap items-center gap-1">
                           {r.groups.length === 0 && (
-                            <span className="px-2.5 py-1 bg-slate-100 text-slate-400 rounded-full text-[11px] font-bold">
-                              Guruhsiz
+                            <span className="px-2.5 py-1 bg-surface-container-highest text-on-surface-variant rounded-full text-[11px] font-bold">
+                              {t.noGroup}
                             </span>
                           )}
                           {r.groups.slice(0, 2).map((g) => (
@@ -389,14 +512,14 @@ export default function ManagerStudentsPage() {
                               key={g.id}
                               href={`/manager/attendance/${g.id}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-50 text-brand-800 hover:bg-brand-100 rounded-full text-[11px] font-bold transition-colors max-w-[160px]"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary-container text-on-primary-container rounded-full text-[11px] font-bold transition-colors max-w-[160px]"
                             >
                               <span className="truncate">{g.title}</span>
                               <ChevronRight size={11} className="shrink-0 opacity-60" />
                             </Link>
                           ))}
                           {r.groups.length > 2 && (
-                            <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-[11px] font-bold">+{r.groups.length - 2}</span>
+                            <span className="px-2.5 py-1 bg-surface-container-highest text-on-surface-variant rounded-full text-[11px] font-bold">+{r.groups.length - 2}</span>
                           )}
                         </div>
                       </td>
@@ -404,28 +527,28 @@ export default function ManagerStudentsPage() {
                       {/* Schedule days */}
                       <td className="py-2.5 px-2">
                         {r.scheduleDays.length === 0 ? (
-                          <span className="text-[11px] text-slate-300">— jadval yo&apos;q</span>
+                          <span className="text-[11px] text-on-surface-variant">{t.noSchedule}</span>
                         ) : (
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1">
                               {r.scheduleDays.map((d) => (
                                 <span
                                   key={d}
-                                  title={WEEKDAY_FULL[d]}
+                                  title={t.weekdayFull[d]}
                                   className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${
                                     d === todayWeekday
-                                      ? "bg-brand-600 text-white"
+                                      ? "bg-primary text-on-primary"
                                       : isWeekend(d)
-                                      ? "bg-rose-50 text-rose-500"
-                                      : "bg-slate-100 text-slate-500"
+                                      ? "bg-error-container text-on-error-container"
+                                      : "bg-surface-container-highest text-on-surface-variant"
                                   }`}
                                 >
-                                  {WEEKDAY_SHORT[d]}
+                                  {t.weekdayShort[d]}
                                 </span>
                               ))}
                             </div>
                             {r.uniformTime && (
-                              <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 tabular-nums">
+                              <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-medium text-on-surface-variant tabular-nums">
                                 <Clock size={11} /> {r.uniformTime}
                               </span>
                             )}
@@ -436,7 +559,7 @@ export default function ManagerStudentsPage() {
                       {/* Today status */}
                       <td className="py-2.5 px-2 pr-5 text-right">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${st.cls}`}>
-                          <span className={`w-2 h-2 rounded-full ${st.dot}`} /> {st.label}
+                          <span className={`w-2 h-2 rounded-full ${st.dot}`} /> {t.status[r.todayStatus]}
                         </span>
                       </td>
                     </tr>
@@ -451,39 +574,39 @@ export default function ManagerStudentsPage() {
       {/* Add-method chooser: create a new account vs link an existing one */}
       {isChooserOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsChooserOpen(false)}></div>
-          <div className="relative bg-white w-full max-w-md rounded-[2rem] p-6 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-200">
+          <div className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => setIsChooserOpen(false)}></div>
+          <div className="relative bg-surface-container-lowest w-full max-w-md rounded-m3-xl p-6 shadow-elev-3">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight">O&apos;quvchi qo&apos;shish</h2>
+              <h2 className="text-lg font-bold text-on-surface tracking-tight">{t.chooserTitle}</h2>
               <button type="button" onClick={() => setIsChooserOpen(false)}
-                className="w-9 h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-full transition-colors">
+                className="w-9 h-9 flex items-center justify-center bg-surface-container-low hover:bg-state-hover text-on-surface-variant rounded-full transition-colors">
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
             <div className="space-y-3">
               <button type="button"
                 onClick={() => { setIsChooserOpen(false); setIsCreateOpen(true); }}
-                className="w-full flex items-center gap-4 p-4 bg-brand-50/60 hover:bg-brand-50 border border-brand-100 rounded-2xl text-left transition-colors active:scale-[0.99]">
-                <div className="w-12 h-12 bg-brand-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm shadow-brand-600/25">
+                className="w-full flex items-center gap-4 p-4 bg-primary-container rounded-m3-lg text-left transition-colors active:scale-[0.99]">
+                <div className="w-12 h-12 bg-primary rounded-m3-lg flex items-center justify-center text-on-primary shrink-0 shadow-elev-1">
                   <UserPlus size={22} strokeWidth={2.2} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14.5px] font-bold text-slate-900">Yangi hisob yaratish</p>
-                  <p className="text-[12.5px] text-slate-500 mt-0.5">Login va parol bilan tayyor hisob tuziladi</p>
+                  <p className="text-[14.5px] font-bold text-on-primary-container">{t.createTitle}</p>
+                  <p className="text-[12.5px] text-on-primary-container mt-0.5">{t.createDesc}</p>
                 </div>
-                <ArrowRight size={18} className="text-brand-400 shrink-0" />
+                <ArrowRight size={18} className="text-on-primary-container shrink-0" />
               </button>
               <button type="button"
                 onClick={() => { setIsChooserOpen(false); setIsLinkOpen(true); }}
-                className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl text-left transition-colors active:scale-[0.99]">
-                <div className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-500 shrink-0">
+                className="w-full flex items-center gap-4 p-4 bg-surface-container-low hover:bg-state-hover border border-outline-variant rounded-m3-lg text-left transition-colors active:scale-[0.99]">
+                <div className="w-12 h-12 bg-surface-container-lowest border border-outline-variant rounded-m3-lg flex items-center justify-center text-on-surface-variant shrink-0">
                   <Search size={22} strokeWidth={2.2} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14.5px] font-bold text-slate-900">Mavjud hisobni qo&apos;shish</p>
-                  <p className="text-[12.5px] text-slate-500 mt-0.5">Email yoki @username orqali topish — guruhsiz ham</p>
+                  <p className="text-[14.5px] font-bold text-on-surface">{t.linkTitle}</p>
+                  <p className="text-[12.5px] text-on-surface-variant mt-0.5">{t.linkDesc}</p>
                 </div>
-                <ArrowRight size={18} className="text-slate-300 shrink-0" />
+                <ArrowRight size={18} className="text-on-surface-variant shrink-0" />
               </button>
             </div>
           </div>
@@ -512,7 +635,7 @@ export default function ManagerStudentsPage() {
           fallbackName={viewingStudent.displayName}
           centerId={centerId}
           classes={classes.filter((c) => (c.studentIds || []).includes(viewingStudent.id))}
-          todayBadge={STATUS_UI[viewingStudent.todayStatus]}
+          todayBadge={{ ...STATUS_STYLE[viewingStudent.todayStatus], label: t.status[viewingStudent.todayStatus] }}
           onPhotoChange={(url) =>
             setProfiles((prev) => ({
               ...prev,
@@ -529,11 +652,11 @@ export default function ManagerStudentsPage() {
 
 function StatCard({ icon, tone, value, label }: { icon: React.ReactNode; tone: string; value: number; label: string }) {
   return (
-    <div className="flex items-center gap-3 p-3.5 bg-white border border-brand-line rounded-3xl">
+    <div className="flex items-center gap-3 p-3.5 bg-surface-container-lowest border border-outline-variant rounded-m3-xl">
       <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${tone}`}>{icon}</span>
       <div className="min-w-0">
-        <p className="text-lg font-bold text-slate-900 leading-none tabular-nums">{value}</p>
-        <p className="text-[12px] text-slate-500 mt-1 truncate">{label}</p>
+        <p className="text-lg font-bold text-on-surface leading-none tabular-nums">{value}</p>
+        <p className="text-[12px] text-on-surface-variant mt-1 truncate">{label}</p>
       </div>
     </div>
   );
@@ -542,11 +665,11 @@ function StatCard({ icon, tone, value, label }: { icon: React.ReactNode; tone: s
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="flex flex-col items-center justify-center text-center py-14 px-6">
-      <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3">
+      <div className="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container mb-3">
         <CalendarX2 size={22} />
       </div>
-      <h3 className="text-sm font-bold text-slate-800">{title}</h3>
-      <p className="text-[13px] text-slate-400 mt-1 max-w-[260px]">{subtitle}</p>
+      <h3 className="text-sm font-bold text-on-surface">{title}</h3>
+      <p className="text-[13px] text-on-surface-variant mt-1 max-w-[260px]">{subtitle}</p>
     </div>
   );
 }

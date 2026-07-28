@@ -4,15 +4,96 @@ import { Plus, Trash2, X, List, Type, Edit3, ChevronUp, ChevronDown, UploadCloud
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { Button, Spinner } from '@/components/ui';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 // 🌟 FIREBASE IMPORTS
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    selectLetter: "Select letter...",
+    ansExample: "e.g. vegetation, plants",
+    ref: "Ref",
+    imgUploaded: "Rasm yuklandi!",
+    imgUploadError: "Rasmni yuklashda xatolik yuz berdi!",
+    qsLabel: "Qs:",
+    wordBankOn: "Word Bank: ON",
+    wordBankOff: "Word Bank: OFF",
+    instructionsPh: "Instructions (e.g. Label the diagram below)...",
+    hideWordBank: "Hide Word Bank",
+    editWordBank: "Edit Word Bank",
+    wordPh: "Word or phrase...",
+    addWordOption: "Add Word Option",
+    diagramTitlePh: "Diagram Title (Optional)...",
+    uploading: "Yuklanmoqda...",
+    clickToUpload: "Rasmni yuklash uchun bosing",
+    altTextPh: "Alt Text (Impaired vision description)...",
+    removeImage: "Remove Image",
+    diagramPreview: "Diagram preview",
+    colQ: "Q#",
+    colCorrectLetter: "Correct Letter",
+    colAcceptedAnswers: "Accepted Answers (Comma separated)",
+    addLabelBox: "Add Label Box",
+  },
+  en: {
+    selectLetter: "Select letter...",
+    ansExample: "e.g. vegetation, plants",
+    ref: "Ref",
+    imgUploaded: "Image uploaded!",
+    imgUploadError: "An error occurred while uploading the image!",
+    qsLabel: "Qs:",
+    wordBankOn: "Word Bank: ON",
+    wordBankOff: "Word Bank: OFF",
+    instructionsPh: "Instructions (e.g. Label the diagram below)...",
+    hideWordBank: "Hide Word Bank",
+    editWordBank: "Edit Word Bank",
+    wordPh: "Word or phrase...",
+    addWordOption: "Add Word Option",
+    diagramTitlePh: "Diagram Title (Optional)...",
+    uploading: "Uploading...",
+    clickToUpload: "Click to upload an image",
+    altTextPh: "Alt Text (Impaired vision description)...",
+    removeImage: "Remove Image",
+    diagramPreview: "Diagram preview",
+    colQ: "Q#",
+    colCorrectLetter: "Correct Letter",
+    colAcceptedAnswers: "Accepted Answers (Comma separated)",
+    addLabelBox: "Add Label Box",
+  },
+  ru: {
+    selectLetter: "Выберите букву...",
+    ansExample: "напр. растительность, растения",
+    ref: "Ссыл.",
+    imgUploaded: "Изображение загружено!",
+    imgUploadError: "Произошла ошибка при загрузке изображения!",
+    qsLabel: "Вопр.:",
+    wordBankOn: "Банк слов: ВКЛ",
+    wordBankOff: "Банк слов: ВЫКЛ",
+    instructionsPh: "Инструкция (напр. Подпишите диаграмму ниже)...",
+    hideWordBank: "Скрыть банк слов",
+    editWordBank: "Редактировать банк слов",
+    wordPh: "Слово или фраза...",
+    addWordOption: "Добавить вариант",
+    diagramTitlePh: "Название диаграммы (необязательно)...",
+    uploading: "Загрузка...",
+    clickToUpload: "Нажмите, чтобы загрузить изображение",
+    altTextPh: "Альт. текст (описание для слабовидящих)...",
+    removeImage: "Удалить изображение",
+    diagramPreview: "Предпросмотр диаграммы",
+    colQ: "В№",
+    colCorrectLetter: "Верная буква",
+    colAcceptedAnswers: "Принимаемые ответы (через запятую)",
+    addLabelBox: "Добавить поле метки",
+  },
+};
+
 // ==========================================================================
 // INDIVIDUAL ANSWER ROW
 // ==========================================================================
 const AnswerRow = ({ row, rIdx, updateRow, deleteRow, isWordBank, options, totalRows }: any) => {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [ansText, setAnsText] = useState(Array.isArray(row.correct_answer) ? row.correct_answer.join(', ') : '');
 
   useEffect(() => {
@@ -39,12 +120,12 @@ const AnswerRow = ({ row, rIdx, updateRow, deleteRow, isWordBank, options, total
           onChange={e => updateRow(rIdx, 'correct_answer', e.target.value)}
           className="flex-1 h-7 text-[11px] font-black bg-surface-container-lowest border border-outline-variant rounded-m3-sm px-2 outline-none text-success focus:border-primary cursor-pointer"
         >
-          <option value="">Select letter...</option>
+          <option value="">{t.selectLetter}</option>
           {options.map((o: any) => <option key={o.id} value={o.id}>{o.id} - {o.text}</option>)}
         </select>
       ) : (
         <input
-          type="text" placeholder="e.g. vegetation, plants"
+          type="text" placeholder={t.ansExample}
           value={ansText}
           onChange={e => setAnsText(e.target.value)}
           onBlur={handleAnsBlur}
@@ -54,7 +135,7 @@ const AnswerRow = ({ row, rIdx, updateRow, deleteRow, isWordBank, options, total
       )}
 
       <input
-        type="text" placeholder="Ref" value={row.passage_reference || ''}
+        type="text" placeholder={t.ref} value={row.passage_reference || ''}
         onChange={e => updateRow(rIdx, 'passage_reference', e.target.value.toUpperCase())}
         className={`w-14 h-7 text-[10px] text-center font-bold rounded-m3-sm outline-none uppercase shrink-0 transition-colors
           ${row.passage_reference ? 'bg-tertiary-container border border-transparent text-on-tertiary-container focus:border-primary' : 'bg-transparent border border-dashed border-outline text-on-surface-variant hover:border-on-surface-variant focus:border-primary focus:bg-surface-container-lowest'}`}
@@ -69,6 +150,8 @@ const AnswerRow = ({ row, rIdx, updateRow, deleteRow, isWordBank, options, total
 // MAIN COMPONENT BLOCK
 // ==========================================================================
 export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteBlock }: any) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [showOptions, setShowOptions] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,10 +219,10 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
         updateBlock(qbIdx, 'diagram_title', autoTitle);
       }
 
-      toast.success("Rasm yuklandi!"); // Image uploaded!
+      toast.success(t.imgUploaded); // Image uploaded!
     } catch (error) {
       console.error("Upload failed", error);
-      toast.error("Rasmni yuklashda xatolik yuz berdi!");
+      toast.error(t.imgUploadError);
     } finally {
       setIsUploading(false);
       // Reset input so they can upload the exact same file again if they deleted it
@@ -173,7 +256,7 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
             DIAGRAM COMPLETION
           </span>
           <div className="flex items-center gap-1.5 text-[11px] text-on-surface-variant font-semibold select-none">
-            Qs: <span className="w-8 h-5 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs font-bold text-on-surface shadow-elev-1">{qb.start_question || 0}</span>
+            {t.qsLabel} <span className="w-8 h-5 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded-m3-xs font-bold text-on-surface shadow-elev-1">{qb.start_question || 0}</span>
             - <span className="w-8 h-5 flex items-center justify-center bg-surface-container-high border border-outline-variant rounded-m3-xs font-bold text-on-surface-variant">{qb.end_question || 0}</span>
           </div>
         </div>
@@ -184,12 +267,12 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
         {/* INSTRUCTIONS & TOGGLE */}
         <div className="flex items-start justify-between gap-4 mb-3">
           <input
-            type="text" placeholder="Instructions (e.g. Label the diagram below)..."
+            type="text" placeholder={t.instructionsPh}
             value={qb.instructions} onChange={e => updateBlock(qbIdx, 'instructions', e.target.value)}
             className="flex-1 bg-transparent border-none text-[11px] font-bold text-on-surface outline-none p-0 mt-1"
           />
           <button onClick={toggleMode} className={`m3-interactive flex items-center gap-1.5 px-2 py-1 rounded-m3-sm text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0 border ${isWordBank ? 'bg-tertiary-container text-on-tertiary-container border-transparent' : 'bg-surface-container text-on-surface-variant border-outline-variant'}`}>
-            {isWordBank ? <><List size={12}/> Word Bank: ON</> : <><Type size={12}/> Word Bank: OFF</>}
+            {isWordBank ? <><List size={12}/> {t.wordBankOn}</> : <><Type size={12}/> {t.wordBankOff}</>}
           </button>
         </div>
 
@@ -197,19 +280,19 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
         {isWordBank && (
           <div className="mb-4 bg-surface-container p-2 rounded-m3-sm border border-outline-variant">
             <button onClick={() => setShowOptions(!showOptions)} className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant hover:text-tertiary uppercase tracking-wider mb-2">
-              <Edit3 size={10} /> {showOptions ? 'Hide Word Bank' : 'Edit Word Bank'} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+              <Edit3 size={10} /> {showOptions ? t.hideWordBank : t.editWordBank} {showOptions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             </button>
             {showOptions && (
               <div className="space-y-1.5 pt-2 border-t border-outline-variant">
                 {qb.options.map((opt: any, oIdx: number) => (
                   <div key={oIdx} className="flex items-center gap-2">
                     <input type="text" value={opt.id} onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].id = e.target.value.toUpperCase(); updateBlock(qbIdx, 'options', newOpts); }} className="w-8 h-6 text-[10px] font-black tracking-wider text-tertiary bg-surface-container-lowest border border-outline-variant rounded-m3-sm text-center outline-none focus:border-primary" maxLength={2} />
-                    <input type="text" value={opt.text} placeholder="Word or phrase..." onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }} className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-sm py-1 px-2 text-[11px] font-medium text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary" />
+                    <input type="text" value={opt.text} placeholder={t.wordPh} onChange={e => { const newOpts = [...qb.options]; newOpts[oIdx].text = e.target.value; updateBlock(qbIdx, 'options', newOpts); }} className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-m3-sm py-1 px-2 text-[11px] font-medium text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-inset focus:ring-primary" />
                     <button onClick={() => { const newOpts = [...qb.options]; newOpts.splice(oIdx, 1); updateBlock(qbIdx, 'options', newOpts); }} className="text-on-surface-variant hover:text-error"><X size={14}/></button>
                   </div>
                 ))}
                 <Button variant="text" size="sm" icon={<Plus />} onClick={() => { const newOpts = [...qb.options]; newOpts.push({ id: String.fromCharCode(65 + newOpts.length), text: '' }); updateBlock(qbIdx, 'options', newOpts); }} className="mt-2">
-                  Add Word Option
+                  {t.addWordOption}
                 </Button>
               </div>
             )}
@@ -219,7 +302,7 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
         {/* 🌟 IMAGE DROPZONE / PREVIEW AREA 🌟 */}
         <div className="bg-surface-container p-4 rounded-m3-sm border border-outline-variant mb-4 flex flex-col items-center">
           <input
-            type="text" placeholder="Diagram Title (Optional)..."
+            type="text" placeholder={t.diagramTitlePh}
             value={qb.diagram_title} onChange={e => updateBlock(qbIdx, 'diagram_title', e.target.value)}
             className="w-full bg-transparent border-none text-[13px] font-black text-on-surface outline-none mb-4 p-0 text-center placeholder:text-on-surface-variant"
           />
@@ -235,12 +318,12 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
               {isUploading ? (
                 <div className="flex flex-col items-center gap-2">
                   <Spinner size={24} />
-                  <span className="text-[11px] font-bold">Yuklanmoqda...</span>
+                  <span className="text-[11px] font-bold">{t.uploading}</span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <UploadCloud size={28} />
-                  <span className="text-[11px] font-bold">Rasmni yuklash uchun bosing</span>
+                  <span className="text-[11px] font-bold">{t.clickToUpload}</span>
                 </div>
               )}
             </div>
@@ -250,13 +333,13 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
               <div className="relative group/img w-full max-w-sm">
                 <img
                   src={qb.diagram_url}
-                  alt="Diagram preview"
+                  alt={t.diagramPreview}
                   className="w-full rounded-m3-sm border border-outline-variant shadow-elev-1 object-contain max-h-48 bg-surface-container-lowest"
                 />
                 <button
                   onClick={handleDeleteImage}
                   className="absolute top-2 right-2 p-1.5 bg-surface-container-lowest text-error rounded-m3-sm shadow-elev-2 opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-error-container"
-                  title="Remove Image"
+                  title={t.removeImage}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -266,7 +349,7 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
               <div className="w-full max-w-sm flex items-center gap-2 bg-surface-container-lowest px-2 rounded-m3-sm border border-outline-variant focus-within:border-primary">
                 <ImageIcon size={14} className="text-on-surface-variant" />
                 <input
-                  type="text" placeholder="Alt Text (Impaired vision description)..."
+                  type="text" placeholder={t.altTextPh}
                   value={qb.diagram_alt_text} onChange={e => updateBlock(qbIdx, 'diagram_alt_text', e.target.value)}
                   className="flex-1 h-7 text-[11px] bg-transparent outline-none text-on-surface placeholder:text-on-surface-variant"
                 />
@@ -278,9 +361,9 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
         {/* ANSWERS LIST */}
         <div className="space-y-1">
           <div className="flex gap-2 px-2 pb-1 text-[9px] font-bold text-on-surface-variant uppercase tracking-wider">
-            <span className="w-8 text-center">Q#</span>
-            <span className="flex-1">{isWordBank ? 'Correct Letter' : 'Accepted Answers (Comma separated)'}</span>
-            <span className="w-14 text-center">Ref</span>
+            <span className="w-8 text-center">{t.colQ}</span>
+            <span className="flex-1">{isWordBank ? t.colCorrectLetter : t.colAcceptedAnswers}</span>
+            <span className="w-14 text-center">{t.ref}</span>
             <span className="w-6"></span>
           </div>
 
@@ -294,7 +377,7 @@ export default function DiagramCompletionBlock({ qb, qbIdx, updateBlock, deleteB
         </div>
 
         <Button variant="text" size="sm" icon={<Plus />} onClick={addQuestionRow} className="mt-3">
-          Add Label Box
+          {t.addLabelBox}
         </Button>
       </div>
     </div>

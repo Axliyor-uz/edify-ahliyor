@@ -6,14 +6,38 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTeacherLanguage } from '@/app/teacher/layout';
 
 import { Spinner } from '@/components/ui';
 
 const LOCAL_STORAGE_KEY = 'ielts_reading_draft';
 
+const TRANSLATIONS = {
+  uz: {
+    notFound: "Test topilmadi!",
+    loadError: "Xatolik yuz berdi!",
+    loadingTitle: "Test bazadan olinmoqda...",
+    loadingDesc: "Iltimos kuting, test ma'lumotlari tahrirlash uchun tayyorlanmoqda.",
+  },
+  en: {
+    notFound: "Test not found!",
+    loadError: "Error loading test!",
+    loadingTitle: "Fetching the test from the database...",
+    loadingDesc: "Please wait, the test data is being prepared for editing.",
+  },
+  ru: {
+    notFound: "Тест не найден!",
+    loadError: "Произошла ошибка!",
+    loadingTitle: "Тест загружается из базы...",
+    loadingDesc: "Пожалуйста, подождите: данные теста готовятся к редактированию.",
+  },
+};
+
 export default function EditTestSmartLoader() {
   const { id } = useParams();
   const router = useRouter();
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
 
   useEffect(() => {
     const fetchAndLoadTest = async () => {
@@ -49,12 +73,12 @@ export default function EditTestSmartLoader() {
           router.replace('/teacher/ielts/reading/manual');
 
         } else {
-          toast.error("Test topilmadi! (Test not found)");
+          toast.error(t.notFound);
           router.replace('/teacher/ielts/reading');
         }
       } catch (error) {
         console.error("Error loading test:", error);
-        toast.error("Xatolik yuz berdi! (Error loading test)");
+        toast.error(t.loadError);
         router.replace('/teacher/ielts/reading');
       }
     };
@@ -70,10 +94,10 @@ export default function EditTestSmartLoader() {
         <Spinner size={24} className="absolute" />
       </div>
       <h2 className="text-on-surface font-black tracking-tight text-[16px] mb-2">
-        Test bazadan olinmoqda...
+        {t.loadingTitle}
       </h2>
       <p className="text-on-surface-variant font-medium text-[12px] max-w-[200px] text-center leading-relaxed">
-        Iltimos kuting, test ma'lumotlari tahrirlash uchun tayyorlanmoqda.
+        {t.loadingDesc}
       </p>
     </div>
   );

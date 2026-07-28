@@ -7,6 +7,49 @@ import { UserMinus, Loader2, Award, UserCheck, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Spinner, EmptyState } from '@/components/ui';
+import { useTeacherLanguage } from '@/app/teacher/layout';
+
+const TRANSLATIONS: Record<string, any> = {
+  uz: {
+    unknown: "Noma'lum",
+    deletedProfile: "O'chirilgan profil",
+    confirmRemove: (name: string) => `${name}ni guruhdan chiqarasizmi?`,
+    removed: (name: string) => `${name} chiqarildi`,
+    error: "Xatolik yuz berdi",
+    noStudents: "O'quvchilar yo'q",
+    emptyPre: "Guruhga o'quvchilarni qo'shish uchun yuqoridagi ",
+    emptyPost: " tugmasini bosing.",
+    searchPlaceholder: "O'quvchini qidirish...",
+    studentsCount: (n: number) => `${n} o'quvchi`,
+    removeFromGroup: "Guruhdan chiqarish",
+  },
+  en: {
+    unknown: "Unknown",
+    deletedProfile: "Deleted profile",
+    confirmRemove: (name: string) => `Remove ${name} from the group?`,
+    removed: (name: string) => `${name} removed`,
+    error: "An error occurred",
+    noStudents: "No students",
+    emptyPre: "To add students to the group, click the ",
+    emptyPost: " button above.",
+    searchPlaceholder: "Search students...",
+    studentsCount: (n: number) => `${n} students`,
+    removeFromGroup: "Remove from group",
+  },
+  ru: {
+    unknown: "Неизвестно",
+    deletedProfile: "Удалённый профиль",
+    confirmRemove: (name: string) => `Удалить ${name} из группы?`,
+    removed: (name: string) => `${name} удалён`,
+    error: "Произошла ошибка",
+    noStudents: "Нет учеников",
+    emptyPre: "Чтобы добавить учеников в группу, нажмите кнопку ",
+    emptyPost: " выше.",
+    searchPlaceholder: "Поиск ученика...",
+    studentsCount: (n: number) => `${n} учеников`,
+    removeFromGroup: "Удалить из группы",
+  },
+};
 
 function bandPill(band: number) {
   if (band >= 8)   return 'bg-success-container text-on-success-container';
@@ -20,6 +63,8 @@ interface Props {
 }
 
 export default function IeltsRosterTab({ groupId, studentIds }: Props) {
+  const { lang } = useTeacherLanguage();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [students, setStudents]     = useState<any[]>([]);
   const [isLoading, setIsLoading]   = useState(true);
   const [removingUid, setRemovingUid] = useState<string | null>(null);
@@ -37,9 +82,9 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
             const snap = await getDoc(doc(db, 'users', uid));
             if (snap.exists()) {
               const d = snap.data();
-              return { uid, displayName: d.displayName || "Noma'lum", username: d.username || 'user', photoUrl: d.photoURL, currentBand: 6.5 };
+              return { uid, displayName: d.displayName || t.unknown, username: d.username || 'user', photoUrl: d.photoURL, currentBand: 6.5 };
             }
-            return { uid, displayName: "O'chirilgan profil", username: 'unknown', currentBand: 0 };
+            return { uid, displayName: t.deletedProfile, username: 'unknown', currentBand: 0 };
           })
         );
         setStudents(resolved);
@@ -53,13 +98,13 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
   }, [studentIds]);
 
   const handleRemove = async (student: any) => {
-    if (!confirm(`${student.displayName}ni guruhdan chiqarasizmi?`)) return;
+    if (!confirm(t.confirmRemove(student.displayName))) return;
     setRemovingUid(student.uid);
     try {
       await updateDoc(doc(db, 'ielts_groups', groupId), { studentIds: arrayRemove(student.uid) });
-      toast.success(`${student.displayName} chiqarildi`);
+      toast.success(t.removed(student.displayName));
     } catch {
-      toast.error("Xatolik yuz berdi");
+      toast.error(t.error);
     } finally {
       setRemovingUid(null);
     }
@@ -80,8 +125,8 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
     <div className="py-8 bg-surface-container-low border-2 border-outline-variant border-dashed rounded-m3-xl">
       <EmptyState
         icon={<UserCheck strokeWidth={2.5} />}
-        title="O'quvchilar yo'q"
-        description={<>Guruhga o'quvchilarni qo'shish uchun yuqoridagi <strong>+</strong> tugmasini bosing.</>}
+        title={t.noStudents}
+        description={<>{t.emptyPre}<strong>+</strong>{t.emptyPost}</>}
       />
     </div>
   );
@@ -95,7 +140,7 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
           <Search size={16} className="text-on-surface-variant shrink-0" strokeWidth={2.5} />
           <input
             type="text"
-            placeholder="O'quvchini qidirish..."
+            placeholder={t.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="text-[14px] font-black text-on-surface placeholder:text-on-surface-variant placeholder:font-medium outline-none w-full bg-transparent"
@@ -103,7 +148,7 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-m3-sm border bg-surface-container-high text-on-surface border-outline-variant self-start sm:self-auto">
           <UserCheck size={14} strokeWidth={3} />
-          <span className="text-[13px] font-black">{students.length} o'quvchi</span>
+          <span className="text-[13px] font-black">{t.studentsCount(students.length)}</span>
         </div>
       </div>
 
@@ -152,7 +197,7 @@ export default function IeltsRosterTab({ groupId, studentIds }: Props) {
                 {/* Remove */}
                 <button
                   onClick={() => handleRemove(std)}
-                  title="Guruhdan chiqarish"
+                  title={t.removeFromGroup}
                   className="m3-interactive relative z-10 w-9 h-9 rounded-m3-md bg-surface-container border border-outline-variant hover:bg-error-container hover:border-transparent text-on-surface-variant hover:text-on-error-container flex items-center justify-center transition-colors shrink-0 active:scale-95"
                 >
                   {isRemoving

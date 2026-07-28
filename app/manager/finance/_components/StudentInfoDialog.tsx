@@ -26,11 +26,12 @@ import {
   openAmountOf,
   patchStudentFinanceApi,
 } from "@/services/financeService";
-import { PAYMENT_METHOD_LABELS } from "@/types/finance";
 import type { Charge, Payment, StudentFinanceProfile } from "@/types/finance";
 import { formatUZS } from "@/lib/finance/money";
 import { getTodayKey } from "@/lib/dateUtils";
-import { initialsOf, periodLabelOf, shortDateLabel } from "./financeFormat";
+import { Button } from "@/components/manager-ui";
+import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
+import { initialsOf, PAYMENT_METHOD_T, periodLabelOf, shortDateLabel } from "./financeFormat";
 
 interface Props {
   centerId: string;
@@ -42,6 +43,131 @@ interface Props {
   /** Close this dialog and open the payment modal preselected on the student. */
   onRecordPayment: (studentId: string) => void;
 }
+
+const T_UZ = {
+  loadError: "Ma'lumotlarni yuklashda xatolik.",
+  discountRange: "Chegirma 0–100% oralig'ida bo'lishi kerak.",
+  discountRemoved: "Chegirma olib tashlandi.",
+  discountSaved: (v: number) => `Chegirma ${v}% saqlandi — keyingi hisoblarga qo'llanadi.`,
+  genericError: "Xatolik yuz berdi.",
+  activated: "O'quvchi aktivlashtirildi — hisob-kitob davom etadi.",
+  frozenToast: "O'quvchi muzlatildi — yangi hisoblar yaratilmaydi.",
+  frozenChip: "Muzlatilgan",
+  discountChip: (n: number) => `Chegirma ${n}%`,
+  closeLabel: "Yopish",
+  balance: "Balans",
+  debt: "Qarz",
+  monthly: "Oyiga to'lov",
+  lastPayment: "Oxirgi to'lov:",
+  noPaymentYet: "Hali to'lov qilmagan",
+  discountTitle: "Chegirma foizi",
+  discountDesc: "Keyingi hisob-kitoblardan boshlab qo'llanadi. 0% — chegirmani olib tashlaydi.",
+  cancel: "Bekor qilish",
+  save: "Saqlash",
+  addDiscount: "Chegirma qo'shish",
+  unfreeze: "Aktivlashtirish",
+  freeze: "Muzlatish",
+  groupsTitle: (n: number) => `Guruhlari · ${n} ta`,
+  noGroups: "Guruhlarga qo'shilmagan",
+  noPrice: "Narx belgilanmagan",
+  openChargesTitle: "To'lanmagan hisoblar",
+  noDebt: "Qarzi yo'q — barcha hisoblar to'langan",
+  dueLabel: (date: string) => `Muddat: ${date}`,
+  paidPart: (amount: string) => `to'landi ${amount}`,
+  totalDebt: "Jami qarz",
+  paymentsTitle: "So'nggi to'lovlar",
+  noPayments: "Hali to'lovlar yo'q",
+  cancelledLabel: "Bekor qilingan",
+  recordPayment: "To'lov qabul qilish",
+  freezeTitle: "O'quvchini muzlatish",
+  freezeMessage: (name: string) =>
+    `${name} muzlatiladi: keyingi hisob-kitoblarda unga yangi oylik hisob YARATILMAYDI. Mavjud qarzlari saqlanadi va to'lov qabul qilish mumkin bo'lib qoladi. Qaytib kelganda "Aktivlashtirish" bosiladi.`,
+  freezeConfirm: "Muzlatish",
+};
+
+const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
+  uz: T_UZ,
+  en: {
+    loadError: "Failed to load data.",
+    discountRange: "The discount must be between 0 and 100%.",
+    discountRemoved: "Discount removed.",
+    discountSaved: (v: number) => `Discount ${v}% saved — it applies to future charges.`,
+    genericError: "Something went wrong.",
+    activated: "Student reactivated — billing continues.",
+    frozenToast: "Student frozen — no new charges will be created.",
+    frozenChip: "Frozen",
+    discountChip: (n: number) => `Discount ${n}%`,
+    closeLabel: "Close",
+    balance: "Balance",
+    debt: "Debt",
+    monthly: "Monthly fee",
+    lastPayment: "Last payment:",
+    noPaymentYet: "No payments yet",
+    discountTitle: "Discount percent",
+    discountDesc: "Applies starting from the next billing run. 0% removes the discount.",
+    cancel: "Cancel",
+    save: "Save",
+    addDiscount: "Add discount",
+    unfreeze: "Reactivate",
+    freeze: "Freeze",
+    groupsTitle: (n: number) => `Groups · ${n}`,
+    noGroups: "Not enrolled in any group",
+    noPrice: "No price set",
+    openChargesTitle: "Unpaid charges",
+    noDebt: "No debt — all charges are paid",
+    dueLabel: (date: string) => `Due: ${date}`,
+    paidPart: (amount: string) => `paid ${amount}`,
+    totalDebt: "Total debt",
+    paymentsTitle: "Recent payments",
+    noPayments: "No payments yet",
+    cancelledLabel: "Cancelled",
+    recordPayment: "Record payment",
+    freezeTitle: "Freeze student",
+    freezeMessage: (name: string) =>
+      `${name} will be frozen: future billing runs will NOT create new monthly charges for them. Existing debts are kept and payments can still be recorded. When they return, press "Reactivate".`,
+    freezeConfirm: "Freeze",
+  },
+  ru: {
+    loadError: "Не удалось загрузить данные.",
+    discountRange: "Скидка должна быть в диапазоне 0–100%.",
+    discountRemoved: "Скидка удалена.",
+    discountSaved: (v: number) => `Скидка ${v}% сохранена — применяется к следующим начислениям.`,
+    genericError: "Произошла ошибка.",
+    activated: "Ученик снова активен — начисления продолжаются.",
+    frozenToast: "Ученик заморожен — новые начисления создаваться не будут.",
+    frozenChip: "Заморожен",
+    discountChip: (n: number) => `Скидка ${n}%`,
+    closeLabel: "Закрыть",
+    balance: "Баланс",
+    debt: "Долг",
+    monthly: "Оплата в месяц",
+    lastPayment: "Последний платёж:",
+    noPaymentYet: "Ещё не платил",
+    discountTitle: "Процент скидки",
+    discountDesc: "Применяется начиная со следующих начислений. 0% — убирает скидку.",
+    cancel: "Отмена",
+    save: "Сохранить",
+    addDiscount: "Добавить скидку",
+    unfreeze: "Активировать",
+    freeze: "Заморозить",
+    groupsTitle: (n: number) => `Группы · ${n}`,
+    noGroups: "Не зачислен в группы",
+    noPrice: "Цена не задана",
+    openChargesTitle: "Неоплаченные начисления",
+    noDebt: "Долга нет — все начисления оплачены",
+    dueLabel: (date: string) => `Срок: ${date}`,
+    paidPart: (amount: string) => `оплачено ${amount}`,
+    totalDebt: "Общий долг",
+    paymentsTitle: "Последние платежи",
+    noPayments: "Платежей пока нет",
+    cancelledLabel: "Отменён",
+    recordPayment: "Принять платёж",
+    freezeTitle: "Заморозить ученика",
+    freezeMessage: (name: string) =>
+      `${name} будет заморожен: при следующих начислениях новые месячные счета для него СОЗДАВАТЬСЯ НЕ БУДУТ. Существующие долги сохраняются, платежи по-прежнему можно принимать. Когда он вернётся, нажмите «Активировать».`,
+    freezeConfirm: "Заморозить",
+  },
+};
 
 /**
  * Full finance profile of one student: identity, balance/debt summary, groups
@@ -55,6 +181,8 @@ export default function StudentInfoDialog({
   onClose,
   onRecordPayment,
 }: Props) {
+  const { lang } = useManagerLanguage();
+  const t = TRANSLATIONS[lang];
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [finance, setFinance] = useState<StudentFinanceProfile | null>(null);
   const [charges, setCharges] = useState<Charge[]>([]);
@@ -85,11 +213,12 @@ export default function StudentInfoDialog({
         setCharges(ch);
         setPayments(pays);
       })
-      .catch(() => mounted && toast.error("Ma'lumotlarni yuklashda xatolik."))
+      .catch(() => mounted && toast.error(t.loadError))
       .finally(() => mounted && setLoading(false));
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerId, studentId]);
 
   const groups = useMemo(
@@ -126,17 +255,17 @@ export default function StudentInfoDialog({
   const saveDiscount = async () => {
     const v = discountInput.trim() === "" ? 0 : parseInt(discountInput, 10);
     if (!Number.isInteger(v) || v < 0 || v > 100) {
-      toast.error("Chegirma 0–100% oralig'ida bo'lishi kerak.");
+      toast.error(t.discountRange);
       return;
     }
     setBusy(true);
     try {
       await patchStudentFinanceApi(studentId, { discountPercent: v === 0 ? null : v });
-      toast.success(v === 0 ? "Chegirma olib tashlandi." : `Chegirma ${v}% saqlandi — keyingi hisoblarga qo'llanadi.`);
+      toast.success(v === 0 ? t.discountRemoved : t.discountSaved(v));
       setEditingDiscount(false);
       await refreshFinance();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Xatolik yuz berdi.");
+      toast.error(e instanceof Error ? e.message : t.genericError);
     } finally {
       setBusy(false);
     }
@@ -147,22 +276,20 @@ export default function StudentInfoDialog({
     setBusy(true);
     try {
       await patchStudentFinanceApi(studentId, { financeStatus: frozen ? "active" : "frozen" });
-      toast.success(
-        frozen
-          ? "O'quvchi aktivlashtirildi — hisob-kitob davom etadi."
-          : "O'quvchi muzlatildi — yangi hisoblar yaratilmaydi."
-      );
+      toast.success(frozen ? t.activated : t.frozenToast);
       setConfirmFreeze(false);
       await refreshFinance();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Xatolik yuz berdi.");
+      toast.error(e instanceof Error ? e.message : t.genericError);
     } finally {
       setBusy(false);
     }
   };
 
   const dateLabel = (dateKey: string) =>
-    dateKey.slice(0, 4) === todayYear ? shortDateLabel(dateKey) : `${shortDateLabel(dateKey)} ${dateKey.slice(0, 4)}`;
+    dateKey.slice(0, 4) === todayYear
+      ? shortDateLabel(dateKey, lang)
+      : `${shortDateLabel(dateKey, lang)} ${dateKey.slice(0, 4)}`;
 
   const name = profile?.displayName || fallbackName;
 
@@ -182,103 +309,103 @@ export default function StudentInfoDialog({
               className="w-16 h-16 rounded-full object-cover shrink-0"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-brand-100 text-brand-800 flex items-center justify-center text-[20px] font-bold shrink-0">
+            <div className="w-16 h-16 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center text-[20px] font-bold shrink-0">
               {initialsOf(name)}
             </div>
           )}
           <div className="flex-1 min-w-0 pt-0.5">
-            <h3 className="text-[17px] font-bold text-slate-900 tracking-tight truncate">{name}</h3>
+            <h3 className="text-[17px] font-bold text-on-surface tracking-tight truncate">{name}</h3>
             {profile?.email && (
-              <p className="flex items-center gap-1.5 text-[12.5px] text-slate-500 mt-1 truncate">
+              <p className="flex items-center gap-1.5 text-[12.5px] text-on-surface-variant mt-1 truncate">
                 <Mail size={12} className="shrink-0" /> {profile.email}
               </p>
             )}
             {profile?.phone && (
-              <p className="flex items-center gap-1.5 text-[12.5px] text-slate-500 mt-0.5">
+              <p className="flex items-center gap-1.5 text-[12.5px] text-on-surface-variant mt-0.5">
                 <Phone size={12} className="shrink-0" /> {profile.phone}
               </p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-2">
               {finance?.financeStatus === "frozen" && (
-                <span className="px-2.5 py-1 bg-sky-50 text-sky-600 rounded-full text-[11px] font-bold">
-                  Muzlatilgan
+                <span className="px-2.5 py-1 bg-tertiary-container text-on-tertiary-container rounded-full text-[11px] font-bold">
+                  {t.frozenChip}
                 </span>
               )}
               {(finance?.discountPercent || 0) > 0 && (
-                <span className="px-2.5 py-1 bg-violet-50 text-violet-600 rounded-full text-[11px] font-bold">
-                  Chegirma {finance!.discountPercent}%
+                <span className="px-2.5 py-1 bg-tertiary-container text-on-tertiary-container rounded-full text-[11px] font-bold">
+                  {t.discountChip(finance!.discountPercent!)}
                 </span>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Yopish"
-            className="w-9 h-9 rounded-full hover:bg-slate-100 text-slate-400 flex items-center justify-center transition-colors shrink-0"
+            aria-label={t.closeLabel}
+            className="w-9 h-9 rounded-full hover:bg-state-hover text-on-surface-variant flex items-center justify-center transition-colors shrink-0"
           >
             <X size={18} />
           </button>
         </div>
 
         {loading ? (
-          <div className="py-14 flex justify-center text-slate-400">
+          <div className="py-14 flex justify-center text-on-surface-variant">
             <Loader2 size={22} className="animate-spin" />
           </div>
         ) : (
           <div className="mt-5 space-y-5">
             {/* ── Summary: balance / debt / monthly ── */}
-            <div className="bg-brand-25 border border-brand-line rounded-3xl px-4 py-3">
-              <div className="grid grid-cols-3 divide-x divide-brand-line">
+            <div className="bg-surface-container-low border border-outline-variant rounded-m3-xl px-4 py-3">
+              <div className="grid grid-cols-3 divide-x divide-outline-variant">
                 <div className="pr-3">
-                  <p className="text-[11.5px] font-semibold text-slate-500">Balans</p>
+                  <p className="text-[11.5px] font-semibold text-on-surface-variant">{t.balance}</p>
                   <p
                     className={`text-[13.5px] font-bold tabular-nums mt-0.5 truncate ${
-                      balance < 0 ? "text-rose-600" : balance > 0 ? "text-brand-700" : "text-slate-800"
+                      balance < 0 ? "text-error" : balance > 0 ? "text-success" : "text-on-surface"
                     }`}
                   >
                     {formatUZS(balance)}
                   </p>
                 </div>
                 <div className="px-3">
-                  <p className="text-[11.5px] font-semibold text-slate-500">Qarz</p>
+                  <p className="text-[11.5px] font-semibold text-on-surface-variant">{t.debt}</p>
                   <p
                     className={`text-[13.5px] font-bold tabular-nums mt-0.5 truncate ${
-                      totalDebt > 0 ? "text-rose-600" : "text-slate-800"
+                      totalDebt > 0 ? "text-error" : "text-on-surface"
                     }`}
                   >
                     {formatUZS(totalDebt)}
                   </p>
                 </div>
                 <div className="pl-3">
-                  <p className="text-[11.5px] font-semibold text-slate-500">Oyiga to&apos;lov</p>
-                  <p className="text-[13.5px] font-bold text-slate-800 tabular-nums mt-0.5 truncate">
+                  <p className="text-[11.5px] font-semibold text-on-surface-variant">{t.monthly}</p>
+                  <p className="text-[13.5px] font-bold text-on-surface tabular-nums mt-0.5 truncate">
                     {formatUZS(monthlyTotal)}
                   </p>
                 </div>
               </div>
-              <p className="text-[12px] text-slate-500 mt-2.5 pt-2.5 border-t border-brand-line">
+              <p className="text-[12px] text-on-surface-variant mt-2.5 pt-2.5 border-t border-outline-variant">
                 {lastPayment ? (
                   <>
-                    Oxirgi to&apos;lov:{" "}
-                    <span className="font-bold text-slate-700">
+                    {t.lastPayment}{" "}
+                    <span className="font-bold text-on-surface">
                       {dateLabel(lastPayment.paidAt)} · {formatUZS(lastPayment.amount)} ·{" "}
-                      {PAYMENT_METHOD_LABELS[lastPayment.method] || lastPayment.method}
+                      {PAYMENT_METHOD_T[lang][lastPayment.method] || lastPayment.method}
                     </span>
                   </>
                 ) : (
-                  "Hali to'lov qilmagan"
+                  t.noPaymentYet
                 )}
               </p>
             </div>
 
             {/* ── Discount / freeze management ── */}
             {editingDiscount ? (
-              <div className="bg-white border border-brand-line rounded-3xl p-4">
-                <p className="text-[13.5px] font-bold text-slate-800 flex items-center gap-1.5">
-                  <BadgePercent size={15} className="text-violet-500" /> Chegirma foizi
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl p-4">
+                <p className="text-[13.5px] font-bold text-on-surface flex items-center gap-1.5">
+                  <BadgePercent size={15} className="text-tertiary" /> {t.discountTitle}
                 </p>
-                <p className="text-[12px] text-slate-400 mt-1">
-                  Keyingi hisob-kitoblardan boshlab qo&apos;llanadi. 0% — chegirmani olib tashlaydi.
+                <p className="text-[12px] text-on-surface-variant mt-1">
+                  {t.discountDesc}
                 </p>
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {[0, 5, 10, 15, 20, 50].map((v) => (
@@ -287,8 +414,8 @@ export default function StudentInfoDialog({
                       onClick={() => setDiscountInput(String(v))}
                       className={`px-3.5 py-2 rounded-full text-[12.5px] font-bold border transition-colors ${
                         discountInput === String(v)
-                          ? "bg-violet-600 text-white border-violet-600"
-                          : "bg-white text-slate-600 border-brand-line hover:border-violet-400"
+                          ? "bg-tertiary text-on-tertiary border-tertiary"
+                          : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-tertiary"
                       }`}
                     >
                       {v}%
@@ -304,22 +431,22 @@ export default function StudentInfoDialog({
                     value={discountInput}
                     onChange={(e) => setDiscountInput(e.target.value)}
                     placeholder="%"
-                    className="w-20 px-3 py-2.5 border border-brand-line rounded-full text-[14px] font-bold text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    className="w-20 px-3 py-2.5 bg-transparent border border-outline-variant rounded-full text-[14px] font-bold text-on-surface text-center tabular-nums focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   />
                   <button
                     onClick={() => setEditingDiscount(false)}
                     disabled={busy}
-                    className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-[12.5px] font-bold transition-colors disabled:opacity-60"
+                    className="flex-1 py-2.5 bg-surface-container hover:bg-surface-container-highest text-on-surface rounded-full text-[12.5px] font-bold transition-colors disabled:opacity-60"
                   >
-                    Bekor qilish
+                    {t.cancel}
                   </button>
                   <button
                     onClick={saveDiscount}
                     disabled={busy}
-                    className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-full text-[12.5px] font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2.5 bg-tertiary text-on-tertiary rounded-full text-[12.5px] font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     {busy && <Loader2 size={13} className="animate-spin" />}
-                    Saqlash
+                    {t.save}
                   </button>
                 </div>
               </div>
@@ -333,20 +460,20 @@ export default function StudentInfoDialog({
                   disabled={busy}
                   className={`inline-flex items-center justify-center gap-1.5 py-2.5 rounded-full text-[12.5px] font-bold border transition-colors disabled:opacity-50 ${
                     (finance?.discountPercent || 0) > 0
-                      ? "bg-violet-50 text-violet-600 border-violet-200 hover:bg-violet-100"
-                      : "bg-white text-slate-600 border-brand-line hover:border-violet-400 hover:text-violet-600"
+                      ? "bg-tertiary-container text-on-tertiary-container border-transparent"
+                      : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-tertiary hover:text-tertiary"
                   }`}
                 >
                   <BadgePercent size={15} />
-                  {finance?.discountPercent ? `Chegirma ${finance.discountPercent}%` : "Chegirma qo'shish"}
+                  {finance?.discountPercent ? t.discountChip(finance.discountPercent) : t.addDiscount}
                 </button>
                 <button
                   onClick={() => (frozen ? toggleFreeze() : setConfirmFreeze(true))}
                   disabled={busy}
                   className={`inline-flex items-center justify-center gap-1.5 py-2.5 rounded-full text-[12.5px] font-bold border transition-colors disabled:opacity-50 ${
                     frozen
-                      ? "bg-sky-50 text-sky-600 border-sky-200 hover:bg-sky-100"
-                      : "bg-white text-slate-600 border-brand-line hover:border-sky-400 hover:text-sky-600"
+                      ? "bg-tertiary-container text-on-tertiary-container border-transparent"
+                      : "bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:border-tertiary hover:text-tertiary"
                   }`}
                 >
                   {busy && !editingDiscount ? (
@@ -354,40 +481,40 @@ export default function StudentInfoDialog({
                   ) : (
                     <Snowflake size={15} />
                   )}
-                  {frozen ? "Aktivlashtirish" : "Muzlatish"}
+                  {frozen ? t.unfreeze : t.freeze}
                 </button>
               </div>
             )}
 
             {/* ── Groups ── */}
             <section>
-              <h4 className="text-[12.5px] font-bold text-slate-500 px-1.5 mb-1.5">
-                Guruhlari · {groups.length} ta
+              <h4 className="text-[12.5px] font-bold text-on-surface-variant px-1.5 mb-1.5">
+                {t.groupsTitle(groups.length)}
               </h4>
-              <div className="bg-white border border-brand-line rounded-3xl divide-y divide-slate-100 overflow-hidden">
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl divide-y divide-outline-variant overflow-hidden">
                 {groups.length === 0 ? (
-                  <p className="py-6 text-center text-[13px] text-slate-400">Guruhlarga qo&apos;shilmagan</p>
+                  <p className="py-6 text-center text-[13px] text-on-surface-variant">{t.noGroups}</p>
                 ) : (
                   groups.map((g) => {
                     const fee = effectiveFee(g);
                     const base = g.monthlyFee || 0;
                     return (
                       <div key={g.id} className="flex items-center gap-3 px-4 py-3">
-                        <div className="w-10 h-10 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
                           <GraduationCap size={18} strokeWidth={2.1} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[14px] font-semibold text-slate-900 truncate">{g.title}</p>
-                          <p className="text-[12.5px] text-slate-500 mt-0.5 truncate">{g.teacherName}</p>
+                          <p className="text-[14px] font-semibold text-on-surface truncate">{g.title}</p>
+                          <p className="text-[12.5px] text-on-surface-variant mt-0.5 truncate">{g.teacherName}</p>
                         </div>
                         <div className="text-right shrink-0">
                           {base === 0 && fee === 0 ? (
-                            <p className="text-[12px] font-bold text-amber-600">Narx belgilanmagan</p>
+                            <p className="text-[12px] font-bold text-warning">{t.noPrice}</p>
                           ) : (
                             <>
-                              <p className="text-[13.5px] font-bold text-slate-900 tabular-nums">{formatUZS(fee)}</p>
+                              <p className="text-[13.5px] font-bold text-on-surface tabular-nums">{formatUZS(fee)}</p>
                               {fee !== base && base > 0 && (
-                                <p className="text-[11.5px] text-slate-400 tabular-nums line-through">
+                                <p className="text-[11.5px] text-on-surface-variant tabular-nums line-through">
                                   {formatUZS(base)}
                                 </p>
                               )}
@@ -403,33 +530,33 @@ export default function StudentInfoDialog({
 
             {/* ── Open charges ── */}
             <section>
-              <h4 className="text-[12.5px] font-bold text-slate-500 px-1.5 mb-1.5">To&apos;lanmagan hisoblar</h4>
+              <h4 className="text-[12.5px] font-bold text-on-surface-variant px-1.5 mb-1.5">{t.openChargesTitle}</h4>
               {openCharges.length === 0 ? (
-                <div className="bg-white border border-brand-line rounded-3xl py-5 px-4 flex items-center justify-center gap-2 text-brand-700">
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl py-5 px-4 flex items-center justify-center gap-2 text-success">
                   <CheckCircle2 size={16} />
-                  <p className="text-[13px] font-bold">Qarzi yo&apos;q — barcha hisoblar to&apos;langan</p>
+                  <p className="text-[13px] font-bold">{t.noDebt}</p>
                 </div>
               ) : (
-                <div className="bg-white border border-brand-line rounded-3xl divide-y divide-slate-100 overflow-hidden">
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl divide-y divide-outline-variant overflow-hidden">
                   {openCharges.map((c) => (
                     <div key={c.id} className="flex items-center gap-3 px-4 py-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13.5px] font-semibold text-slate-900 truncate">
-                          {periodLabelOf(c)} · {c.classTitle}
+                        <p className="text-[13.5px] font-semibold text-on-surface truncate">
+                          {periodLabelOf(c, lang)} · {c.classTitle}
                         </p>
-                        <p className="text-[12px] text-slate-500 mt-0.5">
-                          Muddat: {dateLabel(c.dueDate)}
-                          {c.status === "partial" && ` · to'landi ${formatUZS(c.paidAmount || 0)}`}
+                        <p className="text-[12px] text-on-surface-variant mt-0.5">
+                          {t.dueLabel(dateLabel(c.dueDate))}
+                          {c.status === "partial" && ` · ${t.paidPart(formatUZS(c.paidAmount || 0))}`}
                         </p>
                       </div>
-                      <p className="text-[13.5px] font-bold text-rose-600 tabular-nums shrink-0">
+                      <p className="text-[13.5px] font-bold text-error tabular-nums shrink-0">
                         {formatUZS(openAmountOf(c))}
                       </p>
                     </div>
                   ))}
-                  <div className="flex items-center justify-between px-4 py-3 bg-rose-50/50">
-                    <p className="text-[13px] font-bold text-slate-700">Jami qarz</p>
-                    <p className="text-[14px] font-bold text-rose-600 tabular-nums">{formatUZS(totalDebt)}</p>
+                  <div className="flex items-center justify-between px-4 py-3 bg-error-container">
+                    <p className="text-[13px] font-bold text-on-error-container">{t.totalDebt}</p>
+                    <p className="text-[14px] font-bold text-on-error-container tabular-nums">{formatUZS(totalDebt)}</p>
                   </div>
                 </div>
               )}
@@ -437,10 +564,10 @@ export default function StudentInfoDialog({
 
             {/* ── Payment history ── */}
             <section>
-              <h4 className="text-[12.5px] font-bold text-slate-500 px-1.5 mb-1.5">So&apos;nggi to&apos;lovlar</h4>
-              <div className="bg-white border border-brand-line rounded-3xl divide-y divide-slate-100 overflow-hidden">
+              <h4 className="text-[12.5px] font-bold text-on-surface-variant px-1.5 mb-1.5">{t.paymentsTitle}</h4>
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl divide-y divide-outline-variant overflow-hidden">
                 {payments.length === 0 ? (
-                  <p className="py-6 text-center text-[13px] text-slate-400">Hali to&apos;lovlar yo&apos;q</p>
+                  <p className="py-6 text-center text-[13px] text-on-surface-variant">{t.noPayments}</p>
                 ) : (
                   payments.slice(0, 8).map((p) => {
                     const cancelled = p.status === "cancelled";
@@ -451,10 +578,10 @@ export default function StudentInfoDialog({
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                             cancelled
-                              ? "bg-slate-100 text-slate-400"
+                              ? "bg-surface-container-highest text-on-surface-variant"
                               : isRefund
-                              ? "bg-rose-50 text-rose-600"
-                              : "bg-brand-100 text-brand-700"
+                              ? "bg-error-container text-on-error-container"
+                              : "bg-success-container text-on-success-container"
                           }`}
                         >
                           <DirIcon size={15} strokeWidth={2.2} />
@@ -462,20 +589,20 @@ export default function StudentInfoDialog({
                         <div className="flex-1 min-w-0">
                           <p
                             className={`text-[13px] font-semibold truncate ${
-                              cancelled ? "text-slate-400 line-through" : "text-slate-800"
+                              cancelled ? "text-on-surface-variant line-through" : "text-on-surface"
                             }`}
                           >
-                            {dateLabel(p.paidAt)} · {PAYMENT_METHOD_LABELS[p.method] || p.method}
+                            {dateLabel(p.paidAt)} · {PAYMENT_METHOD_T[lang][p.method] || p.method}
                           </p>
                           {(p.note || cancelled) && (
-                            <p className="text-[11.5px] text-slate-400 mt-0.5 truncate">
-                              {cancelled ? "Bekor qilingan" : p.note}
+                            <p className="text-[11.5px] text-on-surface-variant mt-0.5 truncate">
+                              {cancelled ? t.cancelledLabel : p.note}
                             </p>
                           )}
                         </div>
                         <p
                           className={`text-[13px] font-bold tabular-nums shrink-0 ${
-                            cancelled ? "text-slate-300 line-through" : isRefund ? "text-rose-600" : "text-brand-700"
+                            cancelled ? "text-on-surface-variant line-through" : isRefund ? "text-error" : "text-success"
                           }`}
                         >
                           {isRefund ? "−" : "+"}
@@ -488,12 +615,9 @@ export default function StudentInfoDialog({
               </div>
             </section>
 
-            <button
-              onClick={() => onRecordPayment(studentId)}
-              className="w-full py-3.5 bg-brand-600 hover:bg-brand-700 active:scale-[0.99] text-white font-bold text-sm rounded-full transition-all flex items-center justify-center gap-2"
-            >
-              <Banknote size={16} /> To&apos;lov qabul qilish
-            </button>
+            <Button icon={<Banknote />} onClick={() => onRecordPayment(studentId)} className="w-full">
+              {t.recordPayment}
+            </Button>
           </div>
         )}
       </div>
@@ -501,9 +625,9 @@ export default function StudentInfoDialog({
 
     {confirmFreeze && (
       <ConfirmDialog
-        title="O'quvchini muzlatish"
-        message={`${name} muzlatiladi: keyingi hisob-kitoblarda unga yangi oylik hisob YARATILMAYDI. Mavjud qarzlari saqlanadi va to'lov qabul qilish mumkin bo'lib qoladi. Qaytib kelganda "Aktivlashtirish" bosiladi.`}
-        confirmLabel="Muzlatish"
+        title={t.freezeTitle}
+        message={t.freezeMessage(name)}
+        confirmLabel={t.freezeConfirm}
         isLoading={busy}
         onConfirm={toggleFreeze}
         onClose={() => setConfirmFreeze(false)}

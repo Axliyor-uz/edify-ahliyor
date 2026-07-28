@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+
+const TRANSLATIONS = {
+  uz: { title: "Rasmni Kesish", cancel: "Bekor qilish", save: "Saqlash", previewAlt: "Kesish uchun rasm" },
+  en: { title: "Crop Photo", cancel: "Cancel", save: "Save", previewAlt: "Crop preview" },
+  ru: { title: "Обрезка фото", cancel: "Отмена", save: "Сохранить", previewAlt: "Предпросмотр обрезки" },
+};
+type T = typeof TRANSLATIONS.uz;
 
 interface Props {
   /** The raw image file the user picked. */
@@ -21,6 +29,8 @@ interface Props {
  * info panels can reuse it for setting other users' photos.
  */
 export default function PhotoCropperModal({ file, busy = false, onCancel, onSave }: Props) {
+  const { lang } = useManagerLanguage();
+  const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [imgSrc, setImgSrc] = useState("");
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
@@ -88,14 +98,14 @@ export default function PhotoCropperModal({ file, busy = false, onCancel, onSave
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => !busy && onCancel()}></div>
-      <div className="relative bg-white rounded-[2rem] p-6 max-w-md w-full shadow-2xl border border-slate-100 z-10 animate-in zoom-in-95">
+      <div className="absolute inset-0 bg-scrim backdrop-blur-sm" onClick={() => !busy && onCancel()}></div>
+      <div className="relative bg-surface-container-lowest rounded-m3-xl p-6 max-w-md w-full shadow-elev-3 border border-outline-variant z-10">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-black text-slate-900">Rasmni Kesish</h3>
-          <button onClick={onCancel} disabled={busy} className="text-slate-400 hover:text-slate-900 transition-colors"><X size={20} /></button>
+          <h3 className="text-lg font-black text-on-surface">{t.title}</h3>
+          <button onClick={onCancel} disabled={busy} className="text-on-surface-variant hover:text-on-surface transition-colors"><X size={20} /></button>
         </div>
 
-        <div className="w-full max-h-[60vh] overflow-hidden bg-slate-100 rounded-xl flex items-center justify-center mb-6">
+        <div className="w-full max-h-[60vh] overflow-hidden bg-surface-container rounded-m3-md flex items-center justify-center mb-6">
           {imgSrc && (
             <ReactCrop
               crop={crop}
@@ -106,18 +116,18 @@ export default function PhotoCropperModal({ file, busy = false, onCancel, onSave
               className="max-h-full"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img ref={imgRef} src={imgSrc} alt="Crop preview" onLoad={onImageLoad} className="max-h-[60vh] object-contain" />
+              <img ref={imgRef} src={imgSrc} alt={t.previewAlt} onLoad={onImageLoad} className="max-h-[60vh] object-contain" />
             </ReactCrop>
           )}
         </div>
 
         <div className="flex gap-3 justify-end">
-          <button onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-[14px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors disabled:opacity-50">
-            Bekor qilish
+          <button onClick={onCancel} disabled={busy} className="m3-interactive px-5 h-t-control text-[14px] font-bold text-on-surface bg-surface-container-high rounded-m3-btn transition-colors disabled:opacity-50">
+            {t.cancel}
           </button>
-          <button onClick={handleSave} disabled={busy || !completedCrop} className="px-6 py-2.5 text-[14px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-md disabled:opacity-50 flex items-center gap-2">
+          <button onClick={handleSave} disabled={busy || !completedCrop} className="m3-interactive px-6 h-t-control text-[14px] font-bold text-on-primary bg-primary rounded-m3-btn transition-colors shadow-elev-1 disabled:opacity-50 flex items-center gap-2">
             {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} strokeWidth={3} />}
-            Saqlash
+            {t.save}
           </button>
         </div>
       </div>

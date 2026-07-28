@@ -6,22 +6,79 @@ import { Users, Clock, Loader2, CalendarCheck, CalendarX2, ArrowRight, Graduatio
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import { useCenterClasses, ClassData } from "@/hooks/useCenterClasses";
+import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
 import WalkInCheckIn from "./_components/WalkInCheckIn";
 
 type Schedule = { dayOfWeek: number; startTime: string; endTime: string }[];
 
-const DAY_SHORT = ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"]; // index = getDay()
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon → Sun display order
 
-// MD3-ish tonal themes; each card gets one deterministically so the grid feels alive.
+const TRANSLATIONS = {
+  uz: {
+    dayShort: ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"], // index = getDay()
+    title: "Davomat",
+    subGroups: "Guruh tanlang va davomatni belgilang",
+    subWalkin: "O'quvchini toping va bugungi darslarga belgilang",
+    groupCount: (n: number) => `${n} guruh`,
+    studentCount: (n: number) => `${n} o'quvchi`,
+    lessonsToday: (n: number) => `Bugun ${n} ta dars`,
+    tabGroups: "Guruhlar",
+    tabWalkin: "Tez davomat",
+    emptyTitle: "Guruhlar yo'q",
+    emptyDesc: "Markazingizga hali hech qanday guruh qo'shilmagan.",
+    noTeacher: "O'qituvchi yo'q",
+    today: "Bugun",
+    studentsSuffix: "o'quvchi",
+    lessonsPerWeek: "dars/hafta",
+    todayTime: (a: string, b: string) => `Bugun ${a}–${b}`,
+    noSchedule: "Jadval yo'q",
+  },
+  en: {
+    dayShort: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"], // index = getDay()
+    title: "Attendance",
+    subGroups: "Pick a group and mark attendance",
+    subWalkin: "Find a student and mark them for today's lessons",
+    groupCount: (n: number) => `${n} groups`,
+    studentCount: (n: number) => `${n} students`,
+    lessonsToday: (n: number) => `${n} lessons today`,
+    tabGroups: "Groups",
+    tabWalkin: "Quick check-in",
+    emptyTitle: "No groups",
+    emptyDesc: "No groups have been added to your center yet.",
+    noTeacher: "No teacher",
+    today: "Today",
+    studentsSuffix: "students",
+    lessonsPerWeek: "lessons/week",
+    todayTime: (a: string, b: string) => `Today ${a}–${b}`,
+    noSchedule: "No schedule",
+  },
+  ru: {
+    dayShort: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"], // index = getDay()
+    title: "Посещаемость",
+    subGroups: "Выберите группу и отметьте посещаемость",
+    subWalkin: "Найдите ученика и отметьте его на сегодняшних занятиях",
+    groupCount: (n: number) => `${n} групп`,
+    studentCount: (n: number) => `${n} учеников`,
+    lessonsToday: (n: number) => `Сегодня ${n} занятий`,
+    tabGroups: "Группы",
+    tabWalkin: "Быстрая отметка",
+    emptyTitle: "Групп нет",
+    emptyDesc: "В ваш центр пока не добавлено ни одной группы.",
+    noTeacher: "Нет учителя",
+    today: "Сегодня",
+    studentsSuffix: "учеников",
+    lessonsPerWeek: "занятий/нед.",
+    todayTime: (a: string, b: string) => `Сегодня ${a}–${b}`,
+    noSchedule: "Нет расписания",
+  },
+};
+type PageT = typeof TRANSLATIONS.uz;
+
+// Token-driven tonal themes; each card gets one deterministically so the grid feels alive.
 const THEMES = [
-  { avatar: "bg-indigo-100 text-indigo-700", bar: "bg-indigo-500", dayOn: "bg-indigo-100 text-indigo-700", dayToday: "bg-indigo-600 text-white", badge: "bg-indigo-50 text-indigo-700", hoverBorder: "hover:border-indigo-200", arrow: "group-hover:bg-indigo-600" },
-  { avatar: "bg-violet-100 text-violet-700", bar: "bg-violet-500", dayOn: "bg-violet-100 text-violet-700", dayToday: "bg-violet-600 text-white", badge: "bg-violet-50 text-violet-700", hoverBorder: "hover:border-violet-200", arrow: "group-hover:bg-violet-600" },
-  { avatar: "bg-teal-100 text-teal-700", bar: "bg-teal-500", dayOn: "bg-teal-100 text-teal-700", dayToday: "bg-teal-600 text-white", badge: "bg-teal-50 text-teal-700", hoverBorder: "hover:border-teal-200", arrow: "group-hover:bg-teal-600" },
-  { avatar: "bg-amber-100 text-amber-700", bar: "bg-amber-500", dayOn: "bg-amber-100 text-amber-700", dayToday: "bg-amber-500 text-white", badge: "bg-amber-50 text-amber-700", hoverBorder: "hover:border-amber-200", arrow: "group-hover:bg-amber-500" },
-  { avatar: "bg-rose-100 text-rose-700", bar: "bg-rose-500", dayOn: "bg-rose-100 text-rose-700", dayToday: "bg-rose-600 text-white", badge: "bg-rose-50 text-rose-700", hoverBorder: "hover:border-rose-200", arrow: "group-hover:bg-rose-600" },
-  { avatar: "bg-sky-100 text-sky-700", bar: "bg-sky-500", dayOn: "bg-sky-100 text-sky-700", dayToday: "bg-sky-600 text-white", badge: "bg-sky-50 text-sky-700", hoverBorder: "hover:border-sky-200", arrow: "group-hover:bg-sky-600" },
-  { avatar: "bg-emerald-100 text-emerald-700", bar: "bg-emerald-500", dayOn: "bg-emerald-100 text-emerald-700", dayToday: "bg-emerald-600 text-white", badge: "bg-emerald-50 text-emerald-700", hoverBorder: "hover:border-emerald-200", arrow: "group-hover:bg-emerald-600" },
+  { avatar: "bg-primary-container text-on-primary-container", bar: "bg-primary", dayOn: "bg-primary-container text-on-primary-container", dayToday: "bg-primary text-on-primary", badge: "bg-primary-container text-on-primary-container", hoverBorder: "hover:border-primary", arrow: "group-hover:bg-primary group-hover:text-on-primary" },
+  { avatar: "bg-secondary-container text-on-secondary-container", bar: "bg-secondary", dayOn: "bg-secondary-container text-on-secondary-container", dayToday: "bg-secondary text-on-secondary", badge: "bg-secondary-container text-on-secondary-container", hoverBorder: "hover:border-secondary", arrow: "group-hover:bg-secondary group-hover:text-on-secondary" },
+  { avatar: "bg-tertiary-container text-on-tertiary-container", bar: "bg-tertiary", dayOn: "bg-tertiary-container text-on-tertiary-container", dayToday: "bg-tertiary text-on-tertiary", badge: "bg-tertiary-container text-on-tertiary-container", hoverBorder: "hover:border-tertiary", arrow: "group-hover:bg-tertiary group-hover:text-on-tertiary" },
 ];
 
 function themeFor(id: string) {
@@ -41,6 +98,8 @@ type Tab = "groups" | "walkin";
 
 export default function AttendancePage() {
   const { user } = useAuth();
+  const { lang } = useManagerLanguage();
+  const t: PageT = TRANSLATIONS[lang];
   const [centerId, setCenterId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("groups");
 
@@ -68,22 +127,22 @@ export default function AttendancePage() {
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Davomat</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {tab === "groups" ? "Guruh tanlang va davomatni belgilang" : "O'quvchini toping va bugungi darslarga belgilang"}
+          <h1 className="text-xl md:text-2xl font-bold text-on-surface tracking-tight">{t.title}</h1>
+          <p className="text-sm text-on-surface-variant mt-0.5">
+            {tab === "groups" ? t.subGroups : t.subWalkin}
           </p>
         </div>
         {!isLoading && classes.length > 0 && tab === "groups" && (
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-brand-line rounded-full text-[12px] font-semibold text-slate-600">
-              <CalendarCheck size={14} className="text-slate-400" /> {classes.length} guruh
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-full text-[12px] font-semibold text-on-surface-variant">
+              <CalendarCheck size={14} className="text-on-surface-variant" /> {t.groupCount(classes.length)}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-brand-line rounded-full text-[12px] font-semibold text-slate-600">
-              <Users size={14} className="text-slate-400" /> {totalStudents} o&apos;quvchi
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-full text-[12px] font-semibold text-on-surface-variant">
+              <Users size={14} className="text-on-surface-variant" /> {t.studentCount(totalStudents)}
             </span>
             {meetingToday > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-100 text-brand-800 rounded-full text-[12px] font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-600" /> Bugun {meetingToday} ta dars
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-container text-on-primary-container rounded-full text-[12px] font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" /> {t.lessonsToday(meetingToday)}
               </span>
             )}
           </div>
@@ -91,21 +150,21 @@ export default function AttendancePage() {
       </div>
 
       {/* Tab switcher */}
-      <div className="inline-flex items-center gap-0.5 p-1 bg-white border border-brand-line rounded-full">
+      <div className="inline-flex items-center gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-full">
         {([
-          { id: "groups" as Tab, label: "Guruhlar", Icon: LayoutGrid },
-          { id: "walkin" as Tab, label: "Tez davomat", Icon: UserCheck },
-        ]).map((t) => {
-          const active = tab === t.id;
+          { id: "groups" as Tab, label: t.tabGroups, Icon: LayoutGrid },
+          { id: "walkin" as Tab, label: t.tabWalkin, Icon: UserCheck },
+        ]).map((tb) => {
+          const active = tab === tb.id;
           return (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={tb.id}
+              onClick={() => setTab(tb.id)}
               className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold transition-colors ${
-                active ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800"
+                active ? "bg-primary text-on-primary shadow-elev-1" : "text-on-surface-variant hover:bg-state-hover hover:text-primary"
               }`}
             >
-              <t.Icon size={15} /> {t.label}
+              <tb.Icon size={15} /> {tb.label}
             </button>
           );
         })}
@@ -115,7 +174,7 @@ export default function AttendancePage() {
       {tab === "walkin" && (
         isLoading || !centerId || !user ? (
           <div className="flex items-center justify-center py-24">
-            <Loader2 className="animate-spin text-slate-400" size={32} />
+            <Loader2 className="animate-spin text-on-surface-variant" size={32} />
           </div>
         ) : (
           <WalkInCheckIn centerId={centerId} classes={classes} markedBy={user.uid} />
@@ -125,19 +184,19 @@ export default function AttendancePage() {
       {/* Loading */}
       {tab === "groups" && isLoading && (
         <div className="flex items-center justify-center py-24">
-          <Loader2 className="animate-spin text-slate-400" size={32} />
+          <Loader2 className="animate-spin text-on-surface-variant" size={32} />
         </div>
       )}
 
       {/* Empty */}
       {tab === "groups" && !isLoading && classes.length === 0 && (
-        <div className="bg-white border border-brand-line rounded-3xl p-14 flex flex-col items-center justify-center text-center">
-          <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-700 mb-3">
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-m3-xl p-14 flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container mb-3">
             <CalendarX2 size={28} />
           </div>
-          <h3 className="text-[15px] font-semibold text-slate-800">Guruhlar yo&apos;q</h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-[260px]">
-            Markazingizga hali hech qanday guruh qo&apos;shilmagan.
+          <h3 className="text-[15px] font-semibold text-on-surface">{t.emptyTitle}</h3>
+          <p className="text-sm text-on-surface-variant mt-1 max-w-[260px]">
+            {t.emptyDesc}
           </p>
         </div>
       )}
@@ -155,6 +214,8 @@ export default function AttendancePage() {
 }
 
 function ClassCard({ cls, todayWeekday }: { cls: ClassData & { schedule?: Schedule }; todayWeekday: number }) {
+  const { lang } = useManagerLanguage();
+  const t: PageT = TRANSLATIONS[lang];
   const schedule = cls.schedule || [];
   const theme = themeFor(cls.id);
   const scheduledDays = new Set(schedule.map((s) => s.dayOfWeek));
@@ -163,7 +224,7 @@ function ClassCard({ cls, todayWeekday }: { cls: ClassData & { schedule?: Schedu
   return (
     <Link
       href={`/manager/attendance/${cls.id}`}
-      className={`group relative block bg-white rounded-3xl border border-brand-line hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden ${theme.hoverBorder}`}
+      className={`group relative block bg-surface-container-lowest rounded-m3-xl border border-outline-variant hover:shadow-elev-2 hover:-translate-y-0.5 transition-all overflow-hidden ${theme.hoverBorder}`}
     >
       {/* Accent bar */}
       <div className={`h-1.5 ${theme.bar}`} />
@@ -171,38 +232,38 @@ function ClassCard({ cls, todayWeekday }: { cls: ClassData & { schedule?: Schedu
       <div className="p-5">
         {/* Header: avatar + title + teacher */}
         <div className="flex items-start gap-3">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[18px] font-black shrink-0 ${theme.avatar}`}>
+          <div className={`w-12 h-12 rounded-m3-lg flex items-center justify-center text-[18px] font-black shrink-0 ${theme.avatar}`}>
             {(cls.title || "?").charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-[16px] font-bold text-slate-900 tracking-tight truncate">{cls.title}</h3>
+            <h3 className="text-[16px] font-bold text-on-surface tracking-tight truncate">{cls.title}</h3>
             <div className="flex items-center gap-1.5 mt-1">
-              <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-[9px] font-bold flex items-center justify-center shrink-0">
+              <span className="w-5 h-5 rounded-full bg-surface-container text-on-surface-variant text-[9px] font-bold flex items-center justify-center shrink-0">
                 {getInitials(cls.teacherName)}
               </span>
-              <span className="text-[12.5px] font-medium text-slate-600 truncate">{cls.teacherName || "O'qituvchi yo'q"}</span>
+              <span className="text-[12.5px] font-medium text-on-surface-variant truncate">{cls.teacherName || t.noTeacher}</span>
             </div>
           </div>
 
           {/* Today badge */}
           {todayEntry && (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 ${theme.badge}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${theme.bar}`} /> Bugun
+              <span className={`w-1.5 h-1.5 rounded-full ${theme.bar}`} /> {t.today}
             </span>
           )}
         </div>
 
         {/* Stats */}
         <div className="flex items-center gap-4 mt-4">
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <Users size={15} className="text-slate-400" />
+          <div className="flex items-center gap-1.5 text-on-surface-variant">
+            <Users size={15} className="text-on-surface-variant" />
             <span className="text-[13px] font-semibold tabular-nums">{cls.studentIds?.length || 0}</span>
-            <span className="text-[12px] text-slate-400">o&apos;quvchi</span>
+            <span className="text-[12px] text-on-surface-variant">{t.studentsSuffix}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <GraduationCap size={15} className="text-slate-400" />
+          <div className="flex items-center gap-1.5 text-on-surface-variant">
+            <GraduationCap size={15} className="text-on-surface-variant" />
             <span className="text-[13px] font-semibold tabular-nums">{schedule.length}</span>
-            <span className="text-[12px] text-slate-400">dars/hafta</span>
+            <span className="text-[12px] text-on-surface-variant">{t.lessonsPerWeek}</span>
           </div>
         </div>
 
@@ -214,29 +275,29 @@ function ClassCard({ cls, todayWeekday }: { cls: ClassData & { schedule?: Schedu
             return (
               <span
                 key={dow}
-                className={`flex-1 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold transition-colors ${
-                  on ? (isToday ? theme.dayToday : theme.dayOn) : "bg-slate-50 text-slate-300"
+                className={`flex-1 h-7 rounded-m3-md flex items-center justify-center text-[10px] font-bold transition-colors ${
+                  on ? (isToday ? theme.dayToday : theme.dayOn) : "bg-surface-container-low text-on-surface-variant opacity-60"
                 }`}
               >
-                {DAY_SHORT[dow]}
+                {t.dayShort[dow]}
               </span>
             );
           })}
         </div>
 
         {/* Footer: time + CTA */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
-          <span className="flex items-center gap-1.5 text-[12px] font-medium text-slate-500">
-            <Clock size={13} className="text-slate-400" />
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-outline-variant">
+          <span className="flex items-center gap-1.5 text-[12px] font-medium text-on-surface-variant">
+            <Clock size={13} className="text-on-surface-variant" />
             {todayEntry ? (
-              <span className="tabular-nums">Bugun {todayEntry.startTime}–{todayEntry.endTime}</span>
+              <span className="tabular-nums">{t.todayTime(todayEntry.startTime, todayEntry.endTime)}</span>
             ) : schedule.length > 0 ? (
               <span className="tabular-nums">{schedule[0].startTime}–{schedule[0].endTime}</span>
             ) : (
-              <span className="text-slate-400">Jadval yo&apos;q</span>
+              <span className="text-on-surface-variant">{t.noSchedule}</span>
             )}
           </span>
-          <span className={`w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-500 transition-colors group-hover:text-white ${theme.arrow}`}>
+          <span className={`w-8 h-8 rounded-full flex items-center justify-center bg-surface-container text-on-surface-variant transition-colors ${theme.arrow}`}>
             <ArrowRight size={16} />
           </span>
         </div>

@@ -14,22 +14,22 @@ import { Button, IconButton, TextField, TextArea } from '@/components/ui';
 
 const SETTINGS_TRANSLATIONS = {
   uz: {
-    title: "Sinf Sozlamalari", save: "Saqlash", cancel: "Bekor qilish",
+    title: "Sinf Sozlamalari", save: "Saqlash", cancel: "Bekor qilish", close: "Yopish",
     profile: { title: "Sinf Profili", name: "Sinf Nomi", desc: "Tavsif (Ixtiyoriy)" },
     security: { title: "Xavfsizlik va Kirish", code: "Kirish Kodi", copy: "Nusxalash", newCode: "Yangi kod", lock: "Sinfni qulflash", lockDesc: "Yangi o'quvchilar qo'shilishini taqiqlash" },
-    toasts: { updated: "Sozlamalar saqlandi", copied: "Kod nusxalandi", syncError: "Kodni yangilashda xatolik" }
+    toasts: { updated: "Sozlamalar saqlandi", copied: "Kod nusxalandi", syncError: "Kodni yangilashda xatolik", failUpdate: "Saqlashda xatolik" }
   },
   en: {
-    title: "Class Settings", save: "Save Changes", cancel: "Cancel",
+    title: "Class Settings", save: "Save Changes", cancel: "Cancel", close: "Close",
     profile: { title: "Class Profile", name: "Class Name", desc: "Description (Optional)" },
     security: { title: "Security & Access", code: "Join Code", copy: "Copy", newCode: "Regenerate", lock: "Lock Class", lockDesc: "Prevent new students from requesting to join" },
-    toasts: { updated: "Settings saved", copied: "Code copied to clipboard", syncError: "Failed to regenerate code" }
+    toasts: { updated: "Settings saved", copied: "Code copied to clipboard", syncError: "Failed to regenerate code", failUpdate: "Failed to update" }
   },
   ru: {
-    title: "Настройки Класса", save: "Сохранить", cancel: "Отмена",
+    title: "Настройки Класса", save: "Сохранить", cancel: "Отмена", close: "Закрыть",
     profile: { title: "Профиль Класса", name: "Название", desc: "Описание (Необяз.)" },
     security: { title: "Безопасность", code: "Код входа", copy: "Копировать", newCode: "Сгенерировать", lock: "Закрыть класс", lockDesc: "Запретить новые заявки на вступление" },
-    toasts: { updated: "Настройки сохранены", copied: "Код скопирован", syncError: "Ошибка обновления кода" }
+    toasts: { updated: "Настройки сохранены", copied: "Код скопирован", syncError: "Ошибка обновления кода", failUpdate: "Ошибка сохранения" }
   }
 };
 
@@ -77,7 +77,7 @@ export default function ClassSettingsModal({ classId, classData, isOpen, onClose
       onClose();
     } catch (e) {
       console.error("Save Error:", e);
-      toast.error("Failed to update");
+      toast.error(t.toasts.failUpdate);
     } finally {
       setIsSaving(false);
     }
@@ -127,7 +127,7 @@ export default function ClassSettingsModal({ classId, classData, isOpen, onClose
             </div>
             <h2 className="text-[16px] sm:text-[18px] font-black text-on-surface tracking-tight leading-tight">{t.title}</h2>
           </div>
-          <IconButton aria-label="Yopish" onClick={onClose} className="shrink-0">
+          <IconButton aria-label={t.close} onClick={onClose} className="shrink-0">
             <X />
           </IconButton>
         </div>
