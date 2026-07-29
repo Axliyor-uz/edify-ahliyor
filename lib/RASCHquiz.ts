@@ -11,7 +11,7 @@
 import { EXAM_BLUEPRINT, sectionForChapter } from './Examblueprint';
 import { examSlotCount, toExamItem, type ExamSlotMeta } from './ExamTeacher';
 import { TOPIC_KEYS, type TopicKey } from './RASCHtopics';
-import { isTextType } from '@/types/question';
+import { isClosedQuestion, isTextType } from '@/types/question';
 import type { NormalizedQuestion } from '@/types/question';
 import type { ExamQuestion, TestType } from '@/types/Exam';
 import type { DifficultyId, Lang, QuestionDoc } from '@/types/Math';
@@ -57,11 +57,24 @@ export function sanitizeAccessCode(input: string): string {
  * The test type a hand-picked question is filed under.
  *
  * On the mock exam the test type comes from the blueprint ROW being filled. A
- * teacher picks questions one at a time, so it is derived from the question:
+ * teacher picks questions one at a time, so it is derived from the question,
+ * under the protocol's own definitions:
  *
- *   • a typed teacher item (open / numeric) → `O`  — it is answered by typing;
- *   • anything hard (difficultyId 3+)        → `Y-2`;
- *   • everything else                        → `Y-1`.
+ *   • **O**   — an OPEN item: no options, the student types a short answer.
+ *               ⚠️ **Every typed teacher question is O, whatever its difficulty.**
+ *               "Open" is a property of how it is answered, not of how hard it
+ *               is, so an easy typed question is still an O and never a Y.
+ *               ⚠️ **A ko'p savolli BLOCK counts too.** A `multi_part` block
+ *               ("Ko'p savolli ochiq test", e.g. 39-masala) is answered by
+ *               typing into every part, so it is an O exactly like a flat typed
+ *               question. Only a block whose parts all pick from options — a
+ *               `shared_options` pool ("Ko'p savolli yopiq test", 33–35) or
+ *               per-part option lists — stays closed.
+ *   • **Y-2** — a CLOSED item, harder than Y-1 and requiring adaptation. The
+ *               blueprint has exactly ONE Y-2 row: hard Geometriya, from the
+ *               multi-step chapters. A hard question anywhere else is Y-1 —
+ *               there is no row for it to be Y-2 in.
+ *   • **Y-1** — every other closed item.
  *
  * ⚠️ A `questions1` item is NEVER filed as `O`. `examMode()` reads the test type
  * for a bank item (a teacher item goes by its own `qType`), so an `O` would hide
@@ -73,10 +86,41 @@ function testTypeFor(params: { source: 'bank' | 'teacher'; difficultyId: number;
   return params.difficultyId >= 3 ? 'Y-2' : 'Y-1';
 }
 
-/** The section a question belongs to, from the chapter it already carries. */
-function slotMeta(topicId: string, chapterId: string, testType: TestType): ExamSlotMeta {
-  const section = sectionForChapter(topicId, chapterId);
-  return { sectionId: section.id, sectionLabel: section.label, testType };
+/**
+ * The blueprint row a hand-picked question goes in, or `null` when the protocol
+ * has no row for it.
+ *
+ * ⚠️ Resolved from the chapter AND the type, not the chapter alone: Geometriya is
+ * drawn at Y-1, Y-2 and O from the same chapters, so chapter-only filed every
+ * open geometry question under `geometry-y1` — the wrong quota and the wrong
+ * ball budget.
+ *
+ * Two asymmetric fallbacks, because the two directions mean different things:
+ *
+ *   • **A closed item always lands somewhere.** Wanting `Y-2` where there is no
+ *     Y-2 row simply means it is a Y-1 question, and the row's own type then
+ *     wins — an item must not print a type its row does not have.
+ *   • **An open item has nowhere else to go.** `O` is how it is ANSWERED; filing
+ *     it in a Y row would put a typed question in a closed slot, count it against
+ *     a closed quota and price it in a closed row's budget. The blueprint has no
+ *     open row for Sonlar or Algebraik, so an open question from those chapters
+ *     is simply not placeable on a DTM paper — `null`, and the builder says so.
+ */
+export function sectionForItem(topicId: string, chapterId: string, wanted: TestType) {
+  const section = sectionForChapter(topicId, chapterId, wanted);
+  if (wanted === 'O' && section.testType !== 'O') return null;
+  return section;
+}
+
+/** `sectionForItem`, in the shape `toExamItem` wants. Unplaceable ⇒ empty id. */
+function slotMeta(topicId: string, chapterId: string, wanted: TestType): ExamSlotMeta {
+  const section = sectionForItem(topicId, chapterId, wanted);
+  if (!section) {
+    // Kept as `O` on purpose: the item IS an open question, and `checkQuizAdd`
+    // refuses it on the empty sectionId. Nothing writes it to Firestore.
+    return { sectionId: '', sectionLabel: { uz: '', ru: '', en: '' }, testType: wanted };
+  }
+  return { sectionId: section.id, sectionLabel: section.label, testType: section.testType };
 }
 
 /**
@@ -86,8 +130,8 @@ function slotMeta(topicId: string, chapterId: string, testType: TestType): ExamS
  * blueprint fields plus `source: 'bank'` — no normalization, no bridging.
  */
 export function bankQuizItem(q: QuestionDoc): RaschQuizItem {
-  const testType = testTypeFor({ source: 'bank', difficultyId: q.difficultyId, typed: false });
-  const { sectionId } = slotMeta(q.topicId, q.chapterId, testType);
+  const wanted = testTypeFor({ source: 'bank', difficultyId: q.difficultyId, typed: false });
+  const { sectionId, testType } = slotMeta(q.topicId, q.chapterId, wanted);
   return { ...q, sectionId, testType, source: 'bank' };
 }
 
@@ -99,13 +143,18 @@ export function bankQuizItem(q: QuestionDoc): RaschQuizItem {
  * questions1 taxonomy bridge all behave identically on a hand-built paper.
  */
 export function teacherQuizItem(n: NormalizedQuestion): RaschQuizItem {
-  const typed = !n.isBlock && isTextType(n.type);
+  // ⚠️ A block is typed unless EVERY part is answered by picking an option —
+  // `isClosedQuestion` is the same rule the picker's closed/typed badge and its
+  // kind filter use, so the badge and the row an add lands in cannot disagree.
+  // (Before 2026-07-29 a block was excluded outright, which filed an open
+  // "Ko'p savolli ochiq test" under a Y row.)
+  const typed = n.isBlock ? !isClosedQuestion(n) : isTextType(n.type);
   // The bridge lives inside toExamItem, so the section can only be resolved from
   // the ids it produces — build the item first with a placeholder, then re-file
   // it. Cheap: it is a pure object build, not a read.
   const probe = toExamItem(n, { sectionId: '', sectionLabel: { uz: '', ru: '', en: '' }, testType: 'Y-1' });
-  const testType = testTypeFor({ source: 'teacher', difficultyId: probe.difficultyId, typed });
-  const { sectionId } = slotMeta(probe.topicId, probe.chapterId, testType);
+  const wanted = testTypeFor({ source: 'teacher', difficultyId: probe.difficultyId, typed });
+  const { sectionId, testType } = slotMeta(probe.topicId, probe.chapterId, wanted);
 
   return stripPosition({ ...probe, sectionId, testType });
 }
@@ -232,12 +281,8 @@ export function quizDifficultyCounts(items: RaschQuizItem[]): Record<DifficultyI
 /**
  * How the mock exam's 45 slots are shared out — and, since a teacher paper is
  * scored into the SAME seven dimensions on the SAME 0–5 scale, the quota each
- * dimension must hit exactly. It is not advisory: a geometry-only paper would
- * report six dimensions it never measured and one measured to death, and the
- * levels it writes are the student's real ones.
- *
- * ⚠️ These sum to `RASCH_QUIZ_TOTAL`, which is what makes "45 slots" and "every
- * quota exactly met" the same statement. Changing the blueprint changes both.
+ * dimension must hit exactly. Kept for display: the panel still reports per
+ * dimension, because that is what a student is levelled on.
  */
 export const BLUEPRINT_TOPIC_TARGET: Record<TopicKey, number> = (() => {
   const target = {} as Record<TopicKey, number>;
@@ -246,20 +291,48 @@ export const BLUEPRINT_TOPIC_TARGET: Record<TopicKey, number> = (() => {
   return target;
 })();
 
+/**
+ * ⚠️ **The real quota is per blueprint ROW, not per dimension.**
+ *
+ * A row is a dimension × test type: Geometriya needs 7 Y-1 **and** 3 Y-2 **and**
+ * 4 O, and 14 geometry questions of the wrong types is not the same paper. The
+ * dimension total was the first cut of this rule and let a teacher build 14
+ * closed geometry questions, which measures something the national paper does
+ * not — and leaves the O rows, the only ones that ask a student to *produce* an
+ * answer, empty.
+ *
+ * ⚠️ A `questions1` item is never filed as `O` (`testTypeFor`), so the five O
+ * rows can ONLY be filled by the teacher's own typed questions. The builder says
+ * so rather than letting them hunt through a bank that cannot contain one.
+ */
+export const BLUEPRINT_SECTION_TARGET: Record<string, number> = Object.fromEntries(
+  EXAM_BLUEPRINT.map((s) => [s.id, s.count]),
+);
+
+/** Slots per blueprint row, for the builder's coverage panel. */
+export function quizSectionCounts(items: RaschQuizItem[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const q of hydrateQuiz(items)) {
+    counts[q.sectionId] = (counts[q.sectionId] ?? 0) + examSlotCount(q);
+  }
+  return counts;
+}
+
 /** Why an add was refused — the builder turns each into its own message. */
 export type QuizAddCheck =
   | { ok: true; slots: number }
   | { ok: false; reason: 'duplicate' }
   | { ok: false; reason: 'full'; slots: number }
-  | { ok: false; reason: 'topicFull'; slots: number; topic: TopicKey; have: number; want: number };
+  | { ok: false; reason: 'sectionFull'; slots: number; sectionId: string; have: number; want: number }
+  | { ok: false; reason: 'noSlot'; slots: number; testType: TestType };
 
 /**
  * May this item join the paper?
  *
  * ⚠️ **A block is added whole or not at all.** A `shared_options` block occupies
- * one slot per sub-question, so a block that would overshoot its dimension's
- * quota is refused entirely — truncating it would break the shared pool it is
- * printed with.
+ * one slot per sub-question, so a block that would overshoot its row's quota is
+ * refused entirely — truncating it would break the shared pool it is printed
+ * with.
  *
  * An item whose `sectionId` is not in the blueprint has no quota to check
  * against and is judged on the 45-slot total alone; `sectionForChapter` makes
@@ -272,21 +345,26 @@ export function checkQuizAdd(items: RaschQuizItem[], item: RaschQuizItem): QuizA
   const slots = quizItemSlots(item);
   if (quizSlotCount(items) + slots > RASCH_QUIZ_TOTAL) return { ok: false, reason: 'full', slots };
 
-  const topic = quizItemTopic(item);
-  if (topic) {
-    const have = quizTopicCounts(items)[topic] ?? 0;
-    const want = BLUEPRINT_TOPIC_TARGET[topic];
-    if (have + slots > want) return { ok: false, reason: 'topicFull', slots, topic, have, want };
+  const want = BLUEPRINT_SECTION_TARGET[item.sectionId];
+  // ⚠️ No row ⇒ refused, not waved through on the 45-slot count. The only way to
+  // get here is an OPEN question from a dimension the protocol gives no open row
+  // (Sonlar, Algebraik): there is no slot on a DTM paper for it, and letting it
+  // in would put a typed question in a closed row's quota and ball budget.
+  if (typeof want !== 'number') return { ok: false, reason: 'noSlot', slots, testType: item.testType };
+
+  const have = quizSectionCounts(items)[item.sectionId] ?? 0;
+  if (have + slots > want) {
+    return { ok: false, reason: 'sectionFull', slots, sectionId: item.sectionId, have, want };
   }
 
   return { ok: true, slots };
 }
 
-/** Dimensions that are not exactly at quota — empty means the paper is publishable. */
-export function quizQuotaGaps(items: RaschQuizItem[]): { topic: TopicKey; have: number; want: number }[] {
-  const counts = quizTopicCounts(items);
-  return TOPIC_KEYS
-    .map((topic) => ({ topic, have: counts[topic] ?? 0, want: BLUEPRINT_TOPIC_TARGET[topic] }))
+/** Blueprint rows that are not exactly at quota — empty means publishable. */
+export function quizQuotaGaps(items: RaschQuizItem[]): { sectionId: string; have: number; want: number }[] {
+  const counts = quizSectionCounts(items);
+  return EXAM_BLUEPRINT
+    .map((s) => ({ sectionId: s.id, have: counts[s.id] ?? 0, want: s.count }))
     .filter((row) => row.have !== row.want);
 }
 

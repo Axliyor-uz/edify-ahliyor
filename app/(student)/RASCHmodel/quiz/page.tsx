@@ -515,6 +515,13 @@ export default function TeacherQuizPage() {
           if (own.length > 0) topicTheta[key] = estimateAbility(own).theta;
         }
 
+        // Per-slot outcomes, so the teacher's page can see WHICH question the
+        // class failed and mark it accordingly (lib/RASCHmarks.ts). `i.id` is
+        // `examSlotKeys` — one entry per numbered question, a block included.
+        // Outcomes only: what the student actually put is deliberately not sent.
+        const itemOutcomes: Record<string, number> = {};
+        for (const i of items) itemOutcomes[i.id] = i.correct ? 1 : 0;
+
         await saveQuizResult({
           quizId: session.quizId,
           quizTitle: session.quizTitle,
@@ -523,6 +530,7 @@ export default function TeacherQuizPage() {
           studentName: user.displayName || '',
           correct,
           total: items.length,
+          items: itemOutcomes,
           percent: items.length > 0 ? Math.round((correct / items.length) * 100) : 0,
           durationSec,
           submittedAt: Date.now(),

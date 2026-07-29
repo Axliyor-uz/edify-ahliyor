@@ -123,6 +123,27 @@ export interface RaschQuizResult {
   topicTheta?: Partial<Record<TopicKey, number>>;
   /** Ability measured from this paper alone, in logits. */
   theta: number | null;
+
+  /**
+   * Per-SLOT outcome: `1` right, `0` wrong. Keyed by `examSlotKeys` — the same
+   * id `ItemResponse.id` carries, so a `shared_options` block appears once per
+   * sub-question, exactly as the paper numbers it.
+   *
+   * This is what makes the marks dynamic ([lib/RASCHmarks.ts](../lib/RASCHmarks.ts)):
+   * the teacher's page already reads every sitting of the paper in one query, so
+   * "3 of 22 solved question 17" costs **no extra read** — and question 17's ball
+   * is derived from it rather than printed in advance.
+   *
+   * ⚠️ Optional, and additive-only. Sittings saved before 2026-07-29 have none;
+   * they are EXCLUDED from the statistics rather than counted as wrong, and their
+   * own dynamic score reads "—". An APK rollout lags the web deploy, so old
+   * clients keep writing results without it and must keep working.
+   *
+   * ⚠️ It is an outcome map, not an answer map — it records whether each slot was
+   * right, never what the student put. "What did they answer for 12" is still not
+   * stored (see docs/RASCH_QUIZ.md, known issues).
+   */
+  items?: Record<string, number>;
 }
 
 /** Blueprint coverage of a paper under construction, per dimension. */

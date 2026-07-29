@@ -185,3 +185,45 @@ export function levelBand(level: number): LevelBand {
 export function formatLevel(level: number): string {
   return level.toFixed(2);
 }
+
+// ─── confidence shrinkage — how much a topic's level may be TRUSTED ──────────
+
+/**
+ * Items at which a topic's estimate is worth about 63 % of its face value.
+ *
+ * `6` because the blueprint's dimensions run from 1 item (Funksiyalar O) to 14
+ * (Geometriya): a 2-item dimension lands at 28 % confidence, 6 at 63 %, and 14 at
+ * 90 %. Those are the numbers the rule has to be sensible at.
+ */
+export const CONFIDENCE_ITEMS = 6;
+
+/**
+ * How much evidence `n` items are: `1 − e^(−n/CONFIDENCE_ITEMS)`, in [0, 1).
+ *
+ *     items   0     1     2     4     6     8    14    20
+ *     conf   0.00  0.15  0.28  0.49  0.63  0.74  0.90  0.96
+ */
+export function evidenceConfidence(items: number): number {
+  return items > 0 ? 1 - Math.exp(-items / CONFIDENCE_ITEMS) : 0;
+}
+
+/**
+ * A topic level, shrunk toward a population level by how much evidence backs it:
+ * `conf·level + (1 − conf)·population`.
+ *
+ * ⚠️ **For RANKING topics against each other, not for display.** The level shown
+ * on screen is already a shrunk estimate — `estimateAbility` is EAP with an
+ * N(0, 1.2) prior, which shrinks toward the population mean by construction — so
+ * showing this instead would shrink the same estimate twice and understate every
+ * thin dimension. What EAP does NOT fix is the *comparison*: "2 of 2 correct" and
+ * "11 of 14 correct" can land at similar levels, and picking the larger as a
+ * student's STRONGEST topic is then a coin toss decided by the 2-item dimension.
+ * Ranking on the shrunk value makes the thin dimension have to earn it.
+ *
+ * `population` is the cohort's own mean level for that topic where there is one —
+ * the honest "what we would guess before looking at this student".
+ */
+export function shrinkLevel(level: number, items: number, population: number): number {
+  const conf = evidenceConfidence(items);
+  return conf * level + (1 - conf) * population;
+}

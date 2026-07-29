@@ -37,16 +37,24 @@ import type { RaschQuizItem } from "@/types/TeacherRaschQuiz";
 const PAGE = 10;
 
 /**
- * How much room the paper still has in ONE dimension — the quota rule
- * (`BLUEPRINT_TOPIC_TARGET`) made visible where the picking happens, so a
- * teacher sees "Geometriya 14/14" before they pick, instead of being refused
- * after. The builder owns the arithmetic; the pickers only render it.
+ * How much room the paper still has in ONE blueprint row — a dimension × test
+ * type (`BLUEPRINT_SECTION_TARGET`), made visible where the picking happens, so
+ * a teacher sees "Geometriya · Y-2 3/3" before they pick instead of being
+ * refused after. ⚠️ Per ROW, not per dimension: Geometriya needs 7 Y-1, 3 Y-2
+ * and 4 O, and 14 closed geometry questions is a different paper. The builder
+ * owns the arithmetic; the pickers only render it.
  */
 export interface TopicRoom {
-  /** The dimension's name in the teacher's language. */
+  /** The row's name in the teacher's language, e.g. "Geometriya · Y-2". */
   name: string;
   have: number;
   want: number;
+  /**
+   * The protocol has NO row for this question at all — an open question from a
+   * dimension with no O row. Different from "full": no amount of removing other
+   * questions makes room, so the row says so and the Add stays dead.
+   */
+  unavailable?: boolean;
 }
 
 const isFull = (room: TopicRoom | null | undefined) => !!room && room.have >= room.want;
@@ -77,11 +85,14 @@ export interface PickerStrings {
   /** Quota readout: `{name} {have}/{want}` and the "this section is done" note. */
   quotaFull: string;
   quotaLeft: string;
+  /** Add-button label when the protocol has no row for this question. */
+  quotaNoSlot: string;
 }
 
 /** One row of either picker — the preview, and the add control. */
 function PickRow({
-  text, meta, imageUrl, isBlock, blockLabel, picked, disabled, addLabel, addedLabel, onAdd, room, fullLabel,
+  text, meta, imageUrl, isBlock, blockLabel, picked, disabled, addLabel, addedLabel, onAdd, room,
+  fullLabel, noSlotLabel,
 }: {
   text: string;
   meta: string;
@@ -96,10 +107,12 @@ function PickRow({
   /** The quota of the dimension THIS question files into, or null if unknown. */
   room?: TopicRoom | null;
   fullLabel: string;
+  /** Shown instead of `fullLabel` when the paper has no row for this question. */
+  noSlotLabel: string;
 }) {
-  // A question whose dimension is already at quota cannot join the paper, so the
-  // row says so instead of letting the click bounce off a toast. An ALREADY
-  // picked row is exempt: it is part of what filled the quota.
+  // A question whose row is already at quota cannot join the paper, so the row
+  // says so instead of letting the click bounce off a toast. An ALREADY picked
+  // row is exempt: it is part of what filled the quota.
   const quotaBlocked = !picked && isFull(room);
 
   return (
@@ -122,12 +135,14 @@ function PickRow({
             <span
               className={cn(
                 "rounded-m3-xs px-2 py-0.5 text-[10px] font-black uppercase tabular-nums",
-                isFull(room)
-                  ? "bg-success-container text-on-success-container"
-                  : "bg-surface-container text-on-surface-variant",
+                room.unavailable
+                  ? "bg-error-container text-on-error-container"
+                  : isFull(room)
+                    ? "bg-success-container text-on-success-container"
+                    : "bg-surface-container text-on-surface-variant",
               )}
             >
-              {room.name} {room.have}/{room.want}
+              {room.unavailable ? room.name : `${room.name} ${room.have}/${room.want}`}
             </span>
           )}
         </div>
@@ -149,7 +164,7 @@ function PickRow({
         onClick={onAdd}
         className="flex-none"
       >
-        {picked ? addedLabel : quotaBlocked ? fullLabel : addLabel}
+        {picked ? addedLabel : room?.unavailable ? noSlotLabel : quotaBlocked ? fullLabel : addLabel}
       </Button>
     </div>
   );
@@ -180,8 +195,12 @@ export function BankPicker({
   disabled: boolean;
   onAdd: (item: RaschQuizItem) => void;
   roomForItem: (item: RaschQuizItem) => TopicRoom | null;
-  /** Chapter → its dimension's quota, resolved WITHOUT reading a question. */
-  roomForChapter: (topicId: string, chapterId: string) => TopicRoom | null;
+  /**
+   * Chapter + difficulty → the blueprint ROW's quota, resolved WITHOUT reading a
+   * question. ⚠️ The difficulty is part of it: the same geometry chapter feeds
+   * `geometry-y1` at medium and `geometry-y2` at hard.
+   */
+  roomForChapter: (topicId: string, chapterId: string, difficultyId: DifficultyId) => TopicRoom | null;
 }) {
   const topics = useMemo(() => getMathTopics(), []);
   const [topicId, setTopicId] = useState(topics[0]?.topicId ?? "1");
@@ -195,7 +214,7 @@ export function BankPicker({
   const [exhausted, setExhausted] = useState(false);
 
   const chapters = topics.find((tp) => tp.topicId === topicId)?.chapters ?? [];
-  const chapterRoom = roomForChapter(topicId, chapterId);
+  const chapterRoom = roomForChapter(topicId, chapterId, difficultyId);
 
   const load = useCallback(async (fresh: boolean) => {
     setLoading(true);
@@ -251,7 +270,7 @@ export function BankPicker({
           onChange={(e) => reset(() => setChapterId(e.target.value))}
         >
           {chapters.map((c) => {
-            const room = roomForChapter(topicId, c.chapterId);
+            const room = roomForChapter(topicId, c.chapterId, difficultyId);
             const suffix = room ? ` — ${room.have}/${room.want}${isFull(room) ? ` ${t.quotaFull}` : ""}` : "";
             return <option key={c.chapterId} value={c.chapterId}>{c.chapterId}. {c.name}{suffix}</option>;
           })}
@@ -321,6 +340,7 @@ export function BankPicker({
               onAdd={() => onAdd(item)}
               room={roomForItem(item)}
               fullLabel={t.quotaFull}
+              noSlotLabel={t.quotaNoSlot}
             />
           );
         })}
@@ -506,6 +526,7 @@ export function MyBankPicker({
               onAdd={() => onAdd(item)}
               room={roomForItem(item)}
               fullLabel={t.quotaFull}
+              noSlotLabel={t.quotaNoSlot}
             />
           );
         })}

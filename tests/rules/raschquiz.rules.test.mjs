@@ -202,6 +202,23 @@ describe("RASCH QUIZ — result rows", () => {
     await assertFails(getDoc(doc(as("student2"), "teacher_rasch_results/rq_1_student1")));
   });
 
+  // The "tests you have sat" list on /RASCHmodel/quiz (listMyQuizResults).
+  it("lets a student LIST their own sittings, and only their own", async () => {
+    const snap = await assertSucceeds(getDocs(query(
+      collection(as("student1"), "teacher_rasch_results"),
+      where("studentId", "==", "student1"),
+    )));
+    assert.equal(snap.size, 1);
+
+    // The `studentId ==` clause is what makes it provable — filtered at somebody
+    // else, or not filtered at all, it must be denied rather than come back thin.
+    await assertFails(getDocs(query(
+      collection(as("student2"), "teacher_rasch_results"),
+      where("studentId", "==", "student1"),
+    )));
+    await assertFails(getDocs(collection(as("student1"), "teacher_rasch_results")));
+  });
+
   it("denies DELETE to everyone — a result is neither withdrawable nor erasable", async () => {
     await assertFails(deleteDoc(doc(as("student1"), "teacher_rasch_results/rq_1_student1")));
     await assertFails(deleteDoc(doc(as("teacher1"), "teacher_rasch_results/rq_1_student1")));

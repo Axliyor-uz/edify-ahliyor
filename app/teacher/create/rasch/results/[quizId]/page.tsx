@@ -7,6 +7,12 @@ import { ArrowLeft, BarChart3, ChevronDown, KeyRound, Users } from "lucide-react
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import { useAuth } from "@/lib/AuthContext";
 import { getQuiz, listQuizResults } from "@/services/teacherRaschQuizService";
+import { hydrateQuiz } from "@/lib/RASCHquiz";
+import { EXAM_BLUEPRINT } from "@/lib/Examblueprint";
+import {
+  BALL_MAX, BALL_MIN, MIN_RESPONSES, PAPER_TOTAL,
+  cohortStats, paperMarks, paperSlots, paperTotal, scoreFor,
+} from "@/lib/RASCHmarks";
 import { RASCH_TOPICS, type TopicKey } from "@/lib/RASCHtopics";
 import { MASTER_LEVEL, formatLevel, levelBand, thetaToLevel } from "@/lib/RASCHscale";
 import { BAND_LABEL, BAND_VARS } from "@/lib/RASCHband";
@@ -70,6 +76,21 @@ const TR: Record<string, Record<string, string>> = {
     legacy: "Bu natija bo'limlar darajasi qo'shilishidan oldin saqlangan.",
     expand: "Bo'limlar bo'yicha",
     min: "daq",
+    marksTitle: "Savollar bahosi — sinf natijasiga qarab",
+    marksHint: `Har bir savolning bali butun variant bo'yicha, qiyinligiga mutanosib ravishda beriladi: eng kam yechilgan savol eng qimmat, eng ko'p yechilgani eng arzon bo'ladi. Ball ${BALL_MIN.toFixed(1).replace(".", ",")} dan ${BALL_MAX.toFixed(1).replace(".", ",")} gacha, variantning jami bali esa har doim ${PAPER_TOTAL}.`,
+    marksSectionTotal: "Bo'limning hozirgi jami bali",
+    marksProvisional: `${MIN_RESPONSES} tadan kam javob — hozircha boshlang'ich ball`,
+    qNo: "№",
+    qType: "Turi",
+    solvedBy: "Yechganlar",
+    ballCol: "Ball",
+    dynamicScore: "Dinamik ball",
+    avgDynamic: "O'rtacha dinamik ball",
+    noItems: "—",
+    noItemsHint: "Bu natija savol-baholash qo'shilishidan oldin saqlangan.",
+    typeLegend: "Y-1 — bitta to'g'ri javobli yopiq test. Y-2 — moslashtirishni talab qiladigan yopiq test. O — qisqa javobli ochiq test.",
+    perQuestion: "Savollar bo'yicha oldi",
+    earned: "olgan",
   },
   ru: {
     back: "Назад",
@@ -99,6 +120,21 @@ const TR: Record<string, Record<string, string>> = {
     legacy: "Этот результат сохранён до появления уровней по разделам.",
     expand: "По разделам",
     min: "мин",
+    marksTitle: "Цена вопросов — по результатам класса",
+    marksHint: `Балл каждого вопроса назначается по всему варианту, пропорционально его трудности: наименее решённый стоит дороже всех, наиболее решённый — дешевле всех. Балл — от ${BALL_MIN.toFixed(1).replace(".", ",")} до ${BALL_MAX.toFixed(1).replace(".", ",")}, а сумма по варианту всегда равна ${PAPER_TOTAL}.`,
+    marksSectionTotal: "Текущая сумма баллов раздела",
+    marksProvisional: `Меньше ${MIN_RESPONSES} ответов — пока начальная цена`,
+    qNo: "№",
+    qType: "Тип",
+    solvedBy: "Решили",
+    ballCol: "Балл",
+    dynamicScore: "Динамический балл",
+    avgDynamic: "Средний динамический балл",
+    noItems: "—",
+    noItemsHint: "Этот результат сохранён до появления оценки по вопросам.",
+    typeLegend: "Y-1 — закрытый тест с одним верным ответом. Y-2 — закрытый тест на соответствие. O — открытый тест с кратким ответом.",
+    perQuestion: "Балл по каждому вопросу",
+    earned: "набрано",
   },
   en: {
     back: "Back",
@@ -128,6 +164,21 @@ const TR: Record<string, Record<string, string>> = {
     legacy: "This result was saved before per-section levels existed.",
     expand: "By section",
     min: "min",
+    marksTitle: "What each question is worth — from how the class answered",
+    marksHint: `Every question is priced across the WHOLE paper, in proportion to how hard it proved: the least-solved is the dearest, the most-solved the cheapest. A ball runs from ${BALL_MIN.toFixed(1)} to ${BALL_MAX.toFixed(1)} and the paper always adds up to ${PAPER_TOTAL}.`,
+    marksSectionTotal: "What this section currently adds up to",
+    marksProvisional: `Fewer than ${MIN_RESPONSES} answers — still the starting price`,
+    qNo: "#",
+    qType: "Type",
+    solvedBy: "Solved by",
+    ballCol: "Ball",
+    dynamicScore: "Dynamic score",
+    avgDynamic: "Average dynamic score",
+    noItems: "—",
+    noItemsHint: "This result was saved before per-question marking existed.",
+    typeLegend: "Y-1 — closed item with one correct answer. Y-2 — closed matching item. O — open item with a short answer.",
+    perQuestion: "Ball per question",
+    earned: "earned",
   },
 };
 
@@ -275,6 +326,27 @@ export default function RaschQuizResultsPage({
     };
   }).filter((row) => row.total > 0 || row.level !== null);
 
+  // ── the dynamic marks ───────────────────────────────────────────────────
+  // Derived, never stored: the cohort is exactly the rows already fetched, so
+  // this costs no extra read — and a mark moves the moment another student sits
+  // the paper, which is the whole point (lib/RASCHmarks.ts).
+  const marks = quiz ? paperMarks(paperSlots(hydrateQuiz(quiz.questions)), cohortStats(rows)) : [];
+  const outOf = paperTotal(marks);
+
+  // Grouped for display only — the paper is priced as a WHOLE (lib/RASCHmarks.ts),
+  // and the number beside each row is what that row came to add up to, not a
+  // budget it was given. `marks` is in slot order, which already runs section by
+  // section.
+  const markSections = EXAM_BLUEPRINT.flatMap((section) => {
+    const own = marks.filter((m) => m.sectionId === section.id);
+    return own.length === 0 ? [] : [{ section, marks: own, total: own[0].sectionTotal }];
+  });
+  const dynamicScores = rows.map((r) => scoreFor(marks, r.items));
+  const scored = dynamicScores.filter((v): v is number => v !== null);
+  const avgDynamic = scored.length
+    ? Math.round((scored.reduce((a, b) => a + b, 0) / scored.length) * 10) / 10
+    : null;
+
   const avgPercent = rows.length
     ? Math.round(rows.reduce((sum, r) => sum + r.percent, 0) / rows.length)
     : 0;
@@ -321,7 +393,12 @@ export default function RaschQuizResultsPage({
                 value={avgLevel === null ? "—" : formatLevel(avgLevel)}
                 suffix={avgLevel === null ? undefined : `/ ${MASTER_LEVEL}`}
               />
-              <StatTile icon={<BarChart3 />} label={t.averageScore} value={`${avgPercent}%`} />
+              <StatTile
+                icon={<BarChart3 />}
+                label={avgDynamic === null ? t.averageScore : t.avgDynamic}
+                value={avgDynamic === null ? `${avgPercent}%` : String(avgDynamic)}
+                suffix={avgDynamic === null ? undefined : `/ ${outOf}`}
+              />
             </div>
 
             {classDims.length > 0 && (
@@ -332,14 +409,96 @@ export default function RaschQuizResultsPage({
               </Card>
             )}
 
+            {/* What each question turned out to be worth. Grouped by section,
+                because the budget is a per-section fact — a flat grid of 45
+                hides the one rule that matters ("these two share 3.5"). The
+                colour is the SOLVE RATE, not the mark: "nobody got 31" is the
+                finding, the bigger ball is only its consequence. */}
+            {markSections.length > 0 && (
+              <Card className="p-4">
+                <h2 className="mb-1 text-[14px] font-bold text-on-surface">{t.marksTitle}</h2>
+                <p className="mb-3 text-[11px] font-normal leading-relaxed text-on-surface-variant">{t.marksHint}</p>
+
+                <div className="flex flex-col gap-3">
+                  {markSections.map(({ section, marks: own, total }) => (
+                    <div key={section.id}>
+                      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                        <p className="min-w-0 truncate text-[11.5px] font-bold text-on-surface">
+                          {section.label[L]}
+                          <span className="ml-1.5 font-black text-on-surface-variant">{section.testType}</span>
+                        </p>
+                        {/* What this row came to be worth under the marks in
+                            force — a consequence of pricing the whole paper,
+                            not a budget handed to it in advance. */}
+                        <p className="shrink-0 text-[11.5px] font-black text-primary" title={t.marksSectionTotal}>
+                          {total.toFixed(1)}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+                        {own.map((m) => {
+                          const pct = m.p === null ? null : Math.round(m.p * 100);
+                          return (
+                            <div
+                              key={m.key}
+                              title={m.provisional ? t.marksProvisional : `${m.correct}/${m.seen}`}
+                              className={cn(
+                                "rounded-m3-sm border px-2 py-1.5",
+                                m.provisional
+                                  ? "border-outline-variant bg-surface-container"
+                                  : pct !== null && pct < 34
+                                    ? "border-error bg-error-container"
+                                    : pct !== null && pct < 67
+                                      ? "border-outline bg-surface-container-high"
+                                      : "border-success bg-success-container",
+                              )}
+                            >
+                              <span className="text-[10px] font-black uppercase tracking-wider opacity-70">
+                                {t.qNo}{m.number}
+                              </span>
+                              <p className="flex items-baseline gap-1 text-[15px] font-black leading-none">
+                                {m.ball.toFixed(1)}
+                                {/* What this position prints in the protocol —
+                                    without it a teacher cannot tell a moved
+                                    mark from the official table. */}
+                                {m.ball !== m.printedBall && (
+                                  <span className="text-[9.5px] font-bold line-through opacity-60">
+                                    {m.printedBall.toFixed(1)}
+                                  </span>
+                                )}
+                              </p>
+                              <p className="mt-0.5 text-[9.5px] font-bold opacity-70">
+                                {pct === null ? "—" : `${pct}% · ${m.correct}/${m.seen}`}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {marks.some((m) => m.provisional) && (
+                  <p className="mt-3 text-[11px] font-medium text-on-surface-variant">{t.marksProvisional}</p>
+                )}
+
+                {/* The protocol's own definitions — a teacher reading "Y-2" on a
+                    row should not have to look them up. */}
+                <p className="mt-3 border-t border-outline-variant pt-2 text-[10.5px] font-medium leading-relaxed text-on-surface-variant">
+                  {t.typeLegend}
+                </p>
+              </Card>
+            )}
+
             {/* One row per student; tap to see the same seven dimensions for
                 them alone. That is the question this page exists to answer —
                 a class average tells you the topic is weak, not who to help. */}
             <Card className="flex flex-col gap-2 p-4">
               <h2 className="mb-1 text-[14px] font-bold text-on-surface">{t.perStudent}</h2>
 
-              {rows.map((r) => {
+              {rows.map((r, ri) => {
                 const dims = dimsFor(r);
+                const dynamic = dynamicScores[ri];
                 const rated = dims.filter((d) => d.level !== null);
                 const weakest = rated.length ? rated.reduce((a, b) => (b.level! < a.level! ? b : a)) : null;
                 const strongest = rated.length ? rated.reduce((a, b) => (b.level! > a.level! ? b : a)) : null;
@@ -359,7 +518,16 @@ export default function RaschQuizResultsPage({
                           {r.studentName || r.studentId.slice(0, 8)}
                         </p>
                         <p className="mt-0.5 text-[11px] font-medium text-on-surface-variant">
-                          {r.correct}/{r.total} · {Math.round(r.durationSec / 60)} {t.min} ·{" "}
+                          {/* The dynamic mark leads; the raw count stays as the
+                              evidence behind it, never as the headline. */}
+                          {dynamic === null ? (
+                            <span title={t.noItemsHint}>{t.noItems}</span>
+                          ) : (
+                            <span className="font-black text-on-surface">
+                              {dynamic}/{outOf}
+                            </span>
+                          )}{" "}
+                          · {r.correct}/{r.total} · {Math.round(r.durationSec / 60)} {t.min} ·{" "}
                           {new Date(r.submittedAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -413,6 +581,42 @@ export default function RaschQuizResultsPage({
                             </div>
                             <DimList rows={dims} t={t} />
                           </>
+                        )}
+
+                        {/* Every ball this student actually took, question by
+                            question. The dimension levels above say WHERE they
+                            are weak; this says what it cost them. */}
+                        {r.items && marks.length > 0 && (
+                          <div className="mt-3 border-t border-outline-variant pt-3">
+                            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                              <p className="text-[11px] font-bold text-on-surface">{t.perQuestion}</p>
+                              <p className="text-[11px] font-black text-primary">
+                                {dynamic}/{outOf} {t.earned}
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-5 gap-1 sm:grid-cols-9">
+                              {marks.map((m) => {
+                                const got = !!r.items?.[m.key];
+                                return (
+                                  <div
+                                    key={m.key}
+                                    title={`${t.qNo}${m.number} · ${m.ball.toFixed(1)}`}
+                                    className={cn(
+                                      "rounded-m3-xs px-1 py-1 text-center",
+                                      got
+                                        ? "bg-success-container text-on-success-container"
+                                        : "bg-error-container text-on-error-container",
+                                    )}
+                                  >
+                                    <p className="text-[9px] font-bold opacity-70">{m.number}</p>
+                                    <p className="text-[11px] font-black leading-none">
+                                      {got ? m.ball.toFixed(1) : "0"}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}

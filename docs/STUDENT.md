@@ -99,7 +99,42 @@ Every recharts chart mounts inside [components/ChartFrame.tsx](../components/Cha
 ## The dashboard's two "levels" (they measure different things)
 
 - **Level** (the stat tile) is XP: `floor(totalXP/1000)+1` — how much the student has *done*.
-- **Mathematics level** (`MathLevelSummary`, under the stat grid) is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). It is the same card the Rasch hub (`/RASCHmodel`) shows, reading the same `RASCH_levels/{uid}` document through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so mounting it on the dashboard costs no extra read on a warm cache. It renders `null` until that read resolves.
+- **Mathematics level** (`MathLevelSummary`, under the stat grid) is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). It is the same card the Rasch hub (`/RASCHmodel`) shows, reading the same `RASCH_levels/{uid}` document through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so mounting it on the dashboard costs no extra read on a warm cache. It renders `null` until that read resolves. **`MmsCard` sits directly below it** — see the next section.
+
+## MMS — the dashboard's exam card (2026-07-29)
+
+`MmsCard` (`app/(student)/RASCHmodel/components/MmsCard.tsx`) sits directly under
+`MathLevelSummary` on the dashboard and names the mock exam the way a student
+actually knows it: **Matematika Milliy Sertifikat**, `45` questions,
+`150` minutes, `100` points. Those three numbers are read from
+`EXAM_TOTAL_QUESTIONS` / `EXAM_DURATION_MINUTES` ([lib/Examblueprint.ts](../lib/Examblueprint.ts))
+and `PAPER_TOTAL` ([lib/RASCHmarks.ts](../lib/RASCHmarks.ts)), never typed into
+the copy — the paper's shape must not be able to drift from what the dashboard
+advertises.
+
+- **Why it exists.** The pair above it answers *"where am I"* and links to a
+  report. Nothing on the dashboard said what the exam IS or let a student start
+  one, so the feature the whole Rasch subsystem exists for sat two navigations
+  deep behind a four-letter word (`RASCH`) that means nothing to a student.
+- ⚠️ **Zero extra reads.** It calls `getRASCHLevels` — the SAME 12h
+  localStorage-cached single document `MathLevelSummary` and `/progress` read —
+  so the pair on one screen costs one read, not two. That is the only reason it
+  is allowed to be data-driven rather than a static banner.
+- **What makes it useful, not decorative:** `expectedScore(θ)` — the score this
+  student would be expected to get on the standard paper at their measured
+  ability — plus their **weakest measured dimension**, linked straight to
+  `/RASCHmodel/topic/{key}`. ⚠️ Unmeasured dimensions are excluded from that
+  pick: a dimension the paper never asked about is not a weakness.
+- **Two routes out**, both needed: `/RASCHmodel/exam` (the sampled paper) and
+  `/RASCHmodel/quiz` (a teacher's paper, by code — previously reachable only from
+  the Rasch sub-nav).
+- Before any sitting it degrades to an invitation ("your level is not measured
+  yet"), and a failed level read degrades it the same way rather than hiding it.
+- ⚠️ It spends the student kit's **one `gradient` hero card** for the screen. On
+  that card the text is white, so opacity modifiers use plain palette colours
+  (`border-white/20`), never `border-current/25` — `currentColor` cannot take a
+  Tailwind opacity modifier, and neither can an M3 token (see the cross-cutting
+  trap in CLAUDE.md).
 
 ## Teacher-built Rasch papers (`/RASCHmodel/quiz`)
 
