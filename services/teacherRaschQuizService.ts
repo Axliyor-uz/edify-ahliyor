@@ -242,6 +242,27 @@ export async function listQuizResults(
     .sort((a, b) => b.percent - a.percent || a.submittedAt - b.submittedAt);
 }
 
+/**
+ * Every paper THIS student has sat — newest first, for the list on the code page.
+ *
+ * ⚠️ The `studentId ==` clause is what makes the query PROVABLE against the read
+ * rule, exactly as `teacherId ==` is for `listQuizResults`. Drop it and Firestore
+ * answers permission-denied, not "everyone's results".
+ *
+ * Equality-only, so it needs no composite index and the sort is done in memory —
+ * `submittedAt` in an `orderBy` beside the filter would demand one. A student's
+ * sittings are counted in tens, so `max` is a backstop rather than paging.
+ */
+export async function listMyQuizResults(uid: string, max = 30): Promise<RaschQuizResult[]> {
+  const snap = await getDocs(
+    query(collection(db, RESULTS), where('studentId', '==', uid)),
+  );
+  return snap.docs
+    .map((d) => d.data() as RaschQuizResult)
+    .sort((a, b) => b.submittedAt - a.submittedAt)
+    .slice(0, max);
+}
+
 // ─── builder helpers ─────────────────────────────────────────────────────────
 
 /** Ids already on the paper — the pickers grey those rows out. */
