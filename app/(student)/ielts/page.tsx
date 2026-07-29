@@ -9,18 +9,18 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   Plus, Target,
   BookOpen, Mic, PenLine, Headphones,
-  Users, ChevronRight, Hash, Clock, ListChecks, Play,
+  Users, ChevronRight, Clock, ListChecks, Play, TrendingUp, X,
 } from 'lucide-react';
-import { IeltsGroup } from '@/types/ielts';
+import { IeltsGroup } from '@/lib/ielts/types';
 import {
   Page, PageHeader, Card, Tile, Chip, Button, Banner, FilterChip,
-  EmptyState, LoadingState,
+  EmptyState, ErrorState, LoadingState, Sparkline,
 } from '@/components/student-ui';
+import { overallBand } from '@/lib/ielts/bands';
 import { useStudentLanguage } from '../layout';
-import { fetchPlatformTests, fetchMyAttempts } from '@/services/ieltsService';
-import { typeBreakdown } from '@/lib/ielts/testSchema';
-import type { IeltsListeningTest, IeltsReadingTest, IeltsSkill } from '@/lib/ielts/types';
-import { typeLabel } from './_components/typeLabels';
+import { fetchPlatformTestSummaries, fetchMyAttempts, type PlatformTestSummary } from '@/services/ieltsService';
+import type { IeltsSkill } from '@/lib/ielts/types';
+import { typeLabel } from '@/lib/ielts/typeLabels';
 
 // Extracted per architecture doc (Section 3-B)
 import JoinIeltsModal from './_components/JoinIeltsModal';
@@ -49,6 +49,18 @@ const IELTS_TRANSLATIONS: any = {
       emptyTitle: "Bu bo'limda hozircha test yo'q",
       emptyDesc: "Tez orada yangi testlar qo'shiladi — keyinroq qaytib ko'ring.",
       loadError: "Testlarni yuklab bo'lmadi",
+      typeFilterClear: "Filtrni olib tashlash",
+    },
+    journey: {
+      title: "Mening IELTS yo'lim",
+      overall: "Taxminiy umumiy band",
+      latest: "Oxirgi",
+      best: "Eng yaxshi",
+    },
+    groupsError: {
+      title: "Guruhlarni yuklab bo'lmadi",
+      desc: "Internet aloqasini tekshirib, qayta urinib ko'ring.",
+      retry: "Qayta urinish",
     },
     skills: { listening: "Listening", reading: "Reading", writing: "Writing", speaking: "Speaking" },
   },
@@ -74,6 +86,18 @@ const IELTS_TRANSLATIONS: any = {
       emptyTitle: "No tests in this section yet",
       emptyDesc: "New tests are coming soon — check back later.",
       loadError: "Could not load tests",
+      typeFilterClear: "Clear filter",
+    },
+    journey: {
+      title: "My IELTS journey",
+      overall: "Estimated overall band",
+      latest: "Latest",
+      best: "Best",
+    },
+    groupsError: {
+      title: "Could not load your groups",
+      desc: "Check your connection and try again.",
+      retry: "Try again",
     },
     skills: { listening: "Listening", reading: "Reading", writing: "Writing", speaking: "Speaking" },
   },
@@ -99,6 +123,18 @@ const IELTS_TRANSLATIONS: any = {
       emptyTitle: "В этом разделе пока нет тестов",
       emptyDesc: "Новые тесты скоро появятся — загляните позже.",
       loadError: "Не удалось загрузить тесты",
+      typeFilterClear: "Сбросить фильтр",
+    },
+    journey: {
+      title: "Мой путь IELTS",
+      overall: "Примерный общий балл",
+      latest: "Последний",
+      best: "Лучший",
+    },
+    groupsError: {
+      title: "Не удалось загрузить группы",
+      desc: "Проверьте соединение и попробуйте ещё раз.",
+      retry: "Повторить",
     },
     skills: { listening: "Listening", reading: "Reading", writing: "Writing", speaking: "Speaking" },
   },
@@ -119,10 +155,9 @@ function bandBadgeStatus(band: number) {
 }
 
 // ─── Module-level 60s caches (student-page convention) ───────────────────────
-type PlatformTestDoc = { id: string } & Record<string, unknown>;
 type AttemptDoc = { id: string } & Record<string, unknown>;
 const CACHE_TTL = 60_000;
-const platformTestsCache: Record<string, { at: number; data: PlatformTestDoc[] }> = {};
+const platformTestsCache: Record<string, { at: number; data: PlatformTestSummary[] }> = {};
 const myAttemptsCache: Record<string, { at: number; data: AttemptDoc[] }> = {};
 
 // ─── Group card ───────────────────────────────────────────────────────────────
@@ -157,15 +192,12 @@ function GroupCard({ group, t }: { group: IeltsGroup; t: any }) {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer — deliberately NO joinCode: members must not be able to re-share the
+            group's code and bypass the teacher's request/approve flow. */}
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-outline-variant px-s-card py-4">
           <div className="flex items-center gap-1.5 text-[12px] font-black uppercase tracking-widest text-on-surface-variant">
             <Users size={14} strokeWidth={3} />
             {group.studentIds?.length ?? 0} {t.students}
-          </div>
-          <div className="flex items-center gap-1 font-mono text-[12px] font-black text-on-surface-variant">
-            <Hash size={12} className="text-outline" />
-            {group.joinCode}
           </div>
         </div>
 
@@ -178,21 +210,17 @@ function GroupCard({ group, t }: { group: IeltsGroup; t: any }) {
 function PracticeTestCard({
   test, skill, bestBand, t,
 }: {
-  test: PlatformTestDoc; skill: IeltsSkill; bestBand: number | null; t: any;
+  test: PlatformTestSummary; skill: IeltsSkill; bestBand: number | null; t: any;
 }) {
-  const title = String(test.test_title || test.id);
-  const totalQuestions = Number(test.total_questions || 0);
-  const minutes = Number(test.total_time_minutes || 0);
+  const title = test.test_title || test.id;
+  const totalQuestions = test.total_questions;
+  const minutes = test.total_time_minutes;
 
-  // Question-type mix — only computable for reading/listening (full docs are fetched).
-  let mixChips: { label: string; n: number }[] = [];
-  if (skill === 'reading' || skill === 'listening') {
-    const breakdown = typeBreakdown(test as unknown as IeltsReadingTest | IeltsListeningTest);
-    mixChips = Object.entries(breakdown)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([type, n]) => ({ label: typeLabel(type), n }));
-  }
+  // Question-type mix (reading/listening) — precomputed in ielts_test_meta.
+  const mixChips = Object.entries(test.typeBreakdown || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type, n]) => ({ label: typeLabel(type), n }));
 
   const info = skill === 'writing'
     ? t.practice.writingInfo
@@ -247,12 +275,23 @@ export default function StudentIeltsHubPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [groups, setGroups]   = useState<IeltsGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [groupsError, setGroupsError] = useState(false);
 
   // Practice library state
   const [skill, setSkill] = useState<IeltsSkill>('reading');
-  const [tests, setTests] = useState<PlatformTestDoc[]>([]);
+  const [tests, setTests] = useState<PlatformTestSummary[]>([]);
   const [testsLoading, setTestsLoading] = useState(true);
   const [attempts, setAttempts] = useState<AttemptDoc[]>([]);
+  // Deep-link from the group page's weak-types card: /ielts?skill=reading&type=matching_headings
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get('skill');
+    if (s === 'reading' || s === 'listening' || s === 'writing' || s === 'speaking') setSkill(s);
+    const type = params.get('type');
+    if (type && (s === 'reading' || s === 'listening')) setTypeFilter(type);
+  }, []);
 
   /**
    * Architecture doc §3-A / §4:
@@ -269,9 +308,14 @@ export default function StudentIeltsHubPage() {
       q,
       snap => {
         setGroups(snap.docs.map(d => ({ id: d.id, ...d.data() } as IeltsGroup)));
+        setGroupsError(false);
         setLoading(false);
       },
-      () => setLoading(false)
+      () => {
+        // A real failure must not masquerade as "no groups yet".
+        setGroupsError(true);
+        setLoading(false);
+      }
     );
     return () => unsub();
   }, [user]);
@@ -286,7 +330,7 @@ export default function StudentIeltsHubPage() {
       return;
     }
     setTestsLoading(true);
-    fetchPlatformTests(skill)
+    fetchPlatformTestSummaries(skill)
       .then(data => {
         platformTestsCache[skill] = { at: Date.now(), data };
         if (alive) { setTests(data); setTestsLoading(false); }
@@ -313,18 +357,45 @@ export default function StudentIeltsHubPage() {
     return () => { alive = false; };
   }, [user]);
 
+  // Band of an attempt: server grade (R/L) or teacher grade (W/S).
+  const bandOf = (a: AttemptDoc): number | null => {
+    if (typeof a.bandScore === 'number') return a.bandScore;
+    const tg = (a.teacherGrade as { band?: number } | undefined)?.band;
+    return typeof tg === 'number' ? tg : null;
+  };
+
   // testId → best band across my attempts (server band or teacher grade for W/S).
   const bestBandByTest: Record<string, number> = {};
   for (const a of attempts) {
-    const band = typeof a.bandScore === 'number'
-      ? a.bandScore
-      : typeof (a.teacherGrade as { band?: number } | undefined)?.band === 'number'
-        ? (a.teacherGrade as { band: number }).band
-        : null;
+    const band = bandOf(a);
     const testId = String(a.testId || '');
     if (band == null || !testId) continue;
     if (bestBandByTest[testId] == null || band > bestBandByTest[testId]) bestBandByTest[testId] = band;
   }
+
+  // "IELTS journey" — cross-group + practice trajectory. attempts arrive newest-first.
+  const gradedAttempts = attempts.filter(a => bandOf(a) != null);
+  const journeyBands = [...gradedAttempts].reverse().map(a => bandOf(a) as number).slice(-16);
+  const journeySkills = SKILLS
+    .map(({ key }) => {
+      const list = gradedAttempts.filter(a => a.skill === key);
+      if (!list.length) return null;
+      return {
+        key,
+        latest: bandOf(list[0]) as number,
+        best: Math.max(...list.map(a => bandOf(a) as number)),
+      };
+    })
+    .filter((s): s is { key: IeltsSkill; latest: number; best: number } => s != null);
+  const journeyOverall = journeySkills.length ? overallBand(journeySkills.map(s => s.latest)) : null;
+
+  // Weak-type deep-link filter (reading/listening only).
+  const visibleTests = typeFilter
+    ? tests.filter(test => {
+        if (skill !== 'reading' && skill !== 'listening') return true;
+        return (test.typeBreakdown?.[typeFilter] || 0) > 0;
+      })
+    : tests;
 
   if (loading) {
     return (
@@ -354,8 +425,48 @@ export default function StudentIeltsHubPage() {
 
       <div className="flex flex-col gap-s-section">
 
+        {/* ── My IELTS journey (only once there is real data) ─────────────── */}
+        {journeyBands.length >= 2 && (
+          <Card className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="s-display inline-flex items-center gap-2 text-lg font-bold">
+                <TrendingUp size={20} strokeWidth={2.5} className="text-primary" />
+                {t.journey.title}
+              </h2>
+              {journeyOverall != null && (
+                <Chip status="gold" size="md">{t.journey.overall}: {journeyOverall.toFixed(1)}</Chip>
+              )}
+            </div>
+            <Sparkline data={journeyBands} className="text-primary" />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {journeySkills.map(s => (
+                <div key={s.key} className="rounded-m3-md bg-surface-container px-3 py-2.5">
+                  <div className="text-[11px] font-black uppercase tracking-widest text-on-surface-variant">
+                    {t.skills[s.key]}
+                  </div>
+                  <div className="s-num mt-0.5 text-[15px] font-black">
+                    {s.latest.toFixed(1)}
+                    <span className="ml-1.5 text-[11.5px] font-bold text-on-surface-variant">
+                      {t.journey.best} {s.best.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* ── My groups ───────────────────────────────────────────────────── */}
-        {hasGroups ? (
+        {groupsError ? (
+          <Card>
+            <ErrorState
+              title={t.groupsError.title}
+              description={t.groupsError.desc}
+              retryLabel={t.groupsError.retry}
+              onRetry={() => window.location.reload()}
+            />
+          </Card>
+        ) : hasGroups ? (
           <section className="flex flex-col gap-s-gap">
             <h2 className="s-display text-lg font-bold">{t.myGroups}</h2>
             <div className="grid gap-s-gap sm:grid-cols-2">
@@ -398,23 +509,32 @@ export default function StudentIeltsHubPage() {
             <p className="mt-0.5 text-[13px] font-bold text-on-surface-variant">{t.practice.subtitle}</p>
           </div>
 
-          {/* Skill filter chips */}
+          {/* Skill filter chips (+ active weak-type filter from the group page deep-link) */}
           <div className="flex flex-wrap gap-2">
             {SKILLS.map(({ icon: Icon, key }) => (
               <FilterChip
                 key={key}
                 selected={skill === key}
-                onClick={() => setSkill(key)}
+                onClick={() => { setSkill(key); setTypeFilter(null); }}
                 icon={<Icon size={15} strokeWidth={2.5} />}
               >
                 {t.skills[key]}
               </FilterChip>
             ))}
+            {typeFilter && (
+              <FilterChip
+                selected
+                onClick={() => setTypeFilter(null)}
+                icon={<X size={15} strokeWidth={2.5} />}
+              >
+                {typeLabel(typeFilter)} — {t.practice.typeFilterClear}
+              </FilterChip>
+            )}
           </div>
 
           {testsLoading ? (
             <LoadingState rows={3} />
-          ) : tests.length === 0 ? (
+          ) : visibleTests.length === 0 ? (
             <Card>
               <EmptyState
                 icon="📚"
@@ -424,12 +544,12 @@ export default function StudentIeltsHubPage() {
             </Card>
           ) : (
             <div className="grid gap-s-gap sm:grid-cols-2">
-              {tests.map(test => (
+              {visibleTests.map(test => (
                 <PracticeTestCard
                   key={test.id}
                   test={test}
                   skill={skill}
-                  bestBand={bestBandByTest[test.id] ?? bestBandByTest[String(test.test_id || '')] ?? null}
+                  bestBand={bestBandByTest[test.id] ?? null}
                   t={t}
                 />
               ))}

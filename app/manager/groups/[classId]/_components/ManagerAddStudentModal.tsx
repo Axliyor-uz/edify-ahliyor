@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/firebase";
 import {
   doc, getDoc, updateDoc, arrayUnion, collection, query, where, getDocs, documentId,
-  setDoc, serverTimestamp,
+  setDoc, serverTimestamp, writeBatch,
 } from "firebase/firestore";
-import { X, Search, UserPlus, Loader2, ArrowRight, Users } from "lucide-react";
+import { X, Search, UserPlus, Loader2, ArrowRight, Users, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { lookupByEmail } from "@/lib/directory";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import ManagerSheet from "@/app/manager/_components/ManagerSheet";
 import { patchStudentFinanceApi } from "@/services/financeService";
+import { managedRosterBatch } from "@/services/ieltsService";
 import { getTodayKey } from "@/lib/dateUtils";
 import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
 
@@ -32,9 +33,12 @@ const TRANSLATIONS = {
     exactSearchTitle: "Aniq username/email bo'yicha qidirish",
     add: "Qo'shish",
     centerStudents: "Markaz o'quvchilari",
-    noCenterStudents: "Boshqa guruhlarda qo'shilmagan o'quvchi yo'q. Yuqoridan qidirib qo'shing.",
+    noCenterStudents: "Markazda qo'shiladigan o'quvchi yo'q. Yuqoridan qidiring yoki «O'quvchilar» bo'limida hisob yarating.",
     noListMatch: "Ro'yxatda topilmadi — aniq username/email bilan qidirib ko'ring.",
     addToGroupTitle: "Guruhga qo'shish",
+    noGroupBadge: "Guruhsiz",
+    addSelected: (n: number) => `${n} ta o'quvchini qo'shish`,
+    addedMany: (n: number) => `${n} ta o'quvchi qo'shildi!`,
   },
   en: {
     unknown: "Unknown",
@@ -52,9 +56,12 @@ const TRANSLATIONS = {
     exactSearchTitle: "Search by exact username/email",
     add: "Add",
     centerStudents: "Center students",
-    noCenterStudents: "No unassigned students in other groups. Search above to add one.",
+    noCenterStudents: "No addable students in the center. Search above, or create/link accounts in the Students section.",
     noListMatch: "Not found in the list — try searching by exact username/email.",
     addToGroupTitle: "Add to group",
+    noGroupBadge: "No group",
+    addSelected: (n: number) => `Add ${n} ${n === 1 ? "student" : "students"}`,
+    addedMany: (n: number) => `${n} ${n === 1 ? "student" : "students"} added!`,
   },
   ru: {
     unknown: "Неизвестно",
@@ -72,9 +79,12 @@ const TRANSLATIONS = {
     exactSearchTitle: "Поиск по точному username/email",
     add: "Добавить",
     centerStudents: "Ученики центра",
-    noCenterStudents: "Нет учеников из других групп, которых можно добавить. Найдите через поиск выше.",
+    noCenterStudents: "В центре нет учеников, которых можно добавить. Найдите через поиск выше или добавьте в разделе «Ученики».",
     noListMatch: "В списке не найдено — попробуйте поиск по точному username/email.",
     addToGroupTitle: "Добавить в группу",
+    noGroupBadge: "Без группы",
+    addSelected: (n: number) => `Добавить учеников: ${n}`,
+    addedMany: (n: number) => `Добавлено учеников: ${n}!`,
   },
 };
 type T = typeof TRANSLATIONS.uz;
@@ -83,6 +93,8 @@ interface Props {
   classId: string;
   centerId: string;
   existingStudentIds: string[];
+  /** Present on center IELTS groups — roster writes must mirror ielts_groups.studentIds. */
+  ieltsGroupId?: string;
   onClose: () => void;
   /** Called after each successful add — the modal stays open for adding more. */
   onAdded: () => void;
@@ -93,6 +105,8 @@ interface StudentLite {
   displayName: string;
   username: string;
   email: string;
+  /** Linked to the center but not yet in ANY group ("Guruhsiz") — listed first. */
+  groupless: boolean;
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -101,7 +115,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-export default function ManagerAddStudentModal({ classId, centerId, existingStudentIds, onClose, onAdded }: Props) {
+export default function ManagerAddStudentModal({ classId, centerId, existingStudentIds, ieltsGroupId, onClose, onAdded }: Props) {
   const { lang } = useManagerLanguage();
   const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [searchInput, setSearchInput] = useState("");
@@ -109,44 +123,78 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
   const [isSearching, setIsSearching] = useState(false);
   const [addingUid, setAddingUid] = useState<string | null>(null);
 
-  // Students already in other groups of this center — pickable without typing exact usernames.
+  // Multi-select: tap rows to pick several students, one button adds them all.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isAddingSelected, setIsAddingSelected] = useState(false);
+  const toggleSelect = (uid: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+
+  // Every center student is pickable without typing exact usernames. The roster
+  // is `center_students`-anchored (THE membership source, docs/MANAGER.md) —
+  // students added via "Add existing" have a link doc but often NO group yet, so
+  // a class-rosters-only union would hide exactly the students the manager just
+  // added. Class rosters are still merged in for legacy pre-link enrollments.
   const { classes, isLoading: loadingClasses } = useCenterClasses(centerId);
   const [centerStudents, setCenterStudents] = useState<StudentLite[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
 
   useEffect(() => {
     if (loadingClasses) return;
-    const ids = new Set<string>();
-    classes.forEach((c) => (c.studentIds || []).forEach((id) => ids.add(id)));
-    existingStudentIds.forEach((id) => ids.delete(id));
-    const list = [...ids];
-
-    if (list.length === 0) {
-      setCenterStudents([]);
-      setLoadingStudents(false);
-      return;
-    }
 
     let cancelled = false;
     (async () => {
       try {
+        const linkSnap = await getDocs(
+          query(collection(db, "center_students"), where("centerId", "==", centerId))
+        ).catch(() => null);
+
+        const inAnyGroup = new Set<string>();
+        classes.forEach((c) => (c.studentIds || []).forEach((id) => inAnyGroup.add(id)));
+
+        const ids = new Set<string>(inAnyGroup);
+        linkSnap?.docs.forEach((d) => {
+          const sid = d.data().studentId;
+          if (sid) ids.add(sid);
+        });
+        existingStudentIds.forEach((id) => ids.delete(id));
+        const list = [...ids];
+
+        if (list.length === 0) {
+          if (!cancelled) setCenterStudents([]);
+          return;
+        }
+
         const snaps = await Promise.all(
           chunk(list, 10).map((part) =>
             getDocs(query(collection(db, "users"), where(documentId(), "in", part)))
           )
         );
         const profiles: StudentLite[] = snaps.flatMap((s) =>
-          s.docs.map((d) => {
-            const data = d.data();
-            return {
-              uid: d.id,
-              displayName: data.displayName || t.unknown,
-              username: data.username || "",
-              email: data.email || "",
-            };
-          })
+          s.docs
+            .filter((d) => (d.data().role || "student") === "student")
+            .map((d) => {
+              const data = d.data();
+              return {
+                uid: d.id,
+                displayName: data.displayName || t.unknown,
+                username: data.username || "",
+                email: data.email || "",
+                groupless: !inAnyGroup.has(d.id),
+              };
+            })
         );
-        profiles.sort((a, b) => a.displayName.localeCompare(b.displayName));
+        // Group-less (just-linked) students first — they are the ones the
+        // manager is most likely looking for — then A→Z.
+        profiles.sort((a, b) =>
+          a.groupless !== b.groupless
+            ? (a.groupless ? -1 : 1)
+            : a.displayName.localeCompare(b.displayName)
+        );
         if (!cancelled) setCenterStudents(profiles);
       } catch (err) {
         console.error("Error loading center students:", err);
@@ -156,7 +204,7 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
     })();
 
     return () => { cancelled = true; };
-  }, [classes, loadingClasses, existingStudentIds]);
+  }, [classes, loadingClasses, existingStudentIds, centerId]);
 
   // Typing filters the center list live; the arrow button does an exact global lookup.
   const visibleCenterStudents = useMemo(() => {
@@ -230,8 +278,13 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
   const handleAddStudent = async (uid: string, displayName: string) => {
     setAddingUid(uid);
     try {
-      const classRef = doc(db, "classes", classId);
-      await updateDoc(classRef, { studentIds: arrayUnion(uid) });
+      if (ieltsGroupId) {
+        // Center IELTS group — mirror the roster onto the ielts_groups twin atomically.
+        await managedRosterBatch(classId, ieltsGroupId, uid, "add");
+      } else {
+        const classRef = doc(db, "classes", classId);
+        await updateDoc(classRef, { studentIds: arrayUnion(uid) });
+      }
 
       // Center roster link (center_students is THE membership source — the
       // students page lists from it). Merge-safe + best-effort.
@@ -258,8 +311,47 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
     }
   };
 
+  // Add every selected student in ONE atomic batch: class roster (+ IELTS twin
+  // mirror when present) + center_students links. Finance stamps follow
+  // best-effort per student, same as the single-add path.
+  const handleAddSelected = async () => {
+    const uids = [...selected];
+    if (uids.length === 0) return;
+    setIsAddingSelected(true);
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, "classes", classId), { studentIds: arrayUnion(...uids) });
+      if (ieltsGroupId) {
+        batch.update(doc(db, "ielts_groups", ieltsGroupId), { studentIds: arrayUnion(...uids) });
+      }
+      for (const uid of uids) {
+        const s = centerStudents.find((c) => c.uid === uid);
+        batch.set(
+          doc(db, "center_students", `${centerId}_${uid}`),
+          { centerId, studentId: uid, studentName: s?.displayName || "", source: "enrolled", addedAt: serverTimestamp() },
+          { merge: true },
+        );
+      }
+      await batch.commit();
+
+      uids.forEach((uid) => {
+        patchStudentFinanceApi(uid, { enrollmentDates: { [classId]: getTodayKey() } }).catch(() => {});
+      });
+
+      toast.success(t.addedMany(uids.length));
+      setCenterStudents((prev) => prev.filter((s) => !selected.has(s.uid)));
+      setSelected(new Set());
+      onAdded();
+    } catch (error) {
+      console.error("Add selected students failed:", error);
+      toast.error(t.addError);
+    } finally {
+      setIsAddingSelected(false);
+    }
+  };
+
   const hasInput = searchInput.trim().length > 0;
-  const isBusy = addingUid !== null;
+  const isBusy = addingUid !== null || isAddingSelected;
 
   return (
     <ManagerSheet onClose={onClose} dismissible={!isBusy}>
@@ -362,28 +454,67 @@ export default function ManagerAddStudentModal({ classId, centerId, existingStud
             </p>
           ) : (
             <div className="max-h-[40dvh] overflow-y-auto overscroll-contain -mx-1 px-1 space-y-2">
-              {visibleCenterStudents.map((s) => (
-                <div key={s.uid} className="flex items-center gap-3 p-3 bg-surface-container-lowest border border-outline-variant rounded-m3-lg hover:border-primary transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm shrink-0">
-                    {s.displayName.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-on-surface truncate">{s.displayName}</p>
-                    <p className="text-xs text-on-surface-variant truncate">{s.username ? `@${s.username}` : s.email}</p>
-                  </div>
+              {visibleCenterStudents.map((s) => {
+                const isSelected = selected.has(s.uid);
+                return (
                   <button
-                    onClick={() => handleAddStudent(s.uid, s.displayName)}
+                    key={s.uid}
+                    type="button"
+                    onClick={() => toggleSelect(s.uid)}
                     disabled={isBusy}
+                    aria-pressed={isSelected}
                     title={t.addToGroupTitle}
-                    className="w-9 h-9 rounded-full bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary flex items-center justify-center transition-colors disabled:opacity-50 shrink-0"
+                    className={`w-full text-left flex items-center gap-3 p-3 rounded-m3-lg border transition-colors disabled:opacity-60 ${
+                      isSelected
+                        ? "bg-primary-container border-primary"
+                        : "bg-surface-container-lowest border-outline-variant hover:border-primary"
+                    }`}
                   >
-                    {addingUid === s.uid ? <Loader2 className="animate-spin" size={16} /> : <UserPlus size={16} />}
+                    <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm shrink-0">
+                      {s.displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="text-sm font-bold text-on-surface truncate">{s.displayName}</p>
+                        {s.groupless && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-warning-container text-on-warning-container shrink-0">
+                            {t.noGroupBadge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-on-surface-variant truncate">{s.username ? `@${s.username}` : s.email}</p>
+                    </div>
+                    <span
+                      aria-hidden
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected
+                          ? "bg-primary border-primary text-on-primary"
+                          : "border-outline text-transparent"
+                      }`}
+                    >
+                      <Check size={14} strokeWidth={3.5} />
+                    </span>
                   </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
+
+        {/* Sticky add-all bar — appears once anything is selected */}
+        {selected.size > 0 && (
+          <div className="sticky bottom-0 -mx-5 sm:-mx-7 px-5 sm:px-7 pt-3 pb-1 bg-surface-container-lowest border-t border-outline-variant">
+            <button
+              type="button"
+              onClick={handleAddSelected}
+              disabled={isBusy}
+              className="w-full h-t-control bg-primary text-on-primary font-bold text-sm rounded-full flex items-center justify-center gap-2 shadow-elev-1 transition-all active:scale-[0.99] disabled:opacity-60"
+            >
+              {isAddingSelected ? <Loader2 className="animate-spin" size={17} /> : <UserPlus size={17} />}
+              {t.addSelected(selected.size)}
+            </button>
+          </div>
+        )}
       </div>
     </ManagerSheet>
   );

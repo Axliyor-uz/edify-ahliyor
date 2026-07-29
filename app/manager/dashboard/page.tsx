@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import {
   Users, CheckCircle, CalendarDays, Clock, AlertTriangle, TrendingUp,
   ArrowRight, GraduationCap, UserPlus, DoorOpen, Banknote, Wallet,
@@ -237,11 +237,32 @@ export default function ManagerDashboard() {
     return () => { mounted = false; };
   }, [centerId, today]);
 
+  // Class-roster students — the ones attendance math can say anything about.
   const uniqueStudentIds = useMemo(() => {
     const s = new Set<string>();
     classes.forEach((c) => (c.studentIds || []).forEach((id) => s.add(id)));
     return [...s];
   }, [classes]);
+
+  // Total student KPI is `center_students`-anchored (links ∪ class rosters —
+  // same derivation as the students page), so group-less students count too.
+  // Falls back to the class-derived count if the link query fails.
+  const [linkedStudentIds, setLinkedStudentIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!centerId) return;
+    let mounted = true;
+    getDocs(query(collection(db, "center_students"), where("centerId", "==", centerId)))
+      .then((snap) => {
+        if (mounted) setLinkedStudentIds(snap.docs.map((d) => d.data().studentId).filter(Boolean));
+      })
+      .catch(() => { if (mounted) setLinkedStudentIds([]); });
+    return () => { mounted = false; };
+  }, [centerId]);
+
+  const totalStudents = useMemo(
+    () => new Set([...uniqueStudentIds, ...(linkedStudentIds || [])]).size,
+    [uniqueStudentIds, linkedStudentIds],
+  );
 
   const todaySessions = useMemo(() => sessions.filter((s) => s.date === today), [sessions, today]);
   const todayRate = useMemo(() => rateOfSessions(todaySessions, today).rate, [todaySessions, today]);
@@ -327,7 +348,7 @@ export default function ManagerDashboard() {
         <KpiCard
           href="/manager/students" Icon={Users} label={t.kpi.students} sub={t.kpi.groupsCount(classes.length)}
           tone="success"
-          value={loading ? null : String(uniqueStudentIds.length)}
+          value={loading || linkedStudentIds === null ? null : String(totalStudents)}
         />
         <KpiCard
           href="/manager/finance" Icon={TrendingUp} label={t.kpi.income} sub={t.kpi.thisMonth}

@@ -1,17 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   Headphones, BookOpen, PenTool, Mic, CalendarClock, ChevronDown,
-  Trash2, Users, Award, FileText, Plus,
+  Trash2, Users, Award, FileText, Plus, RotateCcw,
 } from 'lucide-react';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { Spinner, EmptyState, ConfirmDialog, Button } from '@/components/ui';
 import { deleteAssignment, fetchAssignments } from '@/services/ieltsService';
 import type { IeltsAssignment, IeltsSkill } from '@/lib/ielts/types';
-import type { IeltsGroup } from '@/types/ielts';
+import type { IeltsGroup } from '@/lib/ielts/types';
+import { IELTS_TYPE_LABELS_LONG as TYPE_LABELS } from '@/lib/ielts/typeLabels';
 import { GroupAttempt, effectiveBand, fmtDate, toDateSafe } from './groupData';
 
 const T: Record<string, any> = {
@@ -24,8 +26,11 @@ const T: Record<string, any> = {
     simulation: "Imtihon",
     practice: "Mashq",
     details: "Tafsilotlar",
+    reassign: "Qayta tayinlash",
     perQuestion: "Savollar bo'yicha to'g'ri javoblar",
     worstTypes: "Eng qiyin savol turlari",
+    missedBy: (qn: number) => `${qn}-savolni xato qilganlar`,
+    noMisses: "Bu savolni hamma to'g'ri yechgan",
     noAttemptData: "Hozircha topshirilgan urinishlar yo'q",
     pendingReviews: (n: number) => `${n} ta ish tekshirishni kutmoqda`,
     empty: "Hozircha topshiriqlar yo'q",
@@ -48,8 +53,11 @@ const T: Record<string, any> = {
     simulation: "Simulation",
     practice: "Practice",
     details: "Details",
+    reassign: "Reassign with same settings",
     perQuestion: "Per-question correct rate",
     worstTypes: "Weakest question types",
+    missedBy: (qn: number) => `Students who missed Q${qn}`,
+    noMisses: "Everyone got this question right",
     noAttemptData: "No submitted attempts yet",
     pendingReviews: (n: number) => `${n} submissions awaiting review`,
     empty: "No assignments yet",
@@ -72,8 +80,11 @@ const T: Record<string, any> = {
     simulation: "Экзамен",
     practice: "Практика",
     details: "Детали",
+    reassign: "Назначить повторно",
     perQuestion: "Правильные ответы по вопросам",
     worstTypes: "Самые сложные типы вопросов",
+    missedBy: (qn: number) => `Ошиблись в вопросе ${qn}`,
+    noMisses: "Все ответили на этот вопрос верно",
     noAttemptData: "Пока нет сданных попыток",
     pendingReviews: (n: number) => `${n} работ ждут проверки`,
     empty: "Пока нет заданий",
@@ -94,22 +105,6 @@ const SKILL_CONFIG: Record<IeltsSkill, { icon: any; bg: string; color: string }>
   listening: { icon: Headphones, bg: 'bg-primary-container',   color: 'text-on-primary-container' },
   writing:   { icon: PenTool,    bg: 'bg-tertiary-container',  color: 'text-on-tertiary-container' },
   speaking:  { icon: Mic,        bg: 'bg-primary-container',   color: 'text-on-primary-container' },
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  matching_headings: 'Matching Headings',
-  true_false_not_given: 'T/F/NG',
-  multiple_choice: 'Multiple Choice',
-  summary_completion: 'Summary Completion',
-  matching_paragraph_information: 'Matching Information',
-  list_selection: 'List Selection',
-  matching_features: 'Matching Features',
-  sentence_completion: 'Sentence Completion',
-  matching_sentence_endings: 'Sentence Endings',
-  short_answer: 'Short Answer',
-  table_completion: 'Table Completion',
-  flowchart_completion: 'Flowchart Completion',
-  diagram_completion: 'Diagram Labelling',
 };
 
 type SkillFilter = 'all' | IeltsSkill;
@@ -135,9 +130,11 @@ interface Props {
   attempts: GroupAttempt[];
   refreshKey: number;
   onAssign?: () => void;
+  /** "Reassign with same settings" — opens AssignTestModal prefilled from this assignment. */
+  onReassign?: (a: IeltsAssignment) => void;
 }
 
-export default function IeltsUnifiedFeed({ groupId, group, attempts, refreshKey, onAssign }: Props) {
+export default function IeltsUnifiedFeed({ groupId, group, attempts, refreshKey, onAssign, onReassign }: Props) {
   const { lang } = useTeacherLanguage();
   const t = T[lang] || T['uz'];
 
@@ -304,6 +301,15 @@ export default function IeltsUnifiedFeed({ groupId, group, attempts, refreshKey,
                       {t.details}
                       <ChevronDown size={13} strokeWidth={3} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
+                    {onReassign && (
+                      <button
+                        onClick={() => onReassign(assignment)}
+                        title={t.reassign}
+                        className="m3-interactive w-9 h-9 rounded-m3-md bg-surface-container border border-outline-variant hover:bg-primary-container hover:border-transparent text-on-surface-variant hover:text-on-primary-container flex items-center justify-center transition-colors"
+                      >
+                        <RotateCcw size={14} strokeWidth={2.5} />
+                      </button>
+                    )}
                     <button
                       onClick={() => setDeleteTarget(assignment)}
                       className="m3-interactive w-9 h-9 rounded-m3-md bg-surface-container border border-outline-variant hover:bg-error-container hover:border-transparent text-on-surface-variant hover:text-on-error-container flex items-center justify-center transition-colors"
@@ -354,6 +360,8 @@ export default function IeltsUnifiedFeed({ groupId, group, attempts, refreshKey,
 
 /* ── Per-question bars + worst types (reading/listening) ── */
 function AssignmentAnalytics({ attempts, t }: { attempts: GroupAttempt[]; t: any }) {
+  const router = useRouter();
+  const [selectedQn, setSelectedQn] = useState<number | null>(null);
   const { perQuestion, worstTypes } = useMemo(() => {
     const qAgg: Record<string, { correct: number; total: number }> = {};
     const typeAgg: Record<string, { correct: number; total: number }> = {};
@@ -387,14 +395,51 @@ function AssignmentAnalytics({ attempts, t }: { attempts: GroupAttempt[]; t: any
           <p className="text-[11px] font-black text-on-surface-variant uppercase tracking-wider mb-2.5">{t.perQuestion}</p>
           <div className="flex items-end gap-[3px] flex-wrap">
             {perQuestion.map(({ qn, pct }) => (
-              <div key={qn} className="flex flex-col items-center gap-0.5" title={`${t.q}${qn} — ${pct}%`}>
+              <button
+                key={qn}
+                type="button"
+                onClick={() => setSelectedQn(selectedQn === qn ? null : qn)}
+                className={`flex flex-col items-center gap-0.5 rounded-sm ${selectedQn === qn ? 'bg-state-hover' : ''}`}
+                title={`${t.q}${qn} — ${pct}%`}
+              >
                 <div className="w-[9px] h-12 bg-surface-container rounded-sm overflow-hidden flex flex-col justify-end">
                   <div className={`w-full rounded-sm ${pctColor(pct)}`} style={{ height: `${Math.max(pct, 4)}%` }} />
                 </div>
                 <span className="text-[8px] font-bold text-on-surface-variant leading-none">{qn}</span>
-              </div>
+              </button>
             ))}
           </div>
+
+          {/* Chart → action: who missed this question, one click from their full attempt */}
+          {selectedQn != null && (() => {
+            const missed = attempts.filter(a => {
+              const r = a.perQuestion?.[String(selectedQn)];
+              return r != null && !r.correct;
+            });
+            return (
+              <div className="mt-3 bg-surface-container rounded-m3-md p-3">
+                <p className="text-[11px] font-black text-on-surface-variant uppercase tracking-wider mb-2">
+                  {t.missedBy(selectedQn)}
+                </p>
+                {missed.length === 0 ? (
+                  <p className="text-[12.5px] font-bold text-on-surface-variant">{t.noMisses}</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {missed.map(a => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => router.push(`/teacher/ielts/review/${a.id}`)}
+                        className="px-2.5 py-1.5 rounded-m3-sm bg-surface-container-lowest border border-outline-variant text-[12px] font-black text-on-surface hover:border-primary transition-colors"
+                      >
+                        {a.userName || '—'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

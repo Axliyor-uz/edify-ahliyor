@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { fetchTeacherTests, fetchPlatformTests, deleteIeltsTest } from '@/services/ieltsService';
 import { typeBreakdown } from '@/lib/ielts/testSchema';
-import { breakdownChips } from '../_shared/typeLabels';
+import { breakdownChips } from '@/lib/ielts/typeLabels';
 
 import { Button, IconButton, Spinner, SearchBar, EmptyState } from '@/components/ui';
 

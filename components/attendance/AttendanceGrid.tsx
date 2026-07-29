@@ -37,6 +37,8 @@ interface Props {
   /** uid of the teacher/manager doing the marking. */
   recordedBy: string;
   schedule: ScheduleEntry[];
+  /** Edge-to-edge: drop the card rounding + side borders (full-bleed hosts). */
+  flush?: boolean;
 }
 
 interface StudentRecord {
@@ -58,9 +60,13 @@ const PAST_DAYS = 31;
 const FUTURE_DAYS = 31;
 const AUTOSAVE_MS = 1000;
 
-const NUM_COL = 44;
-const NAME_COL = 208;
-const FROZEN_WIDTH = NUM_COL + NAME_COL;
+// Column geometry. On phones the frozen area (# + name) would eat the whole
+// viewport — 44+208 leaves ~110px for dates on a 360px screen — so the compact
+// mode drops the "#" column and shrinks the rest. Desktop values are unchanged.
+const COLS = {
+  wide:    { num: 44, name: 208, date: 80, tail: 64 },
+  compact: { num: 0,  name: 146, date: 62, tail: 52 },
+} as const;
 
 const WEEKDAY_SHORT = ["Yak", "Du", "Se", "Cho", "Pay", "Ju", "Sha"];
 const MONTH_SHORT = ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"];
@@ -142,7 +148,7 @@ const SCROLLBAR_CLASSES =
   "[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 " +
   "[scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent]";
 
-export default function AttendanceGrid({ classId, centerId, studentIds, recordedBy, schedule }: Props) {
+export default function AttendanceGrid({ classId, centerId, studentIds, recordedBy, schedule, flush }: Props) {
   const today = useMemo(() => getTodayKey(), []);
 
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -169,6 +175,19 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const anchorThRef = useRef<HTMLTableCellElement | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Phone layout (< 640px, matches Tailwind's sm). matchMedia, not a resize
+  // listener, so it fires once per breakpoint crossing.
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const apply = () => setCompact(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  const col = compact ? COLS.compact : COLS.wide;
+  const frozenWidth = col.num + col.name;
 
   const scheduleDates = useMemo(() => buildScheduleDates(schedule, today), [schedule, today]);
 
@@ -300,8 +319,8 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
     if (!th || !container) return;
     const thLeft = th.getBoundingClientRect().left;
     const containerLeft = container.getBoundingClientRect().left;
-    container.scrollLeft += thLeft - containerLeft - FROZEN_WIDTH;
-  }, [loadingSessions]);
+    container.scrollLeft += thLeft - containerLeft - frozenWidth;
+  }, [loadingSessions, frozenWidth]);
 
   // Close popovers on scroll/resize.
   useEffect(() => {
@@ -374,7 +393,7 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
 
   // ── Persistence: full-doc write per dirty date (state carries per-cell
   // markedAt/markedBy, so a full overwrite preserves them without merge). ──────
-  const flush = useCallback(async (dates: string[]) => {
+  const flushDates = useCallback(async (dates: string[]) => {
     if (dates.length === 0) return;
     setSaveState("saving");
     try {
@@ -419,13 +438,13 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
   useEffect(() => {
     if (dirtyDates.size === 0) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => { flush(Array.from(dirtyDates)); }, AUTOSAVE_MS);
+    saveTimer.current = setTimeout(() => { flushDates(Array.from(dirtyDates)); }, AUTOSAVE_MS);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [dirtyDates, flush]);
+  }, [dirtyDates, flushDates]);
 
   // Flush on unmount / tab close so nothing is lost mid-edit.
   useEffect(() => {
-    const handler = () => { if (dirtyDates.size > 0) flush(Array.from(dirtyDates)); };
+    const handler = () => { if (dirtyDates.size > 0) flushDates(Array.from(dirtyDates)); };
     window.addEventListener("beforeunload", handler);
     return () => { window.removeEventListener("beforeunload", handler); handler(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -481,10 +500,11 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
     dirtyDates.size > 0 ? `Saqlash (${dirtyDates.size})` : "Saqlangan";
 
   return (
-    <div className="flex flex-col bg-white border border-slate-200 rounded-2xl overflow-hidden">
-      {/* Top bar: legend + search + save-state */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 border-b border-slate-100">
-        <div className="flex items-center gap-2.5 flex-wrap">
+    <div className={`flex flex-col bg-white border-slate-200 overflow-hidden ${flush ? "border-y" : "border rounded-2xl"}`}>
+      {/* Top bar: legend + search + save-state. On phones the search+save row
+          comes first at full width; the legend wraps underneath. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-2 sm:px-3 py-2 sm:py-1.5 border-b border-slate-100">
+        <div className="order-2 sm:order-1 flex items-center gap-x-2.5 gap-y-1 flex-wrap">
           {STATUS_ORDER.map((s) => (
             <span key={s} className="flex items-center gap-1 text-[10.5px] font-medium text-slate-500">
               <span className={`w-2 h-2 rounded-full ${STATUS[s].dot}`} />{STATUS[s].label}
@@ -492,13 +512,13 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="order-1 sm:order-2 flex w-full sm:w-auto items-center gap-2">
+          <div className="relative flex-1 sm:flex-none">
             <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="O'quvchi qidirish..."
-              className="w-40 sm:w-56 pl-8 pr-7 py-2 text-[13px] bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 focus:bg-white transition-colors"
+              className="w-full sm:w-56 pl-8 pr-7 py-2 text-[13px] bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 focus:bg-white transition-colors"
             />
             {search && (
               <button type="button" onClick={() => setSearch("")} aria-label="Tozalash"
@@ -510,9 +530,9 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
 
           {/* Manual flush fallback + live autosave state */}
           <button
-            onClick={() => flush(Array.from(dirtyDates))}
+            onClick={() => flushDates(Array.from(dirtyDates))}
             disabled={saveState === "saving" || dirtyDates.size === 0}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] transition-all active:scale-[0.98] disabled:cursor-not-allowed shadow-sm ${
+            className={`shrink-0 flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2.5 rounded-xl font-bold text-[13px] transition-all active:scale-[0.98] disabled:cursor-not-allowed shadow-sm ${
               saveState === "error" ? "bg-rose-600 text-white" :
               dirtyDates.size > 0 ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/30" :
               "bg-slate-900 text-white disabled:opacity-40"
@@ -525,12 +545,18 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
       </div>
 
       {/* Grid */}
-      <div ref={scrollRef} className={`overflow-auto max-h-[70vh] ${SCROLLBAR_CLASSES}`}>
+      {/* Flush hosts give the grid the whole page, so size it off the viewport
+          (dvh — phone URL bars) instead of a fixed 70%. */}
+      <div ref={scrollRef} className={`overflow-auto ${flush ? "max-h-[calc(100dvh-200px)]" : "max-h-[70vh]"} ${SCROLLBAR_CLASSES}`}>
         <table className="border-separate border-spacing-0 w-full">
           <thead>
             <tr>
-              <th className="sticky top-0 left-0 z-40 bg-slate-800 text-slate-300 text-[11px] font-bold text-center px-0 py-3 w-[44px] min-w-[44px]">#</th>
-              <th className="sticky top-0 z-40 bg-slate-800 text-slate-100 text-[11px] font-semibold uppercase tracking-wide text-left px-3 py-3 w-[208px] min-w-[208px] border-r border-slate-700 shadow-[6px_0_12px_-6px_rgba(0,0,0,0.15)]" style={{ left: NUM_COL }}>
+              {!compact && (
+                <th className="sticky top-0 left-0 z-40 bg-slate-800 text-slate-300 text-[11px] font-bold text-center px-0 py-3"
+                  style={{ width: col.num, minWidth: col.num }}>#</th>
+              )}
+              <th className="sticky top-0 z-40 bg-slate-800 text-slate-100 text-[11px] font-semibold uppercase tracking-wide text-left px-2 sm:px-3 py-3 border-r border-slate-700 shadow-[6px_0_12px_-6px_rgba(0,0,0,0.15)]"
+                style={{ left: col.num, width: col.name, minWidth: col.name }}>
                 O&apos;quvchi
               </th>
               {lessonDates.map((d) => {
@@ -543,7 +569,8 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
                 const headBg = inactive ? "bg-slate-500" : isToday ? "bg-indigo-600" : isFuture ? "bg-slate-400" : ls === "makeup" ? "bg-violet-600" : "bg-slate-800";
                 return (
                   <th key={d} ref={isAnchor ? anchorThRef : undefined}
-                    className={`sticky top-0 z-30 ${headBg} px-1 py-2.5 w-[80px] min-w-[80px] align-top border-l border-white/10`}>
+                    style={{ width: col.date, minWidth: col.date }}
+                    className={`sticky top-0 z-30 ${headBg} px-1 py-2.5 align-top border-l border-white/10`}>
                     <div className="flex flex-col items-center gap-0.5">
                       <div className="flex items-center gap-0.5 w-full justify-center relative">
                         <span className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{WEEKDAY_SHORT[dt.getDay()]}</span>
@@ -572,7 +599,8 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
               })}
 
               {/* Add makeup lesson */}
-              <th className="sticky top-0 z-30 bg-slate-800 px-1 py-2.5 w-[64px] min-w-[64px] align-top border-l border-white/10">
+              <th className="sticky top-0 z-30 bg-slate-800 px-1 py-2.5 align-top border-l border-white/10"
+                style={{ width: col.tail, minWidth: col.tail }}>
                 {addingMakeup ? (
                   <div className="flex flex-col items-center gap-1">
                     <input type="date" value={makeupInput} onChange={(e) => setMakeupInput(e.target.value)}
@@ -593,16 +621,20 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
           </thead>
           <tbody>
             {visibleStudents.length === 0 && (
-              <tr><td colSpan={3 + lessonDates.length} className="py-10 text-center text-[13px] text-slate-400">&laquo;{search}&raquo; bo&apos;yicha o&apos;quvchi topilmadi</td></tr>
+              <tr><td colSpan={(compact ? 2 : 3) + lessonDates.length} className="py-10 text-center text-[13px] text-slate-400">&laquo;{search}&raquo; bo&apos;yicha o&apos;quvchi topilmadi</td></tr>
             )}
             {visibleStudents.map((student) => (
               <tr key={student.id} className="group">
-                <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 border-b border-slate-100 text-center w-[44px] min-w-[44px] transition-colors">
-                  <span className="text-[12px] font-semibold text-slate-400 tabular-nums">{numberById.get(student.id)}</span>
-                </td>
-                <td className="sticky z-20 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200 px-3 py-2 w-[208px] min-w-[208px] transition-colors shadow-[6px_0_12px_-6px_rgba(0,0,0,0.08)]" style={{ left: NUM_COL }}>
-                  <button type="button" onClick={() => setDrawer(student)} className="flex items-center gap-2.5 w-full text-left group/name">
-                    <span className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 font-bold text-[11px] flex items-center justify-center">{getInitials(student.displayName)}</span>
+                {!compact && (
+                  <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 border-b border-slate-100 text-center transition-colors"
+                    style={{ width: col.num, minWidth: col.num }}>
+                    <span className="text-[12px] font-semibold text-slate-400 tabular-nums">{numberById.get(student.id)}</span>
+                  </td>
+                )}
+                <td className="sticky z-20 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200 px-2 sm:px-3 py-2 transition-colors shadow-[6px_0_12px_-6px_rgba(0,0,0,0.08)]"
+                  style={{ left: col.num, width: col.name, minWidth: col.name }}>
+                  <button type="button" onClick={() => setDrawer(student)} className="flex items-center gap-2 sm:gap-2.5 w-full text-left group/name">
+                    <span className="hidden sm:flex w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 font-bold text-[11px] items-center justify-center">{getInitials(student.displayName)}</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-medium text-slate-900 truncate group-hover/name:text-indigo-600 transition-colors">{student.displayName}</p>
                       {student.username && <p className="text-[11px] text-slate-400 truncate">@{student.username}</p>}
@@ -647,7 +679,7 @@ export default function AttendanceGrid({ classId, centerId, studentIds, recorded
                     </td>
                   );
                 })}
-                <td className="border-b border-l border-slate-100 w-[64px] min-w-[64px]" />
+                <td className="border-b border-l border-slate-100" style={{ width: col.tail, minWidth: col.tail }} />
               </tr>
             ))}
           </tbody>

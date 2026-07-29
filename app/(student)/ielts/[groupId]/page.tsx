@@ -1,25 +1,31 @@
-// app/(student)/ielts/[groupId]/page.tsx — student IELTS group page:
-// assignments (status + start/result), band trajectory vs target, weak question types.
+// app/(student)/ielts/[groupId]/page.tsx — student IELTS group page. Tabbed like
+// an ordinary class page (docs/STUDENT.md): mocks, results, and — for center
+// IELTS groups — the timetable and attendance of the linked class.
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import {
   BookOpen, Headphones, PenLine, Mic, Play, Eye, Lock, Clock, Target,
+  Building2, CalendarCheck, CalendarDays, FileText, BarChart2,
 } from 'lucide-react';
 import {
-  Page, PageHeader, Card, Tile, Chip, Button,
-  EmptyState, LoadingState, ProgressBar,
+  Page, PageHeader, Card, Tile, Chip, Button, Tabs,
+  EmptyState, LoadingState, ProgressBar, MOTION_ON,
 } from '@/components/student-ui';
 import { useStudentLanguage } from '../../layout';
 import { fetchAssignments, fetchMyAttempts } from '@/services/ieltsService';
 import type { IeltsAssignment, IeltsSkill } from '@/lib/ielts/types';
-import { IeltsGroup } from '@/types/ielts';
-import { typeLabel } from '../_components/typeLabels';
+import { IeltsGroup } from '@/lib/ielts/types';
+import { typeLabel } from '@/lib/ielts/typeLabels';
+import type { ScheduleEntry } from '@/types/attendance';
+import StudentAttendanceView from '@/components/attendance/StudentAttendanceView';
+import ScheduleTab from './_components/ScheduleTab';
 
 // --- TRANSLATIONS ---
 const T: any = {
@@ -33,6 +39,7 @@ const T: any = {
     progress: 'Mening natijalarim',
     progressEmpty: "Baholangan urinishlar hali yo'q — birinchi testni yeching!",
     weakTypes: 'Zaif savol turlari',
+    practiceCta: 'Mashq qilish',
     accuracy: "to'g'ri",
     start: 'Boshlash',
     result: 'Natija',
@@ -46,6 +53,13 @@ const T: any = {
     deniedTitle: "Guruh topilmadi yoki siz a'zo emassiz",
     deniedDesc: "Bu guruhga kirish uchun avval o'qituvchi so'rovingizni tasdiqlashi kerak.",
     backToHub: 'IELTS sahifasiga qaytish',
+    centerLabel: 'Markaz',
+    scheduleTitle: 'Dars jadvali',
+    attendanceTitle: 'Davomat',
+    attRate: 'Davomat darajasi',
+    attStatus: { present: 'Kelgan', late: 'Kechikkan', absent: 'Kelmagan', excused: 'Sababli' },
+    noAttendance: 'Hali davomat belgilanmagan.',
+    tabs: { assignments: 'Mocklar', progress: 'Natijalar', schedule: 'Jadval', attendance: 'Davomat' },
   },
   en: {
     fallbackTitle: 'IELTS group',
@@ -57,6 +71,7 @@ const T: any = {
     progress: 'My progress',
     progressEmpty: 'No graded attempts yet — take your first test!',
     weakTypes: 'Weak question types',
+    practiceCta: 'Practice this',
     accuracy: 'correct',
     start: 'Start',
     result: 'Result',
@@ -70,6 +85,13 @@ const T: any = {
     deniedTitle: 'Group not found or you are not a member',
     deniedDesc: 'Your teacher needs to approve your join request before you can open this group.',
     backToHub: 'Back to IELTS hub',
+    centerLabel: 'Center',
+    scheduleTitle: 'Class schedule',
+    attendanceTitle: 'Attendance',
+    attRate: 'Attendance rate',
+    attStatus: { present: 'Present', late: 'Late', absent: 'Absent', excused: 'Excused' },
+    noAttendance: 'No attendance marked yet.',
+    tabs: { assignments: 'Mocks', progress: 'Results', schedule: 'Schedule', attendance: 'Attendance' },
   },
   ru: {
     fallbackTitle: 'IELTS группа',
@@ -81,6 +103,7 @@ const T: any = {
     progress: 'Мой прогресс',
     progressEmpty: 'Оценённых попыток пока нет — пройдите первый тест!',
     weakTypes: 'Слабые типы вопросов',
+    practiceCta: 'Тренировать',
     accuracy: 'верно',
     start: 'Начать',
     result: 'Результат',
@@ -94,6 +117,13 @@ const T: any = {
     deniedTitle: 'Группа не найдена или вы не участник',
     deniedDesc: 'Учитель должен подтвердить ваш запрос, прежде чем вы сможете открыть эту группу.',
     backToHub: 'Назад к IELTS',
+    centerLabel: 'Центр',
+    scheduleTitle: 'Расписание занятий',
+    attendanceTitle: 'Посещаемость',
+    attRate: 'Уровень посещаемости',
+    attStatus: { present: 'Присутствовал', late: 'Опоздал', absent: 'Отсутствовал', excused: 'Уважительная' },
+    noAttendance: 'Посещаемость пока не отмечена.',
+    tabs: { assignments: 'Моки', progress: 'Результаты', schedule: 'Расписание', attendance: 'Посещаемость' },
   },
 };
 
@@ -101,6 +131,8 @@ const SKILL_ICONS: Record<IeltsSkill, typeof BookOpen> = {
   reading: BookOpen, listening: Headphones, writing: PenLine, speaking: Mic,
 };
 const LOCALES: Record<string, string> = { uz: 'uz-UZ', ru: 'ru-RU', en: 'en-GB' };
+
+type TabKey = 'assignments' | 'progress' | 'schedule' | 'attendance';
 
 // ─── Module-level 60s caches (student-page convention) ───────────────────────
 type AssignmentDoc = { id: string } & IeltsAssignment;
@@ -261,6 +293,33 @@ export default function IeltsGroupPage() {
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<TabKey>('assignments');
+
+  // Center-managed group extras: center name + weekly schedule, both from the
+  // linked class doc. Attendance fetches itself inside StudentAttendanceView.
+  const [centerName, setCenterName] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<ScheduleEntry[]>([]);
+
+  const linkedClassId = group?.classId || null;
+  const linkedCenterId = group?.centerId || null;
+  useEffect(() => {
+    if (!user || !linkedClassId) return;
+    let alive = true;
+    (async () => {
+      try {
+        const [clsSnap, centerSnap] = await Promise.all([
+          getDoc(doc(db, 'classes', linkedClassId)).catch(() => null),
+          linkedCenterId ? getDoc(doc(db, 'centers', linkedCenterId)).catch(() => null) : Promise.resolve(null),
+        ]);
+        if (!alive) return;
+        const cls = clsSnap?.exists() ? clsSnap.data() : null;
+        setSchedule(Array.isArray(cls?.schedule) ? (cls!.schedule as ScheduleEntry[]) : []);
+        setCenterName(centerSnap?.exists() ? (centerSnap.data().name || null) : null);
+      } catch { /* extras are best-effort — the group page still works without them */ }
+    })();
+    return () => { alive = false; };
+  }, [user, linkedClassId, linkedCenterId]);
+
   useEffect(() => {
     if (!user || !groupId) return;
     let alive = true;
@@ -344,22 +403,40 @@ export default function IeltsGroupPage() {
   const currentBand = gradedBands.length ? gradedBands[gradedBands.length - 1] : null;
   const targetBand = Number(group.targetBand) || null;
 
-  // Weak question types: aggregate typeStats across my attempts, 3 worst.
-  const agg: Record<string, { correct: number; total: number }> = {};
+  // Weak question types: aggregate typeStats across my attempts, 3 worst. Per type we also
+  // remember which skill contributed most questions — the practice deep-link filters by it.
+  const agg: Record<string, { correct: number; total: number; bySkill: Record<string, number> }> = {};
   for (const a of attempts) {
     const stats = a.typeStats as Record<string, { correct: number; total: number }> | undefined;
     if (!stats) continue;
+    const skill = String(a.skill || 'reading');
     for (const [type, s] of Object.entries(stats)) {
-      if (!agg[type]) agg[type] = { correct: 0, total: 0 };
+      if (!agg[type]) agg[type] = { correct: 0, total: 0, bySkill: {} };
       agg[type].correct += s.correct || 0;
       agg[type].total += s.total || 0;
+      agg[type].bySkill[skill] = (agg[type].bySkill[skill] || 0) + (s.total || 0);
     }
   }
   const weakTypes = Object.entries(agg)
     .filter(([, s]) => s.total > 0)
-    .map(([type, s]) => ({ type, pct: Math.round((s.correct / s.total) * 100) }))
+    .map(([type, s]) => ({
+      type,
+      pct: Math.round((s.correct / s.total) * 100),
+      skill: Object.entries(s.bySkill).sort((a, b) => b[1] - a[1])[0]?.[0] === 'listening' ? 'listening' : 'reading',
+    }))
     .sort((a, b) => a.pct - b.pct)
     .slice(0, 3);
+
+  // Tabs mirror the ordinary class page; the two center tabs appear only for
+  // center-managed groups (they need the linked class for schedule/attendance).
+  const TABS = [
+    { value: 'assignments', label: t.tabs.assignments, icon: <FileText size={16} strokeWidth={2.75} /> },
+    { value: 'progress', label: t.tabs.progress, icon: <BarChart2 size={16} strokeWidth={2.75} /> },
+    ...(linkedClassId ? [
+      { value: 'schedule', label: t.tabs.schedule, icon: <CalendarDays size={16} strokeWidth={2.75} /> },
+      { value: 'attendance', label: t.tabs.attendance, icon: <CalendarCheck size={16} strokeWidth={2.75} /> },
+    ] : []),
+  ];
 
   return (
     <Page>
@@ -374,69 +451,117 @@ export default function IeltsGroupPage() {
         }
       />
 
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-s-section">
+      {/* Center identity — the group's home base, shown above the tabs */}
+      {centerName && (
+        <Card className="mb-s-gap flex items-center gap-3">
+          <Tile tone="primary" size="sm"><Building2 size={15} strokeWidth={2.5} /></Tile>
+          <div className="min-w-0">
+            <p className="text-[10.5px] font-black uppercase tracking-[0.1em] text-on-surface-variant">{t.centerLabel}</p>
+            <p className="truncate text-[14.5px] font-bold text-on-surface">{centerName}</p>
+          </div>
+        </Card>
+      )}
 
-        {/* ── My progress ─────────────────────────────────────────────────── */}
-        <section className="flex flex-col gap-s-gap">
-          <h2 className="s-display text-lg font-bold">{t.progress}</h2>
-          <Card className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-1.5">
-              {currentBand != null && (
-                <Chip status="gold" size="md">{t.currentBand}: {currentBand.toFixed(1)}</Chip>
-              )}
-              {targetBand != null && (
-                <Chip status="neutral" size="md">{t.targetBand}: {targetBand.toFixed(1)}</Chip>
-              )}
-            </div>
-            {gradedBands.length >= 2 ? (
-              <BandSparkline bands={gradedBands} target={targetBand} />
-            ) : gradedBands.length === 0 ? (
-              <p className="text-[13px] font-bold text-on-surface-variant">{t.progressEmpty}</p>
-            ) : null}
-          </Card>
-        </section>
+      <Tabs
+        tabs={TABS}
+        value={activeTab}
+        onChange={(v) => setActiveTab(v as TabKey)}
+        label={group.title || t.fallbackTitle}
+        className="mb-s-section"
+      />
 
-        {/* ── Weak question types (only when data exists) ─────────────────── */}
-        {weakTypes.length > 0 && (
-          <section className="flex flex-col gap-s-gap">
-            <h2 className="s-display text-lg font-bold">{t.weakTypes}</h2>
-            <Card className="flex flex-col gap-4">
-              {weakTypes.map(({ type, pct }) => (
-                <div key={type} className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between gap-2 text-[13px] font-bold">
-                    <span>{typeLabel(type)}</span>
-                    <span className="s-num text-on-surface-variant">{pct}% {t.accuracy}</span>
-                  </div>
-                  <ProgressBar value={pct} label={`${typeLabel(type)} — ${pct}%`} size="sm" tone={pct >= 70 ? 'success' : 'primary'} />
+      <div className="min-h-[400px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={MOTION_ON ? { opacity: 0, y: 10 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+
+            {/* ── Mocks / assignments ─────────────────────────────────────── */}
+            {activeTab === 'assignments' && (
+              myAssignments.length === 0 ? (
+                <Card>
+                  <EmptyState icon="📝" title={t.emptyAssignments} description={t.emptyAssignmentsDesc} />
+                </Card>
+              ) : (
+                <div className="flex flex-col gap-s-gap">
+                  {myAssignments.map(a => (
+                    <AssignmentCard
+                      key={a.id}
+                      a={a}
+                      attempt={attemptByAssignment.get(a.id)}
+                      groupId={groupId}
+                      lang={lang}
+                      t={t}
+                    />
+                  ))}
                 </div>
-              ))}
-            </Card>
-          </section>
-        )}
+              )
+            )}
 
-        {/* ── Assignments ─────────────────────────────────────────────────── */}
-        <section className="flex flex-col gap-s-gap">
-          <h2 className="s-display text-lg font-bold">{t.assignments}</h2>
-          {myAssignments.length === 0 ? (
-            <Card>
-              <EmptyState icon="📝" title={t.emptyAssignments} description={t.emptyAssignmentsDesc} />
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-s-gap">
-              {myAssignments.map(a => (
-                <AssignmentCard
-                  key={a.id}
-                  a={a}
-                  attempt={attemptByAssignment.get(a.id)}
-                  groupId={groupId}
-                  lang={lang}
-                  t={t}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+            {/* ── Results: band trajectory + weak question types ──────────── */}
+            {activeTab === 'progress' && (
+              <div className="flex flex-col gap-s-section">
+                <section className="flex flex-col gap-s-gap">
+                  <h2 className="s-display text-lg font-bold">{t.progress}</h2>
+                  <Card className="flex flex-col gap-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentBand != null && (
+                        <Chip status="gold" size="md">{t.currentBand}: {currentBand.toFixed(1)}</Chip>
+                      )}
+                      {targetBand != null && (
+                        <Chip status="neutral" size="md">{t.targetBand}: {targetBand.toFixed(1)}</Chip>
+                      )}
+                    </div>
+                    {gradedBands.length >= 2 ? (
+                      <BandSparkline bands={gradedBands} target={targetBand} />
+                    ) : gradedBands.length === 0 ? (
+                      <p className="text-[13px] font-bold text-on-surface-variant">{t.progressEmpty}</p>
+                    ) : null}
+                  </Card>
+                </section>
 
+                {weakTypes.length > 0 && (
+                  <section className="flex flex-col gap-s-gap">
+                    <h2 className="s-display text-lg font-bold">{t.weakTypes}</h2>
+                    <Card className="flex flex-col gap-4">
+                      {weakTypes.map(({ type, pct, skill }) => (
+                        <div key={type} className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-2 text-[13px] font-bold">
+                            <span>{typeLabel(type)}</span>
+                            <span className="s-num text-on-surface-variant">{pct}% {t.accuracy}</span>
+                          </div>
+                          <ProgressBar value={pct} label={`${typeLabel(type)} — ${pct}%`} size="sm" tone={pct >= 70 ? 'success' : 'primary'} />
+                          {/* Diagnostics → action: filter the Practice Library to tests containing this type */}
+                          <Link
+                            href={`/ielts?skill=${skill}&type=${encodeURIComponent(type)}`}
+                            className="self-end text-[12.5px] font-black text-primary underline-offset-2 hover:underline"
+                          >
+                            {t.practiceCta} →
+                          </Link>
+                        </div>
+                      ))}
+                    </Card>
+                  </section>
+                )}
+              </div>
+            )}
+
+            {/* ── Timetable (center groups) ───────────────────────────────── */}
+            {activeTab === 'schedule' && (
+              <ScheduleTab schedule={schedule} centerName={centerName} lang={lang} />
+            )}
+
+            {/* ── Attendance (center groups) — same view as the class page ── */}
+            {activeTab === 'attendance' && linkedClassId && (
+              <StudentAttendanceView classId={linkedClassId} userId={user!.uid} />
+            )}
+
+          </motion.div>
+        </AnimatePresence>
       </div>
     </Page>
   );

@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot, collection, query } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import AddIeltsStudentModal from '../_components/AddIeltsStudentModal';
-import AssignTestModal from './_components/AssignTestModal';
+import AssignTestModal, { type AssignPrefill } from './_components/AssignTestModal';
 import IeltsPulseDashboard from './_components/IeltsPulseDashboard';
 import IeltsUnifiedFeed from './_components/IeltsUnifiedFeed';
 import IeltsRosterTab from './_components/IeltsRosterTab';
@@ -20,10 +20,13 @@ import { fetchGroupAttempts } from '@/services/ieltsService';
 
 import {
   Users, Hash, ChevronLeft, Inbox,
-  FileText, Plus, Sparkles, UserPlus, Activity, ClipboardCheck
+  FileText, Plus, Sparkles, UserPlus, Activity, ClipboardCheck, Building2, CalendarCheck
 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import AttendanceGrid from '@/components/attendance/AttendanceGrid';
+import type { ScheduleEntry } from '@/types/attendance';
 
-import { IeltsGroup } from '@/types/ielts';
+import { IeltsGroup } from '@/lib/ielts/types';
 import { IconButton, Spinner, Badge } from '@/components/ui';
 
 // ─── Translations ─────────────────────────────────────────────────────────────
@@ -32,35 +35,46 @@ const T: Record<string, any> = {
     back: "Guruhlarga",
     loading: "Yuklanmoqda...",
     buttons: { add: "O'quvchi Qo'shish", assign: "Mock Berish" },
-    tabs: { dashboard: "Pulse", assignments: "Topshiriqlar", students: "O'quvchilar", requests: "So'rovlar", reviews: "Tekshirish" },
+    tabs: { dashboard: "Pulse", assignments: "Topshiriqlar", students: "O'quvchilar", requests: "So'rovlar", reviews: "Tekshirish", attendance: "Davomat" },
   },
   en: {
     back: "Groups",
     loading: "Loading...",
     buttons: { add: "Add Student", assign: "Assign Mock" },
-    tabs: { dashboard: "Pulse", assignments: "Assignments", students: "Students", requests: "Requests", reviews: "Reviews" },
+    tabs: { dashboard: "Pulse", assignments: "Assignments", students: "Students", requests: "Requests", reviews: "Reviews", attendance: "Attendance" },
   },
   ru: {
     back: "Группы",
     loading: "Загрузка...",
     buttons: { add: "Добавить ученика", assign: "Назначить тест" },
-    tabs: { dashboard: "Пульс", assignments: "Задания", students: "Ученики", requests: "Запросы", reviews: "Проверка" },
+    tabs: { dashboard: "Пульс", assignments: "Задания", students: "Ученики", requests: "Запросы", reviews: "Проверка", attendance: "Посещаемость" },
   },
 };
 
-type IeltsTab = 'dashboard' | 'assignments' | 'students' | 'requests' | 'reviews';
+type IeltsTab = 'dashboard' | 'assignments' | 'students' | 'requests' | 'reviews' | 'attendance';
 
 export default function IeltsGroupDetailsPage() {
   const { groupId } = useParams() as { groupId: string };
   const router = useRouter();
+  const { user } = useAuth();
   const { lang } = useTeacherLanguage();
   const t = T[lang] || T['uz'];
 
   const [group, setGroup]               = useState<IeltsGroup | null>(null);
-  const [activeTab, setActiveTab]       = useState<IeltsTab>('dashboard');
+  const [centerName, setCenterName]     = useState<string | null>(null);
+  // `?tab=attendance` deep-links here from the center hub / dashboard "today's
+  // lessons" card (managed groups mark attendance on this page). Read from the
+  // URL directly — useSearchParams would force a Suspense boundary at build time.
+  const [activeTab, setActiveTab]       = useState<IeltsTab>(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const wanted = new URLSearchParams(window.location.search).get('tab');
+    const valid: IeltsTab[] = ['dashboard', 'assignments', 'students', 'requests', 'reviews', 'attendance'];
+    return valid.includes(wanted as IeltsTab) ? (wanted as IeltsTab) : 'dashboard';
+  });
   const [requestCount, setRequestCount] = useState(0);
   const [isAddOpen, setIsAddOpen]       = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [assignPrefill, setAssignPrefill] = useState<AssignPrefill | null>(null);
   const [isPlusOpen, setIsPlusOpen]     = useState(false);
 
   // Group attempts — one-shot fetch shared by all tabs, refreshed on tab change
@@ -95,6 +109,33 @@ export default function IeltsGroupDetailsPage() {
     return () => unsub();
   }, [groupId, router]);
 
+  // Center name for the header chip (managed groups; centers read is isAuth)
+  const groupCenterId = group?.centerId || null;
+  useEffect(() => {
+    if (!groupCenterId) { setCenterName(null); return; }
+    getDoc(doc(db, 'centers', groupCenterId))
+      .then((snap) => setCenterName(snap.exists() ? (snap.data().name || null) : null))
+      .catch(() => setCenterName(null));
+  }, [groupCenterId]);
+
+  // Linked class twin (managed groups) — live, feeds the Attendance tab with the
+  // schedule + roster the manager maintains (docs/IELTS.md linked-pair model).
+  const groupClassId = group?.classId || null;
+  const [linkedClass, setLinkedClass] = useState<{ centerId: string; studentIds: string[]; schedule: ScheduleEntry[] } | null>(null);
+  useEffect(() => {
+    if (!groupClassId) { setLinkedClass(null); return; }
+    const unsub = onSnapshot(doc(db, 'classes', groupClassId), (snap) => {
+      if (!snap.exists()) { setLinkedClass(null); return; }
+      const data = snap.data();
+      setLinkedClass({
+        centerId: data.centerId || '',
+        studentIds: Array.isArray(data.studentIds) ? data.studentIds : [],
+        schedule: Array.isArray(data.schedule) ? data.schedule : [],
+      });
+    }, () => setLinkedClass(null));
+    return () => unsub();
+  }, [groupClassId]);
+
   // Request badge — live
   useEffect(() => {
     if (!groupId) return;
@@ -113,13 +154,26 @@ export default function IeltsGroupDetailsPage() {
   }
 
   const pendingReviews = attempts.filter(a => a.reviewStatus === 'pending_review').length;
+  // Center-managed group: the roster (and joining) belongs to the center manager —
+  // hide Requests + Add Student; the Students tab is view-only. Content stays ours.
+  const isManaged = !!(group.managed || group.centerId);
+
+  // A hand-typed `?tab=attendance` on a NON-managed group would select a tab
+  // that has no button and no content — fall back rather than render blank.
+  const currentTab: IeltsTab =
+    activeTab === 'attendance' && !isManaged ? 'dashboard'
+      : activeTab === 'requests' && isManaged ? 'dashboard'
+        : activeTab;
 
   const TABS: { id: IeltsTab; label: string; icon: any; badge: number }[] = [
     { id: 'dashboard',   label: t.tabs.dashboard,   icon: Activity,       badge: 0 },
     { id: 'assignments', label: t.tabs.assignments, icon: FileText,       badge: 0 },
     { id: 'reviews',     label: t.tabs.reviews,     icon: ClipboardCheck, badge: pendingReviews },
+    // Managed groups get lesson attendance here (the linked class is hidden from
+    // /teacher/classes — this page is the group's ONE home for the teacher).
+    ...(isManaged ? [{ id: 'attendance' as IeltsTab, label: t.tabs.attendance, icon: CalendarCheck, badge: 0 }] : []),
     { id: 'students',    label: t.tabs.students,    icon: Users,          badge: 0 },
-    { id: 'requests',    label: t.tabs.requests,    icon: Inbox,          badge: requestCount },
+    ...(!isManaged ? [{ id: 'requests' as IeltsTab, label: t.tabs.requests, icon: Inbox, badge: requestCount }] : []),
   ];
 
   return (
@@ -131,8 +185,9 @@ export default function IeltsGroupDetailsPage() {
         groupId={groupId}
         group={group}
         isOpen={isAssignOpen}
-        onClose={() => setIsAssignOpen(false)}
+        onClose={() => { setIsAssignOpen(false); setAssignPrefill(null); }}
         onCreated={() => { setFeedRefresh(n => n + 1); setActiveTab('assignments'); }}
+        prefill={assignPrefill}
       />
 
       {/* ── Plus dropdown overlay ── */}
@@ -161,17 +216,21 @@ export default function IeltsGroupDetailsPage() {
                 <span className="font-bold text-[13px]">{t.buttons.assign}</span>
               </button>
 
-              <div className="h-px bg-outline-variant mx-2" />
+              {!isManaged && (
+                <>
+                  <div className="h-px bg-outline-variant mx-2" />
 
-              <button
-                onClick={() => { setIsAddOpen(true); setIsPlusOpen(false); }}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group"
-              >
-                <div className="w-7 h-7 rounded-m3-sm bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
-                  <UserPlus size={14} strokeWidth={2.5} />
-                </div>
-                <span className="font-bold text-[13px]">{t.buttons.add}</span>
-              </button>
+                  <button
+                    onClick={() => { setIsAddOpen(true); setIsPlusOpen(false); }}
+                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group"
+                  >
+                    <div className="w-7 h-7 rounded-m3-sm bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+                      <UserPlus size={14} strokeWidth={2.5} />
+                    </div>
+                    <span className="font-bold text-[13px]">{t.buttons.add}</span>
+                  </button>
+                </>
+              )}
             </motion.div>
           </>
         )}
@@ -199,9 +258,16 @@ export default function IeltsGroupDetailsPage() {
               <span className="text-[10px] font-black text-on-tertiary-container bg-tertiary-container border border-transparent px-1.5 py-0.5 rounded-m3-xs tracking-wide">
                 🎯 Band {Number(group.targetBand).toFixed(1)}
               </span>
-              <span className="hidden sm:flex items-center gap-0.5 text-[10px] font-black text-on-surface-variant bg-surface-container-high border border-outline-variant px-1.5 py-0.5 rounded-m3-xs font-mono">
-                <Hash size={9} className="text-primary" />{group.joinCode}
-              </span>
+              {isManaged ? (
+                // Managed group — no join code to share; show the owning center instead.
+                <span className="hidden sm:flex items-center gap-1 text-[10px] font-black text-on-secondary-container bg-secondary-container border border-transparent px-1.5 py-0.5 rounded-m3-xs">
+                  <Building2 size={9} />{centerName || 'Markaz'}
+                </span>
+              ) : (
+                <span className="hidden sm:flex items-center gap-0.5 text-[10px] font-black text-on-surface-variant bg-surface-container-high border border-outline-variant px-1.5 py-0.5 rounded-m3-xs font-mono">
+                  <Hash size={9} className="text-primary" />{group.joinCode}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -221,7 +287,7 @@ export default function IeltsGroupDetailsPage() {
       <div className="bg-surface-container-low border-b border-outline-variant px-4 md:px-6 shrink-0">
         <div className="flex gap-0 overflow-x-auto custom-scrollbar">
           {TABS.map(tab => {
-            const isActive = activeTab === tab.id;
+            const isActive = currentTab === tab.id;
             return (
               <button
                 key={tab.id}
@@ -250,17 +316,23 @@ export default function IeltsGroupDetailsPage() {
         </div>
       </div>
 
-      {/* ── Content ── */}
-      <div className="flex-1 w-full max-w-4xl mx-auto px-4 md:px-6 py-6 pb-28">
+      {/* ── Content ── The attendance grid is a spreadsheet: it gets the full
+          viewport width with no gutters so as many lesson columns as possible
+          are visible. Every other tab keeps the readable 4xl column. ── */}
+      <div className={
+        currentTab === 'attendance'
+          ? 'flex-1 w-full pb-20'
+          : 'flex-1 w-full max-w-4xl mx-auto px-4 md:px-6 py-6 pb-28'
+      }>
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeTab}
+            key={currentTab}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
           >
-            {activeTab === 'dashboard' && (
+            {currentTab === 'dashboard' && (
               <IeltsPulseDashboard
                 group={group}
                 attempts={attempts}
@@ -268,16 +340,31 @@ export default function IeltsGroupDetailsPage() {
                 onOpenReviews={() => setActiveTab('reviews')}
               />
             )}
-            {activeTab === 'assignments' && (
+            {currentTab === 'assignments' && (
               <IeltsUnifiedFeed
                 groupId={groupId}
                 group={group}
                 attempts={attempts}
                 refreshKey={feedRefresh}
                 onAssign={() => setIsAssignOpen(true)}
+                onReassign={(a) => {
+                  setAssignPrefill({
+                    skill: a.skill,
+                    test: {
+                      id: a.testId,
+                      test_title: a.testTitle,
+                      total_questions: a.questionCount,
+                      total_time_minutes: a.totalTimeMinutes,
+                    },
+                    mode: a.mode,
+                    allowedAttempts: a.allowedAttempts,
+                    resultsVisibility: a.resultsVisibility,
+                  });
+                  setIsAssignOpen(true);
+                }}
               />
             )}
-            {activeTab === 'reviews' && (
+            {currentTab === 'reviews' && (
               <IeltsReviewsTab
                 attempts={attempts}
                 loaded={attemptsLoaded}
@@ -288,10 +375,24 @@ export default function IeltsGroupDetailsPage() {
                 }
               />
             )}
-            {activeTab === 'students' && (
-              <IeltsRosterTab groupId={groupId} studentIds={group.studentIds} attempts={attempts} />
+            {currentTab === 'attendance' && isManaged && (
+              linkedClass && user ? (
+                <AttendanceGrid
+                  classId={group.classId!}
+                  centerId={linkedClass.centerId}
+                  studentIds={linkedClass.studentIds}
+                  recordedBy={user.uid}
+                  schedule={linkedClass.schedule}
+                  flush
+                />
+              ) : (
+                <div className="py-16 flex justify-center"><Spinner size={28} /></div>
+              )
             )}
-            {activeTab === 'requests' && <IeltsRequestsTab groupId={groupId} />}
+            {currentTab === 'students' && (
+              <IeltsRosterTab groupId={groupId} studentIds={group.studentIds} attempts={attempts} readOnly={isManaged} />
+            )}
+            {currentTab === 'requests' && !isManaged && <IeltsRequestsTab groupId={groupId} />}
           </motion.div>
         </AnimatePresence>
       </div>

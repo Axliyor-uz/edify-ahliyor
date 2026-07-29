@@ -69,6 +69,16 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // --- 1.2 APP CONFIG (native clients' update gate) ---
+    // appConfig/androidStudent: { latestVersionCode, minRequiredVersionCode,
+    // blockedVersionCodes?, storeUrl?, message? } — read by the Android student
+    // app BEFORE login to decide force/optional update. Nothing sensitive.
+    // Writes only via console / super admin (god-mode rule above).
+    match /appConfig/{clientId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // --- 1.5 PARENTS COLLECTION ---
     match /parents/{parentId} {
       allow read, write: if isOwner(parentId);
@@ -580,7 +590,23 @@ service cloud.firestore {
       // must see not-found, not permission-denied. A missing doc reveals nothing.
       allow read: if isAuth() && (resource == null || resource.data.teacherId == request.auth.uid);
       allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
-      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+      allow update: if isAuth() && resource.data.teacherId == request.auth.uid;
+      // `resource == null` keeps deleteIeltsTest's batch working for legacy tests that
+      // never got a key doc (deleting a missing doc reveals and changes nothing).
+      allow delete: if isAuth() && (resource == null || resource.data.teacherId == request.auth.uid);
+    }
+
+    // Library-card summaries written in the same batch as the test doc (saveIeltsTest /
+    // W&S saves) — title, counts, typeBreakdown. NEVER contains answers, so read is open
+    // like the test banks. Ownership mirrors the banks; platform metas (teacherId null)
+    // are admin/Admin-SDK only.
+    match /ielts_test_meta/{testId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update: if isAuth() && resource.data.teacherId == request.auth.uid;
+      // `resource == null`: deleteIeltsTest batches a meta delete even for legacy tests
+      // that never had one.
+      allow delete: if isAuth() && (resource == null || resource.data.teacherId == request.auth.uid);
     }
 
     // --- 14. ACTIVE GAMES ---
@@ -604,13 +630,37 @@ service cloud.firestore {
     // Group reads are teacher/member only — joining goes through /api/ielts/join (Admin SDK),
     // so join codes can no longer be harvested by listing all groups. Both live client queries
     // (teacherId == uid; studentIds array-contains uid) stay provable for list evaluation.
+    // Center-managed IELTS groups (2026-07-29): docs with `centerId` are born ONLY in
+    // /api/manager/ielts-groups (Admin SDK) as the twin of a classes/{classId} doc.
+    // Their roster is manager-owned: the manager mirrors classes.studentIds here
+    // (limited-key update below); the TEACHER cannot touch the group doc at all
+    // (assignments subcollection stays theirs — content vs roster split).
     match /ielts_groups/{groupId} {
       allow read: if isAuth() && (
         resource.data.teacherId == request.auth.uid ||
-        request.auth.uid in resource.data.studentIds
+        request.auth.uid in resource.data.studentIds ||
+        (resource.data.get('centerId', null) != null && isCenterManager(resource.data.centerId))
       );
-      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
-      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+      // Client create is teacher-personal only — stamping a centerId requires the API.
+      allow create: if isAuth() &&
+        request.resource.data.teacherId == request.auth.uid &&
+        request.resource.data.get('centerId', null) == null;
+      allow update: if isAuth() && (
+        // Teacher branch: personal groups only; cannot self-stamp a centerId.
+        (resource.data.teacherId == request.auth.uid &&
+          resource.data.get('centerId', null) == null &&
+          request.resource.data.get('centerId', null) == null) ||
+        // Manager branch: their center's managed groups, roster/teacher/display keys only
+        // (centerId/classId/managed/joinCode stay immutable client-side).
+        (resource.data.get('centerId', null) != null &&
+          isActiveCenterManager(resource.data.centerId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['studentIds', 'teacherId', 'teacherName', 'title', 'description', 'targetBand', 'updatedAt']))
+      );
+      // Managed groups are deleted only via the manager API (pair delete, Admin SDK).
+      allow delete: if isAuth() &&
+        resource.data.teacherId == request.auth.uid &&
+        resource.data.get('centerId', null) == null;
 
       match /assignments/{assignmentId} {
         allow read: if isAuth();

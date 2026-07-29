@@ -91,12 +91,14 @@ export async function POST(request: Request) {
 
     // Optional immediate enrollment — the group must be THIS center's.
     let classRef: FirebaseFirestore.DocumentReference | null = null;
+    let classIeltsGroupId: string | null = null;
     if (classId) {
       const classSnap = await adminDb.collection('classes').doc(classId).get();
       if (!classSnap.exists || classSnap.data()!.centerId !== centerId) {
         return NextResponse.json({ error: 'Tanlangan guruh markazingizga tegishli emas.' }, { status: 403 });
       }
       classRef = classSnap.ref;
+      classIeltsGroupId = classSnap.data()!.ieltsGroupId || null;
     }
 
     // ── Email / username: same policy as teachers ──
@@ -193,6 +195,12 @@ export async function POST(request: Request) {
 
       if (classRef) {
         batch.update(classRef, { studentIds: FieldValue.arrayUnion(uid) });
+        // Center IELTS group — mirror the roster onto the ielts_groups twin.
+        if (classIeltsGroupId) {
+          batch.update(adminDb.collection('ielts_groups').doc(classIeltsGroupId), {
+            studentIds: FieldValue.arrayUnion(uid),
+          });
+        }
       }
 
       await batch.commit();

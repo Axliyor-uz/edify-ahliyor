@@ -13,6 +13,7 @@ import { useStudentLanguage } from '../layout';
 import { AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
 import ChartFrame from '@/components/ChartFrame';
 import MathLevelSummary from '../RASCHmodel/components/MathLevelSummary';
+import TodayScheduleCard from './_components/TodayScheduleCard';
 import { calculateStreak, last7Days, xpDayKey } from '@/lib/xpDays';
 import { fetchMyCenters, type MyCenter } from '@/services/studentCenterService';
 import {
@@ -238,6 +239,9 @@ export default function StudentDashboard() {
             </Card>
           </Link>
         )}
+
+        {/* 🟢 TODAY'S LESSONS (center groups incl. IELTS; hidden when none) */}
+        <TodayScheduleCard lang={lang} />
 
         {/* 🟢 STATS GRID */}
         <div className="grid gap-s-gap sm:grid-cols-2 lg:grid-cols-4">

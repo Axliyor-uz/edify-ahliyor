@@ -13,3 +13,15 @@ Format: `- YYYY-MM-DD | <files> | <what the Android student app must mirror>`
 - 2026-07-29 · `lib/RASCHquiz.ts` (`testTypeFor`/`teacherQuizItem`), `docs/RASCH_QUIZ.md` — an open **ko'p savolli** block (`multi_part` with typed parts) is now filed as test type **`O`** instead of `Y-1`/`Y-2`; blocks are judged by `isClosedQuestion` (a `shared_options` pool, or per-part option lists, stays closed). Mirror it wherever the Android app derives a test type for a teacher-picked item; stored `teacher_rasch_quizzes.items[].testType`/`sectionId` change for NEW papers only (existing papers keep their snapshot), and rendering is unaffected — `examMode` returns `'block'` before reading `testType`.
 - 2026-07-29 · `data/rasch-default-paper.json` (new), `lib/RASCHdefaultPaper.ts` (new), `app/teacher/create/rasch/build/page.tsx`, `docs/RASCH_QUIZ.md` — a teacher can now fill a paper from a bundled 45-question **default variant** ("Namunaviy variant"). Teacher-side only, but the items it writes into `teacher_rasch_quizzes.questions[]` are `source: 'teacher'` snapshots with ids `rasch-default-NN` and `qType` `mcq`/`numeric`/`open` — the student runner must keep rendering them off `examMode` (typed input for the ten O items) with no lookup by id, since no `teacher_questions` document backs them.
 - 2026-07-29 · `lib/RASCHmarks.ts`, `app/teacher/create/rasch/results/[quizId]/page.tsx`, `docs/RASCH_QUIZ.md` — dynamic marks are no longer a per-section budget: every question is now priced across the WHOLE paper (`weight = exp(0.35·difficulty logit)`, ball clamped to `BALL_MIN 1.3`…`BALL_MAX 6.0` via a water-filling solve, total exactly `PAPER_TOTAL 100`); `SlotMark.sectionBudget` → `sectionTotal` (reported after the split, not reserved), `LOGIT_SLOPE`/`MULT_MIN`/`MULT_MAX` → `BALL_SLOPE`. Reads only `teacher_rasch_results.items` — no document shape change — but any Android port of RASCHmarks must mirror the new allocator or the two clients will show different balls for the same cohort.
+<!-- synced through 2de0626 by EdifyStudent sync (2026-07-28): teacher rasch quizzes + skills axis, IELTS upgrade, translation batch (no-op) -->
+<!-- synced through 96d88a7 + the 2026-07-29 WORKING TREE by EdifyStudent sync (2026-07-29):
+     IELTS API error codes, /api/ielts/check self-check, /api/ielts/analyze-writing +
+     aiEstimate/teacherGrade.criteria, ielts_test_meta library cards, hub journey card +
+     weak-type deep link, joinCode hidden from members, self-practice copy; center-managed
+     IELTS groups (tabbed group page with Schedule/Attendance from the linked class,
+     CENTER_MANAGED join refusal, IELTS twins hidden from the classes list); tabbed
+     My Center + center switcher + merged weekly board; dashboard today's-lessons widget;
+     "Markazim" nav destination.
+     ⚠️ Those student changes were still UNCOMMITTED here when they were ported — when
+     they land in a commit they will reappear in the next `2de0626..HEAD`-style diff.
+     They are DONE; do not port them twice. -->

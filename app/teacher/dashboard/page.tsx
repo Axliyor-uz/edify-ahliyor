@@ -21,7 +21,12 @@ import {
 } from 'lucide-react';
 import { useTeacherLanguage, LangType } from '@/app/teacher/layout';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useTeacherCenter } from '@/hooks/useTeacherCenter';
+import TeacherTodayLessons from '@/components/center/TeacherTodayLessons';
+import {
+    fetchTeacherCenterGroups, uniqueStudentCount, type TeacherCenterGroup,
+} from '@/services/teacherCenterService';
 
 import { Button, ProgressBar, Skeleton, cn } from '@/components/ui';
 
@@ -37,6 +42,7 @@ const DASHBOARD_TRANSLATIONS: Record<string, any> = {
         stats: { students: "O'quvchilar", classes: "Faol Sinflar", tests: "Testlar" },
         headers: { create: "Test Yaratish Vositalari", manage: "O'quv Markazi", limits: "Oylik AI Limit" },
         tourBtn: "Qo'llanma",
+        center: { groups: "guruh", students: "o'quvchi", open: "Markazni ochish" },
         subscription: {
             trialTitle: "Pro tarifini 30 kun BEPUL sinab ko'ring! 🎉",
             trialDesc: "Cheksiz testlar, BSB/CHSB generatori va AI vositalaridan to'liq foydalanish imkoniyati.",
@@ -67,6 +73,7 @@ const DASHBOARD_TRANSLATIONS: Record<string, any> = {
         stats: { students: "Students", classes: "Active Classes", tests: "Tests Created" },
         headers: { create: "Creation Tools", manage: "Management Hub", limits: "Monthly AI Limit" },
         tourBtn: "Guide",
+        center: { groups: "groups", students: "students", open: "Open center" },
         subscription: {
             trialTitle: "Try Pro for 30 Days FREE! 🎉",
             trialDesc: "Unlock unlimited tests, BSB generators, and full access to all AI teaching tools.",
@@ -137,6 +144,21 @@ function TeacherDashboardInner() {
         usage: { aiUsed: 0, aiLimit: 100 },
     });
     const [loading, setLoading] = useState(true);
+    // Center groups — only fetched for a teacher who HAS a center link, so a
+    // solo teacher's dashboard makes exactly the reads it always did.
+    const [centerGroups, setCenterGroups] = useState<TeacherCenterGroup[] | null>(null);
+
+    useEffect(() => {
+        if (!user || !teacherCenter.centerId) return;
+        let mounted = true;
+        fetchTeacherCenterGroups(user.uid, teacherCenter.centerId)
+            .then((list) => mounted && setCenterGroups(list))
+            .catch((e) => {
+                console.error('dashboard center groups load failed', e);
+                if (mounted) setCenterGroups([]);
+            });
+        return () => { mounted = false; };
+    }, [user, teacherCenter.centerId]);
 
     useEffect(() => {
         const hour = new Date().getHours();
@@ -168,6 +190,19 @@ function TeacherDashboardInner() {
     if (loading || !user) return <DashboardSkeleton />;
 
     const showTrialPrompt = userData.sub.planId === 'free' && !userData.sub.hasUsedTrial;
+
+    // For a CENTER teacher the class/student counts come from live center data.
+    // `users.activeClassCount`/`totalStudents` are Cloud-Function-generated and
+    // no functions/ dir exists in this repo (docs/TEACHER.md), so they are often
+    // stale or absent. Solo teachers keep reading those fields — unchanged.
+    const isCenterTeacher = !!teacherCenter.centerId && centerGroups !== null;
+    const displayStats = isCenterTeacher
+        ? {
+            ...userData.stats,
+            classes: centerGroups!.length,
+            students: uniqueStudentCount(centerGroups!),
+        }
+        : userData.stats;
 
     const getPlanStyle = () => {
         switch (userData.sub.planId) {
@@ -208,12 +243,8 @@ function TeacherDashboardInner() {
                                 {greeting}, <span className="text-primary">{user?.displayName?.split(' ')[0] || "O'qituvchi"}</span>!
                             </h1>
                             <p className="text-[13px] text-on-surface-variant font-medium">{t.welcome.subtitle}</p>
-                            {teacherCenter.centerId && (
-                                <span className="mt-1.5 inline-flex items-center gap-1.5 self-start px-2.5 py-1 bg-tertiary-container rounded-m3-sm text-[11px] font-black text-on-tertiary-container max-w-[280px]">
-                                    <Building2 size={13} strokeWidth={2.5} className="shrink-0" />
-                                    <span className="truncate">{teacherCenter.centerName || 'Markaz'}</span>
-                                </span>
-                            )}
+                            {/* The center chip that used to live here moved into the
+                                center strip below — one place, not two. */}
                         </div>
 
                         <div className="relative z-10 flex items-center gap-2.5">
@@ -234,6 +265,42 @@ function TeacherDashboardInner() {
                             </div>
                         </div>
                     </motion.div>
+
+                    {/* ═══════════════ 1b. CENTER STRIP (center teachers only) ═══════════════ */}
+                    {teacherCenter.centerId && (
+                        <motion.div variants={itemVariants} className="space-y-4">
+                            <Link
+                                href="/teacher/center"
+                                className="group flex items-center gap-4 rounded-m3-lg bg-tertiary-container p-4 text-on-tertiary-container shadow-elev-1 transition-shadow hover:shadow-elev-2 md:p-5"
+                            >
+                                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-m3-md bg-[color-mix(in_oklab,var(--m3-on-tertiary-container)_12%,transparent)]">
+                                    <Building2 size={22} strokeWidth={2.5} />
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="truncate text-[16px] font-extrabold leading-tight md:text-[18px]">
+                                        {teacherCenter.centerName || 'Markaz'}
+                                    </h2>
+                                    {centerGroups && (
+                                        <p className="mt-0.5 text-[12px] font-bold opacity-85 tabular-nums">
+                                            {centerGroups.length} {t.center.groups} · {uniqueStudentCount(centerGroups)} {t.center.students}
+                                        </p>
+                                    )}
+                                </div>
+                                <span className="hidden shrink-0 items-center gap-1 text-[12px] font-bold opacity-80 sm:flex">
+                                    {t.center.open} <ArrowRight size={14} strokeWidth={2.5} />
+                                </span>
+                                <ChevronRight size={18} className="shrink-0 opacity-70 sm:hidden" />
+                            </Link>
+
+                            {centerGroups && centerGroups.length > 0 && (
+                                <TeacherTodayLessons
+                                    groups={centerGroups}
+                                    centerId={teacherCenter.centerId}
+                                    lang={lang}
+                                />
+                            )}
+                        </motion.div>
+                    )}
 
                     {/* ═══════════════ 2. TRIAL BANNER ═══════════════ */}
                     {showTrialPrompt && (
@@ -265,8 +332,8 @@ function TeacherDashboardInner() {
                     {/* ═══════════════ 3. STATS GRID ═══════════════ */}
                     <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                         <StatCard label={t.stats.tests} value={userData.stats.tests} icon={FileText} tone="primary" tourId="tour-stat-tests" />
-                        <StatCard label={t.stats.classes} value={userData.stats.classes} icon={Layout} tone="secondary" tourId="tour-stat-classes" />
-                        <StatCard label={t.stats.students} value={userData.stats.students} icon={Users} tone="tertiary" tourId="tour-stat-students" />
+                        <StatCard label={t.stats.classes} value={displayStats.classes} icon={Layout} tone="secondary" tourId="tour-stat-classes" />
+                        <StatCard label={t.stats.students} value={displayStats.students} icon={Users} tone="tertiary" tourId="tour-stat-students" />
 
                         {/* AI limit card */}
                         <motion.div

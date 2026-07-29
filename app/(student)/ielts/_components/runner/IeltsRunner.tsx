@@ -20,7 +20,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  AlertCircle, Clock, Eye, Headphones, Highlighter, Lock,
+  AlertCircle, Check, CheckCheck, Clock, Eye, Headphones, Highlighter, Lock,
   Pause, Play, ShieldAlert, Volume2, X, Zap,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -29,7 +29,7 @@ import {
   Banner, Button, Card, Chip, ConfirmDialog, IconButton, Page, SegmentedControl,
   Slider, Spinner, cn, sToast,
 } from '@/components/student-ui';
-import { submitIeltsAttempt, type SubmitResult } from '@/services/ieltsService';
+import { checkPracticeAnswers, submitIeltsAttempt, type SubmitResult } from '@/services/ieltsService';
 import StudentQuestionRenderer from './StudentQuestionRenderer';
 import {
   buildPalette, clearSession, formatClock, isNumberAnswered, loadSession,
@@ -82,6 +82,14 @@ export default function IeltsRunner({
   const [highlightOn, setHighlightOn] = useState(false);
   const [currentQn, setCurrentQn] = useState<number | null>(null);
 
+  // Practice self-check: qn → correct? (cleared whenever an answer changes).
+  const [checkResult, setCheckResult] = useState<Record<string, { correct: boolean }> | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  // Reading highlighter persistence (per passage, serialized block innerHTML).
+  const highlightsRef = useRef<Record<string, string[]>>({});
+  const [hlVersion, setHlVersion] = useState(0);
+
   // listening state
   const [audioPart, setAudioPart] = useState(0);           // simulation sequence position
   const [audioPhase, setAudioPhase] = useState<'idle' | 'playing' | 'check'>('idle');
@@ -131,6 +139,7 @@ export default function IeltsRunner({
     }
     setAnswers(saved.answers || {});
     setFlags(saved.flags || []);
+    highlightsRef.current = saved.highlights || {};
     setEndTime(end);
     setStartedAt(saved.startedAt);
     setTabSwitches(saved.tabSwitches || 0);
@@ -156,11 +165,12 @@ export default function IeltsRunner({
     if (phase !== 'taking' || !endTime || !startedAt) return;
     saveSession(STORAGE_KEY, {
       answers, flags, endTime, startedAt, tabSwitches,
+      ...(Object.keys(highlightsRef.current).length ? { highlights: highlightsRef.current } : {}),
       ...(isListening && isSim && audioPhase !== 'idle'
         ? { audio: { part: audioPart, elapsed: audioPos, phase: audioPhase === 'check' ? 'check' : 'playing' } }
         : {}),
     });
-  }, [answers, flags, endTime, startedAt, tabSwitches, audioPart, audioPos, audioPhase, phase, STORAGE_KEY, isListening, isSim]);
+  }, [answers, flags, endTime, startedAt, tabSwitches, audioPart, audioPos, audioPhase, phase, STORAGE_KEY, isListening, isSim, hlVersion]);
 
   // ---------------------------------------------------------------------------
   // Timer + auto-submit
@@ -214,8 +224,35 @@ export default function IeltsRunner({
   }, [phase, isSubmitting, showSubmitConfirm, showFocusWarning, isSim]);
 
   // ---------------------------------------------------------------------------
-  // Passage highlighter (simulator's surroundContents approach)
+  // Passage highlighter (surroundContents + serialized persistence).
+  // Highlight spans carry data-hl and removal is event-delegated, so the marks
+  // survive pane toggles / group switches / reloads via the session store.
   // ---------------------------------------------------------------------------
+  const persistHighlights = () => {
+    const container = document.getElementById('ielts-passage');
+    if (!container) return;
+    const blocks = container.querySelectorAll<HTMLElement>('[data-hl-block]');
+    highlightsRef.current[String(activeGroupIdx)] = Array.from(blocks).map((b) => b.innerHTML);
+    setHlVersion((v) => v + 1); // triggers session save
+  };
+
+  // Restore saved highlights after React renders the (fresh) block content.
+  // Safe with React: the blocks are dangerouslySetInnerHTML nodes, so React only
+  // rewrites them when the source content string itself changes (group switch).
+  useEffect(() => {
+    if (phase !== 'taking' || isListening) return;
+    const saved = highlightsRef.current[String(activeGroupIdx)];
+    if (!saved?.length) return;
+    const container = document.getElementById('ielts-passage');
+    if (!container) return;
+    const blocks = container.querySelectorAll<HTMLElement>('[data-hl-block]');
+    blocks.forEach((b, i) => {
+      if (saved[i] != null && saved[i] !== b.innerHTML) b.innerHTML = saved[i];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, activeGroupIdx, isListening, mobilePane]);
+
+  // Create highlights while the tool is on.
   useEffect(() => {
     if (!highlightOn || phase !== 'taking' || isListening) return;
     const onMouseUp = () => {
@@ -225,16 +262,11 @@ export default function IeltsRunner({
       const span = document.createElement('span');
       span.className = 'bg-primary-container text-on-primary-container px-0.5 rounded-m3-xs cursor-pointer';
       span.title = t.runner.clickToRemove;
-      span.onclick = () => {
-        const parent = span.parentNode;
-        if (parent) {
-          parent.replaceChild(document.createTextNode(span.textContent || ''), span);
-          parent.normalize();
-        }
-      };
+      span.setAttribute('data-hl', '1');
       try {
         range.surroundContents(span);
         selection.removeAllRanges();
+        persistHighlights();
       } catch { /* selection crossed element boundaries — ignore */ }
     };
     const container = document.getElementById('ielts-passage');
@@ -244,7 +276,26 @@ export default function IeltsRunner({
       container?.removeEventListener('mouseup', onMouseUp);
       container?.removeEventListener('touchend', onMouseUp);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightOn, phase, activeGroupIdx, isListening, t.runner.clickToRemove]);
+
+  // Delegated removal — works even for spans restored from a serialized session.
+  useEffect(() => {
+    if (phase !== 'taking' || isListening) return;
+    const container = document.getElementById('ielts-passage');
+    if (!container) return;
+    const onClick = (e: Event) => {
+      const span = (e.target as HTMLElement).closest?.('span[data-hl]');
+      if (!span?.parentNode) return;
+      span.parentNode.replaceChild(document.createTextNode(span.textContent || ''), span);
+      (span as HTMLElement).remove?.();
+      container.normalize?.();
+      persistHighlights();
+    };
+    container.addEventListener('click', onClick);
+    return () => container.removeEventListener('click', onClick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, activeGroupIdx, isListening, mobilePane]);
 
   // ---------------------------------------------------------------------------
   // Listening simulation audio engine
@@ -293,7 +344,11 @@ export default function IeltsRunner({
       setAudioPart(0);
       setAudioPos(0);
     }
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+    // Fullscreen only where it earns its keep: exam simulation on desktop.
+    // In practice mode (or on phones, where it fails/disrupts) stay windowed.
+    if (isSim && window.matchMedia('(min-width: 768px)').matches && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
   };
 
   const startFromLobby = () => {
@@ -307,6 +362,24 @@ export default function IeltsRunner({
   const handleAnswer = (qn: number, value: string | string[]) => {
     setAnswers((prev) => ({ ...prev, [String(qn)]: value }));
     setCurrentQn(qn);
+    setCheckResult(null); // stale after any change
+  };
+
+  // Practice self-check (platform tests): marks the palette green/red for
+  // answered questions without ending the attempt.
+  const handleCheck = async () => {
+    if (checking) return;
+    setChecking(true);
+    try {
+      const { perQuestion } = await checkPracticeAnswers(test.test_id, skill, answers);
+      setCheckResult(perQuestion);
+      const correct = Object.values(perQuestion).filter((r) => r.correct).length;
+      sToast.success(`${correct}/${Object.keys(perQuestion).length} ✓`);
+    } catch (e: any) {
+      sToast.error(e?.message || t.common.error);
+    } finally {
+      setChecking(false);
+    }
   };
 
   const toggleFlag = (blockKey: string) => {
@@ -536,6 +609,7 @@ export default function IeltsRunner({
 
   // -------------------------- TAKING --------------------------
   const group = groups[activeGroupIdx] || {};
+  const unansweredQns = palette.filter((n) => !isNumberAnswered(n, answers)).map((n) => n.qn);
   const fontSize = FONT_SIZES[fontStep];
   const timerDanger = remainingSec <= 600; // red at 10 min
   const timerPulse = remainingSec <= 300;  // pulse at 5 min
@@ -573,7 +647,13 @@ export default function IeltsRunner({
         onCancel={() => setShowSubmitConfirm(false)}
         onConfirm={handleSubmit}
         title={t.runner.submitTitle}
-        description={`${t.runner.answered}: ${answeredCount} / ${totalQuestions}${answeredCount < totalQuestions ? ` — ${totalQuestions - answeredCount} ${t.runner.unanswered}` : ''}`}
+        description={
+          `${t.runner.answered}: ${answeredCount} / ${totalQuestions}` +
+          (unansweredQns.length
+            ? ` — ${totalQuestions - answeredCount} ${t.runner.unanswered}\n${t.runner.unansweredList}: ` +
+              `${unansweredQns.slice(0, 15).join(', ')}${unansweredQns.length > 15 ? '…' : ''}`
+            : '')
+        }
         confirmLabel={t.common.submit}
         cancelLabel={t.common.cancel}
       />
@@ -585,6 +665,10 @@ export default function IeltsRunner({
             <X size={18} strokeWidth={2.6} />
           </IconButton>
           <span className="hidden truncate text-[12.5px] font-bold text-on-surface-variant lg:block">{test.test_title}</span>
+          {/* Session auto-save reassurance (localStorage restore on reload) */}
+          <span className="hidden items-center gap-1 text-[11px] font-black uppercase tracking-wide text-on-surface-variant sm:inline-flex">
+            <Check size={12} strokeWidth={3} className="text-success" /> {t.runner.autoSaved}
+          </span>
           {tabSwitches > 0 && isSim && (
             <Chip status="error" size="sm" className="hidden sm:inline-flex">{tabSwitches}×</Chip>
           )}
@@ -741,7 +825,7 @@ export default function IeltsRunner({
                   {group.blocks?.map((b: any, i: number) => (
                     <div key={i} className="flex items-start gap-3">
                       {b.label && <div className="mt-[0.15em] w-4 shrink-0 font-sans font-bold text-on-surface-variant">{b.label}</div>}
-                      <div className="min-w-0 flex-1" dangerouslySetInnerHTML={{ __html: String(b.content || '').replace(/\n/g, '<br/>') }} />
+                      <div className="min-w-0 flex-1" data-hl-block={i} dangerouslySetInnerHTML={{ __html: String(b.content || '').replace(/\n/g, '<br/>') }} />
                     </div>
                   ))}
                 </div>
@@ -809,6 +893,7 @@ export default function IeltsRunner({
                   const done = isNumberAnswered(n, answers);
                   const isFlagged = flags.includes(n.blockKey);
                   const isCurrent = currentQn === n.qn;
+                  const checked = checkResult?.[String(n.qn)]; // practice self-check verdict
                   return (
                     <button
                       key={n.qn}
@@ -819,9 +904,13 @@ export default function IeltsRunner({
                       className={cn(
                         's-num grid h-8 min-w-[30px] shrink-0 place-items-center border text-[11px] font-bold transition-colors',
                         isFlagged ? 'rounded-full' : 'rounded-m3-xs', // flagged square → circle (official CD-IELTS)
-                        done
-                          ? 'border-transparent bg-primary text-on-primary'
-                          : 'border-outline bg-surface text-on-surface-variant hover:bg-state-hover',
+                        checked
+                          ? checked.correct
+                            ? 'border-transparent bg-success text-on-success'
+                            : 'border-transparent bg-error text-on-error'
+                          : done
+                            ? 'border-transparent bg-primary text-on-primary'
+                            : 'border-outline bg-surface text-on-surface-variant hover:bg-state-hover',
                         isCurrent && 'ring-2 ring-primary ring-offset-1 ring-offset-surface',
                       )}
                     >
@@ -832,6 +921,19 @@ export default function IeltsRunner({
               </Fragment>
             ))}
           </div>
+          {/* Self-check: platform practice only (the API refuses assignment tests) */}
+          {kind === 'practice' && (
+            <Button
+              size="sm"
+              variant="outlined"
+              className="shrink-0"
+              loading={checking}
+              onClick={handleCheck}
+              icon={<CheckCheck size={15} strokeWidth={2.6} />}
+            >
+              {t.runner.check}
+            </Button>
+          )}
           <Button size="sm" tone="success" className="shrink-0" onClick={() => setShowSubmitConfirm(true)}>
             {t.common.submit}
           </Button>

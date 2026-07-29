@@ -1,6 +1,8 @@
 # IELTS Platform Upgrade Plan
 
-> **Status: PROPOSAL — awaiting confirmation.** Nothing here is implemented yet.
+> **Status: IMPLEMENTED (historical).** The core loop shipped 2026-07-27 and the feedback-loop
+> upgrade (AI writing estimate, self-check, teacher drill-down/queue, test metas) 2026-07-29.
+> [IELTS.md](IELTS.md) is the spec of record — this file is kept for design/product rationale only.
 > Based on: (a) a full audit of the current IELTS code, (b) competitive research of world-class
 > IELTS platforms (official IDP/British Council CD-IELTS, IELTS Online Tests, TestGlider, E2,
 > BestMyTest, GlobalExam, Road to IELTS, Magoosh, Mini-IELTS, SmallTalk2Me, IELTS Arena, and the

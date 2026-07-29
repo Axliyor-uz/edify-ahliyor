@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Layers, Loader2, ChevronDown } from "lucide-react";
+import { Layers, Loader2, ChevronDown, BookOpenCheck } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CenterTeacher } from "@/hooks/useCenterClasses";
 import toast from "react-hot-toast";
 import ManagerSheet from "@/app/manager/_components/ManagerSheet";
 import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+import { managerApiFetch } from "@/lib/managerApi";
 
 const TRANSLATIONS = {
   uz: {
@@ -25,6 +26,11 @@ const TRANSLATIONS = {
     cancel: "Bekor qilish",
     creating: "Yaratilmoqda...",
     create: "Yaratish",
+    typeLabel: "Guruh turi",
+    typeOrdinary: "Oddiy guruh",
+    typeIelts: "IELTS guruh",
+    typeIeltsHint: "IELTS guruhda o'qituvchi mock testlar tayinlaydi; jadval, davomat va to'lovlar oddiy guruhdagidek ishlaydi. O'quvchilarni faqat menejer qo'shadi.",
+    targetBandLabel: "Maqsad band",
   },
   en: {
     createSuccess: "Group created successfully!",
@@ -41,6 +47,11 @@ const TRANSLATIONS = {
     cancel: "Cancel",
     creating: "Creating...",
     create: "Create",
+    typeLabel: "Group type",
+    typeOrdinary: "Ordinary group",
+    typeIelts: "IELTS group",
+    typeIeltsHint: "In an IELTS group the teacher assigns mock tests; schedule, attendance and billing work like an ordinary group. Only the manager enrolls students.",
+    targetBandLabel: "Target band",
   },
   ru: {
     createSuccess: "Группа успешно создана!",
@@ -57,6 +68,11 @@ const TRANSLATIONS = {
     cancel: "Отмена",
     creating: "Создание...",
     create: "Создать",
+    typeLabel: "Тип группы",
+    typeOrdinary: "Обычная группа",
+    typeIelts: "IELTS группа",
+    typeIeltsHint: "В IELTS-группе учитель назначает mock-тесты; расписание, посещаемость и оплата работают как в обычной группе. Учеников добавляет только менеджер.",
+    targetBandLabel: "Целевой band",
   },
 };
 type T = typeof TRANSLATIONS.uz;
@@ -74,6 +90,8 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [groupType, setGroupType] = useState<"ordinary" | "ielts">("ordinary");
+  const [targetBand, setTargetBand] = useState("6.5");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const generateJoinCode = (): string => {
@@ -92,30 +110,43 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
     setIsSubmitting(true);
 
     try {
-      // Get the selected teacher's name
-      const selectedTeacher = teachers.find((t) => t.teacherId === selectedTeacherId);
-      // Stored Firestore value — kept language-independent on purpose.
-      const teacherName = selectedTeacher?.teacherName || "Noma'lum O'qituvchi";
-      const joinCode = generateJoinCode();
+      if (groupType === "ielts") {
+        // Linked pair (class + ielts_groups twin) — server-side batch, Admin SDK.
+        await managerApiFetch("/api/manager/ielts-groups", {
+          method: "POST",
+          body: {
+            title: title.trim(),
+            description: description.trim(),
+            teacherId: selectedTeacherId,
+            targetBand: parseFloat(targetBand),
+          },
+        });
+      } else {
+        // Get the selected teacher's name
+        const selectedTeacher = teachers.find((t) => t.teacherId === selectedTeacherId);
+        // Stored Firestore value — kept language-independent on purpose.
+        const teacherName = selectedTeacher?.teacherName || "Noma'lum O'qituvchi";
+        const joinCode = generateJoinCode();
 
-      await addDoc(collection(db, "classes"), {
-        title: title.trim(),
-        description: description.trim(),
-        joinCode,
-        centerId,
-        teacherId: selectedTeacherId,
-        teacherName,
-        studentIds: [],
-        studentCount: 0,
-        isLocked: false,
-        createdAt: serverTimestamp(),
-      });
+        await addDoc(collection(db, "classes"), {
+          title: title.trim(),
+          description: description.trim(),
+          joinCode,
+          centerId,
+          teacherId: selectedTeacherId,
+          teacherName,
+          studentIds: [],
+          studentCount: 0,
+          isLocked: false,
+          createdAt: serverTimestamp(),
+        });
+      }
 
       toast.success(t.createSuccess);
       onSuccess();
     } catch (error: any) {
       console.error("Create Group Error:", error);
-      toast.error(t.createError);
+      toast.error(error?.message || t.createError);
     } finally {
       setIsSubmitting(false);
     }
@@ -141,6 +172,60 @@ export default function CreateGroupModal({ centerId, teachers, onClose, onSucces
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Group type */}
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-bold text-on-surface-variant ml-1">{t.typeLabel}</label>
+            <div className="grid grid-cols-2 gap-0.5 p-1 bg-surface-container-low border border-outline-variant rounded-m3-md">
+              {([
+                { key: "ordinary" as const, label: t.typeOrdinary, Icon: Layers },
+                { key: "ielts" as const, label: t.typeIelts, Icon: BookOpenCheck },
+              ]).map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setGroupType(key)}
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-m3-sm text-[12.5px] font-bold transition-colors ${
+                    groupType === key
+                      ? "bg-primary text-on-primary shadow-elev-1"
+                      : "text-on-surface-variant hover:bg-state-hover"
+                  }`}
+                >
+                  <Icon size={14} /> {label}
+                </button>
+              ))}
+            </div>
+            {groupType === "ielts" && (
+              <p className="text-[12px] font-medium text-on-surface-variant ml-1 leading-snug">
+                {t.typeIeltsHint}
+              </p>
+            )}
+          </div>
+
+          {/* Target band (IELTS only) */}
+          {groupType === "ielts" && (
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-bold text-on-surface-variant ml-1">
+                {t.targetBandLabel} <span className="text-error">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={targetBand}
+                  onChange={(e) => setTargetBand(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full px-4 h-t-control bg-surface-container-low border border-outline-variant rounded-m3-md text-[14px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60 appearance-none cursor-pointer"
+                >
+                  {["5.0", "5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5", "9.0"].map((b) => (
+                    <option key={b} value={b}>Band {b}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-on-surface-variant">
+                  <ChevronDown size={18} />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Title Input */}
           <div className="space-y-1.5">

@@ -118,6 +118,28 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       deletedCounts['groups detached'] = classesSnap.size;
     }
 
+    // 5b. Center-managed IELTS twins (ielts_groups.centerId — see docs/IELTS.md).
+    // Without this they would be orphaned AND unmanageable: the manager is gone,
+    // the rules lock the teacher out of managed-group docs, and client delete is
+    // blocked. Follow the deleteClasses choice: delete the pair member, or
+    // detach it back into a personal teacher group (centerId/managed removed →
+    // the teacher branch of the rules applies again; ielts_attempts are kept).
+    const ieltsSnap = await adminDb.collection('ielts_groups').where('centerId', '==', centerId).get();
+    if (deleteClasses) {
+      for (const g of ieltsSnap.docs) {
+        await adminDb.recursiveDelete(g.ref); // assignments + requests too
+      }
+      deletedCounts['ielts groups'] = ieltsSnap.size;
+    } else if (ieltsSnap.size > 0) {
+      const batch = adminDb.batch();
+      ieltsSnap.docs.forEach((d) => batch.update(d.ref, {
+        centerId: FieldValue.delete(),
+        managed: FieldValue.delete(),
+      }));
+      await batch.commit();
+      deletedCounts['ielts groups detached'] = ieltsSnap.size;
+    }
+
     // 6. Center-created teacher accounts (accountType 'center-managed').
     // Unrecoverable without the center (synthetic email, manager-held
     // password), so default is delete. Self-signup teachers are NEVER touched.
@@ -140,6 +162,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     // leftovers; links of every teacher, created or self-signup).
     deletedCounts['teacher credentials'] = await deleteByQuery(byCenter('center_teacher_credentials'));
     deletedCounts['teacher links'] = await deleteByQuery(byCenter('center_teachers'));
+
+    // 7b. Student roster links + manager-held student credentials — without this
+    // the deleted center's roster docs linger forever (the student ACCOUNTS are
+    // never touched here; self-signup or center-created alike, they live on).
+    deletedCounts['student links'] = await deleteByQuery(byCenter('center_students'));
+    deletedCounts['student credentials'] = await deleteByQuery(byCenter('center_student_credentials'));
 
     // 8. Manager account (optional). recursiveDelete takes private/contact too.
     // Classes they might personally teach are left alone (historic behavior).
