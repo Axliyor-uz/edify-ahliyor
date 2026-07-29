@@ -19,6 +19,7 @@ Every Google Gemini-powered feature, the credit/limit systems that meter them, a
 | Specialized-school MCQ | `app/teacher/create/ixtisoslashtirilgan_maktab/api/route.ts` | same-dir page | olympiad difficulty; temp 0.35 |
 | Public-school (maktab) MCQ | `app/teacher/create/maktab/api/route.ts` | same-dir page | **First tries local JSON banks in Firebase Storage** (`structure.json` registry, bucket `scanqr-64512.firebasestorage.app`, RAM cache, artificial 3.5s delay), falls back to Gemini; temp 0.25 |
 | BSB-CHSB summative | `app/teacher/create/bsb-chsb/api/route.ts` | same-dir page | mixed types (mcq/short_answer/open_ended/matching/true_false) from a `distribution`; output `{t,p,to,q,o,a,m,ru,e}` type-branched |
+| IELTS writing estimate | `app/api/ielts/analyze-writing/route.ts` | student review page + teacher IELTS grading form | raw fetch, JSON `responseSchema` `{ta,cc,lr,gra,feedback{uz,ru,en}}` temp 0.2; result **cached on the attempt** (`aiEstimate`) so one Gemini call per attempt ever; limit: `ielts_ai_usage/{uid}_{date}` UTC daily counter (System-C pattern, env `IELTS_AI_WRITING_DAILY_LIMIT` default 5, check→generate→increment). See [IELTS.md](IELTS.md). |
 
 ⚠️ `app/teacher/analytics/page.tsx` also calls `/api/stt` — **that route does not exist** (dead reference).
 

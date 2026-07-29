@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { fetchUsersLite } from '@/services/userLookup';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import {
   Target, Activity, CheckCircle2, Clock, AlertTriangle,
   PenTool, Mic, BookOpen, Headphones, ClipboardCheck, ChevronRight, Inbox,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui';
-import { IeltsGroup } from '@/types/ielts';
+import { IeltsGroup } from '@/lib/ielts/types';
 import type { IeltsSkill } from '@/lib/ielts/types';
 import { GroupAttempt, effectiveBand, submittedMillis, timeAgo, toDateSafe } from './groupData';
 
@@ -135,22 +134,21 @@ export default function IeltsPulseDashboard({ group, attempts, loaded, onOpenRev
   }, [attempts, members, targetBand]);
 
   // Resolve names for flagged members that never submitted (no userName in attempts)
+  // — batched via services/userLookup instead of one getDoc per member.
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>({});
   useEffect(() => {
     const missing = attention.filter((x) => !x.name && !resolvedNames[x.uid]).map((x) => x.uid).slice(0, 20);
     if (missing.length === 0) return;
     let alive = true;
-    Promise.all(missing.map(async (uid) => {
-      try {
-        const snap = await getDoc(doc(db, 'users', uid));
-        return [uid, snap.exists() ? (snap.data().displayName as string) || uid.slice(0, 6) : uid.slice(0, 6)] as const;
-      } catch {
-        return [uid, uid.slice(0, 6)] as const;
-      }
-    })).then((pairs) => {
-      if (!alive) return;
-      setResolvedNames((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
-    });
+    fetchUsersLite(missing)
+      .then((profiles) => {
+        if (!alive) return;
+        setResolvedNames((prev) => ({
+          ...prev,
+          ...Object.fromEntries(missing.map((uid) => [uid, profiles[uid]?.displayName || uid.slice(0, 6)])),
+        }));
+      })
+      .catch(() => { /* names are decoration */ });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attention]);

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, arrayRemove } from "firebase/firestore";
+import { managedRosterBatch } from "@/services/ieltsService";
 import { Users, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/manager-ui";
 import toast from "react-hot-toast";
@@ -70,6 +71,8 @@ interface RosterProps {
   classId: string;
   centerId: string;
   studentIds: string[];
+  /** Present on center IELTS groups — roster writes must mirror ielts_groups.studentIds. */
+  ieltsGroupId?: string;
   onRefresh: () => void;
 }
 
@@ -80,7 +83,7 @@ interface StudentProfile {
   totalXP: number;
 }
 
-export default function ManagerRosterTab({ classId, centerId, studentIds, onRefresh }: RosterProps) {
+export default function ManagerRosterTab({ classId, centerId, studentIds, ieltsGroupId, onRefresh }: RosterProps) {
   const { lang } = useManagerLanguage();
   const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -151,8 +154,12 @@ export default function ManagerRosterTab({ classId, centerId, studentIds, onRefr
     if (!studentToRemove) return;
     setIsRemoving(true);
     try {
-      const classRef = doc(db, "classes", classId);
-      await updateDoc(classRef, { studentIds: arrayRemove(studentToRemove.uid) });
+      if (ieltsGroupId) {
+        await managedRosterBatch(classId, ieltsGroupId, studentToRemove.uid, "remove");
+      } else {
+        const classRef = doc(db, "classes", classId);
+        await updateDoc(classRef, { studentIds: arrayRemove(studentToRemove.uid) });
+      }
       toast.success(t.removed(studentToRemove.displayName));
       setStudentToRemove(null);
       onRefresh();
@@ -196,6 +203,7 @@ export default function ManagerRosterTab({ classId, centerId, studentIds, onRefr
             classId={classId}
             centerId={centerId}
             existingStudentIds={studentIds || []}
+            ieltsGroupId={ieltsGroupId}
             onClose={() => setIsModalOpen(false)}
             onAdded={onRefresh}
           />
@@ -263,6 +271,7 @@ export default function ManagerRosterTab({ classId, centerId, studentIds, onRefr
           classId={classId}
           centerId={centerId}
           existingStudentIds={studentIds || []}
+          ieltsGroupId={ieltsGroupId}
           onClose={() => setIsModalOpen(false)}
           onAdded={onRefresh}
         />

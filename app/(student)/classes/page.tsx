@@ -73,7 +73,11 @@ export default function MyClassesPage() {
           where('studentIds', 'array-contains', user.uid)
         );
         const snap = await getDocs(q);
-        const fetchedClasses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Center IELTS groups live on the IELTS page (their linked class carries
+        // schedule/attendance data only) — hide them here to avoid a duplicate card.
+        const fetchedClasses = snap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as any))
+          .filter(cls => !cls.ieltsGroupId);
 
         // 🟢 3. UPDATE CACHE & UI
         globalClassesCache[user.uid] = {

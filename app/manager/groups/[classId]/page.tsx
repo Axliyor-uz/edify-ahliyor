@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
-import { Users, Activity, Settings, ArrowLeft, DoorOpen, CalendarDays, Copy } from "lucide-react";
+import { Users, Activity, Settings, ArrowLeft, DoorOpen, CalendarDays, Copy, BookOpenCheck } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import type { ScheduleEntry } from "@/types/attendance";
@@ -16,13 +16,14 @@ import ManagerRosterTab from "./_components/ManagerRosterTab";
 import ManagerOversightTab from "./_components/ManagerOversightTab";
 import ManagerSettingsTab from "./_components/ManagerSettingsTab";
 import ScheduleTab from "./_components/ScheduleTab";
+import IeltsOverviewTab from "./_components/IeltsOverviewTab";
 
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 const TRANSLATIONS = {
   uz: {
     dayShort: ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"],
-    tabs: { roster: "O'quvchilar", schedule: "Jadval", oversight: "Nazorat", settings: "Sozlamalar" },
+    tabs: { roster: "O'quvchilar", schedule: "Jadval", oversight: "Nazorat", settings: "Sozlamalar", ielts: "IELTS" },
     centerNotFound: "Manager centerId topilmadi.",
     noAccess: "Sizda bu guruhni ko'rish huquqi yo'q.",
     genericError: "Xatolik yuz berdi",
@@ -35,7 +36,7 @@ const TRANSLATIONS = {
   },
   en: {
     dayShort: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
-    tabs: { roster: "Students", schedule: "Schedule", oversight: "Oversight", settings: "Settings" },
+    tabs: { roster: "Students", schedule: "Schedule", oversight: "Oversight", settings: "Settings", ielts: "IELTS" },
     centerNotFound: "Manager centerId not found.",
     noAccess: "You don't have permission to view this group.",
     genericError: "Something went wrong",
@@ -48,7 +49,7 @@ const TRANSLATIONS = {
   },
   ru: {
     dayShort: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
-    tabs: { roster: "Ученики", schedule: "Расписание", oversight: "Контроль", settings: "Настройки" },
+    tabs: { roster: "Ученики", schedule: "Расписание", oversight: "Контроль", settings: "Настройки", ielts: "IELTS" },
     centerNotFound: "Не найден centerId менеджера.",
     noAccess: "У вас нет прав для просмотра этой группы.",
     genericError: "Произошла ошибка",
@@ -78,13 +79,23 @@ export interface ClassDocument {
   monthlyFee?: number;
   /** Center membership anchor (2026-07-15). */
   centerId?: string;
+  /** Linked ielts_groups doc id — present only on center IELTS groups (2026-07-29). */
+  ieltsGroupId?: string;
 }
 
-type TabKey = "roster" | "schedule" | "oversight" | "settings";
+type TabKey = "roster" | "schedule" | "oversight" | "settings" | "ielts";
 
-const TABS: { key: TabKey; icon: React.ElementType }[] = [
+const BASE_TABS: { key: TabKey; icon: React.ElementType }[] = [
   { key: "roster", icon: Users },
   { key: "schedule", icon: CalendarDays },
+  { key: "oversight", icon: Activity },
+  { key: "settings", icon: Settings },
+];
+
+const IELTS_TABS: { key: TabKey; icon: React.ElementType }[] = [
+  { key: "roster", icon: Users },
+  { key: "schedule", icon: CalendarDays },
+  { key: "ielts", icon: BookOpenCheck },
   { key: "oversight", icon: Activity },
   { key: "settings", icon: Settings },
 ];
@@ -182,15 +193,22 @@ export default function GroupDetailPage() {
                 {t.teacherLabel} <span className="font-semibold text-on-surface">{classData.teacherName}</span>
               </p>
             </div>
-            <button
-              onClick={handleCopyCode}
-              title={t.copyJoinCode}
-              className="self-start flex items-center gap-1.5 px-3.5 py-2 bg-surface-container-low hover:bg-state-hover border border-outline-variant rounded-full transition-colors shrink-0"
-            >
-              <span className="text-[11px] font-semibold text-on-surface-variant">{t.codeLabel}</span>
-              <span className="text-[13px] font-mono font-bold text-on-surface tracking-widest">{classData.joinCode}</span>
-              <Copy size={13} className="text-on-surface-variant ml-0.5" />
-            </button>
+            {classData.ieltsGroupId ? (
+              // Managed IELTS group — enrollment is manager-only; no join code to share.
+              <span className="self-start flex items-center gap-1.5 px-3.5 py-2 bg-tertiary-container text-on-tertiary-container rounded-full text-[13px] font-bold shrink-0">
+                <BookOpenCheck size={14} /> IELTS
+              </span>
+            ) : (
+              <button
+                onClick={handleCopyCode}
+                title={t.copyJoinCode}
+                className="self-start flex items-center gap-1.5 px-3.5 py-2 bg-surface-container-low hover:bg-state-hover border border-outline-variant rounded-full transition-colors shrink-0"
+              >
+                <span className="text-[11px] font-semibold text-on-surface-variant">{t.codeLabel}</span>
+                <span className="text-[13px] font-mono font-bold text-on-surface tracking-widest">{classData.joinCode}</span>
+                <Copy size={13} className="text-on-surface-variant ml-0.5" />
+              </button>
+            )}
           </div>
 
           {/* Schedule + room summary */}
@@ -216,9 +234,9 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
-      {/* Segmented tabs — all 4 always visible, no horizontal scroll */}
-      <div className="grid grid-cols-4 gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-m3-lg">
-        {TABS.map((tab) => {
+      {/* Segmented tabs — all always visible, no horizontal scroll */}
+      <div className={`grid ${classData.ieltsGroupId ? "grid-cols-5" : "grid-cols-4"} gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-m3-lg`}>
+        {(classData.ieltsGroupId ? IELTS_TABS : BASE_TABS).map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
           return (
@@ -245,8 +263,12 @@ export default function GroupDetailPage() {
             classId={classData.id}
             centerId={managerCenterId}
             studentIds={classData.studentIds}
+            ieltsGroupId={classData.ieltsGroupId}
             onRefresh={() => loadData({ silent: true })}
           />
+        )}
+        {activeTab === "ielts" && classData.ieltsGroupId && (
+          <IeltsOverviewTab groupId={classData.ieltsGroupId} />
         )}
         {activeTab === "schedule" && managerCenterId && (
           <ScheduleTab

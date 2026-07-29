@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       if (!groupSnap.exists) throw new IeltsApiError('Guruh topilmadi.', 404);
       const group = groupSnap.data()!;
       if (!Array.isArray(group.studentIds) || !group.studentIds.includes(uid)) {
-        throw new IeltsApiError('Siz bu guruh a’zosi emassiz.', 403);
+        throw new IeltsApiError('Siz bu guruh a’zosi emassiz.', 403, 'NOT_MEMBER');
       }
       assignmentRef = groupSnap.ref.collection('assignments').doc(assignmentId);
       const aSnap = await assignmentRef.get();
@@ -52,13 +52,13 @@ export async function POST(request: Request) {
       const a = aSnap.data()!;
       if (a.status && a.status !== 'active') throw new IeltsApiError('Vazifa faol emas.', 403);
       if (Array.isArray(a.assignedTo) && !a.assignedTo.includes(uid)) {
-        throw new IeltsApiError('Bu vazifa sizga biriktirilmagan.', 403);
+        throw new IeltsApiError('Bu vazifa sizga biriktirilmagan.', 403, 'NOT_ASSIGNED');
       }
       const now = Date.now();
       const openAtMs = a.openAt?.toMillis?.() ?? null;
       dueAtMs = a.dueAt?.toMillis?.() ?? null;
-      if (openAtMs && now < openAtMs) throw new IeltsApiError('Vazifa hali ochilmagan.', 403);
-      if (dueAtMs && now > dueAtMs + 60_000) throw new IeltsApiError('Muddat tugagan.', 403);
+      if (openAtMs && now < openAtMs) throw new IeltsApiError('Vazifa hali ochilmagan.', 403, 'NOT_OPEN');
+      if (dueAtMs && now > dueAtMs + 60_000) throw new IeltsApiError('Muddat tugagan.', 403, 'PAST_DUE');
       testId = a.testId; // never trust the client's testId for assignments
       mode = a.mode === 'simulation' ? 'simulation' : 'practice';
       resultsVisibility = a.resultsVisibility || 'always';
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       await adminDb.runTransaction(async (tx) => {
         const prev = await tx.get(attemptRef);
         const attemptsTaken = (prev.exists ? prev.data()!.attemptsTaken || 0 : 0) + 1;
-        if (attemptsTaken > allowedAttempts) throw new IeltsApiError('Urinishlar soni tugagan.', 403);
+        if (attemptsTaken > allowedAttempts) throw new IeltsApiError('Urinishlar soni tugagan.', 403, 'NO_ATTEMPTS_LEFT');
         tx.set(attemptRef, { ...base, attemptsTaken, xpEarned: xpSuggested });
         tx.update(assignmentRef!, { completedBy: FieldValue.arrayUnion(uid) });
       });

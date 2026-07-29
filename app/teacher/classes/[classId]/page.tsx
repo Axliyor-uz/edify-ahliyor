@@ -71,7 +71,15 @@ export default function ClassDetailsPage() {
   // boshqariladi; o'qituvchi uchun view-only (rules ham shuni majburlaydi).
   const isCenterClass = !!classData?.centerId;
   
-  const [activeTab, setActiveTab] = useState<TabType>('students');
+  // `?tab=attendance` deep-links here from the center hub / dashboard "today's
+  // lessons" card. Read from the URL directly, not useSearchParams — the latter
+  // forces a Suspense boundary at build time for no benefit.
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (typeof window === 'undefined') return 'students';
+    const wanted = new URLSearchParams(window.location.search).get('tab');
+    const valid: TabType[] = ['students', 'assignments', 'attendance', 'exams', 'materials', 'leaderboard', 'requests'];
+    return valid.includes(wanted as TabType) ? (wanted as TabType) : 'students';
+  });
   
   // Modals & Menus
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);

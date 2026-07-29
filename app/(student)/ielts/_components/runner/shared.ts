@@ -31,6 +31,9 @@ export interface RunnerSession {
   writing?: { task1: string; task2: string };
   /** Speaking: parts already uploaded survive a reload. */
   speakingUrls?: Record<string, string>;
+  /** Reading highlighter: per passage index, the innerHTML of each text block
+   *  (spans carry data-hl; removal is event-delegated, so serialized HTML survives). */
+  highlights?: Record<string, string[]>;
 }
 
 export function loadSession(key: string): RunnerSession | null {
@@ -148,18 +151,4 @@ export function tsToMs(v: unknown): number | null {
 }
 
 /** Short exam-content labels for the 13 question types (stat chips). */
-export const TYPE_LABELS: Record<string, string> = {
-  matching_headings: 'Headings',
-  true_false_not_given: 'T/F/NG',
-  multiple_choice: 'MCQ',
-  summary_completion: 'Summary',
-  matching_paragraph_information: 'Para info',
-  list_selection: 'List',
-  matching_features: 'Features',
-  sentence_completion: 'Sentence',
-  matching_sentence_endings: 'Endings',
-  short_answer: 'Short ans.',
-  table_completion: 'Table',
-  flowchart_completion: 'Flowchart',
-  diagram_completion: 'Diagram',
-};
+export { IELTS_TYPE_LABELS as TYPE_LABELS } from '@/lib/ielts/typeLabels';

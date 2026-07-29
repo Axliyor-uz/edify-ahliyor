@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { Loader2, Settings, Users, Save } from "lucide-react";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { Loader2, Settings, Users, Save, Trash2, BookOpenCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import { ClassDocument } from "../page";
 import { CenterTeacher } from "@/hooks/useCenterClasses";
 import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+import { managerApiFetch } from "@/lib/managerApi";
+import ConfirmDialog from "@/app/manager/_components/ConfirmDialog";
 
 const TRANSLATIONS = {
   uz: {
@@ -27,6 +30,16 @@ const TRANSLATIONS = {
     loadingTeachers: "O'qituvchilar yuklanmoqda...",
     changeTeacherHint: "Yangi o'qituvchi tanlansa, guruh unga o'tadi. Eski o'qituvchi guruhni ko'ra olmaydi.",
     saveButton: "Sozlamalarni saqlash",
+    targetBandLabel: "Maqsad band (IELTS)",
+    ieltsSyncHint: "Nomi, tavsifi, o'qituvchisi va maqsad band IELTS guruhiga ham qo'llanadi.",
+    dangerSection: "Guruhni o'chirish",
+    deleteWarning: "Guruh, uning IELTS juftligi va tayinlangan testlar o'chiriladi. O'quvchilarning urinishlari va moliya tarixi saqlanib qoladi.",
+    deleteButton: "IELTS guruhni o'chirish",
+    deleteConfirmTitle: "Guruhni o'chirish",
+    deleteConfirmMessage: (name: string) => `"${name}" guruhi va uning IELTS topshiriqlari butunlay o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.`,
+    deleteConfirmLabel: "O'chirish",
+    deleted: "Guruh o'chirildi.",
+    deleteError: "Guruhni o'chirishda xatolik yuz berdi.",
   },
   en: {
     feeInvalid: "The monthly fee is invalid.",
@@ -45,6 +58,16 @@ const TRANSLATIONS = {
     loadingTeachers: "Loading teachers...",
     changeTeacherHint: "If you pick a new teacher, the group moves to them. The previous teacher will no longer see the group.",
     saveButton: "Save settings",
+    targetBandLabel: "Target band (IELTS)",
+    ieltsSyncHint: "Name, description, teacher and target band are applied to the IELTS group too.",
+    dangerSection: "Delete group",
+    deleteWarning: "The group, its IELTS twin and assigned tests will be deleted. Student attempts and finance history are kept.",
+    deleteButton: "Delete IELTS group",
+    deleteConfirmTitle: "Delete group",
+    deleteConfirmMessage: (name: string) => `The group "${name}" and its IELTS assignments will be permanently deleted. This cannot be undone.`,
+    deleteConfirmLabel: "Delete",
+    deleted: "The group has been deleted.",
+    deleteError: "Something went wrong while deleting the group.",
   },
   ru: {
     feeInvalid: "Ежемесячная стоимость указана неверно.",
@@ -63,6 +86,16 @@ const TRANSLATIONS = {
     loadingTeachers: "Загрузка учителей...",
     changeTeacherHint: "Если выбрать нового учителя, группа перейдёт к нему. Прежний учитель потеряет доступ к группе.",
     saveButton: "Сохранить настройки",
+    targetBandLabel: "Целевой band (IELTS)",
+    ieltsSyncHint: "Название, описание, учитель и целевой band применяются и к IELTS-группе.",
+    dangerSection: "Удаление группы",
+    deleteWarning: "Группа, её IELTS-двойник и назначенные тесты будут удалены. Попытки учеников и финансовая история сохранятся.",
+    deleteButton: "Удалить IELTS-группу",
+    deleteConfirmTitle: "Удаление группы",
+    deleteConfirmMessage: (name: string) => `Группа «${name}» и её IELTS-задания будут удалены безвозвратно. Это действие нельзя отменить.`,
+    deleteConfirmLabel: "Удалить",
+    deleted: "Группа удалена.",
+    deleteError: "Не удалось удалить группу.",
   },
 };
 type T = typeof TRANSLATIONS.uz;
@@ -75,6 +108,7 @@ interface SettingsProps {
 
 export default function ManagerSettingsTab({ classData, centerId, onUpdate }: SettingsProps) {
   const { lang } = useManagerLanguage();
+  const router = useRouter();
   const t: T = TRANSLATIONS[lang] || TRANSLATIONS.uz;
   const [title, setTitle] = useState(classData.title);
   const [description, setDescription] = useState(classData.description || "");
@@ -84,6 +118,22 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
   const [centerTeachers, setCenterTeachers] = useState<CenterTeacher[]>([]);
   const [loadingTeachers, setLoadingTeachers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Center IELTS group twin — targetBand lives on the ielts_groups doc.
+  const ieltsGroupId = classData.ieltsGroupId;
+  const [targetBand, setTargetBand] = useState("6.5");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!ieltsGroupId) return;
+    getDoc(doc(db, "ielts_groups", ieltsGroupId))
+      .then((snap) => {
+        const b = Number(snap.data()?.targetBand);
+        if (b >= 1 && b <= 9) setTargetBand(b.toFixed(1));
+      })
+      .catch(() => {});
+  }, [ieltsGroupId]);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,7 +185,23 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
         teacherName: teacherName
       };
 
-      await updateDoc(doc(db, "classes", classData.id), updates);
+      if (ieltsGroupId) {
+        // Keep the ielts_groups twin in sync (display fields + teacher handover +
+        // targetBand) in the same atomic batch — reassignment transfers the IELTS
+        // group to the new teacher (assignments/grading included).
+        const batch = writeBatch(db);
+        batch.update(doc(db, "classes", classData.id), updates);
+        batch.update(doc(db, "ielts_groups", ieltsGroupId), {
+          title: updates.title,
+          description: updates.description,
+          teacherId: selectedTeacherId,
+          teacherName,
+          targetBand: parseFloat(targetBand),
+        });
+        await batch.commit();
+      } else {
+        await updateDoc(doc(db, "classes", classData.id), updates);
+      }
 
       toast.success(t.saved);
       onUpdate(updates);
@@ -144,6 +210,22 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
       toast.error(t.saveError);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Pair delete (IELTS groups only): class + ielts_groups + assignments/requests
+  // via the manager API. Attempts and finance docs are kept (history).
+  const handleDelete = async () => {
+    if (!ieltsGroupId) return;
+    setIsDeleting(true);
+    try {
+      await managerApiFetch(`/api/manager/ielts-groups/${ieltsGroupId}`, { method: "DELETE" });
+      toast.success(t.deleted);
+      router.push("/manager/groups");
+    } catch (err: any) {
+      toast.error(err?.message || t.deleteError);
+      setIsDeleting(false);
+      setConfirmDelete(false);
     }
   };
 
@@ -196,6 +278,28 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
               {t.feeHint}
             </p>
           </div>
+
+          {/* Target band — IELTS groups only (stored on the ielts_groups twin) */}
+          {ieltsGroupId && (
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-bold text-on-surface-variant ml-1 flex items-center gap-1.5">
+                <BookOpenCheck size={13} /> {t.targetBandLabel}
+              </label>
+              <select
+                value={targetBand}
+                onChange={(e) => setTargetBand(e.target.value)}
+                disabled={isSaving}
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-m3-md text-[14px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60"
+              >
+                {["5.0", "5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5", "9.0"].map((b) => (
+                  <option key={b} value={b}>Band {b}</option>
+                ))}
+              </select>
+              <p className="text-[12px] font-medium text-on-surface-variant ml-1 leading-snug">
+                {t.ieltsSyncHint}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="pt-6 border-t border-outline-variant space-y-4">
@@ -242,7 +346,38 @@ export default function ManagerSettingsTab({ classData, centerId, onUpdate }: Se
           </button>
         </div>
 
+        {/* Danger zone — IELTS pair delete only (ordinary groups keep no delete UI) */}
+        {ieltsGroupId && (
+          <div className="pt-6 border-t border-outline-variant space-y-3">
+            <h3 className="text-[11px] font-bold text-error uppercase tracking-wider flex items-center gap-2">
+              <Trash2 size={14} /> {t.dangerSection}
+            </h3>
+            <p className="text-[12.5px] font-medium text-on-surface-variant leading-snug">
+              {t.deleteWarning}
+            </p>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              disabled={isSaving || isDeleting}
+              className="px-6 h-t-control bg-error-container text-on-error-container font-bold text-sm rounded-full flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              <Trash2 size={16} /> {t.deleteButton}
+            </button>
+          </div>
+        )}
+
       </form>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={t.deleteConfirmTitle}
+          message={t.deleteConfirmMessage(classData.title)}
+          confirmLabel={t.deleteConfirmLabel}
+          isLoading={isDeleting}
+          onConfirm={handleDelete}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
   );
 }

@@ -20,6 +20,9 @@ export interface ClassData {
   monthlyFee?: number;
   /** Center membership anchor (2026-07-15) — set at create, immutable client-side. */
   centerId?: string;
+  /** Linked ielts_groups doc id (2026-07-29) — present only on center IELTS groups.
+   *  Roster writes must mirror ielts_groups.studentIds (managedRosterBatch). */
+  ieltsGroupId?: string;
 }
 
 export interface CenterTeacher {

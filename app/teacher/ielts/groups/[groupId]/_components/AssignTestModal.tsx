@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,7 +12,8 @@ import {
 } from 'lucide-react';
 import { Button, IconButton, Spinner } from '@/components/ui';
 import { createAssignment, fetchPlatformTests, fetchTeacherTests } from '@/services/ieltsService';
-import type { IeltsGroup } from '@/types/ielts';
+import { fetchUsersLite } from '@/services/userLookup';
+import type { IeltsGroup } from '@/lib/ielts/types';
 import type { IeltsMode, IeltsResultsVisibility, IeltsSkill } from '@/lib/ielts/types';
 
 const T: Record<string, any> = {
@@ -134,12 +134,32 @@ interface RosterEntry {
   displayName: string;
 }
 
+/** "Reassign with same settings" — pre-selects the test and settings, jumping straight to options. */
+export interface AssignPrefill {
+  skill: IeltsSkill;
+  test: { id: string; test_title?: string; total_questions?: number; total_time_minutes?: number };
+  mode: IeltsMode;
+  allowedAttempts: number;
+  resultsVisibility: IeltsResultsVisibility;
+}
+
 interface Props {
   groupId: string;
   group: IeltsGroup;
   isOpen: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  prefill?: AssignPrefill | null;
+}
+
+// Last-used assignment settings (per browser) — new assignments start from these.
+const DEFAULTS_KEY = 'ielts_assign_defaults';
+interface AssignDefaults { mode: IeltsMode; allowedAttempts: string; visibility: IeltsResultsVisibility }
+function loadDefaults(): AssignDefaults | null {
+  try { return JSON.parse(localStorage.getItem(DEFAULTS_KEY) || 'null'); } catch { return null; }
+}
+function saveDefaults(d: AssignDefaults) {
+  try { localStorage.setItem(DEFAULTS_KEY, JSON.stringify(d)); } catch { /* private mode */ }
 }
 
 const inputCls =
@@ -147,7 +167,7 @@ const inputCls =
 
 const labelCls = "text-[11px] font-black text-on-surface-variant uppercase tracking-wider";
 
-export default function AssignTestModal({ groupId, group, isOpen, onClose, onCreated }: Props) {
+export default function AssignTestModal({ groupId, group, isOpen, onClose, onCreated, prefill }: Props) {
   const { user } = useAuth();
   const { lang } = useTeacherLanguage();
   const t = T[lang] || T['uz'];
@@ -176,6 +196,27 @@ export default function AssignTestModal({ groupId, group, isOpen, onClose, onCre
   const isWS = skill === 'writing' || skill === 'speaking';
   const studentIds = group.studentIds || [];
 
+  // On open: apply the reassign prefill (jump straight to options), else last-used defaults.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (prefill) {
+      setSkill(prefill.skill);
+      setSelectedTest(prefill.test as TestListItem);
+      setMode(prefill.mode);
+      setAllowedAttempts(String(prefill.allowedAttempts || 1));
+      setVisibility(prefill.resultsVisibility);
+      setStep('options');
+    } else {
+      const d = loadDefaults();
+      if (d) {
+        setMode(d.mode === 'practice' ? 'practice' : 'simulation');
+        setAllowedAttempts(d.allowedAttempts || '1');
+        setVisibility(['always', 'after_due', 'never'].includes(d.visibility) ? d.visibility : 'always');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, prefill]);
+
   // Load tests for the active skill/source (cached per modal lifetime)
   useEffect(() => {
     if (!isOpen || !user) return;
@@ -200,25 +241,25 @@ export default function AssignTestModal({ groupId, group, isOpen, onClose, onCre
   }, [isOpen, skill, source, user]);
 
   // Resolve student names lazily, only when the teacher chooses "select"
+  // (batched 'in' queries + shared cache — services/userLookup).
   useEffect(() => {
     if (!isOpen || assignMode !== 'select' || rosterLoaded || rosterLoading) return;
     let alive = true;
     setRosterLoading(true);
-    Promise.all(
-      studentIds.map(async (uid) => {
-        try {
-          const snap = await getDoc(doc(db, 'users', uid));
-          const d = snap.exists() ? snap.data() : {};
-          return { uid, displayName: (d.displayName as string) || t.unknown };
-        } catch {
-          return { uid, displayName: t.unknown };
-        }
-      }),
-    ).then((r) => {
-      if (!alive) return;
-      setRoster(r);
-      setRosterLoaded(true);
-    }).finally(() => { if (alive) setRosterLoading(false); });
+    fetchUsersLite(studentIds)
+      .then((profiles) => {
+        if (!alive) return;
+        setRoster(studentIds.map((uid) => ({
+          uid, displayName: profiles[uid]?.displayName || t.unknown,
+        })));
+        setRosterLoaded(true);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setRoster(studentIds.map((uid) => ({ uid, displayName: t.unknown })));
+        setRosterLoaded(true);
+      })
+      .finally(() => { if (alive) setRosterLoading(false); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, assignMode, rosterLoaded, rosterLoading, studentIds]);
@@ -261,6 +302,11 @@ export default function AssignTestModal({ groupId, group, isOpen, onClose, onCre
         resultsVisibility: visibility,
         assignedTo: assignMode === 'all' ? 'all' : selectedIds,
         teacherId: user.uid,
+      });
+      saveDefaults({
+        mode: isWS ? 'simulation' : mode,
+        allowedAttempts: String(Math.max(1, Math.floor(Number(allowedAttempts) || 1))),
+        visibility,
       });
       toast.success(t.created);
       onCreated?.();

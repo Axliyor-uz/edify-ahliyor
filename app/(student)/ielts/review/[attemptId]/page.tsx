@@ -8,14 +8,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
-import { Lock } from 'lucide-react';
+import { Lock, Sparkles } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { useStudentLanguage } from '@/app/(student)/layout';
 import {
-  Button, Card, Chip, ErrorState, Page, PageHeader, SegmentedControl, Spinner, cn,
+  Button, Card, Chip, ErrorState, Page, PageHeader, SegmentedControl, Spinner, cn, sToast,
 } from '@/components/student-ui';
-import { fetchReview } from '@/services/ieltsService';
+import { analyzeWritingAttempt, fetchReview } from '@/services/ieltsService';
+import type { IeltsWritingCriteria } from '@/lib/ielts/types';
 import StudentQuestionRenderer from '@/app/(student)/ielts/_components/runner/StudentQuestionRenderer';
 import { TEST_COLLECTIONS, TYPE_LABELS, wordCount, type AnswerMap } from '@/app/(student)/ielts/_components/runner/shared';
 import { runnerT } from '@/app/(student)/ielts/_components/runner/i18n';
@@ -50,6 +51,21 @@ function MarkedText({ text, mark }: { text: string; mark?: string | null }) {
   );
 }
 
+/** TA / CC / LR / GRA sub-score tiles (exam jargon — same labels in all languages). */
+function CriteriaGrid({ c }: { c: IeltsWritingCriteria }) {
+  const items: [string, number][] = [['TA', c.ta], ['CC', c.cc], ['LR', c.lr], ['GRA', c.gra]];
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {items.map(([label, band]) => (
+        <div key={label} className="rounded-m3-sm bg-surface-container px-2 py-2 text-center">
+          <div className="text-[10.5px] font-black uppercase tracking-widest text-on-surface-variant">{label}</div>
+          <div className="s-num text-[15px] font-black text-on-surface">{Number(band).toFixed(1)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function IeltsReviewPage() {
   const { attemptId } = useParams() as { attemptId: string };
   const { user } = useAuth();
@@ -58,6 +74,7 @@ export default function IeltsReviewPage() {
   const t = runnerT(lang);
 
   const [state, setState] = useState<Loaded>({ status: 'loading' });
+  const [aiLoading, setAiLoading] = useState(false);
   const [activeGroupIdx, setActiveGroupIdx] = useState(0);
   const [mobilePane, setMobilePane] = useState<'passage' | 'questions'>('questions');
   const [locate, setLocate] = useState<{ text: string; nonce: number } | null>(null);
@@ -78,10 +95,13 @@ export default function IeltsReviewPage() {
         if (!cancelled) setState({ status: 'ready', attempt, correctAnswers, test });
       } catch (e: any) {
         if (cancelled) return;
-        const msg = e?.message || '';
-        // fetchReview surfaces the API's 403 messages (visibility gated)
-        if (/yopiq|ochiladi|Ruxsat/i.test(msg)) setState({ status: 'denied', deniedMsg: msg });
-        else setState({ status: 'error' });
+        // Structured API error codes (IeltsClientError) — visibility gates read as "denied".
+        const code: string | undefined = e?.code;
+        if (code === 'RESULTS_HIDDEN' || code === 'RESULTS_AFTER_DUE' || code === 'FORBIDDEN') {
+          setState({ status: 'denied', deniedMsg: e?.message });
+        } else {
+          setState({ status: 'error' });
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -158,14 +178,28 @@ export default function IeltsReviewPage() {
   if (skill === 'writing') {
     const w = attempt.writing || {};
     const grade = attempt.teacherGrade;
+    const ai = attempt.aiEstimate;
+    const isOwner = attempt.userId === user.uid;
+    const runAi = async () => {
+      setAiLoading(true);
+      try {
+        const { aiEstimate } = await analyzeWritingAttempt(attemptId);
+        setState(s => ({ ...s, attempt: { ...s.attempt, aiEstimate } }));
+      } catch (e: any) {
+        sToast.error(e?.message || t.common.error);
+      } finally {
+        setAiLoading(false);
+      }
+    };
     return (
       <Page>
         <PageHeader title={`${t.review.title} — IELTS Writing`} onBack={() => router.back()} />
         <div className="space-y-4">
-          <Card variant="outlined" className="space-y-2">
+          <Card variant="outlined" className="space-y-3">
             {grade ? (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Chip status="primary">{t.review.band} <span className="s-num">{Number(grade.band).toFixed(1)}</span></Chip>
+                {grade.criteria && <CriteriaGrid c={grade.criteria} />}
                 {grade.comments && (
                   <p className="text-[14px] font-medium leading-relaxed text-on-surface">
                     <span className="font-black text-on-surface-variant">{t.review.teacherComment}: </span>
@@ -173,10 +207,40 @@ export default function IeltsReviewPage() {
                   </p>
                 )}
               </div>
+            ) : attempt.kind === 'practice' ? (
+              // Self-practice writing is never teacher-graded — say so honestly instead of
+              // showing a "not graded yet" that will never resolve.
+              <Chip status="neutral">{t.review.selfPractice}</Chip>
             ) : (
               <Chip status="warning">{t.review.notGraded}</Chip>
             )}
           </Card>
+
+          {/* AI first-pass estimate — advisory, teacher grade always wins */}
+          {(ai || isOwner) && (
+            <Card variant="outlined" className="space-y-3">
+              <h2 className="inline-flex items-center gap-2 text-[14px] font-black uppercase tracking-[0.1em] text-on-surface-variant">
+                <Sparkles size={16} strokeWidth={2.5} className="text-primary" /> {t.review.aiTitle}
+              </h2>
+              {ai ? (
+                <div className="space-y-2.5">
+                  <Chip status="gold">{t.review.band} ~<span className="s-num">{Number(ai.band).toFixed(1)}</span></Chip>
+                  {ai.criteria && <CriteriaGrid c={ai.criteria} />}
+                  <p className="whitespace-pre-wrap text-[14px] font-medium leading-relaxed text-on-surface">
+                    {ai.feedback?.[lang] || ai.feedback?.en || ''}
+                  </p>
+                  <p className="text-[12px] font-bold text-on-surface-variant">{t.review.aiDisclaimer}</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Button variant="tonal" loading={aiLoading} onClick={runAi} icon={<Sparkles size={16} strokeWidth={2.5} />}>
+                    {aiLoading ? t.review.aiLoading : t.review.aiGet}
+                  </Button>
+                  <p className="text-[12px] font-bold text-on-surface-variant">{t.review.aiDisclaimer}</p>
+                </div>
+              )}
+            </Card>
+          )}
           {(['task1', 'task2'] as const).map((key, i) => {
             const textAns: string = key === 'task1' ? (w.task1Text || '') : (w.task2Text || '');
             const words = key === 'task1' ? (w.task1Words ?? wordCount(textAns)) : (w.task2Words ?? wordCount(textAns));
@@ -229,6 +293,8 @@ export default function IeltsReviewPage() {
                   </p>
                 )}
               </div>
+            ) : attempt.kind === 'practice' ? (
+              <Chip status="neutral">{t.review.selfPractice}</Chip>
             ) : (
               <Chip status="warning">{t.review.notGraded}</Chip>
             )}

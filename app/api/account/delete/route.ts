@@ -66,6 +66,13 @@ export async function POST(request: Request) {
     for (const cls of memberClasses.docs) {
       ops.push((b) => b.update(cls.ref, { studentIds: admin.firestore.FieldValue.arrayRemove(uid) }));
       ops.push((b) => b.delete(cls.ref.collection('leaderboard').doc(uid)));
+      // Center IELTS group twin (docs/IELTS.md) — keep the roster mirror in sync.
+      const ieltsGroupId = cls.data().ieltsGroupId;
+      if (ieltsGroupId) {
+        ops.push((b) => b.update(adminDb.collection('ielts_groups').doc(ieltsGroupId), {
+          studentIds: admin.firestore.FieldValue.arrayRemove(uid),
+        }));
+      }
     }
     const requestDocs = await adminDb.collectionGroup('requests').where('studentId', '==', uid).get();
     requestDocs.docs
