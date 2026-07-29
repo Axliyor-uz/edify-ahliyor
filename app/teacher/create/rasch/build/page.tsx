@@ -14,11 +14,12 @@ import { useAuth } from "@/lib/AuthContext";
 import LatexRenderer from "@/components/LatexRenderer";
 import { RASCH_TOPICS } from "@/lib/RASCHtopics";
 import {
-  BLUEPRINT_TOPIC_TARGET, RASCH_QUIZ_DEFAULT_MINUTES, RASCH_QUIZ_TOTAL,
-  QUIZ_MAX_BYTES, checkQuizAdd, itemPreview, quizByteSize, quizDifficultyCounts,
-  quizItemTopic, quizQuotaGaps, quizSlotCount, quizTopicCounts, slimQuizItem,
-  topicForQuizChapter,
+  RASCH_QUIZ_DEFAULT_MINUTES, RASCH_QUIZ_TOTAL,
+  QUIZ_MAX_BYTES, BLUEPRINT_SECTION_TARGET, checkQuizAdd, itemPreview, quizByteSize,
+  quizDifficultyCounts, quizQuotaGaps, quizSectionCounts, quizSlotCount, sectionForItem,
+  slimQuizItem,
 } from "@/lib/RASCHquiz";
+import { EXAM_BLUEPRINT } from "@/lib/Examblueprint";
 import {
   getQuiz, newQuizId, pickedIds, reserveAccessCode, saveQuiz, setQuizStatus,
 } from "@/services/teacherRaschQuizService";
@@ -59,7 +60,13 @@ const TR: Record<string, Record<string, string>> = {
     codePending: "Saqlaganda beriladi",
     progress: "Savollar",
     coverage: "Bo'limlar bo'yicha qamrov",
-    coverageHint: "Har bir bo'lim uchun talab qilingan son — aynan shuncha bo'lishi shart, ko'p ham, kam ham emas.",
+    coverageHint: "Har bir qator — bo'lim va test turi. Aynan shuncha savol bo'lishi shart, ko'p ham, kam ham emas.",
+    coverageOpenHint: "O turidagi savollarni faqat o'zingiz yozgan ochiq (yozma javobli) savollar to'ldiradi — Edify bazasidan O chiqmaydi. Y-2 — faqat qiyin geometriya savollari.",
+    noSlot: "Bu ochiq savolga variantda o'rin yo'q — bu mavzu uchun ochiq (O) savol ko'zda tutilmagan. Ochiq savollar: tenglama va tengsizliklar, funksiyalar, matematik analiz, geometriya (murakkab boblar), to'plam va ehtimollar.",
+    noSlotBadge: "{type} — o'rin yo'q",
+    typeY1: "bitta to'g'ri javobli yopiq test",
+    typeY2: "moslashtirishni talab qiladigan yopiq test",
+    typeO: "qisqa javobli ochiq test",
     difficulty: "Qiyinlik",
     easy: "Oson", medium: "O'rta", hard: "Qiyin",
     addTitle: "Savol qo'shish",
@@ -76,7 +83,7 @@ const TR: Record<string, Record<string, string>> = {
     kind: "Savol turi", kindAll: "Hammasi", kindClosed: "Yopiq", kindOpen: "Ochiq",
     source: "Kim yozgan", srcAi: "AI", srcMine: "O'zim",
     subject: "Fan", chapter: "Bo'lim", reads: "ta hujjat o'qildi",
-    quotaFull: "to'ldi", quotaLeft: "yana kerak:",
+    quotaFull: "to'ldi", quotaLeft: "yana kerak:", quotaNoSlot: "o'rin yo'q",
     draftKept: "Variantingiz saqlab qo'yildi — savol yaratib qaytsangiz yo'qolmaydi.",
     discardDraft: "Tozalash",
     paper: "Variant",
@@ -113,7 +120,13 @@ const TR: Record<string, Record<string, string>> = {
     codePending: "Будет выдан при сохранении",
     progress: "Вопросы",
     coverage: "Покрытие по разделам",
-    coverageHint: "Для каждого раздела указано требуемое число — ровно столько, не больше и не меньше.",
+    coverageHint: "Каждая строка — раздел и тип теста. Ровно столько вопросов, не больше и не меньше.",
+    coverageOpenHint: "Вопросы типа O заполняются только вашими собственными открытыми вопросами — из базы Edify тип O не приходит. Y-2 — только сложная геометрия.",
+    noSlot: "Для этого открытого вопроса нет места — по этой теме открытые (O) вопросы не предусмотрены. Они есть у: уравнения и неравенства, функции, матанализ, геометрия (сложные главы), множества и вероятности.",
+    noSlotBadge: "{type} — нет места",
+    typeY1: "закрытый тест с одним верным ответом",
+    typeY2: "закрытый тест на соответствие",
+    typeO: "открытый тест с кратким ответом",
     difficulty: "Сложность",
     easy: "Лёгкие", medium: "Средние", hard: "Трудные",
     addTitle: "Добавить вопрос",
@@ -130,7 +143,7 @@ const TR: Record<string, Record<string, string>> = {
     kind: "Тип вопроса", kindAll: "Все", kindClosed: "Закрытые", kindOpen: "Открытые",
     source: "Кто написал", srcAi: "ИИ", srcMine: "Я сам",
     subject: "Предмет", chapter: "Раздел", reads: "документов прочитано",
-    quotaFull: "заполнено", quotaLeft: "ещё нужно:",
+    quotaFull: "заполнено", quotaLeft: "ещё нужно:", quotaNoSlot: "нет места",
     draftKept: "Ваш вариант сохранён — он не потеряется, пока вы создаёте вопрос.",
     discardDraft: "Очистить",
     paper: "Вариант",
@@ -167,7 +180,13 @@ const TR: Record<string, Record<string, string>> = {
     codePending: "Issued when you save",
     progress: "Questions",
     coverage: "Coverage by section",
-    coverageHint: "Each section needs exactly the number shown — no more, no fewer.",
+    coverageHint: "Each row is a section and a test type. Exactly that many questions — no more, no fewer.",
+    coverageOpenHint: "Only your own open (typed-answer) questions can fill an O row — the Edify bank never yields one. Y-2 is hard geometry only.",
+    noSlot: "This open question has no slot — the protocol has no open (O) row for this chapter. Open rows exist for: equations and inequalities, functions, analysis, geometry (multi-step chapters), sets and probability.",
+    noSlotBadge: "{type} — no slot",
+    typeY1: "closed item, one correct answer",
+    typeY2: "closed matching item",
+    typeO: "open item, short typed answer",
     difficulty: "Difficulty",
     easy: "Easy", medium: "Medium", hard: "Hard",
     addTitle: "Add a question",
@@ -184,7 +203,7 @@ const TR: Record<string, Record<string, string>> = {
     kind: "Question type", kindAll: "All", kindClosed: "Closed", kindOpen: "Open",
     source: "Written by", srcAi: "AI", srcMine: "Me",
     subject: "Subject", chapter: "Chapter", reads: "documents read",
-    quotaFull: "full", quotaLeft: "still needed:",
+    quotaFull: "full", quotaLeft: "still needed:", quotaNoSlot: "no slot",
     draftKept: "Your paper is saved — it survives going off to write a question.",
     discardDraft: "Start over",
     paper: "The paper",
@@ -284,39 +303,53 @@ function BuilderInner() {
 
   // ── derived: the blueprint picture, recomputed for free on every change ──
   const slots = useMemo(() => quizSlotCount(items), [items]);
-  const topicCounts = useMemo(() => quizTopicCounts(items), [items]);
   const diffCounts = useMemo(() => quizDifficultyCounts(items), [items]);
   const bytes = useMemo(() => quizByteSize(items), [items]);
   const already = useMemo(() => pickedIds(items), [items]);
+  const sectionCounts = useMemo(() => quizSectionCounts(items), [items]);
   const gaps = useMemo(() => quizQuotaGaps(items), [items]);
   const full = slots >= RASCH_QUIZ_TOTAL;
-  /** Publishable: 45 slots AND every dimension exactly at its quota. */
+  /** Publishable: 45 slots AND every blueprint ROW exactly at its quota. */
   const complete = full && gaps.length === 0;
 
-  const topicName = useCallback(
-    (key: string) => RASCH_TOPICS.find((tp) => tp.key === key)?.label[lang as "uz" | "ru" | "en"] ?? key,
-    [lang],
+  const L = (lang === "ru" || lang === "en" ? lang : "uz") as "uz" | "ru" | "en";
+
+  /** A blueprint row reads "Geometriya · Y-2" — the dimension AND the type. */
+  const sectionName = useCallback((sectionId: string) => {
+    const section = EXAM_BLUEPRINT.find((sec) => sec.id === sectionId);
+    return section ? `${section.label[L]} · ${section.testType}` : sectionId;
+  }, [L]);
+
+  /**
+   * The quota of one blueprint ROW, in the shape the pickers render. Same numbers
+   * as the coverage panel — both read `sectionCounts`, so a row of the picker can
+   * never disagree with the panel above it.
+   */
+  const roomOf = useCallback((sectionId: string | null) => {
+    if (!sectionId || !(sectionId in BLUEPRINT_SECTION_TARGET)) return null;
+    return {
+      name: sectionName(sectionId),
+      have: sectionCounts[sectionId] ?? 0,
+      want: BLUEPRINT_SECTION_TARGET[sectionId],
+    };
+  }, [sectionCounts, sectionName]);
+
+  const roomForItem = useCallback(
+    (item: RaschQuizItem) => roomOf(item.sectionId)
+      // An open question from a dimension with no O row: the picker must say
+      // "the protocol has no slot for this", not leave the Add button live.
+      ?? { name: fmt(t.noSlotBadge, { type: item.testType }), have: 1, want: 1, unavailable: true },
+    [roomOf, t.noSlotBadge],
   );
 
   /**
-   * The quota of one dimension, in the shape the pickers render. Same numbers as
-   * the coverage panel — both read `topicCounts`, so a row can never disagree
-   * with the panel above it.
+   * Which blueprint row a `questions1` chapter feeds — no read needed to know it.
+   * ⚠️ The difficulty matters: the SAME geometry chapter feeds `geometry-y1` at
+   * medium and `geometry-y2` at hard, exactly as `testTypeFor` files it.
    */
-  const roomOf = useCallback((topic: string | null) => {
-    if (!topic || !(topic in BLUEPRINT_TOPIC_TARGET)) return null;
-    const key = topic as keyof typeof BLUEPRINT_TOPIC_TARGET;
-    return { name: topicName(key), have: topicCounts[key] ?? 0, want: BLUEPRINT_TOPIC_TARGET[key] };
-  }, [topicCounts, topicName]);
-
-  const roomForItem = useCallback(
-    (item: RaschQuizItem) => roomOf(quizItemTopic(item)),
-    [roomOf],
-  );
-
-  /** Which dimension a `questions1` chapter feeds — no read needed to know it. */
   const roomForChapter = useCallback(
-    (topicId: string, chapterId: string) => roomOf(topicForQuizChapter(topicId, chapterId)),
+    (topicId: string, chapterId: string, difficultyId: number) =>
+      roomOf(sectionForItem(topicId, chapterId, difficultyId >= 3 ? "Y-2" : "Y-1")?.id ?? null),
     [roomOf],
   );
 
@@ -337,13 +370,13 @@ function BuilderInner() {
 
     if (!check.ok) {
       if (check.reason === "full") toast.error(t.overFull);
-      else if (check.reason === "topicFull") {
-        toast.error(fmt(t.overTopic, { name: topicName(check.topic), want: check.want }));
-      }
+      else if (check.reason === "sectionFull") {
+        toast.error(fmt(t.overTopic, { name: sectionName(check.sectionId), want: check.want }));
+      } else if (check.reason === "noSlot") toast.error(t.noSlot);
       return;
     }
     setItems((prev) => (prev.some((q) => q.id === slim.id) ? prev : [...prev, slim]));
-  }, [items, t, topicName]);
+  }, [items, t, sectionName]);
 
   const removeItem = (id: string) => setItems((prev) => prev.filter((q) => q.id !== id));
 
@@ -390,7 +423,7 @@ function BuilderInner() {
     // rule existed can — and it must not be re-published against the wrong shape.
     if (publish && gaps.length > 0) {
       const gap = gaps[0];
-      toast.error(fmt(t.needSection, { name: topicName(gap.topic), have: gap.have, want: gap.want }));
+      toast.error(fmt(t.needSection, { name: sectionName(gap.sectionId), have: gap.have, want: gap.want }));
       return;
     }
     if (bytes > QUIZ_MAX_BYTES) { toast.error(t.tooLarge); return; }
@@ -446,7 +479,7 @@ function BuilderInner() {
     source: t.source, srcAi: t.srcAi, srcMine: t.srcMine,
     subject: t.subject, chapter: t.chapter, difficulty: t.difficulty,
     easy: t.easy, medium: t.medium, hard: t.hard, reads: t.reads,
-    quotaFull: t.quotaFull, quotaLeft: t.quotaLeft,
+    quotaFull: t.quotaFull, quotaLeft: t.quotaLeft, quotaNoSlot: t.quotaNoSlot,
   };
 
   if (loading) {
@@ -539,31 +572,73 @@ function BuilderInner() {
 
           <div>
             <p className="mb-2 text-[12px] font-bold uppercase tracking-wider text-on-surface-variant">{t.coverage}</p>
-            <div className="flex flex-col gap-1.5">
-              {RASCH_TOPICS.map((topic) => {
-                const have = topicCounts[topic.key] ?? 0;
-                const want = BLUEPRINT_TOPIC_TARGET[topic.key];
-                // Over is only reachable on a paper built before the quota rule —
-                // the picker refuses the question that would cause it.
+
+            {/* One row per BLUEPRINT ROW, not per dimension: the paper needs 7
+                Y-1 geometry questions AND 3 Y-2 AND 4 O, and a panel that only
+                counted "14 geometry" let a teacher build the wrong paper and
+                still see green. Grouped by test type, because that is the axis
+                a teacher fills last. */}
+            <div className="flex flex-col gap-2.5">
+              {(["Y-1", "Y-2", "O"] as const).map((testType) => {
+                const rows = EXAM_BLUEPRINT.filter((sec) => sec.testType === testType);
+                const have = rows.reduce((sum, sec) => sum + (sectionCounts[sec.id] ?? 0), 0);
+                const want = rows.reduce((sum, sec) => sum + sec.count, 0);
+
                 return (
-                  <div key={topic.key} className="flex items-center justify-between gap-3 text-[12px] font-medium">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: topic.hex }} />
-                      <span className="truncate text-on-surface-variant">{topic.label[lang as "uz" | "ru" | "en"]}</span>
-                    </span>
-                    <span
-                      className={cn(
-                        "flex-none font-bold tabular-nums",
-                        have === want ? "text-success" : have > want ? "text-error" : "text-on-surface-variant",
-                      )}
-                    >
-                      {have}<span className="font-normal text-on-surface-variant">/{want}</span>
-                    </span>
+                  <div key={testType}>
+                    <div className="mb-1 flex items-baseline justify-between gap-2">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-on-surface">
+                        {testType}
+                        <span className="ml-1.5 font-medium normal-case tracking-normal text-on-surface-variant">
+                          {t[`type${testType === "Y-1" ? "Y1" : testType === "Y-2" ? "Y2" : "O"}`]}
+                        </span>
+                      </span>
+                      <span className={cn(
+                        "shrink-0 text-[11px] font-black tabular-nums",
+                        have === want ? "text-success" : "text-on-surface-variant",
+                      )}>
+                        {have}/{want}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      {rows.map((sec) => {
+                        const secHave = sectionCounts[sec.id] ?? 0;
+                        const topic = RASCH_TOPICS.find((tp) => tp.key === sec.topic);
+                        return (
+                          <div key={sec.id} className="flex items-center justify-between gap-3 text-[12px] font-medium">
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span
+                                className="h-2.5 w-2.5 flex-none rounded-full"
+                                style={{ backgroundColor: topic?.hex }}
+                              />
+                              <span className="min-w-0 truncate text-on-surface-variant">{sec.label[L]}</span>
+                            </span>
+                            <span
+                              className={cn(
+                                "flex-none font-bold tabular-nums",
+                                secHave === sec.count
+                                  ? "text-success"
+                                  : secHave > sec.count
+                                    ? "text-error"
+                                    : "text-on-surface-variant",
+                              )}
+                            >
+                              {secHave}<span className="font-normal text-on-surface-variant">/{sec.count}</span>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
             </div>
+
             <p className="mt-2 text-[11px] font-normal text-on-surface-variant">{t.coverageHint}</p>
+            {/* The bank cannot supply an O item — `testTypeFor` never files one —
+                so say it here rather than let a teacher hunt for one. */}
+            <p className="mt-1 text-[11px] font-normal text-on-surface-variant">{t.coverageOpenHint}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant pt-3 text-[11px] font-bold">

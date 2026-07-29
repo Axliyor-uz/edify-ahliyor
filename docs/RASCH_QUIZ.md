@@ -10,7 +10,7 @@
 > and [RASCH_SKILLS.md](RASCH_SKILLS.md); the question schema is in
 > [QUESTIONS.md](QUESTIONS.md).
 
-**Last verified:** 2026-07-28 (subsystem introduced; per-student dimension levels on the 0–5 scale).
+**Last verified:** 2026-07-29 (dynamic per-question marks from the cohort; per-slot outcomes on the result document).
 
 ## Purpose & scope
 
@@ -35,6 +35,7 @@ a mock exam — which is the whole reason it is 45 questions.
 | `app/teacher/create/rasch/_components/QuestionPickers.tsx` | The two pools: `MyBankPicker` (own `teacher_questions`, default, with the closed/open filter) and `BankPicker` (`questions1`). |
 | `app/teacher/create/rasch/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
 | `app/teacher/create/rasch/results/[quizId]/page.tsx` | Who sat it; per-dimension 0–5 levels, per class **and per student**. |
+| [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **Dynamic marks** — cohort outcomes → what each question is worth, renormalised to 100. Pure. |
 | [lib/RASCHband.ts](../lib/RASCHband.ts) | Band → colour/name, kit-agnostic. ⚠️ Read by BOTH UI kits — keep it free of component imports. |
 | `app/(student)/RASCHmodel/quiz/page.tsx` | Code entry → intro → sitting → results. |
 | `app/(student)/RASCHmodel/_components/ExamRunner.tsx` | **The paper**, shared with the mock exam. |
@@ -158,6 +159,109 @@ would hide the A–D options the teacher picked the question *for* and demand a
 typed answer graded against a `final_answer` they never saw. `testTypeFor()`
 gives a bank item `Y-1`/`Y-2` by difficulty and reserves `O` for typed teacher
 items.
+
+### Dynamic marks — how a section's budget is shared out (2026-07-29)
+
+The DTM protocol prints a ball beside every question and they sum to exactly
+100. Read one row at a time it is really a **budget**:
+
+| Section | Budget | over |
+|---|---|---|
+| Sonlar va amallar (Y-1) | 3.5 | 2 questions |
+| Algebraik shakl almashtirishlar (Y-1) | 20.6 | 11 |
+| Tenglama va tengsizliklar (Y-1) | 11.4 | 6 |
+| Funksiyalar (Y-1) | 3.5 | 2 |
+| Matematik analiz asoslari (Y-1) | 4.4 | 2 |
+| Geometriya (Y-1) | 13.6 | 7 |
+| To'plam, mulohazalar… (Y-1) | 4.4 | 2 |
+| Geometriya (Y-2) | 6.6 | 3 |
+| Tenglama va tengsizliklar (O) | 6.4 | 2 |
+| Funksiyalar (O) | 3.2 | 1 |
+| Matematik analiz asoslari (O) | 6.4 | 2 |
+| Geometriya (O) | 12.8 | 4 |
+| To'plam, mulohazalar… (O) | 3.2 | 1 |
+
+What the protocol cannot know in advance is *how that budget should split* —
+which of the 11 algebra questions is the hard one. That is a claim about
+difficulty, and difficulty is measurable. So
+[lib/RASCHmarks.ts](../lib/RASCHmarks.ts) keeps every section total to the
+decimal and lets its questions share it in proportion to how hard the cohort
+found them.
+
+```
+weight_i = clamp(0.45, 1.6, 1 + 0.24 · ln((1−p̂)/p̂))      ← p̂ shrunk, see below
+ball_i   = budget_section × weight_i / Σ weight_section    ← Σ ball = budget, exactly
+```
+
+Worked example — the algebra row (20.6 over 11) with 20 students, one question
+solved by 1 of them and one by 19:
+
+```
+printed  2.2 2.2 1.3 1.3 2.2 2.2 2.2 1.3 2.2 1.3 2.2   = 20.6
+dynamic  3.0 1.9 1.0 1.9 1.9 1.9 1.8 1.8 1.8 1.8 1.8   = 20.6
+          ↑ 1/20 solved
+                  ↑ 19/20 solved
+```
+
+- The table itself is `BlueprintSection.balls` in
+  [lib/Examblueprint.ts](../lib/Examblueprint.ts) — one array per row of the
+  official spec, in printed order. ⚠️ **The 13 arrays hold exactly `count`
+  entries each and sum to exactly 100.** Every budget above is derived from
+  them, so a typo there silently re-weights the paper.
+- **Sections never trade with each other.** Geometriya Y-1 stays worth 13.6
+  however badly the class did; only the split inside it moves. That is what keeps
+  the paper at 100 and two sittings comparable.
+- **`MIN_RESPONSES = 5`**, and a section moves as a whole or not at all. Under
+  that it keeps the protocol's printed values, so an unsat paper marks exactly
+  like the official table. ⚠️ A half-measured section would price measured
+  questions against unmeasured ones, which is not a comparison.
+- Weights use the **shrunk** proportion `(correct + 1.5)/(seen + 3)`, so one
+  lucky answer cannot hand a question its section's whole budget.
+- ⚠️ **The clamps matter.** Without `MULT_MIN`/`MULT_MAX` a question nobody
+  solved would eat its section and the rest would round to zero — a paper where
+  10 right answers score less than 1 is not a mark scheme. They bound the spread
+  inside a section to ~3.5× between its cheapest and dearest question.
+- `shareOut` does largest-remainder rounding in tenths **per section**, so each
+  section lands on its budget exactly. ⚠️ Rounding each share on its own drifts:
+  a section printed as 20.6 that adds to 20.3 makes the whole table look wrong.
+- `sectionBalls(sectionId, n)` fits a row to what the paper actually holds.
+  ⚠️ A teacher paper only has its **dimension** quotas enforced and Geometriya
+  spans three sections (Y-1 ×7, Y-2 ×3, O ×4), so a legal paper can hold a
+  different split. Padding repeats the section's modal ball, truncating keeps the
+  printed order, and `paperTotal()` reports what the paper actually adds to
+  rather than assuming 100.
+
+⚠️ **Nothing is stored.** The marks are derived on every render from the sittings
+that exist right now, which means **a question's ball moves when a classmate sits
+the paper**. That is the feature, not a bug — the results page says so on screen.
+Freezing them would need a snapshot per sitting and would answer a different
+question ("what was it worth in March").
+
+⚠️ **It does NOT touch θ or the student's levels.** Rasch already models item
+difficulty through `b`; weighting the score by difficulty *and* feeding that into
+the ability estimate counts the same evidence twice. The dynamic ball is the
+**teacher's score**, on the teacher's page. The student's own result screen and
+their 0–5 levels are unchanged.
+
+⚠️ **It is per COHORT, not global.** The statistics come from the sittings of
+*this paper*, which is what makes them meaningful — the same question in another
+teacher's paper has its own audience. A global item statistic (for the mock exam,
+where every student draws different questions) would need its own collection and
+server-side writes; deliberately not built.
+
+The data behind it is `teacher_rasch_results.items` — `{ [slotKey]: 0|1 }`, keyed
+by **`examSlotKeys`** ([lib/ExamTeacher.ts](../lib/ExamTeacher.ts)), the one place
+that vocabulary is defined. ⚠️ The same strings are `ItemResponse.id` and what
+`cohortStats` aggregates; two spellings would scatter a paper's statistics
+silently. Results saved before the field existed are **excluded** from the
+statistics rather than counted as wrong, and their own dynamic score reads "—".
+
+The results page renders it grouped **by section with its budget in the header**
+(a flat grid of 45 hides the one rule that matters), each question showing its
+printed value struck through when it moved, and each student's expanded row lists
+the ball they took on every question. The card also carries the protocol's own
+definitions: **Y-1** a closed item with one correct answer, **Y-2** a closed
+matching item, **O** an open item with a short answer.
 
 ### The access code
 
@@ -298,6 +402,10 @@ teacher_rasch_results/{quizId}_{uid}
   submittedAt: <epoch ms>,         ← number, matching every other RASCH timestamp
   examLang, topics: Record<TopicKey, TopicScore>,
   topicTheta?: Partial<Record<TopicKey, number>>,   ← per-dimension ability, LOGITS
+  items?: Record<slotKey, 0 | 1>,  ← per-SLOT outcome; keys are `examSlotKeys`,
+                                     so a shared_options block has one entry per
+                                     sub-question. Feeds the dynamic marks.
+                                     OUTCOMES ONLY — never what was answered.
   theta: number | null
 ```
 
@@ -331,7 +439,7 @@ Firestore serves from single-field indexes.
 | Mint a code | 1 query, 0 documents on the happy path |
 | Student opens a paper by code | **1 read**, whatever its length |
 | Student submits | 1 write (teacher's copy) + 1 transaction (1 read + 2 writes) |
-| Teacher opens the results | 1 read + 1 query |
+| Teacher opens the results | 1 read + 1 query — **the dynamic marks add nothing**: they are computed from the result rows already fetched |
 
 ⚠️ **`listMyQuizzes` reads FULL documents**, so ten 45-question papers pull ten
 embedded question arrays for a list that shows only titles. It is capped at 20
@@ -343,17 +451,56 @@ bigger limit.
 - ⚠️ **45 slots, counted with `examSlotCount`.** A `shared_options` block is worth
   one slot per sub-question, so a 45-slot paper can hold fewer than 45 documents.
   Publishing below 45 is refused; a draft may be any length.
-- ⚠️ **The per-dimension quota is a HARD rule, not a target.**
-  `BLUEPRINT_TOPIC_TARGET` (2/11/8/3/14/4/3, summing to 45) is enforced on every
-  add by `checkQuizAdd`: a question whose dimension is already at quota is
-  refused with a toast naming the section, and publishing calls `quizQuotaGaps`
-  as well as the 45-slot check. It used to be advisory, which let a teacher build
-  a 45-question geometry paper that then wrote a *real* per-dimension level for
-  six dimensions it never measured. A **block is refused whole** when it would
-  overshoot — truncating it would break its shared pool.
+- ⚠️ **The quota is per BLUEPRINT ROW — dimension × test type — and it is a HARD
+  rule.** `BLUEPRINT_SECTION_TARGET` (the 13 rows: 2/11/6/2/7/2/2 at Y-1, 3 at
+  Y-2, 2/1/2/4/1 at O) is enforced on every add by `checkQuizAdd`, and publishing
+  calls `quizQuotaGaps` as well as the 45-slot check. A question whose row is
+  full is refused with a toast naming it ("Geometriya · Y-2"), and a **block is
+  refused whole** when it would overshoot — truncating it would break its shared
+  pool.
+  It was per DIMENSION first (2026-07-29 morning), which was not enough:
+  Geometriya's 14 could be filled with 14 closed Y-1 questions, so the paper
+  never asked a student to *produce* an answer and the O rows — the ones that do
+  — stayed empty. The dimension totals are still shown, as the sum of their rows.
+  ⚠️ **The five O rows can ONLY be filled by the teacher's own typed questions**:
+  `testTypeFor` never files a `questions1` item as `O` (see above), so the
+  builder says so on the coverage panel instead of letting a teacher hunt through
+  a bank that cannot contain one.
+- ⚠️ **The three types, as the protocol defines them** — and `testTypeFor`
+  follows the definitions, not a difficulty ladder:
+  - **O** — an OPEN item, answered by typing a short answer. **Every typed
+    teacher question is O, whatever its difficulty**: "open" is a property of how
+    it is answered, so an easy typed question is still an O and never a Y.
+  - **Y-2** — a CLOSED item, harder than Y-1 and requiring adaptation. There is
+    exactly ONE Y-2 row — hard Geometriya, from the multi-step chapters — so a
+    hard question anywhere else (and a hard geometry question from chapter 01,
+    which the Y-2 pool excludes) is a **Y-1**. There is no row for it to be Y-2
+    in.
+  - **Y-1** — every other closed item.
+- ⚠️ **An open question the protocol has no row for is REFUSED, not re-typed.**
+  `sectionForItem` returns `null` when an `O` cannot be placed (Sonlar and
+  Algebraik have no open row at all; `geometry-o` draws only from the multi-step
+  chapters), and `checkQuizAdd` answers `noSlot`. The two fallbacks are
+  deliberately asymmetric: a closed item that wanted `Y-2` just becomes the `Y-1`
+  it always was, but filing an open item in a Y row would put a typed question in
+  a closed slot, count it against a closed quota and price it in a closed row's
+  ball budget. The picker shows those rows greyed with "no slot" rather than
+  letting the click bounce off a toast.
   ⚠️ The publish gate can therefore block a paper saved BEFORE this rule (45
   slots, wrong shares). That is intended: the fix is to rebalance it, and the
-  toast names the first offending section with its `have/want`.
+  toast names the first offending row with its `have/want`.
+- ⚠️ **A section is resolved from the chapter AND the test type**
+  (`sectionForChapter(topicId, chapterId, testType)`). Geometriya is drawn at
+  Y-1, Y-2 and O from the same chapters, so resolving on the chapter alone —
+  which is what shipped first — filed *every* open geometry question under
+  `geometry-y1`: it landed in a Y-1 row's ball budget and `geometry-o` could
+  never be filled. ⚠️ And the **section's** type is then authoritative, not the
+  one derived from the question: an item may not print a type its own row does
+  not have. Rendering is unaffected — a bank item is closed at either Y type, and
+  a teacher item renders by its own `qType` (`examMode`).
+  Papers saved before this keep the section they were stored with; they are
+  embedded snapshots, and re-filing them would move marks under a class that has
+  already sat them.
 - ⚠️ **The paper moves the student's real levels** (`kind: 'exam'`). That is
   intended — it is 45 questions on the same scale — but it means a teacher can
   move a student's measured ability. A deliberately easy paper inflates it.
@@ -370,11 +517,14 @@ bigger limit.
 - **The answer key is readable by any signed-in user** (above). The single
   largest limitation of this subsystem.
 - **Code uniqueness is a check, not a constraint** (above).
-- **No per-QUESTION review for the teacher.** Per-dimension levels per student
-  exist (`topicTheta`), but `RaschQuizResult` deliberately does not store the raw
-  answers, so "what did this student put for question 12" is not answerable.
-  Adding it means an `answers` map on the result document — a bigger write per
-  student, and a deliberate cost decision.
+- **No per-QUESTION review for the teacher.** Since 2026-07-29 `items` records
+  whether each slot was right, so "who got question 12" and the class solve rate
+  ARE answerable — but the raw answers still are not, so "what did this student
+  PUT for question 12" is not. Adding that means an `answers` map on the result
+  document: a bigger write per student, and a deliberate cost decision.
+- **Dynamic marks are cohort-only.** The mock exam still marks flat (1 point per
+  slot): every student draws a different 45 questions, so per-item statistics
+  there would need a global collection written server-side on every submit.
 - **A published paper can still be edited.** Nothing stops a teacher changing the
   questions after students have sat it, which makes those results incomparable.
   Locking a paper on first submission would need a read of the results on save.
@@ -407,14 +557,18 @@ Then `npm run dev`, as a **teacher**:
    Write a question, save it, come back to the builder: the paper must still be
    there with a "saved" banner, and pressing Load must now show the new question
    first. Repeat with **Ko'p savolli test yaratish** → `/teacher/create/block`.
-3. The coverage panel updates per pick and each row reads `have/want`, green only
-   when the two match. Fill one section — say **Funksiyalar (3)** — then look at
-   the pickers: every question of that dimension now shows a green `3/3` badge
+3. The coverage panel lists the **13 blueprint rows grouped by test type**
+   (Y-1 32, Y-2 3, O 10), each reading `have/want` and green only when the two
+   match. Fill one row — say **Funksiyalar Y-1 (2)** — then look at the pickers:
+   every question that files there shows a green `Funksiyalar · Y-1 2/2` badge
    with its Add button reading *to'ldi*, and the **Milliy baza** chapter dropdown
-   shows `— 3/3 to'ldi` on every chapter that feeds it. A block that would
-   overshoot is still refused with the toast (its Add is live, because the
-   dimension is not full — it just cannot fit a 3-slot block into 2 free slots).
-   The size counter climbs, adding past 45 slots is refused, and
+   shows the same. Switch the difficulty to **Qiyin** on a geometry chapter and
+   the dropdown must retarget to `Geometriya · Y-2` — the row a hard question
+   actually lands in. The **O rows cannot be filled from the bank at all**: write
+   an open question in `create/question`, come back, and it must land there.
+   A block that would overshoot is still refused with the toast (its Add is live,
+   because the row is not full — it just cannot fit a 3-slot block into 2 free
+   slots). The size counter climbs, adding past 45 slots is refused, and
    **Save & publish** stays disabled until it is 45 slots **and** every section is
    exactly at quota. Saving a draft is never blocked.
 4. Publish → the list shows a 6-digit code; tapping it copies it.
@@ -435,7 +589,16 @@ As a **student**, in another account:
 
 Back as the **teacher**:
 
-9. `/teacher/create/rasch` → **Natijalar**. Every number is a 0–5 level: the
+9. `/teacher/create/rasch` → **Natijalar**. The marks card must read exactly like
+    the protocol table — each section headed by its budget (3.5, 20.6, 12.8…),
+    every question at its printed ball — with "fewer than 5 answers" underneath:
+    one sitting must NOT move a mark. Sit the paper on five more accounts,
+    failing one algebra question on all of them and passing another on all of
+    them: the failed one climbs and the passed one drops (its printed value
+    struck through beside it), **the section still adds to 20.6**, the paper
+    still adds to 100, and every student's score is recomputed. Expand a student:
+    their ball on every question is listed, 0 where they got it wrong.
+    Then check the rest: Every number is a 0–5 level: the
    average tile, the class section list, and each student's headline. **Tap a
    student row** — it expands to their own seven dimensions with weakest and
    strongest called out. A dimension the paper never asked about must read "not

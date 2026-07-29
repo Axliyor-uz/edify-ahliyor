@@ -19,7 +19,7 @@ import {
 } from '@/lib/RASCHskills';
 import { TOPIC_KEYS, type TopicKey } from '@/lib/RASCHtopics';
 import { EXAM_BLUEPRINT } from '@/lib/Examblueprint';
-import { examChosen, isExamPartCorrect, partKey } from '@/lib/ExamTeacher';
+import { examChosen, examSlotKeys, isExamPartCorrect, partKey } from '@/lib/ExamTeacher';
 import type { ExamQuestion } from '@/types/Exam';
 import type { Lang } from '@/types/Math';
 import type { Ability, Diagnostics, ItemResponse, RASCHAttempt, RASCHLevels, SpotStat, TopicScore } from '@/types/RASCH';
@@ -257,11 +257,15 @@ export function toItemResponses(params: {
     // correctness and difficulty. The block's time is split evenly across them.
     if (q.qType === 'shared_options' && q.parts && q.parts.length > 0) {
       const secEach = Math.round((params.seconds[q.id] ?? 0) / q.parts.length);
-      return q.parts.map((p): ItemResponse => {
+      // ⚠️ `examSlotKeys`, not a local template: this id is also the key of
+      // `teacher_rasch_results.items` and what lib/RASCHmarks.ts aggregates per
+      // question. Two spellings would scatter a paper's statistics silently.
+      const keys = examSlotKeys(q);
+      return q.parts.map((p, i): ItemResponse => {
         const chosen = params.answers[partKey(q.id, p.id)] ?? '';
         return {
           kind: params.kind,
-          id: `${q.id}#${p.id}`,
+          id: keys[i],
           topic,
           topicId: q.topicId,
           chapterId: q.chapterId,

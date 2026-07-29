@@ -85,6 +85,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     label: { uz: 'Sonlar va amallar', ru: 'Числа и действия', en: 'Numbers and operations' },
     testType: 'Y-1',
     count: 2,
+    balls: [1.3, 2.2],
     pools: [A('01'), A('02'), A('04')],
   },
   {
@@ -97,6 +98,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     },
     testType: 'Y-1',
     count: 11,
+    balls: [2.2, 2.2, 1.3, 1.3, 2.2, 2.2, 2.2, 1.3, 2.2, 1.3, 2.2],
     pools: [A('03'), A('12'), A('13'), A('14')],
   },
   {
@@ -109,6 +111,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     },
     testType: 'Y-1',
     count: 6,
+    balls: [2.2, 2.2, 1.3, 2.2, 1.3, 2.2],
     pools: [A('05'), A('06'), A('07'), A('08'), A('10')],
   },
   {
@@ -117,6 +120,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     label: { uz: 'Funksiyalar', ru: 'Функции', en: 'Functions' },
     testType: 'Y-1',
     count: 2,
+    balls: [1.3, 2.2],
     pools: [A('11'), A('12')],
   },
   {
@@ -125,6 +129,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     label: { uz: 'Geometriya', ru: 'Геометрия', en: 'Geometry' },
     testType: 'Y-1',
     count: 7,
+    balls: [1.3, 1.3, 2.2, 2.2, 2.2, 2.2, 2.2],
     pools: GEOMETRY_ALL,
   },
   {
@@ -137,6 +142,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     },
     testType: 'Y-1',
     count: 2,
+    balls: [2.2, 2.2],
     pools: [A('09'), A('15'), A('16')],
   },
   {
@@ -149,6 +155,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     },
     testType: 'Y-1',
     count: 2,
+    balls: [2.2, 2.2],
     pools: [A('18')],
   },
 
@@ -166,6 +173,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     },
     testType: 'Y-2',
     count: 3,
+    balls: [2.2, 2.2, 2.2],
     pools: GEOMETRY_MULTISTEP,
     source: 'teacher',
   },
@@ -179,6 +187,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     },
     testType: 'O',
     count: 2,
+    balls: [3.2, 3.2],
     pools: [A('05'), A('06'), A('07'), A('08')],
     source: 'teacher',
   },
@@ -188,6 +197,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     label: { uz: 'Funksiyalar', ru: 'Функции', en: 'Functions' },
     testType: 'O',
     count: 1,
+    balls: [3.2],
     pools: [A('11'), A('12')],
     source: 'teacher',
   },
@@ -201,6 +211,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     },
     testType: 'O',
     count: 2,
+    balls: [3.2, 3.2],
     pools: [A('09'), A('15'), A('16')],
     source: 'teacher',
   },
@@ -210,6 +221,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     label: { uz: 'Geometriya', ru: 'Геометрия', en: 'Geometry' },
     testType: 'O',
     count: 4,
+    balls: [3.2, 3.2, 3.2, 3.2],
     pools: GEOMETRY_MULTISTEP,
     source: 'teacher',
   },
@@ -223,6 +235,7 @@ export const EXAM_BLUEPRINT: BlueprintSection[] = [
     },
     testType: 'O',
     count: 1,
+    balls: [3.2],
     pools: [A('18')],
     source: 'teacher',
   },
@@ -261,10 +274,24 @@ export function topicForChapter(topicId: string, chapterId: string): TopicKey {
  * `toItemResponses` fall back to `'numbers'`, which silently credits the wrong
  * dimension. That is why this returns a section rather than an id-or-null.
  */
-export function sectionForChapter(topicId: string, chapterId: string): BlueprintSection {
-  const section = EXAM_BLUEPRINT.find((s) =>
+export function sectionForChapter(
+  topicId: string,
+  chapterId: string,
+  /**
+   * ⚠️ Pass it whenever you know it. Several rows share the same chapters —
+   * Geometriya is drawn at Y-1, Y-2 AND O — so chapter alone always resolves to
+   * the FIRST of them, which filed every open geometry question under
+   * `geometry-y1`. That put an O question inside a Y-1 row's ball budget
+   * (docs/RASCH_QUIZ.md) and made the builder's per-row quotas unfillable.
+   */
+  testType?: TestType,
+): BlueprintSection {
+  const pooled = EXAM_BLUEPRINT.filter((s) =>
     s.pools.some((p) => p.topicId === topicId && p.chapterId === chapterId),
   );
+  // Prefer the row of the right test type; fall back to the first pooled row,
+  // which is what every caller got before the argument existed.
+  const section = (testType && pooled.find((s) => s.testType === testType)) || pooled[0];
   // Chapter 17 (Nostandart masalalar) is deliberately unmapped — it falls back
   // to the first `algebraic` row, matching topicForChapter's own fallback.
   return section ?? EXAM_BLUEPRINT.find((s) => s.topic === 'algebraic')!;
@@ -273,6 +300,35 @@ export function sectionForChapter(topicId: string, chapterId: string): Blueprint
 /** The difficulty ids a section may draw from. */
 export function bandFor(section: BlueprintSection): DifficultyId[] {
   return section.difficulties ?? DIFFICULTY_BAND[section.testType];
+}
+
+/** What one question of each test type is worth when a section has to be stretched. */
+const FALLBACK_BALL: Record<TestType, number> = { 'Y-1': 2.2, 'Y-2': 2.2, O: 3.2 };
+
+/**
+ * A section's printed balls, fitted to the `n` slots a paper actually holds
+ * there — the multiset the dynamic marks then permute.
+ *
+ * A blueprint-shaped paper hits `n === balls.length` and gets the DTM row
+ * verbatim, which is why an unsat paper marks exactly like the protocol table.
+ * ⚠️ A teacher paper only has its **dimension** quotas enforced, and Geometriya
+ * spans three sections (Y-1 ×7, Y-2 ×3, O ×4) — so a legal paper can still hold
+ * more or fewer slots in one section. Padding repeats the section's **most
+ * common** ball rather than inventing a value; truncating keeps the printed
+ * order. Both keep every mark a real DTM value, which is the point.
+ */
+export function sectionBalls(sectionId: string, n: number): number[] {
+  const section = EXAM_BLUEPRINT.find((s) => s.id === sectionId);
+  const base = section?.balls ?? [];
+
+  if (n <= base.length) return base.slice(0, n);
+
+  const counts = new Map<number, number>();
+  for (const ball of base) counts.set(ball, (counts.get(ball) ?? 0) + 1);
+  const modal = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+    ?? FALLBACK_BALL[section?.testType ?? 'Y-1'];
+
+  return [...base, ...Array.from({ length: n - base.length }, () => modal)];
 }
 
 // EXAM_BLUEPRINT.reduce((s, b) => s + b.count, 0) === EXAM_TOTAL_QUESTIONS (45)

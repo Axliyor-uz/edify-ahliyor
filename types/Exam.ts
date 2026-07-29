@@ -36,6 +36,16 @@ export interface BlueprintSection {
   label: Record<Lang, string>;
   testType: TestType;
   count: number;
+  /**
+   * The DTM ball printed beside each of this section's questions, **in printed
+   * order** — `count` of them, and every section's list together sums to 100.
+   *
+   * ⚠️ It is a multiset, not a formula: a Y-1 section mixes 1.3 and 2.2, and
+   * which question gets which is what the dynamic marks decide
+   * ([lib/RASCHmarks.ts](../lib/RASCHmarks.ts)). The VALUES never change — only
+   * their assignment within the section does.
+   */
+  balls: number[];
   /** The questions1 chapters this section draws from. */
   pools: ChapterRef[];
   /** Overrides DIFFICULTY_BAND[testType] for sections that need their own band. */

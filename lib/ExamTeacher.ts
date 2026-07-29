@@ -246,6 +246,25 @@ export function examSlotCount(q: ExamQuestion): number {
 }
 
 /**
+ * The stable ids of the SLOTS one item occupies — one per numbered question on
+ * the paper, in slot order.
+ *
+ * ⚠️ **This is the one place the slot vocabulary is defined.** The same strings
+ * are the `ItemResponse.id`s (`toItemResponses`), the keys of
+ * `teacher_rasch_results.items`, and what the dynamic marks
+ * ([lib/RASCHmarks.ts](RASCHmarks.ts)) aggregate per question across a cohort —
+ * three surfaces that must agree exactly or a paper's statistics silently
+ * scatter across two key spellings. It is NOT `partKey`: that keys the student's
+ * ANSWERS map (`::`) and is a different namespace.
+ */
+export function examSlotKeys(q: ExamQuestion): string[] {
+  if (q.qType === 'shared_options' && q.parts && q.parts.length > 0) {
+    return q.parts.map((p) => `${q.id}#${p.id}`);
+  }
+  return [q.id];
+}
+
+/**
  * Points earned out of `examSlotCount(q)`:
  *   • shared_options → the number of sub-questions answered correctly (partial);
  *   • multi_part     → 1 iff every part is right (0 otherwise);
