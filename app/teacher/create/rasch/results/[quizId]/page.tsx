@@ -10,7 +10,8 @@ import { getQuiz, listQuizResults } from "@/services/teacherRaschQuizService";
 import { hydrateQuiz } from "@/lib/RASCHquiz";
 import { EXAM_BLUEPRINT } from "@/lib/Examblueprint";
 import {
-  MIN_RESPONSES, cohortStats, paperMarks, paperSlots, paperTotal, scoreFor,
+  BALL_MAX, BALL_MIN, MIN_RESPONSES, PAPER_TOTAL,
+  cohortStats, paperMarks, paperSlots, paperTotal, scoreFor,
 } from "@/lib/RASCHmarks";
 import { RASCH_TOPICS, type TopicKey } from "@/lib/RASCHtopics";
 import { MASTER_LEVEL, formatLevel, levelBand, thetaToLevel } from "@/lib/RASCHscale";
@@ -76,7 +77,8 @@ const TR: Record<string, Record<string, string>> = {
     expand: "Bo'limlar bo'yicha",
     min: "daq",
     marksTitle: "Savollar bahosi — sinf natijasiga qarab",
-    marksHint: "Har bir bo'limning DTM ballari o'zgarmaydi — faqat qaysi savolga qaysi ball tushishi aniqlanadi: eng kam yechilgan savol shu bo'limning eng katta bali bilan, eng ko'p yechilgani eng kichigi bilan baholanadi.",
+    marksHint: `Har bir savolning bali butun variant bo'yicha, qiyinligiga mutanosib ravishda beriladi: eng kam yechilgan savol eng qimmat, eng ko'p yechilgani eng arzon bo'ladi. Ball ${BALL_MIN.toFixed(1).replace(".", ",")} dan ${BALL_MAX.toFixed(1).replace(".", ",")} gacha, variantning jami bali esa har doim ${PAPER_TOTAL}.`,
+    marksSectionTotal: "Bo'limning hozirgi jami bali",
     marksProvisional: `${MIN_RESPONSES} tadan kam javob — hozircha boshlang'ich ball`,
     qNo: "№",
     qType: "Turi",
@@ -119,7 +121,8 @@ const TR: Record<string, Record<string, string>> = {
     expand: "По разделам",
     min: "мин",
     marksTitle: "Цена вопросов — по результатам класса",
-    marksHint: "Баллы раздела по ДТМ не меняются — определяется лишь, какому вопросу какой достанется: наименее решённый получает самый большой балл раздела, наиболее решённый — самый маленький.",
+    marksHint: `Балл каждого вопроса назначается по всему варианту, пропорционально его трудности: наименее решённый стоит дороже всех, наиболее решённый — дешевле всех. Балл — от ${BALL_MIN.toFixed(1).replace(".", ",")} до ${BALL_MAX.toFixed(1).replace(".", ",")}, а сумма по варианту всегда равна ${PAPER_TOTAL}.`,
+    marksSectionTotal: "Текущая сумма баллов раздела",
     marksProvisional: `Меньше ${MIN_RESPONSES} ответов — пока начальная цена`,
     qNo: "№",
     qType: "Тип",
@@ -162,7 +165,8 @@ const TR: Record<string, Record<string, string>> = {
     expand: "By section",
     min: "min",
     marksTitle: "What each question is worth — from how the class answered",
-    marksHint: "A section's DTM balls never change — only which question gets which: the least-solved question in a section takes its dearest ball, the most-solved its cheapest.",
+    marksHint: `Every question is priced across the WHOLE paper, in proportion to how hard it proved: the least-solved is the dearest, the most-solved the cheapest. A ball runs from ${BALL_MIN.toFixed(1)} to ${BALL_MAX.toFixed(1)} and the paper always adds up to ${PAPER_TOTAL}.`,
+    marksSectionTotal: "What this section currently adds up to",
     marksProvisional: `Fewer than ${MIN_RESPONSES} answers — still the starting price`,
     qNo: "#",
     qType: "Type",
@@ -329,12 +333,13 @@ export default function RaschQuizResultsPage({
   const marks = quiz ? paperMarks(paperSlots(hydrateQuiz(quiz.questions)), cohortStats(rows)) : [];
   const outOf = paperTotal(marks);
 
-  // Grouped for display: the budget is a per-SECTION fact, so the table has to
-  // be read section by section or the "3.5 across two questions" rule is
-  // invisible. `marks` is in slot order, which already runs section by section.
+  // Grouped for display only — the paper is priced as a WHOLE (lib/RASCHmarks.ts),
+  // and the number beside each row is what that row came to add up to, not a
+  // budget it was given. `marks` is in slot order, which already runs section by
+  // section.
   const markSections = EXAM_BLUEPRINT.flatMap((section) => {
     const own = marks.filter((m) => m.sectionId === section.id);
-    return own.length === 0 ? [] : [{ section, marks: own, budget: own[0].sectionBudget }];
+    return own.length === 0 ? [] : [{ section, marks: own, total: own[0].sectionTotal }];
   });
   const dynamicScores = rows.map((r) => scoreFor(marks, r.items));
   const scored = dynamicScores.filter((v): v is number => v !== null);
@@ -415,16 +420,18 @@ export default function RaschQuizResultsPage({
                 <p className="mb-3 text-[11px] font-normal leading-relaxed text-on-surface-variant">{t.marksHint}</p>
 
                 <div className="flex flex-col gap-3">
-                  {markSections.map(({ section, marks: own, budget }) => (
+                  {markSections.map(({ section, marks: own, total }) => (
                     <div key={section.id}>
                       <div className="mb-1.5 flex items-baseline justify-between gap-3">
                         <p className="min-w-0 truncate text-[11.5px] font-bold text-on-surface">
                           {section.label[L]}
                           <span className="ml-1.5 font-black text-on-surface-variant">{section.testType}</span>
                         </p>
-                        {/* The number that never moves, however the split lands. */}
-                        <p className="shrink-0 text-[11.5px] font-black text-primary">
-                          {budget.toFixed(1)}
+                        {/* What this row came to be worth under the marks in
+                            force — a consequence of pricing the whole paper,
+                            not a budget handed to it in advance. */}
+                        <p className="shrink-0 text-[11.5px] font-black text-primary" title={t.marksSectionTotal}>
+                          {total.toFixed(1)}
                         </p>
                       </div>
 

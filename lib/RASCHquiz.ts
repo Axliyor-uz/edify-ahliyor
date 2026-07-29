@@ -11,7 +11,7 @@
 import { EXAM_BLUEPRINT, sectionForChapter } from './Examblueprint';
 import { examSlotCount, toExamItem, type ExamSlotMeta } from './ExamTeacher';
 import { TOPIC_KEYS, type TopicKey } from './RASCHtopics';
-import { isTextType } from '@/types/question';
+import { isClosedQuestion, isTextType } from '@/types/question';
 import type { NormalizedQuestion } from '@/types/question';
 import type { ExamQuestion, TestType } from '@/types/Exam';
 import type { DifficultyId, Lang, QuestionDoc } from '@/types/Math';
@@ -64,6 +64,12 @@ export function sanitizeAccessCode(input: string): string {
  *               ⚠️ **Every typed teacher question is O, whatever its difficulty.**
  *               "Open" is a property of how it is answered, not of how hard it
  *               is, so an easy typed question is still an O and never a Y.
+ *               ⚠️ **A ko'p savolli BLOCK counts too.** A `multi_part` block
+ *               ("Ko'p savolli ochiq test", e.g. 39-masala) is answered by
+ *               typing into every part, so it is an O exactly like a flat typed
+ *               question. Only a block whose parts all pick from options — a
+ *               `shared_options` pool ("Ko'p savolli yopiq test", 33–35) or
+ *               per-part option lists — stays closed.
  *   • **Y-2** — a CLOSED item, harder than Y-1 and requiring adaptation. The
  *               blueprint has exactly ONE Y-2 row: hard Geometriya, from the
  *               multi-step chapters. A hard question anywhere else is Y-1 —
@@ -137,7 +143,12 @@ export function bankQuizItem(q: QuestionDoc): RaschQuizItem {
  * questions1 taxonomy bridge all behave identically on a hand-built paper.
  */
 export function teacherQuizItem(n: NormalizedQuestion): RaschQuizItem {
-  const typed = !n.isBlock && isTextType(n.type);
+  // ⚠️ A block is typed unless EVERY part is answered by picking an option —
+  // `isClosedQuestion` is the same rule the picker's closed/typed badge and its
+  // kind filter use, so the badge and the row an add lands in cannot disagree.
+  // (Before 2026-07-29 a block was excluded outright, which filed an open
+  // "Ko'p savolli ochiq test" under a Y row.)
+  const typed = n.isBlock ? !isClosedQuestion(n) : isTextType(n.type);
   // The bridge lives inside toExamItem, so the section can only be resolved from
   // the ids it produces — build the item first with a placeholder, then re-file
   // it. Cheap: it is a pure object build, not a read.

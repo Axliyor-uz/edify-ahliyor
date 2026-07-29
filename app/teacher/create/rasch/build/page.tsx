@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ArrowDown, ArrowUp, Blocks, Database, HelpCircle, KeyRound,
-  Save, Send, Target, Trash2,
+  Save, Send, Target, Trash2, Wand2,
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -20,6 +20,7 @@ import {
   slimQuizItem,
 } from "@/lib/RASCHquiz";
 import { EXAM_BLUEPRINT } from "@/lib/Examblueprint";
+import { loadDefaultPaper } from "@/lib/RASCHdefaultPaper";
 import {
   getQuiz, newQuizId, pickedIds, reserveAccessCode, saveQuiz, setQuizStatus,
 } from "@/services/teacherRaschQuizService";
@@ -71,6 +72,12 @@ const TR: Record<string, Record<string, string>> = {
     easy: "Oson", medium: "O'rta", hard: "Qiyin",
     addTitle: "Savol qo'shish",
     addHint: "O'zingiz yozgan savollardan yoki Edify bazasidan tanlang. Yangi savol yaratsangiz, u savollar bazangizga saqlanadi va shu yerda paydo bo'ladi.",
+    fillDefault: "Namunaviy variant",
+    fillDefaultHint: `Tayyor ${RASCH_QUIZ_TOTAL} ta savol — barcha bo'limlar to'liq. Yuklangandan keyin savollarni o'chirish, tartibini o'zgartirish va o'zingiznikini qo'shish mumkin.`,
+    defaultConfirm: `Variantdagi savollar namunaviy ${RASCH_QUIZ_TOTAL} ta savol bilan almashtiriladi. Davom etasizmi?`,
+    defaultLoaded: "Namunaviy variant yuklandi — {n} ta savol",
+    defaultBroken: "Namunaviy variant noto'g'ri: {problem}",
+    defaultFailed: "Namunaviy variantni yuklab bo'lmadi",
     newSingle: "Bitta savol yaratish",
     newSingleHint: "Variantli, yozma yoki sonli javob; rasm ham qo'shsa bo'ladi.",
     newBlock: "Ko'p savolli test yaratish",
@@ -131,6 +138,12 @@ const TR: Record<string, Record<string, string>> = {
     easy: "Лёгкие", medium: "Средние", hard: "Трудные",
     addTitle: "Добавить вопрос",
     addHint: "Выбирайте из своих вопросов или из Edify database. Созданный вопрос сохранится в вашей базе и появится здесь.",
+    fillDefault: "Образцовый вариант",
+    fillDefaultHint: `Готовые ${RASCH_QUIZ_TOTAL} вопросов — все разделы заполнены. После загрузки вопросы можно удалять, менять местами и добавлять свои.`,
+    defaultConfirm: `Вопросы варианта будут заменены образцовыми ${RASCH_QUIZ_TOTAL}. Продолжить?`,
+    defaultLoaded: "Образцовый вариант загружен — {n} вопросов",
+    defaultBroken: "Образцовый вариант некорректен: {problem}",
+    defaultFailed: "Не удалось загрузить образцовый вариант",
     newSingle: "Создать один вопрос",
     newSingleHint: "С вариантами, письменный или числовой ответ; можно с картинкой.",
     newBlock: "Создать тест с несколькими вопросами",
@@ -191,6 +204,12 @@ const TR: Record<string, Record<string, string>> = {
     easy: "Easy", medium: "Medium", hard: "Hard",
     addTitle: "Add a question",
     addHint: "Pick from your own questions or from the Edify database. A question you create is saved to your bank and appears here.",
+    fillDefault: "Sample paper",
+    fillDefaultHint: `A ready ${RASCH_QUIZ_TOTAL}-question paper with every section complete. Once loaded you can remove, reorder and add your own questions.`,
+    defaultConfirm: `The questions on this paper will be replaced by the ${RASCH_QUIZ_TOTAL} sample ones. Continue?`,
+    defaultLoaded: "Sample paper loaded — {n} questions",
+    defaultBroken: "The sample paper is invalid: {problem}",
+    defaultFailed: "Could not load the sample paper",
     newSingle: "Create one question",
     newSingleHint: "Multiple choice, written or numeric answer; an image if you want one.",
     newBlock: "Create a multi-question test",
@@ -246,6 +265,7 @@ function BuilderInner() {
   const [loading, setLoading] = useState(!!editId);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [filling, setFilling] = useState(false);
   const [restored, setRestored] = useState(false);
   const [source, setSource] = useState("mine");
 
@@ -377,6 +397,43 @@ function BuilderInner() {
     }
     setItems((prev) => (prev.some((q) => q.id === slim.id) ? prev : [...prev, slim]));
   }, [items, t, sectionName]);
+
+  /**
+   * Drop the bundled 45-question default paper onto the builder.
+   *
+   * It REPLACES the paper rather than topping it up: every blueprint row is
+   * already exactly at its quota, so appending it to a non-empty paper could
+   * only ever overshoot — and a partial fill would leave the teacher to work out
+   * which of the 45 were skipped. Once loaded the items are ordinary quiz items:
+   * remove, reorder and mix in your own exactly as with a hand-picked one.
+   *
+   * ⚠️ The file is checked before anything is set (`buildDefaultPaper`), and a
+   * fault ABORTS with the first problem named. A default paper that silently did
+   * not balance would be published against the wrong rows and would level
+   * students on dimensions it never measured.
+   */
+  const fillDefault = async () => {
+    if (items.length > 0 && !confirm(t.defaultConfirm)) return;
+    setFilling(true);
+    try {
+      const paper = await loadDefaultPaper();
+      if (paper.problems.length > 0) {
+        console.error("data/rasch-default-paper.json:", paper.problems);
+        toast.error(fmt(t.defaultBroken, { problem: paper.problems[0] }));
+        return;
+      }
+      setItems(paper.items.map(slimQuizItem));
+      // The name is the teacher's to choose — only fill one in if they have not.
+      if (!title.trim()) setTitle(paper.title[L] || paper.title.uz);
+      setMinutes(paper.durationMinutes);
+      toast.success(fmt(t.defaultLoaded, { n: paper.items.length }));
+    } catch (err) {
+      console.error(err);
+      toast.error(t.defaultFailed);
+    } finally {
+      setFilling(false);
+    }
+  };
 
   const removeItem = (id: string) => setItems((prev) => prev.filter((q) => q.id !== id));
 
@@ -651,8 +708,21 @@ function BuilderInner() {
 
         {/* ── add questions ────────────────────────────────────────────── */}
         <Card className="p-4">
-          <h2 className="mb-1 text-[14px] font-bold text-on-surface">{t.addTitle}</h2>
-          <p className="mb-3 text-[12px] font-medium leading-relaxed text-on-surface-variant">{t.addHint}</p>
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-[200px] flex-1">
+              <h2 className="mb-1 text-[14px] font-bold text-on-surface">{t.addTitle}</h2>
+              <p className="text-[12px] font-medium leading-relaxed text-on-surface-variant">{t.addHint}</p>
+            </div>
+
+            {/* The 45-question default paper (data/rasch-default-paper.json).
+                Sits at the TOP of this card because it is the fastest route to a
+                publishable variant — a teacher who wants their own questions
+                simply ignores it and picks below. */}
+            <Button size="sm" variant="tonal" icon={<Wand2 />} loading={filling} onClick={fillDefault}>
+              {t.fillDefault}
+            </Button>
+          </div>
+          <p className="mb-3 text-[11px] font-normal leading-snug text-on-surface-variant">{t.fillDefaultHint}</p>
 
           {/* Writing a question happens in the REAL builders, not in a cut-down
               form embedded here. A question is a first-class bank document
