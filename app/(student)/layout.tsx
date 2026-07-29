@@ -16,7 +16,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import {
   LayoutDashboard, BookOpen, User as UserIcon,
   LogOut, GraduationCap, Flame, Trophy, ChevronDown, Check,
-  Settings, BookMarked, Gamepad2, Target,
+  Settings, BookMarked, Gamepad2, Target, Globe,
 } from 'lucide-react';
 
 // Components
@@ -197,7 +197,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     { href: '/library', label: t.menu.library, icon: BookMarked, hideOnMobile: true },
     { href: '/games', label: t.menu.games, icon: Gamepad2 },
     { href: '/leaderboard', label: t.menu.leaderboard, icon: Trophy },
-    { href: '/RASCHmodel', label: t.menu.RASCHmodel, icon: Target },
+    { href: '/ielts', label: t.menu.ielts, icon: Globe },
+    // Hidden from the mobile dock to keep it at 5 destinations (IELTS took its slot).
+    { href: '/RASCHmodel', label: t.menu.RASCHmodel, icon: Target, hideOnMobile: true },
     // Hidden from the mobile dock: M3 caps a bottom bar at 5 destinations, and
     // Profile is already one tap away in the avatar menu.
     { href: '/profile', label: t.menu.profile, icon: UserIcon, hideOnMobile: true },

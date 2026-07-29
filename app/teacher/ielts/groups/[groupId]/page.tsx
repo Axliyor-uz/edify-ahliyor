@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, collection, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -9,14 +9,18 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import AddIeltsStudentModal from '../_components/AddIeltsStudentModal';
+import AssignTestModal from './_components/AssignTestModal';
 import IeltsPulseDashboard from './_components/IeltsPulseDashboard';
 import IeltsUnifiedFeed from './_components/IeltsUnifiedFeed';
 import IeltsRosterTab from './_components/IeltsRosterTab';
 import IeltsRequestsTab from './_components/IeltsRequestsTab';
+import IeltsReviewsTab from './_components/IeltsReviewsTab';
+import { GroupAttempt } from './_components/groupData';
+import { fetchGroupAttempts } from '@/services/ieltsService';
 
 import {
   Users, Hash, ChevronLeft, Inbox,
-  FileText, Plus, Sparkles, UserPlus, Activity
+  FileText, Plus, Sparkles, UserPlus, Activity, ClipboardCheck
 } from 'lucide-react';
 
 import { IeltsGroup } from '@/types/ielts';
@@ -28,23 +32,23 @@ const T: Record<string, any> = {
     back: "Guruhlarga",
     loading: "Yuklanmoqda...",
     buttons: { add: "O'quvchi Qo'shish", assign: "Mock Berish" },
-    tabs: { dashboard: "Pulse", assignments: "Topshiriqlar", students: "O'quvchilar", requests: "So'rovlar" },
+    tabs: { dashboard: "Pulse", assignments: "Topshiriqlar", students: "O'quvchilar", requests: "So'rovlar", reviews: "Tekshirish" },
   },
   en: {
     back: "Groups",
     loading: "Loading...",
     buttons: { add: "Add Student", assign: "Assign Mock" },
-    tabs: { dashboard: "Pulse", assignments: "Assignments", students: "Students", requests: "Requests" },
+    tabs: { dashboard: "Pulse", assignments: "Assignments", students: "Students", requests: "Requests", reviews: "Reviews" },
   },
   ru: {
     back: "Группы",
     loading: "Загрузка...",
     buttons: { add: "Добавить ученика", assign: "Назначить тест" },
-    tabs: { dashboard: "Пульс", assignments: "Задания", students: "Ученики", requests: "Запросы" },
+    tabs: { dashboard: "Пульс", assignments: "Задания", students: "Ученики", requests: "Запросы", reviews: "Проверка" },
   },
 };
 
-type IeltsTab = 'dashboard' | 'assignments' | 'students' | 'requests';
+type IeltsTab = 'dashboard' | 'assignments' | 'students' | 'requests' | 'reviews';
 
 export default function IeltsGroupDetailsPage() {
   const { groupId } = useParams() as { groupId: string };
@@ -56,7 +60,30 @@ export default function IeltsGroupDetailsPage() {
   const [activeTab, setActiveTab]       = useState<IeltsTab>('dashboard');
   const [requestCount, setRequestCount] = useState(0);
   const [isAddOpen, setIsAddOpen]       = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isPlusOpen, setIsPlusOpen]     = useState(false);
+
+  // Group attempts — one-shot fetch shared by all tabs, refreshed on tab change
+  const [attempts, setAttempts]             = useState<GroupAttempt[]>([]);
+  const [attemptsLoaded, setAttemptsLoaded] = useState(false);
+  // Bumped after creating an assignment so the Assignments tab refetches
+  const [feedRefresh, setFeedRefresh]       = useState(0);
+
+  const loadAttempts = useCallback(async () => {
+    try {
+      const list = await fetchGroupAttempts(groupId);
+      setAttempts(list as GroupAttempt[]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAttemptsLoaded(true);
+    }
+  }, [groupId]);
+
+  useEffect(() => {
+    if (!groupId) return;
+    loadAttempts();
+  }, [groupId, activeTab, loadAttempts]);
 
   // Group document — live
   useEffect(() => {
@@ -85,11 +112,14 @@ export default function IeltsGroupDetailsPage() {
     );
   }
 
+  const pendingReviews = attempts.filter(a => a.reviewStatus === 'pending_review').length;
+
   const TABS: { id: IeltsTab; label: string; icon: any; badge: number }[] = [
-    { id: 'dashboard',   label: t.tabs.dashboard,   icon: Activity, badge: 0 },
-    { id: 'assignments', label: t.tabs.assignments, icon: FileText, badge: 0 },
-    { id: 'students',    label: t.tabs.students,    icon: Users,    badge: 0 },
-    { id: 'requests',    label: t.tabs.requests,    icon: Inbox,    badge: requestCount },
+    { id: 'dashboard',   label: t.tabs.dashboard,   icon: Activity,       badge: 0 },
+    { id: 'assignments', label: t.tabs.assignments, icon: FileText,       badge: 0 },
+    { id: 'reviews',     label: t.tabs.reviews,     icon: ClipboardCheck, badge: pendingReviews },
+    { id: 'students',    label: t.tabs.students,    icon: Users,          badge: 0 },
+    { id: 'requests',    label: t.tabs.requests,    icon: Inbox,          badge: requestCount },
   ];
 
   return (
@@ -97,6 +127,13 @@ export default function IeltsGroupDetailsPage() {
 
       {/* ── Modals ── */}
       <AddIeltsStudentModal groupId={groupId} isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      <AssignTestModal
+        groupId={groupId}
+        group={group}
+        isOpen={isAssignOpen}
+        onClose={() => setIsAssignOpen(false)}
+        onCreated={() => { setFeedRefresh(n => n + 1); setActiveTab('assignments'); }}
+      />
 
       {/* ── Plus dropdown overlay ── */}
       <AnimatePresence>
@@ -115,7 +152,7 @@ export default function IeltsGroupDetailsPage() {
               className="fixed top-[56px] right-4 md:right-8 z-50 bg-surface-container-lowest rounded-m3-lg shadow-elev-3 border border-outline-variant w-52 p-1.5 flex flex-col gap-0.5 origin-top-right"
             >
               <button
-                onClick={() => setIsPlusOpen(false)}
+                onClick={() => { setIsAssignOpen(true); setIsPlusOpen(false); }}
                 className="flex items-center gap-3 px-3 py-2.5 hover:bg-state-hover rounded-m3-md transition-colors text-on-surface w-full text-left group"
               >
                 <div className="w-7 h-7 rounded-m3-sm bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
@@ -223,9 +260,37 @@ export default function IeltsGroupDetailsPage() {
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
           >
-            {activeTab === 'dashboard' && <IeltsPulseDashboard group={group} />}
-            {activeTab === 'assignments' && <IeltsUnifiedFeed group={group} />}
-            {activeTab === 'students' && <IeltsRosterTab groupId={groupId} studentIds={group.studentIds} />}
+            {activeTab === 'dashboard' && (
+              <IeltsPulseDashboard
+                group={group}
+                attempts={attempts}
+                loaded={attemptsLoaded}
+                onOpenReviews={() => setActiveTab('reviews')}
+              />
+            )}
+            {activeTab === 'assignments' && (
+              <IeltsUnifiedFeed
+                groupId={groupId}
+                group={group}
+                attempts={attempts}
+                refreshKey={feedRefresh}
+                onAssign={() => setIsAssignOpen(true)}
+              />
+            )}
+            {activeTab === 'reviews' && (
+              <IeltsReviewsTab
+                attempts={attempts}
+                loaded={attemptsLoaded}
+                onGraded={(attemptId, band, comments) =>
+                  setAttempts(prev => prev.map(a => a.id === attemptId
+                    ? { ...a, reviewStatus: 'graded' as const, teacherGrade: { band, comments, gradedAt: new Date() } }
+                    : a))
+                }
+              />
+            )}
+            {activeTab === 'students' && (
+              <IeltsRosterTab groupId={groupId} studentIds={group.studentIds} attempts={attempts} />
+            )}
             {activeTab === 'requests' && <IeltsRequestsTab groupId={groupId} />}
           </motion.div>
         </AnimatePresence>

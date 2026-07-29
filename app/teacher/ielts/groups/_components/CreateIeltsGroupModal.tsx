@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { generateJoinCode, generateUniqueJoinCode } from '@/services/ieltsService';
 import { X, Hash, CheckCircle, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/AuthContext';
@@ -57,15 +58,24 @@ export default function CreateIeltsGroupModal({ isOpen, onClose }: Props) {
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving]     = useState(false);
 
-  // Generated once per modal open — stable across re-renders
-  const [joinCode] = useState(() => 'I-' + Math.random().toString(36).substring(2, 6).toUpperCase());
+  // Uniqueness-checked code, generated per modal open (services/ieltsService)
+  const [joinCode, setJoinCode] = useState('');
+  useEffect(() => {
+    if (!isOpen) return;
+    let alive = true;
+    setJoinCode('');
+    generateUniqueJoinCode()
+      .then(code => { if (alive) setJoinCode(code); })
+      .catch(() => { if (alive) setJoinCode(generateJoinCode()); }); // offline fallback
+    return () => { alive = false; };
+  }, [isOpen]);
 
   const handleClose = () => {
     setTitle(''); setDescription(''); onClose();
   };
 
   const handleCreate = async () => {
-    if (!title.trim() || !user) return;
+    if (!title.trim() || !user || !joinCode) return;
     setIsSaving(true);
     try {
       await addDoc(collection(db, 'ielts_groups'), {
@@ -162,7 +172,7 @@ export default function CreateIeltsGroupModal({ isOpen, onClose }: Props) {
               <div className="flex items-center justify-between bg-surface-container-lowest border border-outline-variant rounded-m3-md px-4 py-3">
                 <div>
                   <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">{t.codeLabel}</p>
-                  <p className="text-[20px] font-black font-mono text-on-surface tracking-widest mt-0.5 leading-none">{joinCode}</p>
+                  <p className="text-[20px] font-black font-mono text-on-surface tracking-widest mt-0.5 leading-none">{joinCode || '…'}</p>
                 </div>
                 <div className="w-9 h-9 rounded-m3-md bg-primary-container border border-transparent flex items-center justify-center text-on-primary-container">
                   <Hash size={16} strokeWidth={2.5} />
@@ -175,7 +185,7 @@ export default function CreateIeltsGroupModal({ isOpen, onClose }: Props) {
                 variant="filled"
                 size="lg"
                 onClick={handleCreate}
-                disabled={!title.trim()}
+                disabled={!title.trim() || !joinCode}
                 loading={isSaving}
                 icon={<CheckCircle strokeWidth={2.5} />}
                 className="w-full mt-1"

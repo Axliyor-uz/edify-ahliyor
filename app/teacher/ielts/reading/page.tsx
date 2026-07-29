@@ -1,25 +1,31 @@
 'use client';
 
+// Reading test library. The old fake DATABASE_TESTS tab is gone — the "Platform" tab now
+// lists the real admin-curated dataset via fetchPlatformTests('reading') (read-only cards,
+// preview via the simulator route). Cards show question-type breakdown chips.
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { BookOpen, Plus, Search, Sparkles, Database, Clock, MoreVertical, FileText, Globe, Trash2, Copy, Send, Eye, ChevronLeft } from 'lucide-react';
+import { BookOpen, Plus, Search, Clock, MoreVertical, FileText, Globe, Trash2, Eye, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useTeacherLanguage } from '@/app/teacher/layout';
+import { fetchTeacherTests, fetchPlatformTests, deleteIeltsTest } from '@/services/ieltsService';
+import { typeBreakdown } from '@/lib/ielts/testSchema';
+import { breakdownChips } from '../_shared/typeLabels';
 
 import { Button, IconButton, Spinner, SearchBar, EmptyState } from '@/components/ui';
 
 const TRANSLATIONS = {
   uz: {
-    subtitle: "Matnli testlarni yarating yoki bazadan foydalaning.",
+    subtitle: "Matnli testlarni yarating yoki platforma bazasidan foydalaning.",
     newTest: "Yangi Test",
     manualEntry: "Qo'lda kiritish",
     manualDesc: "Noldan o'zingiz tuzing",
     myTests: "Mening Testlarim",
-    database: "Baza",
+    platform: "Platforma",
+    platformBadge: "Platforma",
     searchPlaceholder: "Qidirish...",
     wordsSuffix: "ta so'z",
     questionsSuffix: "savol",
@@ -35,12 +41,13 @@ const TRANSLATIONS = {
     deleteError: "O'chirishda xatolik yuz berdi.",
   },
   en: {
-    subtitle: "Create reading tests or use the database.",
+    subtitle: "Create reading tests or use the platform library.",
     newTest: "New Test",
     manualEntry: "Manual entry",
     manualDesc: "Build it yourself from scratch",
     myTests: "My Tests",
-    database: "Database",
+    platform: "Platform",
+    platformBadge: "Platform",
     searchPlaceholder: "Search...",
     wordsSuffix: "words",
     questionsSuffix: "questions",
@@ -56,12 +63,13 @@ const TRANSLATIONS = {
     deleteError: "Failed to delete.",
   },
   ru: {
-    subtitle: "Создавайте текстовые тесты или используйте базу.",
+    subtitle: "Создавайте текстовые тесты или используйте базу платформы.",
     newTest: "Новый тест",
     manualEntry: "Ручной ввод",
     manualDesc: "Составьте самостоятельно с нуля",
     myTests: "Мои тесты",
-    database: "База",
+    platform: "Платформа",
+    platformBadge: "Платформа",
     searchPlaceholder: "Поиск...",
     wordsSuffix: "слов",
     questionsSuffix: "вопросов",
@@ -78,21 +86,32 @@ const TRANSLATIONS = {
   },
 };
 
-const DATABASE_TESTS = [
-  { id: '101', title: 'Cambridge Vol 18 - Test 1', difficulty: 'hard', wordCount: 2450, qCount: 40, date: 'System' },
-];
+function mapDoc(d: any, untitled: string) {
+  const totalWords = d.passages?.reduce((acc: number, p: any) => acc + (p.word_count || 0), 0) || 0;
+  return {
+    id: d.id,
+    title: d.test_title || untitled,
+    difficulty: d.passages?.[0]?.difficulty || 'medium',
+    wordCount: totalWords,
+    qCount: d.total_questions || 0,
+    chips: breakdownChips(typeBreakdown(d)),
+    date: d.createdAt?.toDate ? d.createdAt.toDate().toLocaleDateString() : 'N/A',
+    rawDate: d.createdAt?.toMillis ? d.createdAt.toMillis() : 0,
+  };
+}
 
 export default function ReadingDashboard() {
   const { user } = useAuth() as any;
   const { lang } = useTeacherLanguage();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.uz;
 
-  const [activeTab, setActiveTab] = useState<'myTests' | 'database'>('myTests');
+  const [activeTab, setActiveTab] = useState<'myTests' | 'platform'>('myTests');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const [myTests, setMyTests] = useState<any[]>([]);
+  const [platformTests, setPlatformTests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -101,52 +120,44 @@ export default function ReadingDashboard() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const fetchMyTests = async () => {
-    if (!user?.uid) return;
-    setIsLoading(true);
-    try {
-      const q = query(collection(db, 'ielts_reading_tests'), where('teacherId', '==', user.uid));
-      const snap = await getDocs(q);
-      const fetched = snap.docs.map(doc => {
-        const data = doc.data();
-        const totalWords = data.passages?.reduce((acc: number, p: any) => acc + (p.word_count || 0), 0) || 0;
-        return {
-          id: doc.id,
-          title: data.test_title || t.untitled,
-          difficulty: data.passages?.[0]?.difficulty || 'medium',
-          wordCount: totalWords,
-          qCount: data.total_questions || 0,
-          date: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'N/A',
-          rawDate: data.createdAt?.toMillis ? data.createdAt.toMillis() : 0,
-        };
-      });
-      fetched.sort((a, b) => b.rawDate - a.rawDate);
-      setMyTests(fetched);
-    } catch (error) {
-      toast.error(t.loadError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    const load = async () => {
+      if (!user?.uid) return;
+      setIsLoading(true);
+      try {
+        const [mine, platform] = await Promise.all([
+          fetchTeacherTests('reading', user.uid),
+          fetchPlatformTests('reading'),
+        ]);
+        setMyTests(mine.map((d) => mapDoc(d, t.untitled)).sort((a, b) => b.rawDate - a.rawDate));
+        setPlatformTests(platform.map((d) => mapDoc(d, t.untitled)).sort((a, b) => b.rawDate - a.rawDate));
+      } catch (error) {
+        console.error(error);
+        toast.error(t.loadError);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
-  useEffect(() => { fetchMyTests(); }, [user]);
-
-  // 🌟 FIREBASE DELETE FUNCTION
+  // Deletes the test AND its ielts_answer_keys doc in one batch.
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(t.deleteConfirm)) return;
 
     try {
-      await deleteDoc(doc(db, 'ielts_reading_tests', id));
+      await deleteIeltsTest('reading', id);
       setMyTests(prev => prev.filter(test => test.id !== id));
       toast.success(t.deleteSuccess);
-    } catch (error) {
+    } catch {
       toast.error(t.deleteError);
     }
     setOpenDropdownId(null);
   };
 
-  const filteredData = (activeTab === 'myTests' ? myTests : DATABASE_TESTS).filter(test =>
+  const filteredData = (activeTab === 'myTests' ? myTests : platformTests).filter(test =>
     test.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -196,8 +207,8 @@ export default function ReadingDashboard() {
           <button onClick={() => setActiveTab('myTests')} className={`flex-1 md:w-40 py-2 text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'myTests' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
             <BookOpen size={14} /> {t.myTests}
           </button>
-          <button onClick={() => setActiveTab('database')} className={`flex-1 md:w-40 py-2 text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'database' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
-            <Database size={14} /> {t.database}
+          <button onClick={() => setActiveTab('platform')} className={`flex-1 md:w-40 py-2 text-[12px] font-bold rounded-m3-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'platform' ? 'bg-surface-container-lowest text-on-surface shadow-elev-1' : 'text-on-surface-variant hover:text-on-surface'}`}>
+            <Globe size={14} /> {t.platform}
           </button>
         </div>
 
@@ -206,7 +217,7 @@ export default function ReadingDashboard() {
 
       {/* DATA LIST */}
       <div className="bg-surface-container-low rounded-m3-lg border border-outline-variant shadow-elev-1 overflow-hidden min-h-[300px]">
-        {activeTab === 'myTests' && isLoading ? (
+        {isLoading ? (
           <div className="flex flex-col items-center justify-center h-[300px]">
             <Spinner size={28} className="mb-3" />
           </div>
@@ -214,50 +225,60 @@ export default function ReadingDashboard() {
           <div className="divide-y divide-outline-variant">
             {filteredData.map((test) => (
               <div key={test.id} className="p-4 md:p-5 hover:bg-state-hover transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 group">
-                <div className="flex items-start gap-4">
-                  <div className={`w-12 h-12 rounded-m3-md flex items-center justify-center shrink-0 shadow-elev-1 ${activeTab === 'database' ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-surface-container text-on-surface-variant border border-outline-variant'}`}>
-                    {activeTab === 'database' ? <Globe size={20} /> : <FileText size={20} />}
+                <div className="flex items-start gap-4 min-w-0">
+                  <div className={`w-12 h-12 rounded-m3-md flex items-center justify-center shrink-0 shadow-elev-1 ${activeTab === 'platform' ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-surface-container text-on-surface-variant border border-outline-variant'}`}>
+                    {activeTab === 'platform' ? <Globe size={20} /> : <FileText size={20} />}
                   </div>
-                  <div className="pt-0.5">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="pt-0.5 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="text-[15px] font-bold text-on-surface group-hover:text-primary transition-colors">{test.title}</h3>
+                      {activeTab === 'platform' && (
+                        <span className="px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-widest bg-tertiary-container text-on-tertiary-container">{t.platformBadge}</span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap mb-1.5">
                       <span className={`px-2 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-widest ${test.difficulty === 'easy' ? 'bg-success-container text-on-success-container' : test.difficulty === 'medium' ? 'bg-warning-container text-on-warning-container' : 'bg-error-container text-on-error-container'}`}>{test.difficulty}</span>
                       <span className="flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant"><BookOpen size={12} /> {test.wordCount} {t.wordsSuffix}</span>
                       <span className="flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant"><Clock size={12} /> {test.qCount} {t.questionsSuffix}</span>
                     </div>
+                    {test.chips.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {test.chips.map((chip: string) => (
+                          <span key={chip} className="px-1.5 py-0.5 rounded-m3-xs text-[9px] font-black uppercase tracking-wider bg-surface-container border border-outline-variant text-on-surface-variant">{chip}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end md:self-auto relative">
+                <div className="flex items-center gap-2 self-end md:self-auto relative shrink-0">
 
-                  {/* 🌟 VIEW BUTTON ROUTED TO NEW PAGE */}
                   <Link href={`/teacher/ielts/reading/view/${test.id}`} className="m3-interactive px-3 py-2 bg-secondary-container text-on-secondary-container text-[12px] font-bold rounded-m3-sm transition-colors flex items-center gap-1.5">
                     <Eye size={14} /> {t.view}
                   </Link>
 
-                  <Link href={`/teacher/ielts/reading/manual/${test.id}`} className="m3-interactive px-4 py-2 bg-surface-container-lowest ring-1 ring-inset ring-outline-variant text-on-surface text-[12px] font-bold rounded-m3-sm transition-colors">
-                    {t.edit}
-                  </Link>
-
-                  {/* 🌟 DELETE DROPDOWN */}
                   {activeTab === 'myTests' && (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <IconButton size="sm" aria-label={t.moreActions} onClick={() => setOpenDropdownId(openDropdownId === test.id ? null : test.id)}>
-                        <MoreVertical />
-                      </IconButton>
+                    <>
+                      <Link href={`/teacher/ielts/reading/manual/${test.id}`} className="m3-interactive px-4 py-2 bg-surface-container-lowest ring-1 ring-inset ring-outline-variant text-on-surface text-[12px] font-bold rounded-m3-sm transition-colors">
+                        {t.edit}
+                      </Link>
 
-                      <AnimatePresence>
-                        {openDropdownId === test.id && (
-                          <motion.div initial={{ opacity: 0, scale: 0.95, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 5 }} className="absolute right-0 top-full mt-1 w-40 bg-surface-container-low rounded-m3-md shadow-elev-2 border border-outline-variant py-1.5 z-50">
-                            <button onClick={(e) => handleDelete(test.id, e)} className="w-full px-3 py-2 flex items-center gap-2 text-[12px] font-bold text-error hover:bg-error-container transition-colors">
-                              <Trash2 size={14} /> {t.delete}
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <IconButton size="sm" aria-label={t.moreActions} onClick={() => setOpenDropdownId(openDropdownId === test.id ? null : test.id)}>
+                          <MoreVertical />
+                        </IconButton>
+
+                        <AnimatePresence>
+                          {openDropdownId === test.id && (
+                            <motion.div initial={{ opacity: 0, scale: 0.95, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 5 }} className="absolute right-0 top-full mt-1 w-40 bg-surface-container-low rounded-m3-md shadow-elev-2 border border-outline-variant py-1.5 z-50">
+                              <button onClick={(e) => handleDelete(test.id, e)} className="w-full px-3 py-2 flex items-center gap-2 text-[12px] font-bold text-error hover:bg-error-container transition-colors">
+                                <Trash2 size={14} /> {t.delete}
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </>
                   )}
 
                 </div>

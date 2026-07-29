@@ -550,8 +550,35 @@ service cloud.firestore {
       allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
     }
 
+    // IELTS test banks — public docs are answer-free (answers_split; key in ielts_answer_keys).
+    // Platform-dataset docs have teacherId: null — only admin god-mode / Admin SDK writes them.
     match /ielts_reading_tests/{testId} {
       allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+    match /ielts_listening_tests/{testId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+    match /ielts_writing_tests/{testId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+    match /ielts_speaking_tests/{testId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+
+    // The split answer key — NEVER student-readable. Owning teacher only; platform keys
+    // (teacherId null) are admin/Admin-SDK only; grading happens in /api/ielts/submit.
+    match /ielts_answer_keys/{testId} {
+      // `resource == null`: legacy tests have no key doc yet — loadTestForEdit's get()
+      // must see not-found, not permission-denied. A missing doc reveals nothing.
+      allow read: if isAuth() && (resource == null || resource.data.teacherId == request.auth.uid);
       allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
       allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
     }
@@ -574,42 +601,53 @@ service cloud.firestore {
     // ============================================================================
     // --- 15. IELTS PLATFORM ---
     // ============================================================================
+    // Group reads are teacher/member only — joining goes through /api/ielts/join (Admin SDK),
+    // so join codes can no longer be harvested by listing all groups. Both live client queries
+    // (teacherId == uid; studentIds array-contains uid) stay provable for list evaluation.
     match /ielts_groups/{groupId} {
-      allow read: if isAuth();
+      allow read: if isAuth() && (
+        resource.data.teacherId == request.auth.uid ||
+        request.auth.uid in resource.data.studentIds
+      );
       allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
       allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
 
       match /assignments/{assignmentId} {
         allow read: if isAuth();
-        allow create, delete: if isAuth() && get(/databases/$(database)/documents/ielts_groups/$(groupId)).data.teacherId == request.auth.uid;
-        allow update: if isAuth() && (
+        // completedBy is server-written (Admin SDK) — clients no longer self-add.
+        allow create, update, delete: if isAuth() && get(/databases/$(database)/documents/ielts_groups/$(groupId)).data.teacherId == request.auth.uid;
+      }
+
+      // create goes through /api/ielts/join (Admin SDK). Teacher reads/approves/rejects;
+      // a student may withdraw their own request.
+      match /requests/{requestId} {
+        allow read: if isAuth() && get(/databases/$(database)/documents/ielts_groups/$(groupId)).data.teacherId == request.auth.uid;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if isAuth() && (
           get(/databases/$(database)/documents/ielts_groups/$(groupId)).data.teacherId == request.auth.uid ||
-          (
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completedBy']) &&
-            request.resource.data.completedBy.hasAll([request.auth.uid])
-          )
+          resource.data.studentId == request.auth.uid
         );
       }
-
-      match /requests/{requestId} {
-        allow read, write: if isAuth();
-      }
     }
 
-    match /ielts_tests/{testId} {
-      allow read: if isAuth();
-      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
-      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
-    }
-
+    // Attempts are written ONLY by /api/ielts/submit (Admin SDK) — clients cannot create or
+    // forge scores. Teacher update covers writing/speaking grading (band + comments).
     match /ielts_attempts/{attemptId} {
+      // `resource == null` keeps the runner's first-attempt existence check working:
+      // a get() on a missing doc must return not-found, not permission-denied.
       allow read: if isAuth() && (
         resource == null ||
         resource.data.userId == request.auth.uid ||
-        get(/databases/$(database)/documents/ielts_groups/$(resource.data.groupId)).data.teacherId == request.auth.uid
+        ('groupId' in resource.data &&
+          get(/databases/$(database)/documents/ielts_groups/$(resource.data.groupId)).data.teacherId == request.auth.uid)
       );
-      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuth() && get(/databases/$(database)/documents/ielts_groups/$(resource.data.groupId)).data.teacherId == request.auth.uid;
+      allow create: if false;
+      allow update: if isAuth() &&
+        'groupId' in resource.data &&
+        get(/databases/$(database)/documents/ielts_groups/$(resource.data.groupId)).data.teacherId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reviewStatus', 'teacherGrade']);
+      allow delete: if false;
     }
 
     // ============================================================================
