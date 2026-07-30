@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching anything that creates, stores, renders or grades a question — `teacher_questions`, `questions1`, the embedded `custom_tests.questions[]` snapshots, any `app/teacher/create/*` page, or a student runner. Also read [DATA_MODEL.md](DATA_MODEL.md). Index: [README.md](README.md).
 
-**Last verified:** 2026-07-14.
+**Last verified:** 2026-07-30 (biology + chemistry added to the taxonomy); rest 2026-07-14.
 
 ## The one rule
 
@@ -69,7 +69,15 @@ The load-bearing rule: **a machine-written question lands in `review`, a hand-wr
 
 ## Every creator asks the teacher for a topic — an LLM cannot pick one
 
-`toQuestionV1()` **throws `InvalidTopicError`** unless the `subject`/`topic`/`subtopic` triple exists in [data/question_topics.json](../data/question_topics.json) (`isValidTopicPath`). That is the single choke point keeping the bank filterable: the AI pages used to write placeholders (`subject: "by_prompt"`, `"by_image"`, `"custom"`, or a syllabus name from the *other* taxonomy) straight into `teacher_questions`.
+`toQuestionV1()` **throws `InvalidTopicError`** unless the `subject`/`topic`/`subtopic` triple exists in [data/question_topics.json](../data/question_topics.json) (`isValidTopicPath`).
+
+🟢 **Four subjects now (2026-07-30): `algebra` (18 topics), `geometriya` (11), `biologiya` (8 topics / 126 subtopics), `kimyo` (4 topics / 117 subtopics).** Both were appended for the Milliy sertifikat subject papers ([MILLIY_QUIZ.md](MILLIY_QUIZ.md)) by [scripts/addBiologyTopics.mjs](../scripts/addBiologyTopics.mjs) and [scripts/addChemistryTopics.mjs](../scripts/addChemistryTopics.mjs) — the reviewable way to add the next one, since 100+ ids have to be slugified exactly like the existing ones and they are PERSISTED into docs. Adding a subject needs **no changes to any creator**: `create/question` and `create/block` read `SUBJECTS`, so open, closed and block questions became authorable the moment each taxonomy landed.
+
+⚠️ **Topic counts differ wildly by subject and that is deliberate** — biology has 8 topics, chemistry only 4. The topic level mirrors each official programme's own numbered sections (chemistry's programme has four: Umumiy / Anorganik / Organik / Kimyoviy tahlil), because that is the level a paper's question distribution is published at and the level the results pages group by. Don't normalize them.
+
+⚠️ **Appending a subject is safe; reordering `algebra`/`geometriya` topics is NOT.** `ExamTeacher.slugForChapter` bridges a `questions1` chapter to a topic slug **by its 1-based position** in `subject.topics[]`. The subject lookup is by id, so extra subjects at the end change nothing — but inserting or moving an algebra/geometry topic silently re-files every bank question in the RASCH exam. Biology and chemistry have no `questions1` mirror, so `bankIds` falls back to the doc's own ids, which is what the subject papers want.
+
+⚠️ **The taxonomy is 3 levels only.** Biology sections 2 and 4, and **every** chemistry section, have an intermediate grouping in the official programme; those groups are folded into the SUBTOPIC NAME as a `"Group — Leaf"` prefix (`Sitologiya — Mitoz`, `Atom tuzilishi — Izotoplar`). Don't "flatten" that — the section numbering at the topic level is the programme's own. ⚠️ A leaf name must therefore not contain a dash of its own, or the fold reads as two separators; chemistry uses parentheses for sub-classifications (`IA guruh (ishqoriy metallar)`). That is the single choke point keeping the bank filterable: the AI pages used to write placeholders (`subject: "by_prompt"`, `"by_image"`, `"custom"`, or a syllabus name from the *other* taxonomy) straight into `teacher_questions`.
 
 So every creator page opens **[TopicAssignModal](../app/teacher/create/_components/TopicAssignModal.tsx)** *before* it writes anything — for **both** save paths ("save to bank" and "publish"). The modal offers one topic for the whole batch or one per question, and hands back a `TopicPath[]`, one entry per question, in order. The page merges path `i` into question `i`:
 

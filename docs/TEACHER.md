@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/teacher/*`, test/question collections (`teacher_questions`, `custom_tests`, `bsb_chsb_tests`), grading, or subscription/limits display. AI generation routes are covered in [AI.md](AI.md); read both when touching `app/teacher/create/*/api/`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-29 (center hub added; Rasch paper creator 2026-07-28; rest unverified since commit `7c31a96`).
+**Last verified:** 2026-07-30 (Milliy sertifikat hub + the maths builder moved into it, biology **and chemistry** live with sample papers, shared dynamic marking; Rasch paper creator 2026-07-28; rest unverified since commit `7c31a96`).
 
 ## Cross-cutting
 
@@ -10,12 +10,13 @@
 - `TeacherLanguageContext` (`app/teacher/layout.tsx`): `useTeacherLanguage()` → `lang ∈ uz|en|ru`, **persisted per-device** in localStorage `edify-teacher-lang` (restored post-hydration; SSR shell renders uz). Pattern: every page/modal defines its own inline `TRANSLATIONS` dict and picks `TRANSLATIONS[lang] || TRANSLATIONS['uz']`. Hardcoded Uzbek strings still leak (toasts, grade page).
 - AI balance widget: `hooks/useMonthlyLimit.ts` — live `onSnapshot(users/{uid})`, `currentLimits.monthlyAiQuestions` (default 100), `usage.aiQuestionsUsed`, unlimited at ≥5000, danger at 80%.
 - ⚠️ Nav entries for **subscription** and **ielts** are commented out in the layout even though both routes are fully built (subscription reachable only via the AI-balance "Buy Credits" button).
+- ⚠️ **`navItems` order is load-bearing on the `topbar` shell**: `topbarPrimary = navItems.slice(0, 5)` and everything after falls behind "More". Inserting a destination therefore pushes one out of the inline row. The default shell is `sidebar`, which shows them all.
 - **Design system:** the ENTIRE teacher tree is styled with the M3 UI kit (`components/ui/*`, tokens only — no raw colors). Read [UI_KIT.md](UI_KIT.md) before styling any teacher page.
 - **Shell (layout.tsx):** desktop = flush sidebar that collapses to an 84px labeled M3 rail (header toggle, `[` shortcut, state in localStorage `edify-sb-rail`); mobile = slim top bar + **M3 bottom navigation bar** (Boshqaruv/Yaratish/Sinflar/Kutubxona + Menyu→drawer). ⚠️ The bottom bar auto-hides on deep routes with their own bottom action bars (`HIDE_BOTTOM_BAR` regexes: `create/*`, `classes/*`, `print`, IELTS builder/view) — check that list when adding a page with a floating bottom bar. Language switcher uses inline SVG flags inside the profile popover; desktop NotificationBell was replaced by a "Bildirishnomalar" nav item (bell quick-panel remains on the mobile top bar).
 
 ## Test creation (`app/teacher/create/*`)
 
-Hub lists 9 methods. Two write targets: per-question docs in **`teacher_questions`** and one aggregate test doc in **`custom_tests`** (or **`bsb_chsb_tests`** for BSB/CHSB).
+Hub lists 8 methods (the Rasch/Milliy sertifikat card moved out on 2026-07-30 — see below). Two write targets: per-question docs in **`teacher_questions`** and one aggregate test doc in **`custom_tests`** (or **`bsb_chsb_tests`** for BSB/CHSB).
 
 > ⚠️ **Every creator now writes the canonical v1 question schema** via `toQuestionV1()`, and every reader normalizes via `normalizeQuestion()`. Legacy questions are never migrated and must keep working. **Read [QUESTIONS.md](QUESTIONS.md) before changing any creation or rendering path** — including the trap that `where('difficulty','==','easy')` silently misses every v1 doc.
 >
@@ -36,7 +37,8 @@ Hub lists 9 methods. Two write targets: per-question docs in **`teacher_question
 | From own bank | `create/my_questions/` | `custom_tests` | manages `teacher_questions where creatorId==uid` |
 | BSB/CHSB | `create/bsb-chsb/` + api | **`bsb_chsb_tests`** only | mixed question types with `points`, `pairs`, `rubric`; ⚠️ NOT feature-gated despite `BSB_GENERATOR` existing in the registry |
 | Operations / Abiturient | `create/operations/`, `create/abiturient/` | none | operations = client-side jsPDF worksheets; abiturient = router hub |
-| **Rasch paper (45 q + 6-digit code)** | `create/rasch/` (+ `build/`, `results/[quizId]/`) | **`teacher_rasch_quizzes`** only | Two pools: the teacher's own `teacher_questions` (default tab) and `questions1` to top up. Writing a new question links out to `create/question` / `create/block`; ⚠️ the paper is stashed to localStorage first so navigating away can't destroy it. Students open it at `/RASCHmodel/quiz` and it scores into their Rasch levels. Full contract: [RASCH_QUIZ.md](RASCH_QUIZ.md) |
+| **Rasch paper (45 q + 6-digit code)** | ⚠️ **moved** to `milliy-sertifikat/math/` (+ `build/`, `results/[quizId]/`) | **`teacher_rasch_quizzes`** only | Two pools: the teacher's own `teacher_questions` (default tab) and `questions1` to top up. Writing a new question links out to `create/question` / `create/block`; ⚠️ the paper is stashed to localStorage first so navigating away can't destroy it. Students open it at `/raschmodel/quiz` and it scores into their Rasch levels. Full contract: [RASCH_QUIZ.md](RASCH_QUIZ.md) |
+| **Milliy sertifikat subject paper** (biology…) | `milliy-sertifikat/[subject]/` (+ `build/`, `results/[quizId]/`) | **`milliy_quizzes`** only | One pool: the teacher's own `teacher_questions` filtered to the subject **server-side**. Teacher-declared length, no blueprint quota, **no ability model** — results are raw counts. Students open it at `/milliy-sertifikat` with the same 6-digit code box that serves maths. Full contract: [MILLIY_QUIZ.md](MILLIY_QUIZ.md) |
 
 `custom_tests` doc: `{teacherId, teacherName?, title, track, subjectName, topicName..., questions:[full question objects embedded], duration (0 = no limit), shuffle (default true), resultsVisibility ('always'|'after_due'|'never', default 'after_due'), accessCode, status:'active', createdAt, questionCount}`. ⚠️ Shape drifts by creator: `teacherName` absent in ai/my_questions paths; `track` varies (`custom`/`general_ai`/`custom_mix`); `EditTestModal` writes a derived `showResults` bool no creator writes.
 
@@ -56,6 +58,56 @@ Its own hub section ("Savollar Bazasi"). One question at a time, written to **`t
 - ⚠️ **The list under the form does NOT read Firestore on mount, or after a save.** The question you just created is shown from memory; Firestore is touched only when the teacher presses "load 10" (10 docs per press, cursor-paged). Opening the builder costs zero reads — don't reintroduce an auto-fetch.
 - **Editing**: the pencil on any row, or `Tahrirlash` on any card in `create/my_questions` → `/teacher/create/question?edit=<id>`. Loads the stored question back into the form (legacy docs included — they're the ones that need fixing) and writes back to the SAME doc: `createdAt` preserved, `metadata.updatedAt` moved, replaced images deleted from Storage, `creationMethod` kept. See [QUESTIONS.md](QUESTIONS.md).
 - Per-source defaults (AI → `status: review`, hand-written → `published`, plus `aiModel` and provenance tags) come from `CREATION_METHOD_DEFAULTS` — see [QUESTIONS.md](QUESTIONS.md).
+
+## Milliy sertifikat (`app/teacher/milliy-sertifikat/`) — 2026-07-30
+
+A top-level nav destination (`BadgeCheck` icon, between IELTS and Library) whose
+only job is to be a **subject router**. One page, no state, no Firestore, no
+service — it reads nothing and writes nothing.
+
+🟢 **The maths builder now LIVES here** (`milliy-sertifikat/math/*`, moved from
+`create/rasch` on 2026-07-30) and its card is **gone from the create hub** — it is
+a per-subject exam programme, not one of that hub's test-creation methods. It is
+still `teacher_rasch_quizzes` and still documented by [RASCH_QUIZ.md](RASCH_QUIZ.md).
+⚠️ The static `math` segment beats the sibling `[subject]` route, which is why
+`genericSubject()` also refuses `'math'`.
+
+⚠️ **Maths is NOT a new subsystem, and must not become one.** The Milliy
+sertifikat maths paper is *exactly* the paper `create/rasch` already builds: the
+45-question DTM protocol (Y-1 #1–32, Y-2 #33–40, O #41–45) is what
+`EXAM_BLUEPRINT` encodes — see the header comment of
+[lib/Examblueprint.ts](../lib/Examblueprint.ts) and `RASCH_QUIZ_TOTAL` in
+[lib/RASCHquiz.ts](../lib/RASCHquiz.ts). So the **Matematika** card links to
+`milliy-sertifikat/math` and the whole chain behind it (6-digit code → student
+runner at `/raschmodel/quiz` → results page) is reused unchanged. A second
+maths paper system in its own collection was considered and rejected: it would
+have meant two builders, two collections and two student runners for one exam,
+guaranteed to drift. Contract: [RASCH_QUIZ.md](RASCH_QUIZ.md).
+
+- **Biologiya and Kimyo are live** and are served by a *different* subsystem — the
+  generic Milliy sertifikat subject paper, `milliy_quizzes`, with no blueprint quota
+  and no ability model. Full contract: [MILLIY_QUIZ.md](MILLIY_QUIZ.md). Its routes
+  are `milliy-sertifikat/[subject]` (papers list), `[subject]/build`, and
+  `[subject]/results/[quizId]` — **one set of routes for every subject**, so
+  chemistry needed no new page. Each ships a **Namunaviy variant** sample paper
+  (biology 31 questions, chemistry 40).
+  - ⚠️ Chemistry's builder defaults to **40 questions / 100 minutes, not the
+    programme's 43 / 180**: #41–43 are extended written work that only a human can
+    mark. See [MILLIY_QUIZ.md](MILLIY_QUIZ.md).
+- **Fizika / Ingliz tili are registry entries only** — `href: null` makes the card
+  inert (muted, no pointer, out of the tab order) and it says so on its face. They
+  are placeholders for the intended shape, not stubs that lead somewhere broken.
+- ⚠️ **Which subjects exist is `MILLIY_SUBJECTS`** ([lib/MilliyQuiz.ts](../lib/MilliyQuiz.ts)),
+  not this page. The teacher hub, the student hub and the builder all read that
+  list, so a subject can never be live in one place and missing from another.
+- ⚠️ **When a new subject lands, do NOT point it at the Rasch flow.** That flow's
+  quota rules (`BLUEPRINT_SECTION_TARGET`), difficulty bands and ability model are
+  maths-specific — `questions1` only knows Algebra and Geometriya, and a sitting
+  moves `RASCH_levels/{uid}`. Add its taxonomy to `data/question_topics.json` and
+  flip its registry entry to `generic`; see [MILLIY_QUIZ.md](MILLIY_QUIZ.md).
+- Trilingual inline `TR` dicts + `useTeacherLanguage()`, teacher UI kit only. The
+  Rasch card in the `create` hub is **deliberately left in place** — the same
+  builder is now reachable two ways, which is intended, not a duplicate.
 
 ## Classes (`app/teacher/classes`)
 

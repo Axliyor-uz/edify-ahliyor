@@ -241,18 +241,27 @@ export interface QuestionPage {
  * still bills 10 documents and every one of them is shown — and it rides the
  * `creationMethod + creatorId + createdAt` index `create/my_questions` already
  * uses, so no new index. ⚠️ Firestore caps an `in` list at 30 values.
+ *
+ * `subjectSlug` narrows to one `data/question_topics.json` subject (`biologiya`,
+ * `algebra`…) and is what the Milliy sertifikat subject builder pages on
+ * (docs/MILLIY_QUIZ.md). Also **server-side**, on its own composite index
+ * `creatorId + subject.id + createdAt desc`. ⚠️ It had to be server-side: a
+ * teacher whose bank is mostly maths would otherwise page through it 10 documents
+ * at a time hunting for a biology question, paying for every one.
  */
 export async function fetchMyQuestionsPage(
   creatorId: string,
   pageSize = 10,
   cursor: QueryDocumentSnapshot | null = null,
   methods?: string[],
+  subjectSlug?: string,
 ): Promise<QuestionPage> {
   const snap = await getDocs(
     query(
       collection(db, "teacher_questions"),
       where("creatorId", "==", creatorId),
       ...(methods?.length ? [where("creationMethod", "in", methods)] : []),
+      ...(subjectSlug ? [where("subject.id", "==", subjectSlug)] : []),
       orderBy("createdAt", "desc"),
       ...(cursor ? [startAfter(cursor)] : []),
       limit(pageSize),

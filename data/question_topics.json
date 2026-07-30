@@ -1027,6 +1027,1062 @@
           ]
         }
       ]
+    },
+    {
+      "id": "biologiya",
+      "name": "Biologiya",
+      "topics": [
+        {
+          "id": "tiriklikning-xilma-xilligi",
+          "name": "1. Tiriklikning xilma-xilligi",
+          "subtopics": [
+            {
+              "id": "tirik-organizmlarning-umumiy-xususiyatlari",
+              "name": "Tirik organizmlarning umumiy xususiyatlari"
+            },
+            {
+              "id": "hayotning-kelib-chiqishi",
+              "name": "Hayotning kelib chiqishi"
+            },
+            {
+              "id": "tiriklik-darajalari",
+              "name": "Tiriklik darajalari"
+            },
+            {
+              "id": "viruslar",
+              "name": "Viruslar"
+            },
+            {
+              "id": "prokariotlar",
+              "name": "Prokariotlar"
+            },
+            {
+              "id": "eukariotlar",
+              "name": "Eukariotlar"
+            },
+            {
+              "id": "biologik-tasniflash-asoslari",
+              "name": "Biologik tasniflash asoslari"
+            }
+          ]
+        },
+        {
+          "id": "sitologiya-genetika-va-seleksiya-asoslari",
+          "name": "2. Sitologiya, genetika va seleksiya asoslari",
+          "subtopics": [
+            {
+              "id": "sitologiya-hujayra-nazariyasi",
+              "name": "Sitologiya — Hujayra nazariyasi"
+            },
+            {
+              "id": "sitologiya-hujayra-tuzilishi",
+              "name": "Sitologiya — Hujayra tuzilishi"
+            },
+            {
+              "id": "sitologiya-organoidlar",
+              "name": "Sitologiya — Organoidlar"
+            },
+            {
+              "id": "sitologiya-plazmatik-membrana",
+              "name": "Sitologiya — Plazmatik membrana"
+            },
+            {
+              "id": "sitologiya-moddalar-transporti",
+              "name": "Sitologiya — Moddalar transporti"
+            },
+            {
+              "id": "sitologiya-hujayra-sikli",
+              "name": "Sitologiya — Hujayra sikli"
+            },
+            {
+              "id": "sitologiya-mitoz",
+              "name": "Sitologiya — Mitoz"
+            },
+            {
+              "id": "sitologiya-meyoz",
+              "name": "Sitologiya — Meyoz"
+            },
+            {
+              "id": "sitologiya-hujayra-energetikasi",
+              "name": "Sitologiya — Hujayra energetikasi"
+            },
+            {
+              "id": "genetika-irsiyat-va-ozgaruvchanlik",
+              "name": "Genetika — Irsiyat va o'zgaruvchanlik"
+            },
+            {
+              "id": "genetika-mendel-qonunlari",
+              "name": "Genetika — Mendel qonunlari"
+            },
+            {
+              "id": "genetika-monogibrid-chatish",
+              "name": "Genetika — Monogibrid chatish"
+            },
+            {
+              "id": "genetika-digibrid-chatish",
+              "name": "Genetika — Digibrid chatish"
+            },
+            {
+              "id": "genetika-genotip-va-fenotip",
+              "name": "Genetika — Genotip va fenotip"
+            },
+            {
+              "id": "genetika-dominant-va-retsessiv-belgilar",
+              "name": "Genetika — Dominant va retsessiv belgilar"
+            },
+            {
+              "id": "genetika-kodominantlik",
+              "name": "Genetika — Kodominantlik"
+            },
+            {
+              "id": "genetika-toliqsiz-dominantlik",
+              "name": "Genetika — To'liqsiz dominantlik"
+            },
+            {
+              "id": "genetika-jinsga-bogliq-irsiylanish",
+              "name": "Genetika — Jinsga bog'liq irsiylanish"
+            },
+            {
+              "id": "genetika-mutatsiyalar",
+              "name": "Genetika — Mutatsiyalar"
+            },
+            {
+              "id": "genetika-dnk",
+              "name": "Genetika — DNK"
+            },
+            {
+              "id": "genetika-rnk",
+              "name": "Genetika — RNK"
+            },
+            {
+              "id": "genetika-replikatsiya",
+              "name": "Genetika — Replikatsiya"
+            },
+            {
+              "id": "genetika-transkripsiya",
+              "name": "Genetika — Transkripsiya"
+            },
+            {
+              "id": "genetika-translyatsiya",
+              "name": "Genetika — Translyatsiya"
+            },
+            {
+              "id": "genetika-gen-muhandisligi",
+              "name": "Genetika — Gen muhandisligi"
+            },
+            {
+              "id": "seleksiya-suniy-tanlash",
+              "name": "Seleksiya — Sun'iy tanlash"
+            },
+            {
+              "id": "seleksiya-duragaylash",
+              "name": "Seleksiya — Duragaylash"
+            },
+            {
+              "id": "seleksiya-poliploidiya",
+              "name": "Seleksiya — Poliploidiya"
+            },
+            {
+              "id": "seleksiya-biotexnologiya",
+              "name": "Seleksiya — Biotexnologiya"
+            },
+            {
+              "id": "seleksiya-mikroorganizmlar-seleksiyasi",
+              "name": "Seleksiya — Mikroorganizmlar seleksiyasi"
+            },
+            {
+              "id": "seleksiya-osimlik-va-hayvonlar-seleksiyasi",
+              "name": "Seleksiya — O'simlik va hayvonlar seleksiyasi"
+            }
+          ]
+        },
+        {
+          "id": "tirik-organizmlarning-umumiy-sistematikasi",
+          "name": "3. Tirik organizmlarning umumiy sistematikasi",
+          "subtopics": [
+            {
+              "id": "taksonomik-birliklar",
+              "name": "Taksonomik birliklar"
+            },
+            {
+              "id": "tur",
+              "name": "Tur"
+            },
+            {
+              "id": "avlod",
+              "name": "Avlod"
+            },
+            {
+              "id": "oila",
+              "name": "Oila"
+            },
+            {
+              "id": "turkum",
+              "name": "Turkum"
+            },
+            {
+              "id": "sinf",
+              "name": "Sinf"
+            },
+            {
+              "id": "tip",
+              "name": "Tip"
+            },
+            {
+              "id": "bolim",
+              "name": "Bo'lim"
+            },
+            {
+              "id": "shohlik",
+              "name": "Shohlik"
+            },
+            {
+              "id": "binar-nomenklatura",
+              "name": "Binar nomenklatura"
+            }
+          ]
+        },
+        {
+          "id": "osimlik-va-hayvonot-dunyosi",
+          "name": "4. O'simlik va hayvonot dunyosi",
+          "subtopics": [
+            {
+              "id": "botanika-suvotlar",
+              "name": "Botanika — Suvo'tlar"
+            },
+            {
+              "id": "botanika-moxlar",
+              "name": "Botanika — Moxlar"
+            },
+            {
+              "id": "botanika-qirqquloqlar",
+              "name": "Botanika — Qirqquloqlar"
+            },
+            {
+              "id": "botanika-ochiq-uruglilar",
+              "name": "Botanika — Ochiq urug'lilar"
+            },
+            {
+              "id": "botanika-yopiq-uruglilar",
+              "name": "Botanika — Yopiq urug'lilar"
+            },
+            {
+              "id": "botanika-osimlik-toqimalari",
+              "name": "Botanika — O'simlik to'qimalari"
+            },
+            {
+              "id": "botanika-ildiz",
+              "name": "Botanika — Ildiz"
+            },
+            {
+              "id": "botanika-poya",
+              "name": "Botanika — Poya"
+            },
+            {
+              "id": "botanika-barg",
+              "name": "Botanika — Barg"
+            },
+            {
+              "id": "botanika-gul",
+              "name": "Botanika — Gul"
+            },
+            {
+              "id": "botanika-meva",
+              "name": "Botanika — Meva"
+            },
+            {
+              "id": "botanika-urug",
+              "name": "Botanika — Urug'"
+            },
+            {
+              "id": "botanika-fotosintez",
+              "name": "Botanika — Fotosintez"
+            },
+            {
+              "id": "botanika-nafas-olish",
+              "name": "Botanika — Nafas olish"
+            },
+            {
+              "id": "botanika-kopayish",
+              "name": "Botanika — Ko'payish"
+            },
+            {
+              "id": "zoologiya-bir-hujayralilar",
+              "name": "Zoologiya — Bir hujayralilar"
+            },
+            {
+              "id": "zoologiya-boshliqichlilar",
+              "name": "Zoologiya — Bo'shliqichlilar"
+            },
+            {
+              "id": "zoologiya-yassi-chuvalchanglar",
+              "name": "Zoologiya — Yassi chuvalchanglar"
+            },
+            {
+              "id": "zoologiya-yumaloq-chuvalchanglar",
+              "name": "Zoologiya — Yumaloq chuvalchanglar"
+            },
+            {
+              "id": "zoologiya-halqali-chuvalchanglar",
+              "name": "Zoologiya — Halqali chuvalchanglar"
+            },
+            {
+              "id": "zoologiya-mollyuskalar",
+              "name": "Zoologiya — Mollyuskalar"
+            },
+            {
+              "id": "zoologiya-bogimoyoqlilar",
+              "name": "Zoologiya — Bo'g'imoyoqlilar"
+            },
+            {
+              "id": "zoologiya-ignaterililar",
+              "name": "Zoologiya — Ignaterililar"
+            },
+            {
+              "id": "zoologiya-baliqlar",
+              "name": "Zoologiya — Baliqlar"
+            },
+            {
+              "id": "zoologiya-suvda-va-quruqlikda-yashovchilar",
+              "name": "Zoologiya — Suvda va quruqlikda yashovchilar"
+            },
+            {
+              "id": "zoologiya-sudralib-yuruvchilar",
+              "name": "Zoologiya — Sudralib yuruvchilar"
+            },
+            {
+              "id": "zoologiya-qushlar",
+              "name": "Zoologiya — Qushlar"
+            },
+            {
+              "id": "zoologiya-sutemizuvchilar",
+              "name": "Zoologiya — Sutemizuvchilar"
+            },
+            {
+              "id": "zoologiya-hayvonlarning-ekologiyasi",
+              "name": "Zoologiya — Hayvonlarning ekologiyasi"
+            }
+          ]
+        },
+        {
+          "id": "odam-organizmi-va-uning-salomatligi",
+          "name": "5. Odam organizmi va uning salomatligi",
+          "subtopics": [
+            {
+              "id": "tayanch-harakat-tizimi",
+              "name": "Tayanch-harakat tizimi"
+            },
+            {
+              "id": "mushaklar",
+              "name": "Mushaklar"
+            },
+            {
+              "id": "qon",
+              "name": "Qon"
+            },
+            {
+              "id": "yurak-qon-tomir-tizimi",
+              "name": "Yurak-qon tomir tizimi"
+            },
+            {
+              "id": "immunitet",
+              "name": "Immunitet"
+            },
+            {
+              "id": "nafas-olish-tizimi",
+              "name": "Nafas olish tizimi"
+            },
+            {
+              "id": "ovqat-hazm-qilish-tizimi",
+              "name": "Ovqat hazm qilish tizimi"
+            },
+            {
+              "id": "ajratish-tizimi",
+              "name": "Ajratish tizimi"
+            },
+            {
+              "id": "nerv-tizimi",
+              "name": "Nerv tizimi"
+            },
+            {
+              "id": "endokrin-tizim",
+              "name": "Endokrin tizim"
+            },
+            {
+              "id": "sezgi-organlari",
+              "name": "Sezgi organlari"
+            },
+            {
+              "id": "kopayish-tizimi",
+              "name": "Ko'payish tizimi"
+            },
+            {
+              "id": "gigiyena",
+              "name": "Gigiyena"
+            },
+            {
+              "id": "kasalliklar-profilaktikasi",
+              "name": "Kasalliklar profilaktikasi"
+            },
+            {
+              "id": "soglom-turmush-tarzi",
+              "name": "Sog'lom turmush tarzi"
+            }
+          ]
+        },
+        {
+          "id": "hayotning-tur-va-populyatsiya-darajasining-umumbiologik-qonuniyatlari",
+          "name": "6. Hayotning tur va populyatsiya darajasining umumbiologik qonuniyatlari",
+          "subtopics": [
+            {
+              "id": "evolyutsiya",
+              "name": "Evolyutsiya"
+            },
+            {
+              "id": "populyatsiya",
+              "name": "Populyatsiya"
+            },
+            {
+              "id": "mikroevolyutsiya",
+              "name": "Mikroevolyutsiya"
+            },
+            {
+              "id": "makroevolyutsiya",
+              "name": "Makroevolyutsiya"
+            },
+            {
+              "id": "tabiiy-tanlanish",
+              "name": "Tabiiy tanlanish"
+            },
+            {
+              "id": "suniy-tanlanish",
+              "name": "Sun'iy tanlanish"
+            },
+            {
+              "id": "moslanish",
+              "name": "Moslanish"
+            },
+            {
+              "id": "tur-hosil-bolishi",
+              "name": "Tur hosil bo'lishi"
+            },
+            {
+              "id": "genofond",
+              "name": "Genofond"
+            },
+            {
+              "id": "hardy-weinberg-qonuni",
+              "name": "Hardy–Weinberg qonuni"
+            },
+            {
+              "id": "evolyutsion-omillar",
+              "name": "Evolyutsion omillar"
+            }
+          ]
+        },
+        {
+          "id": "hayotning-ekosistema-va-biosfera-darajasi-umumiy-qonuniyatlari",
+          "name": "7. Hayotning ekosistema va biosfera darajasi umumiy qonuniyatlari",
+          "subtopics": [
+            {
+              "id": "ekologiya",
+              "name": "Ekologiya"
+            },
+            {
+              "id": "ekotizim",
+              "name": "Ekotizim"
+            },
+            {
+              "id": "biosfera",
+              "name": "Biosfera"
+            },
+            {
+              "id": "biogeotsenoz",
+              "name": "Biogeotsenoz"
+            },
+            {
+              "id": "biotik-omillar",
+              "name": "Biotik omillar"
+            },
+            {
+              "id": "abiotik-omillar",
+              "name": "Abiotik omillar"
+            },
+            {
+              "id": "antropogen-omillar",
+              "name": "Antropogen omillar"
+            },
+            {
+              "id": "oziq-zanjiri",
+              "name": "Oziq zanjiri"
+            },
+            {
+              "id": "trofik-darajalar",
+              "name": "Trofik darajalar"
+            },
+            {
+              "id": "moddalar-aylanishi",
+              "name": "Moddalar aylanishi"
+            },
+            {
+              "id": "energiya-oqimi",
+              "name": "Energiya oqimi"
+            },
+            {
+              "id": "biogeokimyoviy-sikllar",
+              "name": "Biogeokimyoviy sikllar"
+            },
+            {
+              "id": "organik-olam-filogenezi",
+              "name": "Organik olam filogenezi"
+            },
+            {
+              "id": "global-ekologik-muammolar",
+              "name": "Global ekologik muammolar"
+            }
+          ]
+        },
+        {
+          "id": "umumbiologik-qonuniyatlar-asosida-masala-misol-va-topshiriqlar",
+          "name": "8. Umumbiologik qonuniyatlar asosida masala, misol va topshiriqlar",
+          "subtopics": [
+            {
+              "id": "genetik-masalalar",
+              "name": "Genetik masalalar"
+            },
+            {
+              "id": "sitologik-masalalar",
+              "name": "Sitologik masalalar"
+            },
+            {
+              "id": "ekologik-hisoblashlar",
+              "name": "Ekologik hisoblashlar"
+            },
+            {
+              "id": "evolyutsion-masalalar",
+              "name": "Evolyutsion masalalar"
+            },
+            {
+              "id": "hardy-weinberg-masalalari",
+              "name": "Hardy–Weinberg masalalari"
+            },
+            {
+              "id": "diagramma-va-jadval-tahlili",
+              "name": "Diagramma va jadval tahlili"
+            },
+            {
+              "id": "grafiklarni-tahlil-qilish",
+              "name": "Grafiklarni tahlil qilish"
+            },
+            {
+              "id": "tajriba-natijalarini-izohlash",
+              "name": "Tajriba natijalarini izohlash"
+            },
+            {
+              "id": "mantiqiy-biologik-topshiriqlar",
+              "name": "Mantiqiy biologik topshiriqlar"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kimyo",
+      "name": "Kimyo",
+      "topics": [
+        {
+          "id": "umumiy-kimyo",
+          "name": "I. Umumiy kimyo",
+          "subtopics": [
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-atom-va-molekula",
+              "name": "Asosiy tushunchalar va qonunlar — Atom va molekula"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-kimyoviy-element-va-oddiy-modda",
+              "name": "Asosiy tushunchalar va qonunlar — Kimyoviy element va oddiy modda"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-nisbiy-atom-va-molekulyar-massa",
+              "name": "Asosiy tushunchalar va qonunlar — Nisbiy atom va molekulyar massa"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-mol-va-molyar-massa",
+              "name": "Asosiy tushunchalar va qonunlar — Mol va molyar massa"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-valentlik",
+              "name": "Asosiy tushunchalar va qonunlar — Valentlik"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-modda-massasining-saqlanish-qonuni",
+              "name": "Asosiy tushunchalar va qonunlar — Modda massasining saqlanish qonuni"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-tarkibning-doimiylik-qonuni",
+              "name": "Asosiy tushunchalar va qonunlar — Tarkibning doimiylik qonuni"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-avogadro-qonuni-va-molyar-hajm",
+              "name": "Asosiy tushunchalar va qonunlar — Avogadro qonuni va molyar hajm"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-gaz-qonunlari",
+              "name": "Asosiy tushunchalar va qonunlar — Gaz qonunlari"
+            },
+            {
+              "id": "asosiy-tushunchalar-va-qonunlar-formula-va-tenglama-boyicha-hisoblashlar",
+              "name": "Asosiy tushunchalar va qonunlar — Formula va tenglama boyicha hisoblashlar"
+            },
+            {
+              "id": "atom-tuzilishi-atom-yadrosi-va-elektron-qobiq",
+              "name": "Atom tuzilishi — Atom yadrosi va elektron qobiq"
+            },
+            {
+              "id": "atom-tuzilishi-d-i-mendeleyev-davriy-qonuni",
+              "name": "Atom tuzilishi — D. I. Mendeleyev davriy qonuni"
+            },
+            {
+              "id": "atom-tuzilishi-davriy-sistema-tuzilishi",
+              "name": "Atom tuzilishi — Davriy sistema tuzilishi"
+            },
+            {
+              "id": "atom-tuzilishi-izotoplar",
+              "name": "Atom tuzilishi — Izotoplar"
+            },
+            {
+              "id": "atom-tuzilishi-elektron-konfiguratsiya",
+              "name": "Atom tuzilishi — Elektron konfiguratsiya"
+            },
+            {
+              "id": "atom-tuzilishi-pauli-prinsipi-va-hund-qoidasi",
+              "name": "Atom tuzilishi — Pauli prinsipi va Hund qoidasi"
+            },
+            {
+              "id": "atom-tuzilishi-kvant-sonlari",
+              "name": "Atom tuzilishi — Kvant sonlari"
+            },
+            {
+              "id": "atom-tuzilishi-yadro-reaksiyalari",
+              "name": "Atom tuzilishi — Yadro reaksiyalari"
+            },
+            {
+              "id": "kimyoviy-boglanish-kovalent-boglanish",
+              "name": "Kimyoviy bog'lanish — Kovalent bog'lanish"
+            },
+            {
+              "id": "kimyoviy-boglanish-ion-boglanish",
+              "name": "Kimyoviy bog'lanish — Ion bog'lanish"
+            },
+            {
+              "id": "kimyoviy-boglanish-metall-boglanish",
+              "name": "Kimyoviy bog'lanish — Metall bog'lanish"
+            },
+            {
+              "id": "kimyoviy-boglanish-vodorod-boglanish",
+              "name": "Kimyoviy bog'lanish — Vodorod bog'lanish"
+            },
+            {
+              "id": "kimyoviy-boglanish-kristall-panjara-turlari",
+              "name": "Kimyoviy bog'lanish — Kristall panjara turlari"
+            },
+            {
+              "id": "kimyoviy-boglanish-gibridlanish",
+              "name": "Kimyoviy bog'lanish — Gibridlanish"
+            },
+            {
+              "id": "kimyoviy-boglanish-molekulaning-fazoviy-tuzilishi",
+              "name": "Kimyoviy bog'lanish — Molekulaning fazoviy tuzilishi"
+            },
+            {
+              "id": "kinetika-va-muvozanat-reaksiya-tezligi",
+              "name": "Kinetika va muvozanat — Reaksiya tezligi"
+            },
+            {
+              "id": "kinetika-va-muvozanat-tezlikka-tasir-etuvchi-omillar",
+              "name": "Kinetika va muvozanat — Tezlikka ta'sir etuvchi omillar"
+            },
+            {
+              "id": "kinetika-va-muvozanat-katalizatorlar",
+              "name": "Kinetika va muvozanat — Katalizatorlar"
+            },
+            {
+              "id": "kinetika-va-muvozanat-kimyoviy-muvozanat",
+              "name": "Kinetika va muvozanat — Kimyoviy muvozanat"
+            },
+            {
+              "id": "kinetika-va-muvozanat-le-shatelye-prinsipi",
+              "name": "Kinetika va muvozanat — Le-Shatelye prinsipi"
+            },
+            {
+              "id": "eritmalar-eruvchanlik",
+              "name": "Eritmalar — Eruvchanlik"
+            },
+            {
+              "id": "eritmalar-massa-ulushi",
+              "name": "Eritmalar — Massa ulushi"
+            },
+            {
+              "id": "eritmalar-molyar-konsentratsiya",
+              "name": "Eritmalar — Molyar konsentratsiya"
+            },
+            {
+              "id": "eritmalar-normal-konsentratsiya",
+              "name": "Eritmalar — Normal konsentratsiya"
+            },
+            {
+              "id": "eritmalar-oleum",
+              "name": "Eritmalar — Oleum"
+            },
+            {
+              "id": "eritmalar-elektrolitik-dissotsiatsiyalanish",
+              "name": "Eritmalar — Elektrolitik dissotsiatsiyalanish"
+            },
+            {
+              "id": "eritmalar-kuchli-va-kuchsiz-elektrolitlar",
+              "name": "Eritmalar — Kuchli va kuchsiz elektrolitlar"
+            },
+            {
+              "id": "eritmalar-ion-almashinish-reaksiyalari",
+              "name": "Eritmalar — Ion almashinish reaksiyalari"
+            },
+            {
+              "id": "eritmalar-vodorod-korsatkichi-ph",
+              "name": "Eritmalar — Vodorod korsatkichi pH"
+            },
+            {
+              "id": "eritmalar-tuzlar-gidrolizi",
+              "name": "Eritmalar — Tuzlar gidrolizi"
+            },
+            {
+              "id": "oksidlanish-qaytarilish-va-elektroliz-oksidlanish-darajasi",
+              "name": "Oksidlanish-qaytarilish va elektroliz — Oksidlanish darajasi"
+            },
+            {
+              "id": "oksidlanish-qaytarilish-va-elektroliz-oksidlovchi-va-qaytaruvchi",
+              "name": "Oksidlanish-qaytarilish va elektroliz — Oksidlovchi va qaytaruvchi"
+            },
+            {
+              "id": "oksidlanish-qaytarilish-va-elektroliz-elektron-balans-usuli",
+              "name": "Oksidlanish-qaytarilish va elektroliz — Elektron balans usuli"
+            },
+            {
+              "id": "oksidlanish-qaytarilish-va-elektroliz-yarim-reaksiyalar-usuli",
+              "name": "Oksidlanish-qaytarilish va elektroliz — Yarim reaksiyalar usuli"
+            },
+            {
+              "id": "oksidlanish-qaytarilish-va-elektroliz-metallarning-kuchlanish-qatori",
+              "name": "Oksidlanish-qaytarilish va elektroliz — Metallarning kuchlanish qatori"
+            },
+            {
+              "id": "oksidlanish-qaytarilish-va-elektroliz-suyuqlanma-elektrolizi",
+              "name": "Oksidlanish-qaytarilish va elektroliz — Suyuqlanma elektrolizi"
+            },
+            {
+              "id": "oksidlanish-qaytarilish-va-elektroliz-eritma-elektrolizi",
+              "name": "Oksidlanish-qaytarilish va elektroliz — Eritma elektrolizi"
+            },
+            {
+              "id": "oksidlanish-qaytarilish-va-elektroliz-elektroliz-boyicha-hisoblashlar",
+              "name": "Oksidlanish-qaytarilish va elektroliz — Elektroliz boyicha hisoblashlar"
+            }
+          ]
+        },
+        {
+          "id": "anorganik-kimyo",
+          "name": "II. Anorganik kimyo",
+          "subtopics": [
+            {
+              "id": "birikmalar-sinflari-oksidlar",
+              "name": "Birikmalar sinflari — Oksidlar"
+            },
+            {
+              "id": "birikmalar-sinflari-asoslar",
+              "name": "Birikmalar sinflari — Asoslar"
+            },
+            {
+              "id": "birikmalar-sinflari-kislotalar",
+              "name": "Birikmalar sinflari — Kislotalar"
+            },
+            {
+              "id": "birikmalar-sinflari-tuzlar",
+              "name": "Birikmalar sinflari — Tuzlar"
+            },
+            {
+              "id": "birikmalar-sinflari-amfoter-birikmalar",
+              "name": "Birikmalar sinflari — Amfoter birikmalar"
+            },
+            {
+              "id": "birikmalar-sinflari-birikmalar-orasidagi-genetik-aloqa",
+              "name": "Birikmalar sinflari — Birikmalar orasidagi genetik aloqa"
+            },
+            {
+              "id": "metallar-metallarning-umumiy-xossalari",
+              "name": "Metallar — Metallarning umumiy xossalari"
+            },
+            {
+              "id": "metallar-metallarni-olish-usullari",
+              "name": "Metallar — Metallarni olish usullari"
+            },
+            {
+              "id": "metallar-ia-guruh-ishqoriy-metallar",
+              "name": "Metallar — IA guruh (ishqoriy metallar)"
+            },
+            {
+              "id": "metallar-iia-guruh-ishqoriy-yer-metallar",
+              "name": "Metallar — IIA guruh (ishqoriy-yer metallar)"
+            },
+            {
+              "id": "metallar-iiia-guruh-alyuminiy",
+              "name": "Metallar — IIIA guruh (alyuminiy)"
+            },
+            {
+              "id": "metallar-d-guruhcha-metallari",
+              "name": "Metallar — d guruhcha metallari"
+            },
+            {
+              "id": "metallar-temir-va-uning-birikmalari",
+              "name": "Metallar — Temir va uning birikmalari"
+            },
+            {
+              "id": "metallar-xrom-va-marganets-birikmalari",
+              "name": "Metallar — Xrom va marganets birikmalari"
+            },
+            {
+              "id": "metallar-suvning-qattiqligi",
+              "name": "Metallar — Suvning qattiqligi"
+            },
+            {
+              "id": "metallmaslar-iva-guruh-uglerod-va-kremniy",
+              "name": "Metallmaslar — IVA guruh (uglerod va kremniy)"
+            },
+            {
+              "id": "metallmaslar-va-guruh-azot-va-fosfor",
+              "name": "Metallmaslar — VA guruh (azot va fosfor)"
+            },
+            {
+              "id": "metallmaslar-via-guruh-kislorod-va-oltingugurt",
+              "name": "Metallmaslar — VIA guruh (kislorod va oltingugurt)"
+            },
+            {
+              "id": "metallmaslar-viia-guruh-galogenlar",
+              "name": "Metallmaslar — VIIA guruh (galogenlar)"
+            },
+            {
+              "id": "metallmaslar-vodorod",
+              "name": "Metallmaslar — Vodorod"
+            },
+            {
+              "id": "metallmaslar-nodir-gazlar",
+              "name": "Metallmaslar — Nodir gazlar"
+            },
+            {
+              "id": "metallmaslar-mineral-ogitlar",
+              "name": "Metallmaslar — Mineral o'g'itlar"
+            }
+          ]
+        },
+        {
+          "id": "organik-kimyo",
+          "name": "III. Organik kimyo",
+          "subtopics": [
+            {
+              "id": "uglevodorodlar-organik-kimyo-asoslari",
+              "name": "Uglevodorodlar — Organik kimyo asoslari"
+            },
+            {
+              "id": "uglevodorodlar-nomenklatura",
+              "name": "Uglevodorodlar — Nomenklatura"
+            },
+            {
+              "id": "uglevodorodlar-izomeriya",
+              "name": "Uglevodorodlar — Izomeriya"
+            },
+            {
+              "id": "uglevodorodlar-alkanlar",
+              "name": "Uglevodorodlar — Alkanlar"
+            },
+            {
+              "id": "uglevodorodlar-sikloalkanlar",
+              "name": "Uglevodorodlar — Sikloalkanlar"
+            },
+            {
+              "id": "uglevodorodlar-alkenlar",
+              "name": "Uglevodorodlar — Alkenlar"
+            },
+            {
+              "id": "uglevodorodlar-alkadiyenlar",
+              "name": "Uglevodorodlar — Alkadiyenlar"
+            },
+            {
+              "id": "uglevodorodlar-alkinlar",
+              "name": "Uglevodorodlar — Alkinlar"
+            },
+            {
+              "id": "uglevodorodlar-aromatik-uglevodorodlar",
+              "name": "Uglevodorodlar — Aromatik uglevodorodlar"
+            },
+            {
+              "id": "uglevodorodlar-genetik-aloqa-va-zanjirlar",
+              "name": "Uglevodorodlar — Genetik aloqa va zanjirlar"
+            },
+            {
+              "id": "uglevodorod-manbalari-neft",
+              "name": "Uglevodorod manbalari — Neft"
+            },
+            {
+              "id": "uglevodorod-manbalari-tabiiy-gaz",
+              "name": "Uglevodorod manbalari — Tabiiy gaz"
+            },
+            {
+              "id": "uglevodorod-manbalari-toshkomir",
+              "name": "Uglevodorod manbalari — Toshko'mir"
+            },
+            {
+              "id": "kislorodli-birikmalar-bir-atomli-spirtlar",
+              "name": "Kislorodli birikmalar — Bir atomli spirtlar"
+            },
+            {
+              "id": "kislorodli-birikmalar-kop-atomli-spirtlar",
+              "name": "Kislorodli birikmalar — Ko'p atomli spirtlar"
+            },
+            {
+              "id": "kislorodli-birikmalar-fenollar",
+              "name": "Kislorodli birikmalar — Fenollar"
+            },
+            {
+              "id": "kislorodli-birikmalar-aldegidlar",
+              "name": "Kislorodli birikmalar — Aldegidlar"
+            },
+            {
+              "id": "kislorodli-birikmalar-ketonlar",
+              "name": "Kislorodli birikmalar — Ketonlar"
+            },
+            {
+              "id": "kislorodli-birikmalar-karbon-kislotalar",
+              "name": "Kislorodli birikmalar — Karbon kislotalar"
+            },
+            {
+              "id": "kislorodli-birikmalar-oddiy-efirlar",
+              "name": "Kislorodli birikmalar — Oddiy efirlar"
+            },
+            {
+              "id": "kislorodli-birikmalar-murakkab-efirlar",
+              "name": "Kislorodli birikmalar — Murakkab efirlar"
+            },
+            {
+              "id": "kislorodli-birikmalar-yoglar",
+              "name": "Kislorodli birikmalar — Yog'lar"
+            },
+            {
+              "id": "kislorodli-birikmalar-sovunlar-va-yuvish-vositalari",
+              "name": "Kislorodli birikmalar — Sovunlar va yuvish vositalari"
+            },
+            {
+              "id": "uglevodlar-monosaxaridlar",
+              "name": "Uglevodlar — Monosaxaridlar"
+            },
+            {
+              "id": "uglevodlar-disaxaridlar",
+              "name": "Uglevodlar — Disaxaridlar"
+            },
+            {
+              "id": "uglevodlar-polisaxaridlar",
+              "name": "Uglevodlar — Polisaxaridlar"
+            },
+            {
+              "id": "azotli-birikmalar-va-polimerlar-aminlar",
+              "name": "Azotli birikmalar va polimerlar — Aminlar"
+            },
+            {
+              "id": "azotli-birikmalar-va-polimerlar-aminokislotalar",
+              "name": "Azotli birikmalar va polimerlar — Aminokislotalar"
+            },
+            {
+              "id": "azotli-birikmalar-va-polimerlar-oqsillar",
+              "name": "Azotli birikmalar va polimerlar — Oqsillar"
+            },
+            {
+              "id": "azotli-birikmalar-va-polimerlar-polimerlanish-reaksiyalari",
+              "name": "Azotli birikmalar va polimerlar — Polimerlanish reaksiyalari"
+            },
+            {
+              "id": "azotli-birikmalar-va-polimerlar-polikondensatlanish-reaksiyalari",
+              "name": "Azotli birikmalar va polimerlar — Polikondensatlanish reaksiyalari"
+            },
+            {
+              "id": "azotli-birikmalar-va-polimerlar-kauchuklar",
+              "name": "Azotli birikmalar va polimerlar — Kauchuklar"
+            },
+            {
+              "id": "azotli-birikmalar-va-polimerlar-sintetik-tolalar",
+              "name": "Azotli birikmalar va polimerlar — Sintetik tolalar"
+            }
+          ]
+        },
+        {
+          "id": "kimyoviy-tahlil",
+          "name": "IV. Kimyoviy tahlil",
+          "subtopics": [
+            {
+              "id": "laboratoriya-asoslari-xavfsizlik-qoidalari",
+              "name": "Laboratoriya asoslari — Xavfsizlik qoidalari"
+            },
+            {
+              "id": "laboratoriya-asoslari-laboratoriya-jihozlari",
+              "name": "Laboratoriya asoslari — Laboratoriya jihozlari"
+            },
+            {
+              "id": "laboratoriya-asoslari-olchash-va-tortish",
+              "name": "Laboratoriya asoslari — O'lchash va tortish"
+            },
+            {
+              "id": "moddalarni-ajratish-va-tayyorlash-tindirish",
+              "name": "Moddalarni ajratish va tayyorlash — Tindirish"
+            },
+            {
+              "id": "moddalarni-ajratish-va-tayyorlash-filtrlash",
+              "name": "Moddalarni ajratish va tayyorlash — Filtrlash"
+            },
+            {
+              "id": "moddalarni-ajratish-va-tayyorlash-buglatish",
+              "name": "Moddalarni ajratish va tayyorlash — Bug'latish"
+            },
+            {
+              "id": "moddalarni-ajratish-va-tayyorlash-magnitlash",
+              "name": "Moddalarni ajratish va tayyorlash — Magnitlash"
+            },
+            {
+              "id": "moddalarni-ajratish-va-tayyorlash-distillash",
+              "name": "Moddalarni ajratish va tayyorlash — Distillash"
+            },
+            {
+              "id": "moddalarni-ajratish-va-tayyorlash-eritmalar-tayyorlash",
+              "name": "Moddalarni ajratish va tayyorlash — Eritmalar tayyorlash"
+            },
+            {
+              "id": "sifat-reaksiyalari-kationlarni-aniqlash",
+              "name": "Sifat reaksiyalari — Kationlarni aniqlash"
+            },
+            {
+              "id": "sifat-reaksiyalari-anionlarni-aniqlash",
+              "name": "Sifat reaksiyalari — Anionlarni aniqlash"
+            },
+            {
+              "id": "sifat-reaksiyalari-gazlarni-aniqlash",
+              "name": "Sifat reaksiyalari — Gazlarni aniqlash"
+            },
+            {
+              "id": "sifat-reaksiyalari-organik-moddalarni-aniqlash",
+              "name": "Sifat reaksiyalari — Organik moddalarni aniqlash"
+            },
+            {
+              "id": "sifat-reaksiyalari-indikatorlar",
+              "name": "Sifat reaksiyalari — Indikatorlar"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

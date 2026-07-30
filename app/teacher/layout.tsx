@@ -24,7 +24,7 @@ import {
   LayoutDashboard, Users, FilePlus, FolderOpen, Library,
   Sparkles, Settings, LogOut, Menu, X, Bell,
   Zap, BookOpen, UserIcon, CreditCard, PanelLeft, MoreVertical,
-  MoreHorizontal, Sun, Moon, Monitor, Globe, Building2,
+  MoreHorizontal, Sun, Moon, Monitor, Globe, BadgeCheck, Building2,
 } from 'lucide-react';
 import { useTeacherCenter } from '@/hooks/useTeacherCenter';
 
@@ -54,8 +54,8 @@ const LANG_STORAGE_KEY = 'edify-teacher-lang';
 const LAYOUT_TRANSLATIONS = {
   uz: {
     brandSubtitle: "O'QITUVCHI PORTALI",
-    menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", notifications: "Bildirishnomalar", subscription: "Obuna", profile: "Profil", ielts: "IELTS Moduli", center: "Mening Markazim" },
-    menuShort: { library: "Kutubxonam", onlineLibrary: "Kitoblar", notifications: "Xabarlar" },
+    menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", notifications: "Bildirishnomalar", subscription: "Obuna", profile: "Profil", ielts: "IELTS Moduli", milliy: "Milliy sertifikat" },
+    menuShort: { library: "Kutubxonam", onlineLibrary: "Kitoblar", notifications: "Xabarlar", milliy: "Milliy" },
     bottom: { home: "Boshqaruv", create: "Yaratish", classes: "Sinflar", library: "Kutubxona", menu: "Menyu" },
     create: "Yangi Test", signOut: "Chiqish", settings: "Sozlamalar", more: "Yana",
     theme: { label: "Mavzu", light: "Yorug'", system: "Tizim", dark: "Tun" },
@@ -64,8 +64,8 @@ const LAYOUT_TRANSLATIONS = {
   },
   en: {
     brandSubtitle: "INSTRUCTOR PORTAL",
-    menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", notifications: "Notifications", subscription: "Subscription", profile: "Profile", ielts: "IELTS Module", center: "My Center" },
-    menuShort: { library: "Library", onlineLibrary: "Books", notifications: "Alerts" },
+    menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", notifications: "Notifications", subscription: "Subscription", profile: "Profile", ielts: "IELTS Module", milliy: "Milliy sertifikat" },
+    menuShort: { library: "Library", onlineLibrary: "Books", notifications: "Alerts", milliy: "Milliy" },
     bottom: { home: "Home", create: "Create", classes: "Classes", library: "Library", menu: "Menu" },
     create: "New Test", signOut: "Sign Out", settings: "Settings", more: "More",
     theme: { label: "Theme", light: "Light", system: "System", dark: "Dark" },
@@ -74,8 +74,8 @@ const LAYOUT_TRANSLATIONS = {
   },
   ru: {
     brandSubtitle: "ПОРТАЛ УЧИТЕЛЯ",
-    menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", notifications: "Уведомления", subscription: "Подписка", profile: "Профиль", ielts: "Модуль IELTS", center: "Мой Центр" },
-    menuShort: { library: "Библиотека", onlineLibrary: "Книги", notifications: "Инбокс" },
+    menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", notifications: "Уведомления", subscription: "Подписка", profile: "Профиль", ielts: "Модуль IELTS", milliy: "Milliy sertifikat" },
+    menuShort: { library: "Библиотека", onlineLibrary: "Книги", notifications: "Инбокс", milliy: "Milliy" },
     bottom: { home: "Обзор", create: "Создать", classes: "Классы", library: "Книги", menu: "Меню" },
     create: "Новый Тест", signOut: "Выйти", settings: "Настройки", more: "Ещё",
     theme: { label: "Тема", light: "День", system: "Система", dark: "Ночь" },
@@ -296,6 +296,9 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
       ? [{ name: t.menu.center, href: '/teacher/center', icon: Building2 }]
       : []),
     { name: t.menu.ielts, href: '/teacher/ielts', icon: Globe, isAI: true },
+    // Milliy sertifikat — the subject hub. Maths routes into the existing Rasch
+    // paper builder (same 45-question DTM paper); see docs/RASCH_QUIZ.md.
+    { name: t.menu.milliy, href: '/teacher/milliy-sertifikat', icon: BadgeCheck, short: t.menuShort.milliy },
     { name: t.menu.library, href: '/teacher/library', icon: FolderOpen, short: t.menuShort.library },
     { name: t.menu.onlineLibrary, href: '/teacher/online-books', icon: Library, tourId: 'tour-sidebar-online-books', short: t.menuShort.onlineLibrary },
     { name: t.menu.analytics, href: '/teacher/analytics', icon: Sparkles, isAI: true },

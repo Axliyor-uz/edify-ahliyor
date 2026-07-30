@@ -64,7 +64,7 @@ const TOPIC_TRACE_CAP = 12;
  * (RASCH_levels/{uid}) — levels, ability, chart history and the whole weak-spot
  * diagnosis live inside it. Mirrored to localStorage, so a revisit costs zero.
  */
-const CACHE_KEY = 'RASCHmodel:levels:v2';
+const CACHE_KEY = 'raschmodel:levels:v2';
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 
 interface Cached {
@@ -374,16 +374,16 @@ function withAbility(
     const nextTrace =
       sittingItems.length > 0
         ? [
-            ...trace,
-            filterTheta(
-              trace.length > 0
-                ? { theta: trace[trace.length - 1].theta, se: trace[trace.length - 1].se, at: trace[trace.length - 1].at }
-                : null,
-              estimateAbility(sittingItems),
-              at,
-              kind,
-            ),
-          ].slice(-TOPIC_TRACE_CAP)
+          ...trace,
+          filterTheta(
+            trace.length > 0
+              ? { theta: trace[trace.length - 1].theta, se: trace[trace.length - 1].se, at: trace[trace.length - 1].at }
+              : null,
+            estimateAbility(sittingItems),
+            at,
+            kind,
+          ),
+        ].slice(-TOPIC_TRACE_CAP)
         : trace;
 
     topics[key] = {

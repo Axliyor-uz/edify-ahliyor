@@ -16,7 +16,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import {
   LayoutDashboard, BookOpen, User as UserIcon,
   LogOut, GraduationCap, Flame, Trophy, ChevronDown, Check,
-  Settings, BookMarked, Gamepad2, Target, Globe, Building2,
+  Settings, BookMarked, Gamepad2, Globe, Building2, BadgeCheck,
 } from 'lucide-react';
 import { fetchMyCenters } from '@/services/studentCenterService';
 
@@ -55,19 +55,19 @@ export function useStudentLanguage() {
 // ============================================================================
 const LAYOUT_TRANSLATIONS: any = {
   uz: {
-    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", ielts: "IELTS", profile: "Profil", RASCHmodel: "Rasch", center: "Markazim" },
+    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", ielts: "IELTS", profile: "Profil", raschmodel: "Rasch", milliy: "Milliy sertifikat", center: "Markazim" },
     topbar: { streak: "Seriya", profile: "Profil", settings: "Sozlamalar", logout: "Chiqish", language: "Til" },
     loading: "Yuklanmoqda...",
     logoutConfirm: { title: "Tizimdan chiqish", desc: "Haqiqatan ham hisobingizdan chiqmoqchimisiz?", cancel: "Bekor qilish", confirm: "Ha, chiqish" }
   },
   en: {
-    menu: { dashboard: "Dashboard", classes: "Classes", explore: "Courses", library: "Library", games: "Games", leaderboard: "Rank", ielts: "IELTS", profile: "Profile", RASCHmodel: "Rasch", center: "My Center" },
+    menu: { dashboard: "Dashboard", classes: "Classes", explore: "Courses", library: "Library", games: "Games", leaderboard: "Rank", ielts: "IELTS", profile: "Profile", raschmodel: "Rasch", milliy: "Milliy sertifikat" },
     topbar: { streak: "Streak", profile: "Profile", settings: "Settings", logout: "Sign Out", language: "Language" },
     loading: "Loading...",
     logoutConfirm: { title: "Sign Out", desc: "Are you sure you want to sign out of your account?", cancel: "Cancel", confirm: "Yes, Sign Out" }
   },
   ru: {
-    menu: { dashboard: "Главная", classes: "Классы", explore: "Курсы", library: "Библиотека", games: "Игры", leaderboard: "Рейтинг", ielts: "IELTS", profile: "Профиль", RASCHmodel: "Rasch", center: "Мой Центр" },
+    menu: { dashboard: "Главная", classes: "Классы", explore: "Курсы", library: "Библиотека", games: "Игры", leaderboard: "Рейтинг", ielts: "IELTS", profile: "Профиль", raschmodel: "Rasch", milliy: "Milliy sertifikat" },
     topbar: { streak: "Серия", profile: "Профиль", settings: "Настройки", logout: "Выйти", language: "Язык" },
     loading: "Загрузка...",
     logoutConfirm: { title: "Выход", desc: "Вы уверены, что хотите выйти из аккаунта?", cancel: "Отмена", confirm: "Да, выйти" }
@@ -219,8 +219,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     { href: '/games', label: t.menu.games, icon: Gamepad2 },
     { href: '/leaderboard', label: t.menu.leaderboard, icon: Trophy, hideOnMobile: isCenterStudent },
     { href: '/ielts', label: t.menu.ielts, icon: Globe },
-    // Hidden from the mobile dock to keep it at 5 destinations (IELTS took its slot).
-    { href: '/RASCHmodel', label: t.menu.RASCHmodel, icon: Target, hideOnMobile: true },
+    // ⚠️ **Milliy sertifikat is the ONLY entry to the exam programme, including
+    // maths.** `/raschmodel` used to sit here beside it, which read as two
+    // separate products — it is the maths SECTION of this one, so the hub's
+    // Matematika card links there instead (`studentSubjectHref`). Don't add a
+    // second nav row for it. See docs/MILLIY_QUIZ.md.
+    // Hidden from the mobile dock: M3 caps a bottom bar at 5 destinations.
+    { href: '/milliy-sertifikat', label: t.menu.milliy, icon: BadgeCheck, hideOnMobile: true },
     // Hidden from the mobile dock: M3 caps a bottom bar at 5 destinations, and
     // Profile is already one tap away in the avatar menu.
     { href: '/profile', label: t.menu.profile, icon: UserIcon, hideOnMobile: true },

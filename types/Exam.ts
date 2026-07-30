@@ -172,8 +172,22 @@ export interface ExamSnapshot {
   seconds?: Record<string, number>;
 
   // ── teacher-quiz sittings only (docs/RASCH_QUIZ.md) ──────────────────────
-  /** `teacher_rasch_quizzes/{id}` this paper came from. Absent on a mock exam. */
+  /**
+   * The teacher paper this sitting came from — `teacher_rasch_quizzes/{id}` for a
+   * maths paper, `milliy_quizzes/{id}` for a subject paper. Absent on a mock exam.
+   *
+   * ⚠️ Which collection it means is told by `milliySubject`, and the two live in
+   * SEPARATE localStorage stores (lib/Examsession.ts), so a snapshot is never
+   * ambiguous in practice.
+   */
   quizId?: string;
+  /**
+   * Set ⇒ this is a Milliy sertifikat **subject** paper (`biologiya`…) from
+   * `milliy_quizzes`, scored on raw counts with no ability model
+   * (docs/MILLIY_QUIZ.md). Absent ⇒ a maths paper or the mock exam, both of which
+   * move `RASCH_levels`.
+   */
+  milliySubject?: string;
   /** Denormalized so the resume screen can name the paper without a read. */
   quizTitle?: string;
   quizTeacherId?: string;
