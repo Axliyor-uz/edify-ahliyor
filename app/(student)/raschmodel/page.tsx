@@ -1,15 +1,15 @@
 // app/(student)/raschmodel/page.tsx
 'use client';
 
-import { motion } from 'framer-motion';
-import { Sparkles, Target } from 'lucide-react';
+import { Target } from 'lucide-react';
 
 // Components
 import MathematicsCard from './components/MathematicsCard';
 import RaschNav from './_components/RaschNav';
 import MathLevelSummary from './components/MathLevelSummary';
+import MmsCard from './components/MmsCard';
 import { useStudentLanguage } from '../layout';
-import { Card, Page, PageHeader, Tile, MOTION_ON, springTransition } from '@/components/student-ui';
+import { Page, PageHeader, Tile } from '@/components/student-ui';
 import type { Lang } from '@/types/Math';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
@@ -17,22 +17,12 @@ import type { Lang } from '@/types/Math';
 // diagnosis, practice, exam) was already trilingual — so switching the language
 // in the navbar changed everything except the hub the student starts from.
 const UI: Record<Lang, Record<string, string>> = {
-  uz: {
-    subtitle: "Fanlarni tanlang va tezkor mashq qilishni boshlang 🚀",
-    bannerTitle: 'Imtihonga tayyorlaning!',
-    bannerDesc: "Mavzularni o'rganing, savollarni yeching, darajangizni kuzating.",
-  },
-  ru: {
-    subtitle: 'Выберите предмет и начните тренировку 🚀',
-    bannerTitle: 'Готовьтесь к экзамену!',
-    bannerDesc: 'Изучайте темы, решайте задачи, следите за уровнем.',
-  },
-  en: {
-    subtitle: 'Pick a subject and start practising 🚀',
-    bannerTitle: 'Get exam-ready!',
-    bannerDesc: 'Work through the topics, solve the questions, watch your level move.',
-  },
+  uz: { subtitle: "Fanlarni tanlang va tezkor mashq qilishni boshlang 🚀" },
+  ru: { subtitle: 'Выберите предмет и начните тренировку 🚀' },
+  en: { subtitle: 'Pick a subject and start practising 🚀' },
 };
+// `bannerTitle`/`bannerDesc` went with the decorative gradient banner MmsCard
+// replaced (2026-07-30) — they had no other reader.
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export default function raschmodelPage() {
@@ -59,32 +49,17 @@ export default function raschmodelPage() {
       {/* ── Where the student actually stands ───────────────────────────── */}
       <MathLevelSummary lang={lang} />
 
-      {/* ── Info Banner ─────────────────────────────────────────────────── */}
-      <motion.div
-        initial={MOTION_ON ? { opacity: 0, y: 12 } : false}
-        animate={{ opacity: 1, y: 0 }}
-        transition={springTransition}
-        className="mb-6"
-      >
-        <Card variant="gradient" className="relative overflow-hidden">
-          {/* Background pattern */}
-          <div className="pointer-events-none absolute inset-0 opacity-10" aria-hidden>
-            <div className="absolute right-8 top-2 h-20 w-20 rounded-full border-4 border-current" />
-            <div className="absolute bottom-2 right-28 h-12 w-12 rounded-full border-4 border-current" />
-            <div className="absolute right-48 top-4 h-8 w-8 rounded-full border-4 border-current" />
-          </div>
-
-          <div className="relative flex items-center gap-4">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-m3-sm border-2 border-current">
-              <Sparkles size={22} strokeWidth={2.5} />
-            </div>
-            <div className="min-w-0">
-              <h3 className="s-display text-[17px] font-bold tracking-tight">{t.bannerTitle}</h3>
-              <p className="mt-1 text-[13px] font-bold leading-snug opacity-85">{t.bannerDesc}</p>
-            </div>
-          </div>
-        </Card>
-      </motion.div>
+      {/* ── The exam itself ─────────────────────────────────────────────────
+          ⚠️ `MmsCard` moved here from the student dashboard on 2026-07-30, where
+          it was replaced by the generic announcement carousel. It takes the slot
+          of a purely decorative "Imtihonga tayyorlaning!" gradient banner and is
+          strictly more useful in it: it names the paper, prints the expected score
+          at the measured θ and the weakest dimension, and starts a sitting. It
+          reads the SAME 12h-cached `RASCH_levels/{uid}` document as
+          `MathLevelSummary` above and the nav's level chip, so the three of them
+          cost one read between them — and it spends the same single `gradient`
+          card the banner did. */}
+      <MmsCard lang={lang} className="mb-6" />
 
       {/* ── Mathematics Section ─────────────────────────────────────────── */}
       <MathematicsCard lang={lang} />

@@ -91,6 +91,7 @@ label. Same rule the maths paper follows.
 | `app/teacher/milliy-sertifikat/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
 | `app/(student)/milliy-sertifikat/page.tsx` | **The student's subject hub — and their only nav entry to the programme.** Cards only, zero reads. Maths → `/raschmodel`. |
 | `app/(student)/dashboard/_components/MilliyCard.tsx` | **The dashboard's door to the programme** (2026-07-30) — the hub plus a chip per subject. Zero reads. ⚠️ It exists because the nav entry is `hideOnMobile`, so on a phone the drawer was the only way in. See [STUDENT.md](STUDENT.md). |
+| [lib/announcements.ts](../lib/announcements.ts) | Where each subject is **announced** on the dashboard (maths / biology / chemistry entries). ⚠️ A new subject going live wants an entry here too — and ⚠️ **no question count for a generic subject**, whose length is the teacher's. See [STUDENT.md](STUDENT.md). |
 | `app/(student)/milliy-sertifikat/[subject]/page.tsx` | One subject for the student: code box, sitting, result, its sat papers. |
 | [scripts/addBiologyTopics.mjs](../scripts/addBiologyTopics.mjs) | How the biology taxonomy was appended to `data/question_topics.json`. |
 | [scripts/addChemistryTopics.mjs](../scripts/addChemistryTopics.mjs) | The same for chemistry — **the pattern for physics / English.** Idempotent; re-running replaces its own subject entry. |
@@ -144,7 +145,9 @@ docs, so a typo is a topic path that can never be matched again), then flip its
 registry entry from `soon` to `generic` with the right `taxonomySlug` and `href`,
 and optionally add `data/<subject>-default-paper.json` + one line in
 `SAMPLE_FILES`. **That is the whole change** — chemistry needed no new component,
-route, service, rule or index. ⚠️ **Do not point a new subject at the Rasch
+route, service, rule or index. (Then tell students: one entry in
+[lib/announcements.ts](../lib/announcements.ts), which is the dashboard's hero —
+[STUDENT.md](STUDENT.md).) ⚠️ **Do not point a new subject at the Rasch
 flow**: its quota rules, difficulty bands and ability model are maths-specific.
 
 ### Biology's taxonomy (2026-07-30)

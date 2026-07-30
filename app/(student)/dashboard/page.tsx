@@ -12,8 +12,7 @@ import {
 import { useStudentLanguage } from '../layout';
 import { AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
 import ChartFrame from '@/components/ChartFrame';
-import MmsCard from '../raschmodel/components/MmsCard';
-
+import AnnouncementCarousel from './_components/AnnouncementCarousel';
 import MilliyCard from './_components/MilliyCard';
 import TodayScheduleCard from './_components/TodayScheduleCard';
 
@@ -308,19 +307,21 @@ export default function StudentDashboard() {
           </Card>
         </div>
 
+        {/* 🟢 ANNOUNCEMENTS — the dashboard's hero, and the ONLY place the
+            platform tells students what is new. ⚠️ Content lives in
+            lib/announcements.ts; nothing about a specific feature belongs here.
+            It replaced the hardcoded `MmsCard` (now on /raschmodel, where its
+            level + expected score belong) — see docs/STUDENT.md.
+            ⚠️ It sits ABOVE MilliyCard: the announcement is what a student should
+            read first, and the door below it is where they go afterwards. */}
+        <AnnouncementCarousel lang={lang} />
+
         {/* 🟢 MILLIY SERTIFIKAT — the programme's door, zero Firestore reads.
             ⚠️ It stands here BECAUSE the mobile dock cannot hold the nav entry
             (M3 caps a bottom bar at 5, so `/milliy-sertifikat` is hideOnMobile).
-            It replaced `MathLevelSummary`, whose 0–5 level and report link are
-            both already covered by `MmsCard` directly below. */}
+            It replaced `MathLevelSummary`; the 0–5 level it showed now lives only
+            on /raschmodel. */}
         <MilliyCard lang={lang} />
-
-        {/* 🟢 MMS — the maths paper itself, one tap away. `MilliyCard` above is
-            the programme (which subject); this is the sitting, and it carries the
-            measured 0–5 level + expected score that `MathLevelSummary` used to
-            show here (that card still lives on /raschmodel). One read: the
-            12h-cached RASCH_levels document. */}
-        <MmsCard lang={lang} />
 
         {/* 🟢 MAIN CONTENT AREA */}
         <div className="grid gap-s-gap lg:grid-cols-3">

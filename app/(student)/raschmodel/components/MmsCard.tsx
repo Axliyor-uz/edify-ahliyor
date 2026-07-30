@@ -21,13 +21,18 @@ import type { Lang } from '@/types/Math';
  * **MMS — Matematika Milliy Sertifikat.** The dashboard's route into the real
  * thing: a full 45-question, 150-minute paper on the national spec.
  *
- * Nothing on the dashboard said what the exam IS or let a student start one, so
- * the feature the whole RASCH subsystem exists for was two navigations deep
- * behind a four-letter word ("RASCH") that means nothing to a student. This card
- * names it the way they know it. ⚠️ Since 2026-07-30 it is also the dashboard's
- * ONLY readout of the measured 0–5 level: `MathLevelSummary` used to sit directly
- * above it and now only lives on `/raschmodel`, its slot taken by `MilliyCard`
- * (the programme's door, which the mobile dock has no room for).
+ * Nothing named the exam the way a student knows it, so the feature the whole
+ * RASCH subsystem exists for sat behind a four-letter word ("RASCH") that means
+ * nothing to them. This card names it.
+ *
+ * ⚠️ **It lives on the Rasch hub (`/raschmodel`), not the dashboard.** It was
+ * built for the dashboard on 2026-07-29 and moved here on 2026-07-30, when the
+ * dashboard's hero slot went to the generic announcement carousel
+ * (`lib/announcements.ts`) — a card welded to one feature had to be rewritten
+ * every time the platform shipped another. Here it replaces a purely decorative
+ * gradient banner and pairs with `MathLevelSummary` exactly as designed. The
+ * maths *announcement* now carries the "start a paper" invitation on the
+ * dashboard; this card carries the numbers.
  *
  * ⚠️ **It costs ZERO extra reads.** `getRASCHLevels` is the same 12h
  * localStorage-cached single document `MathLevelSummary` and `/progress` read,
