@@ -500,6 +500,14 @@ From there the page is the mock exam with a different source:
 - A paper whose deadline passed with **nothing answered** is abandoned, not
   submitted — identical rule to the mock exam, and it must never reach the
   account *or the teacher* as a 0% result for a paper nobody sat.
+- ⚠️ **The 2-a-day cap does NOT apply here** (2026-07-30). `/raschmodel/exam` is
+  limited to one sitting per 12 hours ([lib/RASCHquota.ts](../lib/RASCHquota.ts),
+  contract in [STUDENT.md](STUDENT.md)); a teacher's paper is never blocked, because
+  a teacher handing a code to a class must not be defeated by a cooldown. **But it
+  still starts one**: `saveExamResult` appends to the same `exams[]` and `ExamPoint`
+  has no source field, so a code sitting delays the next self-serve draw. If that
+  ever needs separating, the fix is an additive `src` on `ExamPoint` — not a second
+  timestamp list.
 
 ### Two writes on submit, deliberately independent
 

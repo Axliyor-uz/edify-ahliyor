@@ -14,7 +14,10 @@ import ExamRunner, { QUESTION_LANGS } from '../_components/ExamRunner';
 import { requestExamFullscreen } from '@/hooks/useExamLockdown';
 import ExamReview from '../_components/ExamReview';
 import { useStudentLanguage } from '../../layout';
-import { saveExamResult, toItemResponses } from '@/services/RASCHProgressService';
+import { getRASCHLevels, saveExamResult, toItemResponses } from '@/services/RASCHProgressService';
+import {
+  EXAMS_PER_DAY, examQuota, formatCooldown, formatUnlockTime, lastExamAt,
+} from '@/lib/RASCHquota';
 import { RASCH_TOPICS } from '@/lib/RASCHtopics';
 import { skillCoverage, skill as skillMeta, SKILL_KEYS, type SkillKey } from '@/lib/RASCHskills';
 import { archiveExam, setSolvedUser } from '@/lib/RASCHsolved';
@@ -66,6 +69,12 @@ const UI: Record<Lang, Record<string, string>> = {
     viewProgress: 'Darajam va grafik',
     setBaseline: 'Boshlang‘ich darajani belgilang — shundan keyin o‘sish ko‘rinadi.',
     home: 'Bosh sahifa',
+    // The 2-a-day cap (lib/RASCHquota.ts). `{n}`/`{time}`/`{left}` are filled in.
+    quotaTitle: 'Kuniga {n} marta',
+    quotaLocked: 'Keyingi variant {time} da ochiladi',
+    quotaLeft: '{left} qoldi',
+    quotaWhy: 'Daraja o‘lchov bo‘lgani uchun variantlar orasida 12 soat tanaffus bor.',
+    quotaWait: 'Kutish kerak',
   },
   ru: {
     examTitle: 'Национальный сертификат — Математика',
@@ -89,6 +98,11 @@ const UI: Record<Lang, Record<string, string>> = {
     viewProgress: 'Мой уровень и график',
     setBaseline: 'Задайте начальный уровень — тогда будет виден рост.',
     home: 'Главная',
+    quotaTitle: '{n} раза в день',
+    quotaLocked: 'Следующий вариант откроется в {time}',
+    quotaLeft: 'осталось {left}',
+    quotaWhy: 'Уровень — это измерение, поэтому между вариантами перерыв 12 часов.',
+    quotaWait: 'Нужно подождать',
   },
   en: {
     examTitle: 'National Certificate — Mathematics',
@@ -112,6 +126,11 @@ const UI: Record<Lang, Record<string, string>> = {
     viewProgress: 'My level & chart',
     setBaseline: 'Set your starting level to see growth.',
     home: 'Home',
+    quotaTitle: '{n} papers a day',
+    quotaLocked: 'Your next paper unlocks at {time}',
+    quotaLeft: '{left} left',
+    quotaWhy: 'Your level is a measurement, so there is a 12-hour gap between papers.',
+    quotaWait: 'Please wait',
   },
 };
 
@@ -197,6 +216,11 @@ export default function ExamPage() {
   const [levels, setLevels] = useState<RASCHLevels | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // ── The 2-a-day cap ──────────────────────────────────────────────────
+  // `null` = unknown ⇒ ALLOWED. See lib/RASCHquota.ts: a failed read must never
+  // lock a student out of an exam, so every unknown fails open.
+  const [lastSittingAt, setLastSittingAt] = useState<number | null>(null);
+
   const t = UI[appLang];
 
   // ── Timer ────────────────────────────────────────────────────────────
@@ -236,11 +260,32 @@ export default function ExamPage() {
     setDiscarded(true);
   }, [abandoned]);
 
+  // ⚠️ Ticks on the INTRO too, not only during a paper: the cooldown countdown
+  // below is on that screen, and a countdown that only moves on navigation reads
+  // as frozen.
   useEffect(() => {
-    if (stage !== 'in-progress') return;
+    if (stage !== 'in-progress' && stage !== 'intro') return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [stage]);
+
+  // When the student last sat a 45-question paper, from the levels document.
+  // ⚠️ **Zero extra reads**: `getRASCHLevels` is 12h-cached and single-flighted,
+  // and `RaschNav`'s level chip on this very page already asks for it. It is also
+  // why the cap survives clearing localStorage — the timestamps are in Firestore
+  // (`exams[].at`, written by `saveExamResult`), not on the device.
+  useEffect(() => {
+    if (!uid) return;
+    let cancelled = false;
+    getRASCHLevels(uid)
+      .then((l) => { if (!cancelled) setLastSittingAt(lastExamAt(l.exams)); })
+      // Fail OPEN — a network blip must not become a lockout.
+      .catch((err: unknown) => console.error('[RASCH] quota read failed', err));
+    return () => { cancelled = true; };
+  }, [uid]);
+
+  // Recomputed every tick, so the button unlocks itself without a reload.
+  const quota = useMemo(() => examQuota(lastSittingAt, now), [lastSittingAt, now]);
 
   const secondsLeft = session
     ? Math.max(0, Math.ceil((session.endsAt - now) / 1000))
@@ -292,6 +337,9 @@ export default function ExamPage() {
   };
 
   async function startExam() {
+    // ⚠️ Defence in depth: the button below is disabled, but a stale render or a
+    // devtools click must not draw a paper the cap has closed.
+    if (!quota.allowed) return;
     // ⚠️ Must be called synchronously inside the CLICK, not from an effect after
     // the paper loads — the Fullscreen API only honours a live user gesture, and
     // Safari/Firefox reject it anywhere else. See hooks/useExamLockdown.ts.
@@ -542,6 +590,10 @@ export default function ExamPage() {
               <span className="flex items-center gap-1.5"><Clock size={14} strokeWidth={3} /><span className="s-num">{EXAM_DURATION_MINUTES}</span> {t.duration}</span>
               <span>·</span>
               <span><span className="s-num">{EXAM_TOTAL_QUESTIONS}</span> {t.totalQ}</span>
+              <span>·</span>
+              {/* The cap is stated up front, not only when it bites — a student
+                  who finds out after their second paper reads it as a fault. */}
+              <span>{t.quotaTitle.replace('{n}', String(EXAMS_PER_DAY))}</span>
             </div>
 
             {/* Question language — asked BEFORE the exam, and fixed once it starts. */}
@@ -599,15 +651,41 @@ export default function ExamPage() {
               />
             )}
 
+            {/* ── The 2-a-day cap ────────────────────────────────────────
+                ⚠️ Shown only when it BITES; the fact itself is in the header row
+                above. `quota.allowed` is true whenever the last-sitting time is
+                unknown, so a failed read shows nothing and blocks nothing. */}
+            {!quota.allowed && quota.nextAt !== null && (
+              <Banner
+                status="info"
+                className="mb-4"
+                icon={<Clock size={16} strokeWidth={3} />}
+                title={t.quotaLocked.replace('{time}', formatUnlockTime(quota.nextAt, appLang))}
+                description={
+                  <>
+                    <span className="s-num font-black">
+                      {t.quotaLeft.replace('{left}', formatCooldown(quota.msLeft, appLang))}
+                    </span>
+                    {' · '}
+                    {t.quotaWhy}
+                  </>
+                }
+              />
+            )}
+
             <Button
               fullWidth
               onClick={startExam}
-              disabled={stage === 'loading'}
+              disabled={stage === 'loading' || !quota.allowed}
               loading={stage === 'loading'}
-              icon={<Play size={18} strokeWidth={3} />}
+              icon={quota.allowed ? <Play size={18} strokeWidth={3} /> : <Clock size={18} strokeWidth={3} />}
               className="uppercase tracking-wider"
             >
-              {stage === 'loading' ? t.loadingExam : t.start}
+              {stage === 'loading'
+                ? t.loadingExam
+                : quota.allowed
+                  ? t.start
+                  : `${t.quotaWait} · ${formatCooldown(quota.msLeft, appLang)}`}
             </Button>
           </Card>
         </div>

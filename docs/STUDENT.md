@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/(student)/*`, XP/streak/leaderboard logic, `services/quizService.ts`, `services/historyService.ts`, or `lib/social.ts`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-30 (the dashboard's hero is now a **rotating announcement card** driven by `lib/announcements.ts`, and `MmsCard` moved to `/raschmodel`; `MilliyCard` replaces `MathLevelSummary` there, because the mobile dock has no slot for the programme; Milliy sertifikat is the only nav entry, maths inside it; full-screen exam lockdown; Milliy sertifikat subject papers + the single code box); 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
+**Last verified:** 2026-07-30 (**2 maths papers a day / 12-hour cooldown**; the dashboard's hero is now a **rotating announcement card** driven by `lib/announcements.ts`, and `MmsCard` moved to `/raschmodel`; `MilliyCard` replaces `MathLevelSummary` there, because the mobile dock has no slot for the programme; Milliy sertifikat is the only nav entry, maths inside it; full-screen exam lockdown; Milliy sertifikat subject papers + the single code box); 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
 
 ## Purpose & scope
 
@@ -216,7 +216,10 @@ advertises.
   pick: a dimension the paper never asked about is not a weakness.
 - **Two routes out**, both needed: `/raschmodel/exam` (the sampled paper) and
   `/raschmodel/quiz` (a teacher's paper, by code — previously reachable only from
-  the Rasch sub-nav).
+  the Rasch sub-nav). ⚠️ **While the 2-a-day cap is closed the first one renders
+  as a DISABLED button with the countdown and no `<Link>` at all** — a disabled
+  `<Button>` inside an anchor still navigates, which is exactly how a "disabled"
+  CTA lands a student on a screen that then refuses them.
 - Before any sitting it degrades to an invitation ("your level is not measured
   yet"), and a failed level read degrades it the same way rather than hiding it.
 - ⚠️ It spends the student kit's **one `gradient` hero card** for the screen. On
@@ -224,6 +227,54 @@ advertises.
   (`border-white/20`), never `border-current/25` — `currentColor` cannot take a
   Tailwind opacity modifier, and neither can an M3 token (see the cross-cutting
   trap in CLAUDE.md).
+
+## Two maths papers a day — the 12-hour cooldown (2026-07-30)
+
+[lib/RASCHquota.ts](../lib/RASCHquota.ts) owns the rule, and it is **one** rule
+expressed two ways: a **12-hour wait after each sitting**, which is exactly
+`EXAMS_PER_DAY = 2` (24h / 12h — derived in the module, never typed twice). The
+cooldown is the form that can be shown on screen; "0 of 2 left" cannot tell a
+student when to come back.
+
+**Why it exists:** the paper is a *measurement*, not a quiz. Unlimited sittings let
+a student farm `RASCH_levels` — sit ten papers in an afternoon and grind the
+ability estimate up on familiarity with the item pool rather than on maths (and
+spend 45 question reads a go).
+
+- ⚠️ **The timestamps come from the DATABASE, not the device.** `lastExamAt()`
+  takes the max `at` from `RASCH_levels.exams[]`, written by `saveExamResult` — so
+  clearing localStorage resets nothing. It is read through `getRASCHLevels`, which
+  is 12h-cached and single-flighted and which `RaschNav`'s level chip on the same
+  page already calls, so the cap costs **zero extra reads**. `saveExamResult` ends
+  with `writeCache(next)`, so the cooldown is visible the instant a paper is
+  submitted.
+- ⚠️ **It is a deterrent, not a security boundary.** The comparison is client-side
+  against `Date.now()`, so moving the device clock forward defeats it. Closing that
+  needs the draw behind an Admin-SDK route — deliberately not done, and stated the
+  same way the exam lockdown states its limits.
+- ⚠️ **Everything unknown FAILS OPEN.** `lastAt === null` (no sittings yet, or the
+  levels read threw) ⇒ allowed. A network blip must never lock a student out of an
+  exam. A `lastAt` in the **future** is clamped to now, so a clock-skewed
+  submission can't ban them for the length of the skew.
+- ⚠️ **`exams[]` cannot distinguish a mock paper from a teacher's paper**
+  (`ExamPoint` has no source field), so a teacher-code sitting also starts a
+  cooldown. That is intended — both move the same ability estimate — but
+  **`/raschmodel/quiz` itself is never blocked**: a teacher handing a code to a
+  class must not be defeated by it. The gate is only on the self-serve draw.
+- **Practice (`/raschmodel/practice`) is not capped.** A drill is not a
+  measurement, and capping it would punish the exact behaviour the cap exists to
+  encourage.
+- ⚠️ **A paper already in flight is never blocked.** The check lives on the intro
+  screen, which by construction only renders when there is no session; a restored
+  paper goes straight to `in-progress`. Don't move the check into `ExamRunner`.
+- ⚠️ `startExam()` re-checks the quota on entry. The button is disabled, but a
+  stale render or a devtools click must not draw a paper the cap has closed.
+- The intro's header row states the cap **before** it bites ("Kuniga 2 marta"); the
+  countdown banner appears only when it does. Finding out about a limit only after
+  it stops you reads as a fault.
+- The exam page ticks `now` every second on the intro too (a countdown that only
+  moves on navigation reads as frozen); `MmsCard` ticks every 30s, because a
+  summary card does not need second accuracy.
 
 ## Teacher-built Rasch papers (`/raschmodel/quiz`)
 

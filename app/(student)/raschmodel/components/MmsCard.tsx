@@ -4,12 +4,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, KeyRound, Play, ShieldCheck } from 'lucide-react';
+import { ArrowRight, KeyRound, Play, ShieldCheck, Timer } from 'lucide-react';
 
 import { useAuth } from '@/lib/AuthContext';
 import { dimensions, getRASCHLevels, mathLevel } from '@/services/RASCHProgressService';
 import { EXAM_DURATION_MINUTES, EXAM_TOTAL_QUESTIONS } from '@/lib/Examblueprint';
 import { PAPER_TOTAL } from '@/lib/RASCHmarks';
+import {
+  EXAMS_PER_DAY, examQuota, formatCooldown, formatUnlockTime, lastExamAt,
+} from '@/lib/RASCHquota';
 import { expectedScore } from '@/lib/RASCHtheta';
 import { MASTER_LEVEL, formatLevel } from '@/lib/RASCHscale';
 import { RASCH_TOPICS } from '@/lib/RASCHtopics';
@@ -54,6 +57,9 @@ const UI: Record<Lang, Record<string, string>> = {
     weakest: 'Eng zaif',
     start: 'Variantni boshlash',
     byCode: "O'qituvchi kodi",
+    // The 2-a-day cap — lib/RASCHquota.ts owns the rule, this only reports it.
+    perDay: 'Kuniga {n} marta',
+    locked: '{time} da ochiladi',
   },
   ru: {
     badge: 'MMS',
@@ -64,6 +70,8 @@ const UI: Record<Lang, Record<string, string>> = {
     weakest: 'Слабее всего',
     start: 'Начать вариант',
     byCode: 'Код учителя',
+    perDay: '{n} раза в день',
+    locked: 'Откроется в {time}',
   },
   en: {
     badge: 'MMS',
@@ -74,6 +82,8 @@ const UI: Record<Lang, Record<string, string>> = {
     weakest: 'Weakest',
     start: 'Start a paper',
     byCode: "Teacher's code",
+    perDay: '{n} papers a day',
+    locked: 'Unlocks at {time}',
   },
 };
 
@@ -106,6 +116,19 @@ export default function MmsCard({ lang, className = '' }: { lang: Lang; classNam
 
   const math = useMemo(() => mathLevel(levels), [levels]);
   const measured = math.measuredDimensions > 0;
+
+  // ⚠️ The 2-a-day cap, so this card's primary CTA is never a dead end — it used
+  // to send the student to a Start button the exam page then refused. 30s is
+  // deliberate: a summary card does not need a per-second countdown (the exam
+  // page has that one), and the paper's own clock is the only second-accurate
+  // timer on the account. `lastExamAt` reads the levels doc already in hand, so
+  // this costs nothing. See lib/RASCHquota.ts.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const quota = useMemo(() => examQuota(lastExamAt(levels?.exams), now), [levels, now]);
 
   /** The dimension to send them at — lowest measured level, never an unmeasured
    *  one (a dimension the paper never asked about is not a weakness). */
@@ -145,7 +168,9 @@ export default function MmsCard({ lang, className = '' }: { lang: Lang; classNam
           </div>
 
           <h3 className="s-display mt-3 text-[19px] font-bold leading-tight tracking-tight">{t.title}</h3>
-          <p className="mt-1 text-[12.5px] font-bold leading-snug opacity-85">{t.lead}</p>
+          <p className="mt-1 text-[12.5px] font-bold leading-snug opacity-85">
+            {t.lead} {t.perDay.replace('{n}', String(EXAMS_PER_DAY))}.
+          </p>
 
           {/* ── the useful half ─────────────────────────────────────────── */}
           <div className="mt-4 rounded-m3-sm border-2 border-white/20 bg-black/10 px-3 py-2.5">
@@ -186,18 +211,40 @@ export default function MmsCard({ lang, className = '' }: { lang: Lang; classNam
               from here, or opens the one their teacher built by code. The code
               screen was previously reachable only from the RASCH sub-nav. */}
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <Link href="/raschmodel/exam" className="sm:flex-1">
-              <Button
-                fullWidth
-                size="lg"
-                variant="filled"
-                tone="gold"
-                icon={<Play size={17} strokeWidth={3} />}
-                trailingIcon={<ArrowRight size={17} strokeWidth={3} />}
-              >
-                {t.start}
-              </Button>
-            </Link>
+            {/* ⚠️ Locked ⇒ NO <Link> at all. A disabled <Button> inside an anchor
+                still navigates on click, which is how a "disabled" CTA lands the
+                student on a screen that refuses them. */}
+            {quota.allowed || quota.nextAt === null ? (
+              <Link href="/raschmodel/exam" className="sm:flex-1">
+                <Button
+                  fullWidth
+                  size="lg"
+                  variant="filled"
+                  tone="gold"
+                  icon={<Play size={17} strokeWidth={3} />}
+                  trailingIcon={<ArrowRight size={17} strokeWidth={3} />}
+                >
+                  {t.start}
+                </Button>
+              </Link>
+            ) : (
+              <div className="sm:flex-1">
+                <Button
+                  fullWidth
+                  size="lg"
+                  variant="filled"
+                  tone="gold"
+                  disabled
+                  icon={<Timer size={17} strokeWidth={3} />}
+                >
+                  <span className="s-num">
+                    {t.locked.replace('{time}', formatUnlockTime(quota.nextAt, lang))}
+                    {' · '}
+                    {formatCooldown(quota.msLeft, lang)}
+                  </span>
+                </Button>
+              </div>
+            )}
             <Link href="/raschmodel/quiz" className="sm:flex-none">
               <Button
                 fullWidth
