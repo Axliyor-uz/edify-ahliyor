@@ -12,7 +12,8 @@ import {
 import { useStudentLanguage } from '../layout';
 import { AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
 import ChartFrame from '@/components/ChartFrame';
-import MathLevelSummary from '../RASCHmodel/components/MathLevelSummary';
+import MathLevelSummary from '../raschmodel/components/MathLevelSummary';
+import MmsCard from '../raschmodel/components/MmsCard';
 import { calculateStreak, last7Days, xpDayKey } from '@/lib/xpDays';
 import { fetchMyCenters, type MyCenter } from '@/services/studentCenterService';
 import {
@@ -170,7 +171,7 @@ export default function StudentDashboard() {
     loadDashboardData();
     // Center membership comes from center_students (own-read allowed) — shown
     // even for a student with zero groups. Non-blocking, 60s service cache.
-    if (user) fetchMyCenters(user.uid).then(setMyCenters).catch(() => {});
+    if (user) fetchMyCenters(user.uid).then(setMyCenters).catch(() => { });
   }, [user]);
 
   // ============================================================================
@@ -307,6 +308,12 @@ export default function StudentDashboard() {
             the same RASCH_levels/{uid} document through the same 12h cache. */}
         <MathLevelSummary lang={lang} className="" />
 
+        {/* 🟢 MMS — the exam itself, one tap away.
+            `MathLevelSummary` above answers "where am I" and links to a report;
+            this answers "what do I do about it". Both read the SAME 12h-cached
+            RASCH_levels document, so the pair costs one read, not two. */}
+        <MmsCard lang={lang} />
+
         {/* 🟢 MAIN CONTENT AREA */}
         <div className="grid gap-s-gap lg:grid-cols-3">
 
@@ -365,8 +372,8 @@ export default function StudentDashboard() {
                 <AreaChart width={width} height={height} data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorXP" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A1A1AA', fontWeight: 900 }} dy={10} />

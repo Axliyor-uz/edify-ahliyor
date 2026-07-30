@@ -16,8 +16,8 @@ import type { ExamQuestion, ExamSnapshot } from '@/types/Exam';
  * mismatch.
  *
  * ⚠️ There are TWO stores and they must not share a key: the 45-question mock
- * exam (`RASCHmodel:exam`) and a teacher-built paper opened by code
- * (`RASCHmodel:quiz`, docs/RASCH_QUIZ.md). One key would mean starting a teacher
+ * exam (`raschmodel:exam`) and a teacher-built paper opened by code
+ * (`raschmodel:quiz`, docs/RASCH_QUIZ.md). One key would mean starting a teacher
  * quiz silently discards a mock exam that is still running against its clock —
  * and resuming one would restore the other's questions. The store logic itself is
  * written once, below, and instantiated twice.
@@ -139,7 +139,7 @@ function createSessionStore(key: string, version: number): SessionStore {
 // v2: teacher_questions slots (33–45) carry images, blocks and a `stem`. A paper
 // drawn under v1 lacks those fields, so an old snapshot is discarded rather than
 // resumed — otherwise a mid-flight exam keeps rendering the pre-teacher shape.
-const examStore = createSessionStore('RASCHmodel:exam:v1', 2);
+const examStore = createSessionStore('raschmodel:exam:v1', 2);
 
 export const subscribeExamSnapshot = examStore.subscribe;
 /** The stored exam, or null if there is none / it is stale or unusable. */
@@ -149,10 +149,25 @@ export const saveExamSnapshot = examStore.save;
 export const clearExamSnapshot = examStore.clear;
 
 // ─── a teacher-built paper opened by its 6-digit code ────────────────────────
-const quizStore = createSessionStore('RASCHmodel:quiz:v1', 1);
+const quizStore = createSessionStore('raschmodel:quiz:v1', 1);
 
 export const subscribeQuizSnapshot = quizStore.subscribe;
 export const getQuizSnapshot = quizStore.get;
 export const getServerQuizSnapshot = quizStore.getServer;
 export const saveQuizSnapshot = quizStore.save;
 export const clearQuizSnapshot = quizStore.clear;
+
+// ─── a Milliy sertifikat SUBJECT paper (biology…) opened by its code ──────────
+//
+// ⚠️ **A third key, deliberately.** One key shared with the mock exam or with a
+// maths paper would mean starting a biology paper silently discards an exam still
+// running against its clock — and the two are scored completely differently
+// (docs/MILLIY_QUIZ.md). The store logic is written once (`createSessionStore`)
+// and instantiated three times, which is the whole point of that factory.
+const milliyStore = createSessionStore('milliy:quiz:v1', 1);
+
+export const subscribeMilliySnapshot = milliyStore.subscribe;
+export const getMilliySnapshot = milliyStore.get;
+export const getServerMilliySnapshot = milliyStore.getServer;
+export const saveMilliySnapshot = milliyStore.save;
+export const clearMilliySnapshot = milliyStore.clear;

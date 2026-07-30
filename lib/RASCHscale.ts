@@ -174,7 +174,7 @@ export function levelBand(level: number): LevelBand {
 
 /**
  * ⚠️ Band → colour does NOT live here. It is a UI concern and it must be ONE
- * table: `app/(student)/RASCHmodel/_components/LevelBadge.tsx` owns it, shared by
+ * table: `app/(student)/raschmodel/_components/LevelBadge.tsx` owns it, shared by
  * the navbar chip, the "My level" card and the hub summary. A `BAND_COLOR` table
  * of raw Tailwind colours (zinc/slate/sky/violet/emerald/amber) used to sit here
  * with zero consumers — raw colours are exactly what the student design system

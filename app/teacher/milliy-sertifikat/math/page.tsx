@@ -187,7 +187,7 @@ export default function RaschQuizHubPage() {
     <div className="min-h-[100dvh] bg-surface pb-24">
       <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6">
         <div className="flex items-center gap-2">
-          <IconButton aria-label={t.back} size="sm" onClick={() => router.push("/teacher/create")}>
+          <IconButton aria-label={t.back} size="sm" onClick={() => router.push("/teacher/milliy-sertifikat")}>
             <ArrowLeft />
           </IconButton>
           <PageHeader
@@ -195,7 +195,7 @@ export default function RaschQuizHubPage() {
             title={t.title}
             subtitle={t.subtitle}
             actions={
-              <Button icon={<Plus />} onClick={() => router.push("/teacher/create/rasch/build")}>
+              <Button icon={<Plus />} onClick={() => router.push("/teacher/milliy-sertifikat/math/build")}>
                 {t.create}
               </Button>
             }
@@ -214,7 +214,7 @@ export default function RaschQuizHubPage() {
             title={t.emptyTitle}
             description={t.emptyDesc}
             action={
-              <Button icon={<Plus />} onClick={() => router.push("/teacher/create/rasch/build")}>
+              <Button icon={<Plus />} onClick={() => router.push("/teacher/milliy-sertifikat/math/build")}>
                 {t.create}
               </Button>
             }
@@ -271,7 +271,7 @@ export default function RaschQuizHubPage() {
                     size="sm"
                     variant="outlined"
                     icon={<BarChart3 />}
-                    onClick={() => router.push(`/teacher/create/rasch/results/${quiz.id}`)}
+                    onClick={() => router.push(`/teacher/milliy-sertifikat/math/results/${quiz.id}`)}
                   >
                     {t.results}
                   </Button>
@@ -280,7 +280,7 @@ export default function RaschQuizHubPage() {
                     size="sm"
                     variant="text"
                     icon={<Pencil />}
-                    onClick={() => router.push(`/teacher/create/rasch/build?id=${quiz.id}`)}
+                    onClick={() => router.push(`/teacher/milliy-sertifikat/math/build?id=${quiz.id}`)}
                   >
                     {t.edit}
                   </Button>

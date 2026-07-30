@@ -1,20 +1,20 @@
 # RASCH_QUIZ — teacher-built Rasch papers, opened by a 6-digit code
 
-> **Agent workflow:** read this BEFORE touching `app/teacher/create/rasch/*`,
-> `app/(student)/RASCHmodel/quiz/`, `lib/RASCHquiz.ts`,
+> **Agent workflow:** read this BEFORE touching `app/teacher/milliy-sertifikat/math/*`,
+> `app/(student)/raschmodel/quiz/`, `lib/RASCHquiz.ts`,
 > `services/teacherRaschQuizService.ts`, the shared runner components in
-> `app/(student)/RASCHmodel/_components/`, or the `teacher_rasch_quizzes` /
+> `app/(student)/raschmodel/_components/`, or the `teacher_rasch_quizzes` /
 > `teacher_rasch_results` collections. Update it in the same change whenever you
 > alter behavior described here. Index: [README.md](README.md).
 > The ability model itself (θ, levels, diagnosis) is in [STUDENT.md](STUDENT.md)
 > and [RASCH_SKILLS.md](RASCH_SKILLS.md); the question schema is in
 > [QUESTIONS.md](QUESTIONS.md).
 
-**Last verified:** 2026-07-29 (dynamic per-question marks from the cohort; per-slot outcomes on the result document).
+**Last verified:** 2026-07-30 (moved to `app/teacher/milliy-sertifikat/math`; full-screen exam lockdown; Milliy sertifikat hub is a second entry point to this same builder; dynamic per-question marks 2026-07-29).
 
 ## Purpose & scope
 
-`/RASCHmodel/exam` draws a 45-question paper from the blueprint. That measures a
+`/raschmodel/exam` draws a 45-question paper from the blueprint. That measures a
 student against the national spec, but a teacher cannot say *which* 45. This
 subsystem lets them: pick questions from either bank or write new ones, publish
 the paper behind a private six-digit code, and see who sat it.
@@ -22,6 +22,32 @@ the paper behind a private six-digit code, and see who sat it.
 The paper is **not a second test system**. It is sat in the same runner, graded
 by the same functions, and scored into the same `RASCH_levels/{uid}` document as
 a mock exam — which is the whole reason it is 45 questions.
+
+### 🟢 This IS the Milliy sertifikat maths paper (2026-07-30)
+
+The name "Rasch paper" describes the ability model, not the exam. The exam is the
+**Milliy sertifikat** maths paper: `EXAM_BLUEPRINT` encodes the DTM protocol's
+own sections (Y-1 #1–32, Y-2 #33–40, O #41–45) and `RASCH_QUIZ_TOTAL` is its
+length. Two entry points now reach this same builder, deliberately:
+
+🟢 **The routes MOVED on 2026-07-30** and the create hub's card is gone:
+
+| | Before | Now |
+|---|---|---|
+| Teacher | `/teacher/create/rasch/*` + a card in the create hub | **`/teacher/milliy-sertifikat/math/*`**, reached from the subject hub's **Matematika** card only |
+| Student | `/raschmodel` as its own nav item | `/raschmodel` unchanged, but reached from the student's **Milliy sertifikat** hub |
+
+⚠️ **The student suite was deliberately NOT moved** — `/raschmodel/*` is a whole
+suite with many internal links; only the navigation changed. ⚠️ The static `math`
+segment beats its sibling `[subject]` dynamic route, which is why
+`genericSubject()` also refuses `'math'`.
+
+⚠️ **Do not "fix" this by building a second maths paper system.** A separate
+collection was proposed and rejected: it would mean two builders, two collections
+and two student runners for one 45-question exam. If a Milliy sertifikat maths
+paper ever has to differ from this one, change THIS subsystem — and read the quota
+invariants below before you do. The non-maths subjects have their own subsystem:
+[MILLIY_QUIZ.md](MILLIY_QUIZ.md).
 
 ## Key files
 
@@ -32,16 +58,16 @@ a mock exam — which is the whole reason it is 45 questions.
 | [lib/RASCHdefaultPaper.ts](../lib/RASCHdefaultPaper.ts) | The **default paper** — validates `data/rasch-default-paper.json` and turns it into 45 `RaschQuizItem`s. Pure; no Firestore. |
 | [data/rasch-default-paper.json](../data/rasch-default-paper.json) | **The content of the default paper — the only file to edit to change it.** Its own `_readme` key documents the per-entry fields. |
 | [services/teacherRaschQuizService.ts](../services/teacherRaschQuizService.ts) | Every read and write. Nothing else touches the two collections. |
-| `app/teacher/create/rasch/page.tsx` | The teacher's papers: code, status, edit, results, delete. |
-| `app/teacher/create/rasch/build/page.tsx` | The builder (`?id=` to edit). |
-| `app/teacher/create/rasch/_components/QuestionPickers.tsx` | The two pools: `MyBankPicker` (own `teacher_questions`, default, with the closed/open filter) and `BankPicker` (`questions1`). |
-| `app/teacher/create/rasch/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
-| `app/teacher/create/rasch/results/[quizId]/page.tsx` | Who sat it; per-dimension 0–5 levels, per class **and per student**. |
-| [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **Dynamic marks** — cohort solve rate → an absolute 1.30–6.00 ball per question, and the student's score normalised to 100. Pure. |
+| `app/teacher/milliy-sertifikat/math/page.tsx` | The teacher's papers: code, status, edit, results, delete. |
+| `app/teacher/milliy-sertifikat/math/build/page.tsx` | The builder (`?id=` to edit). |
+| `app/teacher/milliy-sertifikat/math/_components/QuestionPickers.tsx` | The two pools: `MyBankPicker` (own `teacher_questions`, default, with the closed/open filter) and `BankPicker` (`questions1`). |
+| `app/teacher/milliy-sertifikat/math/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
+| `app/teacher/milliy-sertifikat/math/results/[quizId]/page.tsx` | Who sat it; per-dimension 0–5 levels, per class **and per student**. |
+| [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **Dynamic marks** — cohort solve rate → an absolute 1.30–6.00 ball per question, and the student's score normalised to 100. Pure. ⚠️ **Shared with every Milliy sertifikat subject** since 2026-07-30 ([MILLIY_QUIZ.md](MILLIY_QUIZ.md)); the only maths-specific part is the `printed` fallback, which is now an argument to `paperMarks`. |
 | [lib/RASCHband.ts](../lib/RASCHband.ts) | Band → colour/name, kit-agnostic. ⚠️ Read by BOTH UI kits — keep it free of component imports. |
-| `app/(student)/RASCHmodel/quiz/page.tsx` | Code entry → intro → sitting → results, plus the student's own **sat-papers list** (`listMyQuizResults`). |
-| `app/(student)/RASCHmodel/_components/ExamRunner.tsx` | **The paper**, shared with the mock exam. |
-| `app/(student)/RASCHmodel/_components/ExamReview.tsx` | **The per-question review**, shared with the mock exam — a grid of slot numbers, one question per dialog. `outcomes` puts it in **replay mode** for a paper sat earlier. |
+| `app/(student)/raschmodel/quiz/page.tsx` | Code entry → intro → sitting → results, plus the student's own **sat-papers list** (`listMyQuizResults`). |
+| `app/(student)/raschmodel/_components/ExamRunner.tsx` | **The paper**, shared with the mock exam. |
+| `app/(student)/raschmodel/_components/ExamReview.tsx` | **The per-question review**, shared with the mock exam — a grid of slot numbers, one question per dialog. `outcomes` puts it in **replay mode** for a paper sat earlier. |
 
 ## Flows
 
@@ -467,7 +493,7 @@ From there the page is the mock exam with a different source:
 - The clock starts when **Start** is pressed, not when the code is entered, and
   runs on the quiz's own `durationMinutes`.
 - The sitting is persisted to its own localStorage store
-  (`RASCHmodel:quiz:v1`). ⚠️ **Separate key from the mock exam.** One key would
+  (`raschmodel:quiz:v1`). ⚠️ **Separate key from the mock exam.** One key would
   mean starting a teacher quiz silently discards an exam still running against
   its clock. The store logic is written once (`createSessionStore` in
   [lib/Examsession.ts](../lib/Examsession.ts)) and instantiated twice.
@@ -541,7 +567,15 @@ not documents**: a `shared_options` block gets one cell per part, each coloured
 by `isExamPartCorrect` for its own part, all opening the same block. That is why
 the student can look for "34" and find it where they left it.
 
-## The shared runner (why the two pages cannot drift)
+## The shared runner (why the pages cannot drift)
+
+⚠️ **`ExamRunner` is now a `fixed inset-0 z-[100]` full-screen overlay** and owns
+the exam lockdown (full screen + an interruption warning with a live count), so
+every sitting behaves identically. Callers must NOT wrap it in a `<Page>`, and a
+page's Start handler must call `requestExamFullscreen()` **synchronously inside the
+click**. Contract: [STUDENT.md](STUDENT.md#exam-lockdown--full-screen--interruption-warning-2026-07-30)
+and [hooks/useExamLockdown.ts](../hooks/useExamLockdown.ts).
+
 
 `ExamRunner` and `ExamReview` were extracted from `exam/page.tsx` when this
 shipped. They own the timer bar, the navigator, the question card (closed / typed
@@ -727,7 +761,7 @@ this doc should say so.
 
 Then `npm run dev`, as a **teacher**:
 
-1. `/teacher/create` → **Rasch varianti** → **Yangi test**. The builder opens
+1. Nav → **Milliy sertifikat** → **Matematika** → **Yangi test**. The builder opens
    with **zero** network activity (watch the network tab).
 2. Press **Namunaviy variant** (top right of *Savol qo'shish*). One JS chunk is
    fetched — **no Firestore read** — the paper fills to **45/45**, every one of
@@ -770,13 +804,13 @@ Then `npm run dev`, as a **teacher**:
 
 As a **student**, in another account:
 
-5. `/RASCHmodel/quiz` (nav: **Kod**) → type the code → the intro names the paper,
+5. `/raschmodel/quiz` (nav: **Kod**) → type the code → the intro names the paper,
    its teacher and its length. Watch the network tab: **one document read**.
-6. Start it. The runner must be pixel-identical to `/RASCHmodel/exam` — the same
+6. Start it. The runner must be pixel-identical to `/raschmodel/exam` — the same
    navigator, flags, block pool and typed inputs. Answer a few, reload the page:
    the paper resumes with **no** further reads and the clock kept running.
 7. Submit → the score card, the per-dimension level movement, the skills card and
-   the per-question review with explanations. Now open `/RASCHmodel/exam`: it
+   the per-question review with explanations. Now open `/raschmodel/exam`: it
    must still offer a **fresh** paper, not the quiz you just sat (separate
    localStorage stores).
 8. A paper with `showAnswers: false` must show correctness only — no correct
@@ -784,7 +818,7 @@ As a **student**, in another account:
 
 Back as the **teacher**:
 
-9. `/teacher/create/rasch` → **Natijalar**. **After the FIRST sitting** every
+9. **Matematika** → **Natijalar**. **After the FIRST sitting** every
     question must already carry a live ball to two decimals with its printed
     value struck through beside it, each card dashed and colour-coded by its
     solve rate. Sit the paper on five more accounts, failing one algebra question

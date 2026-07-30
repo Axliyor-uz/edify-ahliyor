@@ -272,11 +272,29 @@ export function capBalls(raw: number[], cap = PAPER_TOTAL): number[] {
 }
 
 /**
- * What each position PRINTS in the protocol, in paper order.
+ * The printed value for a paper that has **no printed protocol** — an even split
+ * of `PAPER_TOTAL` across its slots.
  *
- * Still per section, because that is the only place the printed values exist —
- * a row's `balls` are its own multiset. It is the provisional mark and the
- * "before" the results page strikes through, nothing more.
+ * ⚠️ This is what the Milliy sertifikat SUBJECT papers (biology…) use: the DTM
+ * maths blueprint is the only place per-position printed balls exist, and
+ * inventing per-section values for a subject whose blueprint this repo does not
+ * have would be worse than an honest flat split. It only ever shows BEFORE a
+ * question has been answered by anybody — from the first sitting on, the cohort
+ * curve takes over, which is the entire point of the dynamic marks.
+ *
+ * See docs/MILLIY_QUIZ.md.
+ */
+export function evenPrinted(count: number, total = PAPER_TOTAL): number[] {
+  if (count <= 0) return [];
+  return roundHundredths(new Array(count).fill(total / count), total);
+}
+
+/**
+ * What each position PRINTS in the DTM maths protocol, in paper order.
+ *
+ * Per section, because that is the only place the printed values exist — a row's
+ * `balls` are its own multiset. It is the provisional mark and the "before" the
+ * results page strikes through, nothing more.
  */
 function printedBalls(slots: PaperSlot[]): number[] {
   const bySection = new Map<string, number>();
@@ -298,10 +316,25 @@ function printedBalls(slots: PaperSlot[]): number[] {
  * sittings that exist right now, which means **a question's ball moves when a
  * classmate sits the paper**. That is the feature, and the results page says so
  * on screen.
+ *
+ * ⚠️ **Subject-agnostic since 2026-07-30.** Everything below the `printed`
+ * argument is cohort arithmetic — solve rate in, ball out — with no blueprint,
+ * no calibrated difficulty and no taxonomy in it, which is exactly why the same
+ * marking now serves the Milliy sertifikat subject papers (docs/MILLIY_QUIZ.md).
+ * `printed` is the ONLY maths-specific part, so it is injectable: pass
+ * `evenPrinted(slots.length)` for a paper with no printed protocol. It defaults
+ * to the DTM table so the maths caller is unchanged.
+ *
+ * ⚠️ Do NOT confuse this with the ability model. θ and the 0–5 levels come from
+ * the 3PL EAP fit in [lib/RASCHtheta.ts](RASCHtheta.ts), which IS anchored on
+ * calibrated maths item difficulty and is deliberately not generalized.
  */
-export function paperMarks(slots: PaperSlot[], stats: Map<string, ItemStat>): SlotMark[] {
-  const printed = printedBalls(slots);
-  const rows = slots.map((slot, i) => ({ slot, stat: stats.get(slot.key), printedBall: printed[i] }));
+export function paperMarks(
+  slots: PaperSlot[],
+  stats: Map<string, ItemStat>,
+  printed: number[] = printedBalls(slots),
+): SlotMark[] {
+  const rows = slots.map((slot, i) => ({ slot, stat: stats.get(slot.key), printedBall: printed[i] ?? 0 }));
 
   // Every question carries its CURRENT ball, priced per question from whatever
   // evidence that question has. Only a slot nobody has answered at all falls

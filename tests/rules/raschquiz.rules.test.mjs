@@ -202,7 +202,7 @@ describe("RASCH QUIZ — result rows", () => {
     await assertFails(getDoc(doc(as("student2"), "teacher_rasch_results/rq_1_student1")));
   });
 
-  // The "tests you have sat" list on /RASCHmodel/quiz (listMyQuizResults).
+  // The "tests you have sat" list on /raschmodel/quiz (listMyQuizResults).
   it("lets a student LIST their own sittings, and only their own", async () => {
     const snap = await assertSucceeds(getDocs(query(
       collection(as("student1"), "teacher_rasch_results"),

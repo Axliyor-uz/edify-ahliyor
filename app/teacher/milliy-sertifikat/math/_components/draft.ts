@@ -1,4 +1,4 @@
-// app/teacher/create/rasch/_components/draft.ts
+// app/teacher/milliy-sertifikat/math/_components/draft.ts
 //
 // The Rasch paper being assembled, kept in the browser.
 //

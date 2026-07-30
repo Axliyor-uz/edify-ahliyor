@@ -1308,7 +1308,7 @@
  * The density block above sets these vars on the shell root; re-declaring them
  * on a wrapper makes every `p-s-card` / `gap-s-*` INSIDE it inherit the smaller
  * value, with no per-card overrides to keep in sync. Used by the Rasch suite
- * (`app/(student)/RASCHmodel/layout.tsx`), whose pages stack a dozen analytic
+ * (`app/(student)/raschmodel/layout.tsx`), whose pages stack a dozen analytic
  * cards and read as a wall at comfortable density.
  * ⚠️ It deliberately leaves `--s-page-x` alone — changing it would misalign
  * these pages with the rest of the app and break the navbar's `-mx-s-page-x`

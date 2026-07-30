@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `lib/RASCHskills.ts`, the skill
 > rollups in `services/RASCHProgressService.ts`, or the skill UI in
-> `app/(student)/RASCHmodel/{progress,exam}`. Update it in the same change
+> `app/(student)/raschmodel/{progress,exam}`. Update it in the same change
 > whenever you alter behavior described here. Index: [README.md](README.md).
 > The Rasch ability model itself (θ, levels, diagnostics, forecasting) is
 > documented in [STUDENT.md](STUDENT.md).
@@ -35,10 +35,10 @@ inversion: content stops being the taxonomy and becomes a tag.
 |---|---|
 | [lib/RASCHskills.ts](../lib/RASCHskills.ts) | The vocabulary (34 skills), the syllabus→skill map, `skillStats`/`skillCoverage`/`weakestSkills`. Pure — no Firestore. |
 | [services/RASCHProgressService.ts](../services/RASCHProgressService.ts) | `dimensionSkills(levels, source)` → per-dimension listing; `skillPicture(levels, source)` → headline counters + weakest. |
-| `app/(student)/RASCHmodel/progress/page.tsx` | `AbilityHeptagon` (each axis row expands to its skills), `SkillCoverageCard`. |
-| `app/(student)/RASCHmodel/exam/page.tsx` | The `detected` memo + "Skills detected" results card. |
-| `app/(student)/RASCHmodel/practice/page.tsx` | Targeted mode — reads `?skill=&dim=`, drills via `buildSkillPractice`, archives the drill. |
-| `app/(student)/RASCHmodel/progress/_components/QuestionReview.tsx` | The shared question review: scope toggle, +5 paging, per-question explanation, practice link. |
+| `app/(student)/raschmodel/progress/page.tsx` | `AbilityHeptagon` (each axis row expands to its skills), `SkillCoverageCard`. |
+| `app/(student)/raschmodel/exam/page.tsx` | The `detected` memo + "Skills detected" results card. |
+| `app/(student)/raschmodel/practice/page.tsx` | Targeted mode — reads `?skill=&dim=`, drills via `buildSkillPractice`, archives the drill. |
+| `app/(student)/raschmodel/progress/_components/QuestionReview.tsx` | The shared question review: scope toggle, +5 paging, per-question explanation, practice link. |
 | [lib/RASCHsolved.ts](../lib/RASCHsolved.ts) | `solvedForSkill()` — the per-skill question review, from the local archive. |
 | [lib/Examquestions.ts](../lib/Examquestions.ts) | `buildSkillPractice()` — over-sample by chapter, filter to the skill. |
 
@@ -186,7 +186,7 @@ bumped** — bumping it discards every existing archive.
 ### Drilling a skill
 
 `buildSkillPractice` ([lib/Examquestions.ts](../lib/Examquestions.ts)) backs
-`/RASCHmodel/practice?skill=<key>&dim=<dim>`; params are validated against
+`/raschmodel/practice?skill=<key>&dim=<dim>`; params are validated against
 `SKILL_KEYS`/`TOPIC_KEYS` and a bad one degrades to the default weakest-chapters
 mode rather than building an empty drill.
 
@@ -269,7 +269,7 @@ became "easy" overnight with no change in ability. The stretch keeps the
 measurement identical and only changes how it is reported.
 
 ⚠️ **Band → colour is ONE table, and no band is grey.**
-`app/(student)/RASCHmodel/_components/LevelBadge.tsx` owns it, shared by the
+`app/(student)/raschmodel/_components/LevelBadge.tsx` owns it, shared by the
 navbar chip, the "My level" card and the hub summary — those three carried three
 tables that had already drifted. `beginner` and `simple` used to paint with
 `--m3-outline` / `--m3-on-surface-variant`, so the two bands most students start
@@ -379,10 +379,10 @@ reads only from there. Do not add a Firestore read to a review path.
 
 ## How to verify changes
 
-`npm run dev`, sign in as a student, `/RASCHmodel/exam` → sit a paper (or submit
+`npm run dev`, sign in as a student, `/raschmodel/exam` → sit a paper (or submit
 a partial one). On the results screen the **"Skills detected"** card must list
 ~15–25 skills with `correct/seen` counts summing to 45 slots. Then
-`/RASCHmodel/progress`:
+`/raschmodel/progress`:
 
 1. Each heptagon dimension row shows `collected/total` and expands on click.
 2. Inside `algebraic`, visiting skills are marked `↗` with their home dimension.
@@ -400,7 +400,7 @@ a partial one). On the results screen the **"Skills detected"** card must list
    Opening panels, paging, switching scope and reading explanations are
    localStorage-only. A read appearing here is a regression.
 7. **"Practise this skill"** goes to
-   `/RASCHmodel/practice?skill=<key>&dim=<dim>` and the intro must name the skill
+   `/raschmodel/practice?skill=<key>&dim=<dim>` and the intro must name the skill
    and list only the chapters of THAT dimension (e.g. Inequalities from Algebraic
    → Ko'rsatkichli / Trigonometriya / Modul, never Tengsizliklar). Ten questions.
    A bogus `?skill=` must fall back to the weakest-chapters mode, not error.

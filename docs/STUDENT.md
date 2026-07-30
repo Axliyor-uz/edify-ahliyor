@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/(student)/*`, XP/streak/leaderboard logic, `services/quizService.ts`, `services/historyService.ts`, or `lib/social.ts`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
+**Last verified:** 2026-07-30 (Milliy sertifikat is the only nav entry, maths inside it; full-screen exam lockdown; Milliy sertifikat subject papers + the single code box); 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
 
 ## Purpose & scope
 
@@ -12,7 +12,7 @@ The student route tree `app/(student)/` (route group, no URL segment): dashboard
 
 ## ⚠️ Headline facts that contradict old assumptions
 
-1. **The syllabus API routes (`/api/structure`, `/api/syllabus`) and `quizService.fetchQuestions` are consumed ONLY by the teacher app.** Inside classes, students only take teacher-authored tests. Self-practice exists exactly once, in the Rasch hub (`/RASCHmodel/exam` + `/practice`), and it reaches `questions1` through **`lib/Examquestions.ts`**, never through those routes — the tree it browses is the bundled `data/syllabus.json` (see the Rasch hub section below).
+1. **The syllabus API routes (`/api/structure`, `/api/syllabus`) and `quizService.fetchQuestions` are consumed ONLY by the teacher app.** Inside classes, students only take teacher-authored tests. Self-practice exists exactly once, in the Rasch hub (`/raschmodel/exam` + `/practice`), and it reaches `questions1` through **`lib/Examquestions.ts`**, never through those routes — the tree it browses is the bundled `data/syllabus.json` (see the Rasch hub section below).
 2. **`services/historyService.ts` is entirely dead** (`saveAttempt`, `getUserHistory`, `fetchReviewQuestions`, the `questionPath` review mechanism — zero consumers). The "legacy practice attempt shape" exists in code but nothing writes or reads it.
 3. **`services/userService.ts::updateUserStats` is dead** (zero consumers) — and with it the `users.progress` field. All live XP/streak writing flows through **`lib/xp.ts`** (`applyUserXp` + `mirrorLeaderboards`), called from the two writers below inside their own transactions.
 4. `profile/_components/EditProfileModal.tsx` and the typing game were **deleted 2026-07-20** (both were dead: unimported / unlinked).
@@ -96,11 +96,11 @@ Every recharts chart mounts inside [components/ChartFrame.tsx](../components/Cha
 ## The dashboard's two "levels" (they measure different things)
 
 - **Level** (the stat tile) is XP: `floor(totalXP/1000)+1` — how much the student has *done*.
-- **Mathematics level** (`MathLevelSummary`, under the stat grid) is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). It is the same card the Rasch hub (`/RASCHmodel`) shows, reading the same `RASCH_levels/{uid}` document through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so mounting it on the dashboard costs no extra read on a warm cache. It renders `null` until that read resolves. **`MmsCard` sits directly below it** — see the next section.
+- **Mathematics level** (`MathLevelSummary`, under the stat grid) is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). It is the same card the Rasch hub (`/raschmodel`) shows, reading the same `RASCH_levels/{uid}` document through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so mounting it on the dashboard costs no extra read on a warm cache. It renders `null` until that read resolves. **`MmsCard` sits directly below it** — see the next section.
 
 ## MMS — the dashboard's exam card (2026-07-29)
 
-`MmsCard` (`app/(student)/RASCHmodel/components/MmsCard.tsx`) sits directly under
+`MmsCard` (`app/(student)/raschmodel/components/MmsCard.tsx`) sits directly under
 `MathLevelSummary` on the dashboard and names the mock exam the way a student
 actually knows it: **Matematika Milliy Sertifikat**, `45` questions,
 `150` minutes, `100` points. Those three numbers are read from
@@ -120,10 +120,10 @@ advertises.
 - **What makes it useful, not decorative:** `expectedScore(θ)` — the score this
   student would be expected to get on the standard paper at their measured
   ability — plus their **weakest measured dimension**, linked straight to
-  `/RASCHmodel/topic/{key}`. ⚠️ Unmeasured dimensions are excluded from that
+  `/raschmodel/topic/{key}`. ⚠️ Unmeasured dimensions are excluded from that
   pick: a dimension the paper never asked about is not a weakness.
-- **Two routes out**, both needed: `/RASCHmodel/exam` (the sampled paper) and
-  `/RASCHmodel/quiz` (a teacher's paper, by code — previously reachable only from
+- **Two routes out**, both needed: `/raschmodel/exam` (the sampled paper) and
+  `/raschmodel/quiz` (a teacher's paper, by code — previously reachable only from
   the Rasch sub-nav).
 - Before any sitting it degrades to an invitation ("your level is not measured
   yet"), and a failed level read degrades it the same way rather than hiding it.
@@ -133,21 +133,107 @@ advertises.
   Tailwind opacity modifier, and neither can an M3 token (see the cross-cutting
   trap in CLAUDE.md).
 
-## Teacher-built Rasch papers (`/RASCHmodel/quiz`)
+## Teacher-built Rasch papers (`/raschmodel/quiz`)
 
 A teacher can assemble their own 45-question Rasch paper and hand out a private
-**6-digit code**; the student enters it at `/RASCHmodel/quiz` (nav item **Kod**),
+**6-digit code**; the student enters it at `/raschmodel/quiz` (nav item **Kod**),
 sits it in the SAME runner as the mock exam, and the result both moves their
 `RASCH_levels` and is reported back to the teacher
 (`teacher_rasch_results/{quizId}_{uid}`). One Firestore read opens a whole paper —
 the questions are embedded snapshots, not refs.
 
 ⚠️ The runner and the per-question review now live in
-`RASCHmodel/_components/{ExamRunner,ExamReview}.tsx` and are shared by both pages;
-`/RASCHmodel/exam` no longer renders its own. ⚠️ The two sittings use **separate**
+`raschmodel/_components/{ExamRunner,ExamReview}.tsx` and are shared by both pages;
+`/raschmodel/exam` no longer renders its own. ⚠️ The two sittings use **separate**
 localStorage stores, so starting a teacher paper never discards a mock exam that
 is still running. Full contract, traps and the answer-key caveat:
 **[RASCH_QUIZ.md](RASCH_QUIZ.md)**.
+
+## Milliy sertifikat — the ONLY nav entry to the exam programme (2026-07-30)
+
+⚠️ **`/raschmodel` is no longer a nav destination of its own.** It used to sit
+beside "Milliy sertifikat", which read as two separate products; it is the **maths
+section** of this one. The nav now has a single `Milliy sertifikat` entry
+(`BadgeCheck`, hidden from the mobile dock — M3 caps a bottom bar at 5), and:
+
+- `/milliy-sertifikat` — the **subject hub**: cards only, **zero Firestore reads**
+  (the list is `MILLIY_SUBJECTS`). Matematika → `/raschmodel`; every other built
+  subject → `/milliy-sertifikat/[subject]`.
+- `/milliy-sertifikat/[subject]` — one subject: its code box, the sitting, the
+  result and the papers already sat for it. ⚠️ `genericSubject` refuses `math`
+  here, because the maths section is the Rasch suite.
+- ⚠️ **`studentSubjectHref()` owns this mapping**, not the pages —
+  `MilliySubject.href` is the TEACHER's route and is a different one.
+
+The code box still resolves ACROSS subjects, and `findPaperByCode` queries **both**
+paper collections.
+
+- ⚠️ **The two kinds are handled differently, and the caller MUST branch.** A
+  **maths** code is handed to `/raschmodel/quiz?code=…` — only that page writes the
+  `RASCH_levels` a maths sitting moves. A **subject** paper (biology…) is sat right
+  here and scored on **raw counts only**: no θ, no 0–5 level, because there is no
+  calibrated item difficulty or blueprint for those subjects.
+- The `?code=` hand-off fires **once** and only when there is nothing to resume — a
+  link must not pull a new paper on top of one still running against its clock.
+- ⚠️ **A third localStorage store** (`milliy:quiz:v1`), so a biology paper, a maths
+  paper and a mock exam can all be in flight without discarding each other.
+  `createSessionStore` is written once and instantiated three times.
+- Reuses `ExamRunner` and `ExamReview` unchanged (replay mode for papers sat
+  earlier). Module-level 60s cache for the sat-papers list, **patched** on submit —
+  a list missing the paper you just finished reads as data loss.
+- One write on submit; the id is deterministic so a retake overwrites.
+
+Full contract, the subject registry, and the answer-key caveat:
+**[MILLIY_QUIZ.md](MILLIY_QUIZ.md)**.
+
+## Exam lockdown — full screen + interruption warning (2026-07-30)
+
+`ExamRunner` is a **`fixed inset-0 z-[100]` overlay**, not page content. Every
+sitting — `/raschmodel/exam`, `/raschmodel/quiz`, `/milliy-sertifikat` — covers the
+shell nav, the topbar and the mobile dock, so there is nothing in the app to
+wander off to. ⚠️ **Callers must NOT wrap it in a `<Page>`**: it renders its own
+shell, its own header (progress · exit counter · full-screen button · timer) and
+the single scroll container.
+
+The guard is [hooks/useExamLockdown.ts](../hooks/useExamLockdown.ts), called
+**inside `ExamRunner`** rather than in the three pages, so no sitting can end up
+with different rules. Read its header before changing anything — it documents what
+a browser can and cannot enforce.
+
+- ⚠️ **This DETECTS and DETERS; it cannot prevent a second tab.** `Ctrl`/`⌘`+`T`,
+  a second window, the phone's app switcher and a second device are all outside
+  any web page's reach. What is actually wired: `visibilitychange` + `blur`
+  (tab/app switch), `fullscreenchange` (an `Esc` that drops full screen),
+  `beforeunload` (reload / close / typed URL → the browser's own prompt), and
+  `contextmenu` suppression (right-click → open in new tab). Don't describe it to
+  users as proctoring.
+- **Every interruption raises a blocking overlay** the student must acknowledge,
+  and the running count sits in the header while the paper is being sat. The count
+  is the deterrent — it says the exit was noticed.
+- ⚠️ The overlay is **deliberately not a `<Dialog>`**: a dialog closes on its
+  scrim or on `Escape`, and `Escape` is the very key that just dropped the student
+  out of full screen. Only its button clears it.
+- ⚠️ **One interruption fires several events** (a tab switch fires both
+  `visibilitychange` and `blur`). An `away` ref latches so it counts once; coming
+  back re-arms the latch but never clears the warning.
+- ⚠️ **`requestFullscreen()` needs a live user gesture**, so it is NOT called on
+  mount — mounting happens in a re-render after the click and Safari/Firefox
+  reject it there. `requestExamFullscreen()` is exported for each page's Start
+  handler to call synchronously, and the runner header shows a **Full screen**
+  button whenever the document is not full screen (a genuine gesture, so it always
+  works) — which is also the recovery path when the browser refused.
+- Full screen is **released** when the runner unmounts, i.e. on submit. Leaving a
+  student in full screen on a results page with no browser chrome traps them.
+- `isFullscreen` is read with **`useSyncExternalStore`**, not mirrored into state
+  from an effect: the browser owns that value and `Esc` changes it without asking
+  React (and a synchronous setState in an effect body is a lint error with the
+  React Compiler on).
+- **Nothing is persisted.** The count is a view concern; `useExamLockdown` takes an
+  optional `onInterruption(total)` if a result document should ever record it.
+  ⚠️ Four older runners (`IeltsRunner`, `WritingRunner`, `SpeakingRunner`, the
+  class-test runner) still carry their own copies of this logic and DO persist a
+  `tabSwitches` count — they were left alone deliberately; migrating them to this
+  hook is the obvious follow-up.
 
 ## The skill axis
 
@@ -155,7 +241,7 @@ Inside the seven dimensions sit **34 content-free skills** ([lib/RASCHskills.ts]
 
 ## The Rasch suite runs dense, and short (2026-07-28)
 
-`app/(student)/RASCHmodel/layout.tsx` wraps the whole suite in `.s-dense`, which
+`app/(student)/raschmodel/layout.tsx` wraps the whole suite in `.s-dense`, which
 re-declares the density custom properties for that subtree only (14px card
 padding instead of 20, tighter gaps) — see [STUDENT_UI.md](STUDENT_UI.md). These
 pages stack a heptagon, a skills panel, chapter levels, a forecast and a chart,
@@ -172,29 +258,29 @@ numbers dropped one step each.
 
 ## The Rasch suite's shared navbar
 
-`RASCHmodel/_components/RaschNav.tsx` is the ONE nav for every page under `/RASCHmodel`. Fixed order, everywhere: **Home → My level → Analysis → Practice → Code → Quick start** (the last is the filled CTA, pushed right with `ml-auto`).
+`raschmodel/_components/RaschNav.tsx` is the ONE nav for every page under `/raschmodel`. Fixed order, everywhere: **Home → My level → Analysis → Practice → Code → Quick start** (the last is the filled CTA, pushed right with `ml-auto`).
 
 - **The level chip lives here** (2026-07-28). `_components/LevelBadge.tsx::LevelChip` is pinned to the right of the bar, BEFORE the CTA, on every page of the suite — a ring gauge, the 0–5 number and the band name. It reads `getRASCHLevels`, which is 12h-cached and single-flighted, so a bar on six pages costs **0 reads warm** and one shared read cold. It renders `null` until the read resolves and whenever nothing is measured; a permanent empty pill reads as broken. ⚠️ The bar is now two explicit flex groups, not an `ml-auto` on the CTA — a lone `ml-auto` lands on whichever element carries it first, which put the chip to the RIGHT of the button.
-- **Six items since 2026-07-28**: `Kod` (`/RASCHmodel/quiz`) sits between Practice and Quick start. It is a plain item, not the CTA — a student arrives holding a code somebody gave them, so it must be findable, but the paper they can always start alone stays the filled call to action.
+- **Six items since 2026-07-28**: `Kod` (`/raschmodel/quiz`) sits between Practice and Quick start. It is a plain item, not the CTA — a student arrives holding a code somebody gave them, so it must be findable, but the paper they can always start alone stays the filled call to action.
 - Each page used to roll its own row and they disagreed on both membership and order (progress had Home/Analysis/New test, diagnosis had My level/Home/Practice, practice had Analysis/Home). ⚠️ **Don't add a local nav row back to a Rasch page** — put the change in `RaschNav`.
 - **Sticky, not static**: `sticky top-[var(--s-topbar-h)] z-20`. It parks under the shell's own app bar (z-40) and below the shell-C tab row (z-30) so it can never overlap either; the active shell is `shell_b`, so that tab row isn't rendered today. Translucency uses `bg-surface-blur` — a `bg-surface/85` would render **opaque** (M3 tokens are plain hex inside `var()`).
 - **Phone = a mini bar (2026-07-28)**: below `sm` every item is a **32px icon-only chip** (`h-8 px-2`, 16px icon, label `hidden sm:inline` but kept as `aria-label`/`title`), and the level chip matches it (`h-8 px-2 sm:h-9 sm:px-3`). That is what makes all six destinations plus the readout fit a 360px screen. ⚠️ Don't put a label back on just the active item or the CTA — the Uzbek labels ("Bosh sahifa", "Tezkor test") blow the width immediately, which is how this overflowed in the first place. `overflow-x-auto` (`s-no-scrollbar`) stays as the safety net for a 320px screen; wrapping is still refused, because a bar that grows to two rows shifts the page down as you navigate.
-- The current page is a **tonal chip**, not an outline, so position is readable without parsing labels. Matching is exact (`pathname === href`) — every route is a sibling of `/RASCHmodel`, so `startsWith` would light "Home" everywhere.
+- The current page is a **tonal chip**, not an outline, so position is readable without parsing labels. Matching is exact (`pathname === href`) — every route is a sibling of `/raschmodel`, so `startsWith` would light "Home" everywhere.
 - ⚠️ **The exam page mounts it only at `intro` and `submitted`, never `in-progress`.** A running paper has its own sticky timer bar, and offering "Home / Practice" mid-sitting invites abandoning a paper that is already being graded against the clock.
 - The hub's `PageHeader actions` row was removed as a duplicate of this bar, along with its `progress`/`diagnosis`/`practice`/`quickStart` strings.
 
 ## Known dead after the 2026-07-27 progress-page trim
 
-The per-topic card grid on `/RASCHmodel/progress` (topic %, delta, "N/M solved correctly", "next ≈ X%", "Review →") was removed at the user's request. It was the only consumer of **`lib/RASCHforecast.ts::forecastByTopic`**, which is now dead (zero call sites; `forecastOverall` is still live). Kept rather than deleted — it works and per-topic forecasting is plausibly wanted again — but don't treat it as reachable code. `DeltaBadge`, the page's `solved_counts` rollup and the `solvedLabel`/`noneSolved`/`nextShort`/`review` strings went with the grid. ⚠️ `setSolvedUser` stayed: the per-skill review panels read the same localStorage archive and it must be scoped to the account.
+The per-topic card grid on `/raschmodel/progress` (topic %, delta, "N/M solved correctly", "next ≈ X%", "Review →") was removed at the user's request. It was the only consumer of **`lib/RASCHforecast.ts::forecastByTopic`**, which is now dead (zero call sites; `forecastOverall` is still live). Kept rather than deleted — it works and per-topic forecasting is plausibly wanted again — but don't treat it as reachable code. `DeltaBadge`, the page's `solved_counts` rollup and the `solvedLabel`/`noneSolved`/`nextShort`/`review` strings went with the grid. ⚠️ `setSolvedUser` stayed: the per-skill review panels read the same localStorage archive and it must be scoped to the account.
 
-## The Rasch hub's syllabus browser (`/RASCHmodel`)
+## The Rasch hub's syllabus browser (`/raschmodel`)
 
-`RASCHmodel/components/MathematicsCard.tsx` renders the **whole Algebra/Geometriya taxonomy — all three levels** (section → chapter → subtopic) from **`data/syllabus.json` via [lib/Mathstructure.ts](../lib/Mathstructure.ts)**. Bundled at build time, so the entire tree costs **zero Firestore reads** (it deliberately shows no question counts — those were 87 COUNT aggregations per cold cache for a number nobody acted on).
+`raschmodel/components/MathematicsCard.tsx` renders the **whole Algebra/Geometriya taxonomy — all three levels** (section → chapter → subtopic) from **`data/syllabus.json` via [lib/Mathstructure.ts](../lib/Mathstructure.ts)**. Bundled at build time, so the entire tree costs **zero Firestore reads** (it deliberately shows no question counts — those were 87 COUNT aggregations per cold cache for a number nobody acted on).
 
 - ⚠️ **Two files hold the same taxonomy. The student side must use `syllabus.json`.** `data/question_topics.json` is the *slug*-keyed copy for `/teacher/create/question`; `syllabus.json` is *numeric*-keyed and its ids (`topicId` unpadded, `chapterId`/`subtopicId` zero-padded to 2 — `padId`) are the ones `questions1` is actually keyed by. Rendering the slug version on a student page would produce ids that match nothing.
 - **Search** is apostrophe- and punctuation-insensitive (`norm()`): the syllabus mixes `o'`, `o’`, `oʻ` and `oʼ`, so `korsatkichli`, `ko'rsatkichli` and `koʻrsatkichli` must all hit. It matches chapter **and** subtopic names; a chapter whose own name matched keeps its full lesson list, a chapter matched only through its lessons shows just those. A live query force-opens every surviving section and chapter (collapsing mid-search would hide the results). Highlighting falls back to plain text when the hit exists only in normalized form — normalized offsets are not mapped back onto the original string.
 - **A chapter row expands; it no longer navigates.** Practice moved to an explicit trailing button on the row (unchanged href).
-- ⚠️ **That practice href's params are dead.** `MathematicsCard` links to `/RASCHmodel/practice?topicId=&chapterId=&lang=`, but `practice/page.tsx` never calls `useSearchParams` — it builds its set from `weakestSpots(diagnosticsFor(levels,'exam'))` regardless, and `buildPractice` (lib/Examquestions.ts) only filters to **chapter** granularity anyway (no subtopic support in `sample()`). So chapter- and subtopic-targeted drilling does not exist yet; the link lands on the generic weakest-spots intro. Subtopic rows are therefore rendered as a read-only lesson list, not as drill targets — don't make them clickable before the practice page honours the params.
+- ⚠️ **That practice href's params are dead.** `MathematicsCard` links to `/raschmodel/practice?topicId=&chapterId=&lang=`, but `practice/page.tsx` never calls `useSearchParams` — it builds its set from `weakestSpots(diagnosticsFor(levels,'exam'))` regardless, and `buildPractice` (lib/Examquestions.ts) only filters to **chapter** granularity anyway (no subtopic support in `sample()`). So chapter- and subtopic-targeted drilling does not exist yet; the link lands on the generic weakest-spots intro. Subtopic rows are therefore rendered as a read-only lesson list, not as drill targets — don't make them clickable before the practice page honours the params.
 
 ## Caching convention
 

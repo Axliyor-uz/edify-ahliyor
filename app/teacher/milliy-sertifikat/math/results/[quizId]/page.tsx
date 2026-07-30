@@ -11,10 +11,10 @@ import { hydrateQuiz } from "@/lib/RASCHquiz";
 import { EXAM_BLUEPRINT } from "@/lib/Examblueprint";
 import {
   BALL_MAX, BALL_MIN, MIN_RESPONSES, PAPER_TOTAL,
-  cohortStats, paperMarks, paperSlots, paperTotal, scoreFor,
+  cohortStats, normalizedScore, paperMarks, paperSlots, paperTotal, scoreFor,
 } from "@/lib/RASCHmarks";
 import { RASCH_TOPICS, type TopicKey } from "@/lib/RASCHtopics";
-import { MASTER_LEVEL, formatLevel, levelBand, thetaToLevel } from "@/lib/RASCHscale";
+import { MASTER_LEVEL, formatLevel, levelBand, shrinkLevel, thetaToLevel } from "@/lib/RASCHscale";
 import { BAND_LABEL, BAND_VARS } from "@/lib/RASCHband";
 import {
   Banner, Card, EmptyState, IconButton, PageHeader, Skeleton, StatTile, cn,
@@ -77,9 +77,10 @@ const TR: Record<string, Record<string, string>> = {
     expand: "Bo'limlar bo'yicha",
     min: "daq",
     marksTitle: "Savollar bahosi — sinf natijasiga qarab",
-    marksHint: `Har bir savolning bali butun variant bo'yicha, qiyinligiga mutanosib ravishda beriladi: eng kam yechilgan savol eng qimmat, eng ko'p yechilgani eng arzon bo'ladi. Ball ${BALL_MIN.toFixed(1).replace(".", ",")} dan ${BALL_MAX.toFixed(1).replace(".", ",")} gacha, variantning jami bali esa har doim ${PAPER_TOTAL}.`,
+    marksHint: `Har bir savolning bali uni necha foiz o'quvchi yechganidan kelib chiqadi: hammasi yechgan savol ${BALL_MIN.toFixed(2).replace(".", ",")}, hech kim yecholmagani ${BALL_MAX.toFixed(2).replace(".", ",")} ball. Oraliq qiymatlar uzluksiz. Agar variantning jami bali ${PAPER_TOTAL} dan oshsa, barcha ballar bir xil nisbatda kamaytiriladi — savollarning o'zaro nisbati saqlanadi.`,
+    dynamicScoreHint: "To'g'ri yechilgan savollar ballarining yig'indisi — pastdagi savollar jadvali bilan bir xil. Yonidagi foiz — variantning umumiy balidan ulush; qiyin savollarni yechgan ko'proq oladi.",
     marksSectionTotal: "Bo'limning hozirgi jami bali",
-    marksProvisional: `${MIN_RESPONSES} tadan kam javob — hozircha boshlang'ich ball`,
+    marksProvisional: `${MIN_RESPONSES} tadan kam javob — ball hozircha beqaror, yangi natija kelganda o'zgaradi`,
     qNo: "№",
     qType: "Turi",
     solvedBy: "Yechganlar",
@@ -121,9 +122,10 @@ const TR: Record<string, Record<string, string>> = {
     expand: "По разделам",
     min: "мин",
     marksTitle: "Цена вопросов — по результатам класса",
-    marksHint: `Балл каждого вопроса назначается по всему варианту, пропорционально его трудности: наименее решённый стоит дороже всех, наиболее решённый — дешевле всех. Балл — от ${BALL_MIN.toFixed(1).replace(".", ",")} до ${BALL_MAX.toFixed(1).replace(".", ",")}, а сумма по варианту всегда равна ${PAPER_TOTAL}.`,
+    marksHint: `Балл вопроса определяется долей решивших его учеников: вопрос, решённый всеми, стоит ${BALL_MIN.toFixed(2).replace(".", ",")}, а не решённый никем — ${BALL_MAX.toFixed(2).replace(".", ",")}. Промежуточные значения непрерывны. Если сумма по варианту превышает ${PAPER_TOTAL}, все баллы уменьшаются в одинаковой пропорции — соотношение вопросов сохраняется.`,
+    dynamicScoreHint: "Сумма баллов верно решённых вопросов — те же числа, что в таблице вопросов ниже. Процент рядом — доля от общего балла варианта; решивший трудные вопросы получает больше.",
     marksSectionTotal: "Текущая сумма баллов раздела",
-    marksProvisional: `Меньше ${MIN_RESPONSES} ответов — пока начальная цена`,
+    marksProvisional: `Меньше ${MIN_RESPONSES} ответов — балл ещё неустойчив и сдвинется с новыми результатами`,
     qNo: "№",
     qType: "Тип",
     solvedBy: "Решили",
@@ -165,9 +167,10 @@ const TR: Record<string, Record<string, string>> = {
     expand: "By section",
     min: "min",
     marksTitle: "What each question is worth — from how the class answered",
-    marksHint: `Every question is priced across the WHOLE paper, in proportion to how hard it proved: the least-solved is the dearest, the most-solved the cheapest. A ball runs from ${BALL_MIN.toFixed(1)} to ${BALL_MAX.toFixed(1)} and the paper always adds up to ${PAPER_TOTAL}.`,
+    marksHint: `A question's ball comes from the share of the class that solved it: one everybody solved is worth ${BALL_MIN.toFixed(2)}, one nobody solved ${BALL_MAX.toFixed(2)}, and everything between is continuous. If the paper would add up to more than ${PAPER_TOTAL}, every ball is scaled down by the same factor — the questions keep their order and their ratios.`,
+    dynamicScoreHint: "The balls of the questions they got right, added up — the same numbers as the question grid below. The percentage beside it is their share of the paper's total; solving the hard ones earns more.",
     marksSectionTotal: "What this section currently adds up to",
-    marksProvisional: `Fewer than ${MIN_RESPONSES} answers — still the starting price`,
+    marksProvisional: `Fewer than ${MIN_RESPONSES} answers — the ball is live but still moving`,
     qNo: "#",
     qType: "Type",
     solvedBy: "Solved by",
@@ -341,11 +344,24 @@ export default function RaschQuizResultsPage({
     const own = marks.filter((m) => m.sectionId === section.id);
     return own.length === 0 ? [] : [{ section, marks: own, total: own[0].sectionTotal }];
   });
-  const dynamicScores = rows.map((r) => scoreFor(marks, r.items));
-  const scored = dynamicScores.filter((v): v is number => v !== null);
-  const avgDynamic = scored.length
-    ? Math.round((scored.reduce((a, b) => a + b, 0) / scored.length) * 10) / 10
+  // TWO numbers, and they answer different questions. `earnedBalls` is the raw
+  // sum of what a student took — the evidence, shown beside the per-question
+  // grid. `dynamicScores` is that renormalised to 100, which is the only one
+  // comparable between papers, so it is the one every headline uses.
+  const earnedBalls = rows.map((r) => scoreFor(marks, r.items));
+  const dynamicScores = rows.map((r) => normalizedScore(marks, r.items));
+  const scored = earnedBalls.filter((v): v is number => v !== null);
+  const avgEarned = scored.length
+    ? Math.round((scored.reduce((a, b) => a + b, 0) / scored.length) * 100) / 100
     : null;
+  const avgDynamic = avgEarned !== null && outOf > 0
+    ? Math.round((avgEarned / outOf) * PAPER_TOTAL * 10) / 10
+    : null;
+
+  // The cohort's mean level per dimension — the "what would we guess before
+  // looking at this student" that a thin dimension is shrunk toward when the
+  // strongest/weakest callouts are ranked (lib/RASCHscale.ts).
+  const classLevelOf = new Map(classDims.map((d) => [d.key, d.level]));
 
   const avgPercent = rows.length
     ? Math.round(rows.reduce((sum, r) => sum + r.percent, 0) / rows.length)
@@ -359,7 +375,7 @@ export default function RaschQuizResultsPage({
     <div className="min-h-[100dvh] bg-surface pb-24">
       <div className="mx-auto flex max-w-4xl flex-col gap-5 px-4 py-6">
         <div className="flex items-center gap-2">
-          <IconButton aria-label={t.back} size="sm" onClick={() => router.push("/teacher/create/rasch")}>
+          <IconButton aria-label={t.back} size="sm" onClick={() => router.push("/teacher/milliy-sertifikat/math")}>
             <ArrowLeft />
           </IconButton>
           <PageHeader className="flex-1" title={quiz?.title || t.title} subtitle={t.title} />
@@ -396,8 +412,14 @@ export default function RaschQuizResultsPage({
               <StatTile
                 icon={<BarChart3 />}
                 label={avgDynamic === null ? t.averageScore : t.avgDynamic}
-                value={avgDynamic === null ? `${avgPercent}%` : String(avgDynamic)}
-                suffix={avgDynamic === null ? undefined : `/ ${outOf}`}
+                /* The BALLS, out of what the paper is worth — the same units as
+                   every question card. The %-of-paper rides in the suffix. */
+                value={avgEarned === null ? `${avgPercent}%` : avgEarned.toFixed(2)}
+                suffix={avgEarned === null
+                  ? undefined
+                  : Math.abs(outOf - PAPER_TOTAL) > 0.01
+                    ? `/ ${outOf.toFixed(2)} · ${avgDynamic}%`
+                    : `/ ${outOf.toFixed(2)}`}
               />
             </div>
 
@@ -431,7 +453,7 @@ export default function RaschQuizResultsPage({
                             force — a consequence of pricing the whole paper,
                             not a budget handed to it in advance. */}
                         <p className="shrink-0 text-[11.5px] font-black text-primary" title={t.marksSectionTotal}>
-                          {total.toFixed(1)}
+                          {total.toFixed(2)}
                         </p>
                       </div>
 
@@ -444,20 +466,28 @@ export default function RaschQuizResultsPage({
                               title={m.provisional ? t.marksProvisional : `${m.correct}/${m.seen}`}
                               className={cn(
                                 "rounded-m3-sm border px-2 py-1.5",
-                                m.provisional
+                                // Colour is the SOLVE RATE, shown as soon as
+                                // there is one — the ball is live from the first
+                                // answer. A dashed edge is what says "thin", so
+                                // an early cohort still reads as a heat map
+                                // instead of a wall of grey.
+                                pct === null
                                   ? "border-outline-variant bg-surface-container"
-                                  : pct !== null && pct < 34
+                                  : pct < 34
                                     ? "border-error bg-error-container"
-                                    : pct !== null && pct < 67
+                                    : pct < 67
                                       ? "border-outline bg-surface-container-high"
                                       : "border-success bg-success-container",
+                                m.provisional && "border-dashed",
                               )}
                             >
                               <span className="text-[10px] font-black uppercase tracking-wider opacity-70">
                                 {t.qNo}{m.number}
                               </span>
                               <p className="flex items-baseline gap-1 text-[15px] font-black leading-none">
-                                {m.ball.toFixed(1)}
+                                {/* TWO decimals: the whole point of the curve is
+                                    that 1.35 and 1.49 are different marks. */}
+                                {m.ball.toFixed(2)}
                                 {/* What this position prints in the protocol —
                                     without it a teacher cannot tell a moved
                                     mark from the official table. */}
@@ -499,9 +529,18 @@ export default function RaschQuizResultsPage({
               {rows.map((r, ri) => {
                 const dims = dimsFor(r);
                 const dynamic = dynamicScores[ri];
+                const earned = earnedBalls[ri];
                 const rated = dims.filter((d) => d.level !== null);
-                const weakest = rated.length ? rated.reduce((a, b) => (b.level! < a.level! ? b : a)) : null;
-                const strongest = rated.length ? rated.reduce((a, b) => (b.level! > a.level! ? b : a)) : null;
+
+                // ⚠️ Ranked on the CONFIDENCE-SHRUNK level, displayed on the
+                // measured one. A dimension the paper asked once about lands
+                // near the class mean however that single answer went, so "2/2
+                // correct" can no longer beat "11/14" for strongest — while the
+                // number on screen stays the one the model actually estimated.
+                const rank = (d: DimRow) =>
+                  shrinkLevel(d.level!, d.total, classLevelOf.get(d.key) ?? d.level!);
+                const weakest = rated.length ? rated.reduce((a, b) => (rank(b) < rank(a) ? b : a)) : null;
+                const strongest = rated.length ? rated.reduce((a, b) => (rank(b) > rank(a) ? b : a)) : null;
                 const level = typeof r.theta === "number" ? thetaToLevel(r.theta) : null;
                 const vars = level === null ? null : BAND_VARS[levelBand(level)];
                 const isOpen = open === r.studentId;
@@ -518,13 +557,25 @@ export default function RaschQuizResultsPage({
                           {r.studentName || r.studentId.slice(0, 8)}
                         </p>
                         <p className="mt-0.5 text-[11px] font-medium text-on-surface-variant">
-                          {/* The dynamic mark leads; the raw count stays as the
-                              evidence behind it, never as the headline. */}
-                          {dynamic === null ? (
+                          {/* ⚠️ The BALLS THEY TOOK, in the same units as the
+                              per-question grid below — `Σ(ball of every question
+                              they got right)`. The share of the paper follows as
+                              a percentage; the raw count stays as the evidence,
+                              never as the headline.
+                              Showing the percentage alone here put two different
+                              numbers for one thing on one card (58.4/100 up top,
+                              65.56/112.20 in the grid) and read as a bug. */}
+                          {earned === null ? (
                             <span title={t.noItemsHint}>{t.noItems}</span>
                           ) : (
-                            <span className="font-black text-on-surface">
-                              {dynamic}/{outOf}
+                            <span className="font-black text-on-surface" title={t.dynamicScoreHint}>
+                              {earned.toFixed(2)}/{outOf.toFixed(2)}
+                              {/* Redundant once the cap binds and the total IS
+                                  100 — only worth printing on an easy paper
+                                  that came in under it. */}
+                              {Math.abs(outOf - PAPER_TOTAL) > 0.01 && (
+                                <span className="ml-1 font-bold text-on-surface-variant">· {dynamic}%</span>
+                              )}
                             </span>
                           )}{" "}
                           · {r.correct}/{r.total} · {Math.round(r.durationSec / 60)} {t.min} ·{" "}
@@ -567,6 +618,9 @@ export default function RaschQuizResultsPage({
                                   <p className="text-[9.5px] font-black uppercase tracking-wider text-on-error-container opacity-75">{t.weakest}</p>
                                   <p className="mt-0.5 text-[12.5px] font-bold text-on-error-container">
                                     {weakest.label} · {formatLevel(weakest.level!)}/{MASTER_LEVEL}
+                                    {/* The evidence, inline: a callout picked on
+                                        2 items reads differently to one on 14. */}
+                                    <span className="ml-1 font-medium opacity-75">({weakest.correct}/{weakest.total})</span>
                                   </p>
                                 </div>
                               )}
@@ -575,6 +629,7 @@ export default function RaschQuizResultsPage({
                                   <p className="text-[9.5px] font-black uppercase tracking-wider text-on-success-container opacity-75">{t.strongest}</p>
                                   <p className="mt-0.5 text-[12.5px] font-bold text-on-success-container">
                                     {strongest.label} · {formatLevel(strongest.level!)}/{MASTER_LEVEL}
+                                    <span className="ml-1 font-medium opacity-75">({strongest.correct}/{strongest.total})</span>
                                   </p>
                                 </div>
                               )}
@@ -590,8 +645,10 @@ export default function RaschQuizResultsPage({
                           <div className="mt-3 border-t border-outline-variant pt-3">
                             <div className="mb-1.5 flex items-baseline justify-between gap-3">
                               <p className="text-[11px] font-bold text-on-surface">{t.perQuestion}</p>
+                              {/* The RAW balls here — the evidence behind the
+                                  normalised score in the header above. */}
                               <p className="text-[11px] font-black text-primary">
-                                {dynamic}/{outOf} {t.earned}
+                                {earned?.toFixed(2)}/{outOf.toFixed(2)} {t.earned}
                               </p>
                             </div>
                             <div className="grid grid-cols-5 gap-1 sm:grid-cols-9">
@@ -600,7 +657,7 @@ export default function RaschQuizResultsPage({
                                 return (
                                   <div
                                     key={m.key}
-                                    title={`${t.qNo}${m.number} · ${m.ball.toFixed(1)}`}
+                                    title={`${t.qNo}${m.number} · ${m.ball.toFixed(2)}`}
                                     className={cn(
                                       "rounded-m3-xs px-1 py-1 text-center",
                                       got
@@ -610,7 +667,7 @@ export default function RaschQuizResultsPage({
                                   >
                                     <p className="text-[9px] font-bold opacity-70">{m.number}</p>
                                     <p className="text-[11px] font-black leading-none">
-                                      {got ? m.ball.toFixed(1) : "0"}
+                                      {got ? m.ball.toFixed(2) : "0"}
                                     </p>
                                   </div>
                                 );

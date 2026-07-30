@@ -543,6 +543,60 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // --- 12c. MILLIY SERTIFIKAT SUBJECT PAPERS (biology…) ---
+    //
+    // The non-maths Milliy sertifikat papers (docs/MILLIY_QUIZ.md). Structurally
+    // the same contract as 12b — a teacher owns the paper, a student owns their
+    // own sitting — and deliberately so: the student types one 6-digit code into
+    // one box, and `findPaperByCode` queries BOTH collections.
+    //
+    // ⚠️ Maths papers do NOT live here (they are `teacher_rasch_quizzes`); a
+    // maths sitting also moves `RASCH_levels`, which a subject sitting never does.
+    //
+    // ⚠️ SAME KNOWN TRAP as `teacher_rasch_quizzes` and `custom_tests`: the paper
+    // EMBEDS its questions and therefore their correct answers, and the student's
+    // lookup is a QUERY on `accessCode`, so the read rule cannot require the code
+    // to be matched. A signed-in student who enumerates this collection can read
+    // the key without ever entering a code. **The 6-digit code is a convenience
+    // for sharing, NOT a security boundary** — do not present it as one, and do
+    // not use these papers for anything that must be invigilated until the
+    // questions move behind an Admin-SDK route.
+    match /milliy_quizzes/{quizId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+
+    // One sitting: `milliy_quiz_results/{quizId}_{uid}`.
+    //
+    // The student writes their own row (a retake overwrites it — the id is
+    // deterministic); the teacher reads every row of their own papers. `read`
+    // covers `list` too, and both list queries filter on the field the rule proves
+    // ownership from (`teacherId ==` for the teacher, `studentId ==` for the
+    // student) — without that clause Firestore answers permission-denied rather
+    // than returning everyone's rows. Nobody may delete: a result the student
+    // produced is not the teacher's to erase, and the student cannot quietly
+    // withdraw one.
+    match /milliy_quiz_results/{resultId} {
+      allow read: if isAuth() && (
+        resource.data.studentId == request.auth.uid ||
+        resource.data.teacherId == request.auth.uid
+      );
+      allow create: if isAuth()
+                    && request.resource.data.studentId == request.auth.uid
+                    && request.resource.data.total is int
+                    && isPercent(request.resource.data.percent);
+      // A retake replaces the row, but it stays the SAME student's row and stays
+      // attached to the SAME paper — neither may be rewritten.
+      allow update: if isAuth()
+                    && resource.data.studentId == request.auth.uid
+                    && request.resource.data.studentId == resource.data.studentId
+                    && request.resource.data.quizId == resource.data.quizId
+                    && request.resource.data.teacherId == resource.data.teacherId
+                    && isPercent(request.resource.data.percent);
+      allow delete: if false;
+    }
+
     // --- 13. EXAMS ---
     match /bsb_chsb_tests/{testId} {
       allow read: if isAuth();

@@ -516,7 +516,7 @@ function BuilderInner() {
       clearDraft();
       setRestored(false);
       toast.success(publish ? t.published : t.saved);
-      if (publish) router.push("/teacher/create/rasch");
+      if (publish) router.push("/teacher/milliy-sertifikat/math");
     } catch (err) {
       console.error(err);
       const message = err instanceof Error && err.message.startsWith("QUIZ_TOO_LARGE")
@@ -549,7 +549,7 @@ function BuilderInner() {
     <div className="min-h-[100dvh] bg-surface pb-32">
       <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
         <div className="flex items-center gap-2">
-          <IconButton aria-label={t.back} size="sm" onClick={() => router.push("/teacher/create/rasch")}>
+          <IconButton aria-label={t.back} size="sm" onClick={() => router.push("/teacher/milliy-sertifikat/math")}>
             <ArrowLeft />
           </IconButton>
           <PageHeader
