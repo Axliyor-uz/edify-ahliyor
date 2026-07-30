@@ -90,6 +90,7 @@ label. Same rule the maths paper follows.
 | `app/teacher/milliy-sertifikat/_components/SubjectBankPicker.tsx` | The one pool: the teacher's own `teacher_questions`, narrowed to the subject **server-side**. |
 | `app/teacher/milliy-sertifikat/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
 | `app/(student)/milliy-sertifikat/page.tsx` | **The student's subject hub — and their only nav entry to the programme.** Cards only, zero reads. Maths → `/raschmodel`. |
+| `app/(student)/dashboard/_components/MilliyCard.tsx` | **The dashboard's door to the programme** (2026-07-30) — the hub plus a chip per subject. Zero reads. ⚠️ It exists because the nav entry is `hideOnMobile`, so on a phone the drawer was the only way in. See [STUDENT.md](STUDENT.md). |
 | `app/(student)/milliy-sertifikat/[subject]/page.tsx` | One subject for the student: code box, sitting, result, its sat papers. |
 | [scripts/addBiologyTopics.mjs](../scripts/addBiologyTopics.mjs) | How the biology taxonomy was appended to `data/question_topics.json`. |
 | [scripts/addChemistryTopics.mjs](../scripts/addChemistryTopics.mjs) | The same for chemistry — **the pattern for physics / English.** Idempotent; re-running replaces its own subject entry. |

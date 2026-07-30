@@ -54,7 +54,7 @@ const LANG_STORAGE_KEY = 'edify-teacher-lang';
 const LAYOUT_TRANSLATIONS = {
   uz: {
     brandSubtitle: "O'QITUVCHI PORTALI",
-    menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", notifications: "Bildirishnomalar", subscription: "Obuna", profile: "Profil", ielts: "IELTS Moduli", milliy: "Milliy sertifikat" },
+    menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", notifications: "Bildirishnomalar", subscription: "Obuna", profile: "Profil", ielts: "IELTS Moduli", milliy: "Milliy sertifikat", center: "Markazim" },
     menuShort: { library: "Kutubxonam", onlineLibrary: "Kitoblar", notifications: "Xabarlar", milliy: "Milliy" },
     bottom: { home: "Boshqaruv", create: "Yaratish", classes: "Sinflar", library: "Kutubxona", menu: "Menyu" },
     create: "Yangi Test", signOut: "Chiqish", settings: "Sozlamalar", more: "Yana",
@@ -64,7 +64,7 @@ const LAYOUT_TRANSLATIONS = {
   },
   en: {
     brandSubtitle: "INSTRUCTOR PORTAL",
-    menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", notifications: "Notifications", subscription: "Subscription", profile: "Profile", ielts: "IELTS Module", milliy: "Milliy sertifikat" },
+    menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", notifications: "Notifications", subscription: "Subscription", profile: "Profile", ielts: "IELTS Module", milliy: "Milliy sertifikat", center: "My Center" },
     menuShort: { library: "Library", onlineLibrary: "Books", notifications: "Alerts", milliy: "Milliy" },
     bottom: { home: "Home", create: "Create", classes: "Classes", library: "Library", menu: "Menu" },
     create: "New Test", signOut: "Sign Out", settings: "Settings", more: "More",
@@ -74,7 +74,7 @@ const LAYOUT_TRANSLATIONS = {
   },
   ru: {
     brandSubtitle: "ПОРТАЛ УЧИТЕЛЯ",
-    menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", notifications: "Уведомления", subscription: "Подписка", profile: "Профиль", ielts: "Модуль IELTS", milliy: "Milliy sertifikat" },
+    menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", notifications: "Уведомления", subscription: "Подписка", profile: "Профиль", ielts: "Модуль IELTS", milliy: "Milliy sertifikat", center: "Мой центр" },
     menuShort: { library: "Библиотека", onlineLibrary: "Книги", notifications: "Инбокс", milliy: "Milliy" },
     bottom: { home: "Обзор", create: "Создать", classes: "Классы", library: "Книги", menu: "Меню" },
     create: "Новый Тест", signOut: "Выйти", settings: "Настройки", more: "Ещё",
