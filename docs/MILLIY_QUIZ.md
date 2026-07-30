@@ -543,7 +543,7 @@ queries (teacher's and student's), the retake overwrite and that it cannot
 re-point at another paper/student/teacher, and delete being denied to everyone. It
 also asserts the answer-key leak **on purpose**, so the limitation stays visible —
 if that test starts failing, the read path moved behind a server route and this
-doc should say so. Expect **144 tests** total across the suite.
+doc should say so. Expect **167 tests** total across the suite.
 
 Then `npm run dev`, as a **teacher**:
 
