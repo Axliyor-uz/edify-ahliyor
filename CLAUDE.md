@@ -46,7 +46,7 @@ npm run test:rules  # Firestore rules tests (emulator) — run after ANY rules e
 npx firebase-tools deploy --only firestore:rules,firestore:indexes   # after ANY rules/indexes edit
 ```
 
-There is **no test suite for application code** — verify by running the dev server and exercising the flow (each doc ends with a concrete walkthrough). The ONE exception is `firestore.rules`: `npm run test:rules` runs `tests/rules/*.test.mjs` against the Firestore emulator (124 tests). **Run it after any rules edit** — it is the only automated check in the repo. ⚠️ Never run a bare `firebase deploy`: `firebase.json` has a `functions` block but no `functions/` dir exists — it fails at predeploy. Firebase project: `scanqr-64512`.
+There is **no test suite for application code** — verify by running the dev server and exercising the flow (each doc ends with a concrete walkthrough). The ONE exception is `firestore.rules`: `npm run test:rules` runs `tests/rules/*.test.mjs` against the Firestore emulator (**167 tests**, all passing as of 2026-07-30). **Run it after any rules edit** — it is the only automated check in the repo. ⚠️ The script shells out to a bare `firebase`, and `firebase-tools` is **not** a dependency of this repo — on a machine without a global install `npm run test:rules` dies with `firebase: command not found`. Equivalent one-liner that always works: `npx --yes firebase-tools emulators:exec --only firestore --project demo-edify-rules "node --test tests/rules/*.test.mjs"`. ⚠️ Never run a bare `firebase deploy`: `firebase.json` has a `functions` block but no `functions/` dir exists — it fails at predeploy. Firebase project: `scanqr-64512`.
 
 ## Stack
 
