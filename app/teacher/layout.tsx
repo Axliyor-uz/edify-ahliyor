@@ -24,8 +24,9 @@ import {
   LayoutDashboard, Users, FilePlus, FolderOpen, Library,
   Sparkles, Settings, LogOut, Menu, X, Bell,
   Zap, BookOpen, UserIcon, CreditCard, PanelLeft, MoreVertical,
-  MoreHorizontal, Sun, Moon, Monitor, Globe, BadgeCheck,
+  MoreHorizontal, Sun, Moon, Monitor, Globe, BadgeCheck, Building2,
 } from 'lucide-react';
+import { useTeacherCenter } from '@/hooks/useTeacherCenter';
 
 // ============================================================================
 // 1. CONTEXT & TYPES
@@ -168,6 +169,8 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const aiData = useMonthlyLimit();
   const { preference, setPreference, toggleEnabled } = useTeacherTheme();
+  // Module-cached lookup (one getDoc per session) — gates the "Markazim" nav entry.
+  const teacherCenter = useTeacherCenter();
 
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(SHELL === 'rail');
@@ -287,6 +290,11 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
     { name: t.menu.overview, href: '/teacher/dashboard', icon: LayoutDashboard },
     { name: t.create, href: '/teacher/create', icon: FilePlus, isAI: true },
     { name: t.menu.classes, href: '/teacher/classes', icon: Users, tourId: 'tour-sidebar-classes' },
+    // Center teachers only — a solo teacher never sees this entry, and
+    // /teacher/center itself renders a "not linked" state if reached directly.
+    ...(teacherCenter.centerId
+      ? [{ name: t.menu.center, href: '/teacher/center', icon: Building2 }]
+      : []),
     { name: t.menu.ielts, href: '/teacher/ielts', icon: Globe, isAI: true },
     // Milliy sertifikat — the subject hub. Maths routes into the existing Rasch
     // paper builder (same 45-question DTM paper); see docs/RASCH_QUIZ.md.

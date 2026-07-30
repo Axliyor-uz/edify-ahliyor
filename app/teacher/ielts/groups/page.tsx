@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/lib/AuthContext';
-import { Users, Plus, Target, Hash, ChevronLeft, BookOpen, Sparkles } from 'lucide-react';
+import { Users, Plus, Target, Hash, ChevronLeft, BookOpen, Sparkles, Building2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useTeacherLanguage } from '@/app/teacher/layout';
-import { IeltsGroup } from '@/types/ielts';
+import { IeltsGroup } from '@/lib/ielts/types';
 import CreateIeltsGroupModal from './_components/CreateIeltsGroupModal';
 import { Button, Skeleton, EmptyState } from '@/components/ui';
 
@@ -206,10 +206,16 @@ export default function IeltsGroupsPage() {
                         <Target size={10} strokeWidth={3} />
                         Band {Number(grp.targetBand).toFixed(1)}
                       </span>
-                      {/* Code */}
-                      <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-black text-on-surface-variant bg-surface-container-lowest border border-outline-variant px-1.5 py-0.5 rounded-m3-xs shrink-0">
-                        <Hash size={10} className="text-primary" />{grp.joinCode}
-                      </span>
+                      {/* Code — center-managed groups have no shareable code */}
+                      {(grp.managed || grp.centerId) ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-black text-on-secondary-container bg-secondary-container border border-transparent px-1.5 py-0.5 rounded-m3-xs shrink-0">
+                          <Building2 size={10} /> Markaz
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-black text-on-surface-variant bg-surface-container-lowest border border-outline-variant px-1.5 py-0.5 rounded-m3-xs shrink-0">
+                          <Hash size={10} className="text-primary" />{grp.joinCode}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="flex items-center gap-1 text-[12px] font-bold text-on-surface-variant">

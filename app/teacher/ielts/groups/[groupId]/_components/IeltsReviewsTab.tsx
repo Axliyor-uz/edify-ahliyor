@@ -3,10 +3,11 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { PenTool, Mic, ChevronDown, ClipboardCheck, Award } from 'lucide-react';
+import { PenTool, Mic, ChevronDown, ClipboardCheck, Award, Sparkles } from 'lucide-react';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { Button, Spinner, EmptyState } from '@/components/ui';
-import { gradeWSAttempt } from '@/services/ieltsService';
+import { analyzeWritingAttempt, gradeWSAttempt, type AiWritingEstimate } from '@/services/ieltsService';
+import type { IeltsWritingCriteria } from '@/lib/ielts/types';
 import { GroupAttempt, submittedMillis, timeAgo, toDateSafe } from './groupData';
 
 const T: Record<string, any> = {
@@ -27,6 +28,10 @@ const T: Record<string, any> = {
     updateGrade: "Bahoni yangilash",
     gradedOk: "Baho saqlandi!",
     fail: "Xatolik yuz berdi",
+    criteriaHint: "Mezonlar bo'yicha baholang — umumiy band avtomatik hisoblanadi",
+    aiDraft: "AI taklifi",
+    aiNote: "AI taxmini — tekshirib, o'zgartirib tasdiqlang.",
+    aiApplied: "AI taklifi qo'yildi — tekshirib saqlang",
   },
   en: {
     empty: "Nothing to review",
@@ -45,6 +50,10 @@ const T: Record<string, any> = {
     updateGrade: "Update grade",
     gradedOk: "Grade saved!",
     fail: "An error occurred",
+    criteriaHint: "Score each criterion — the overall band is computed automatically",
+    aiDraft: "AI draft",
+    aiNote: "AI estimate — review, adjust, then save.",
+    aiApplied: "AI draft applied — review and save",
   },
   ru: {
     empty: "Нет работ на проверку",
@@ -63,6 +72,10 @@ const T: Record<string, any> = {
     updateGrade: "Обновить оценку",
     gradedOk: "Оценка сохранена!",
     fail: "Произошла ошибка",
+    criteriaHint: "Оцените по критериям — общий band считается автоматически",
+    aiDraft: "Черновик AI",
+    aiNote: "Оценка ИИ — проверьте, поправьте и сохраните.",
+    aiApplied: "Черновик AI применён — проверьте и сохраните",
   },
 };
 
@@ -73,9 +86,11 @@ interface Props {
   attempts: GroupAttempt[];
   loaded: boolean;
   onGraded: (attemptId: string, band: number, comments: string) => void;
+  /** Cross-group queue page: groupId → title, shown next to the student name. */
+  groupTitles?: Record<string, string>;
 }
 
-export default function IeltsReviewsTab({ attempts, loaded, onGraded }: Props) {
+export default function IeltsReviewsTab({ attempts, loaded, onGraded, groupTitles }: Props) {
   const { lang } = useTeacherLanguage();
   const t = T[lang] || T['uz'];
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -113,6 +128,7 @@ export default function IeltsReviewsTab({ attempts, loaded, onGraded }: Props) {
           isExpanded={expandedId === a.id}
           onToggle={() => setExpandedId(expandedId === a.id ? null : a.id)}
           onGraded={onGraded}
+          groupTitle={groupTitles && a.groupId ? groupTitles[a.groupId] : undefined}
         />
       ))}
     </div>
@@ -120,7 +136,7 @@ export default function IeltsReviewsTab({ attempts, loaded, onGraded }: Props) {
 }
 
 function ReviewCard({
-  attempt, t, lang, isExpanded, onToggle, onGraded,
+  attempt, t, lang, isExpanded, onToggle, onGraded, groupTitle,
 }: {
   attempt: GroupAttempt;
   t: any;
@@ -128,18 +144,67 @@ function ReviewCard({
   isExpanded: boolean;
   onToggle: () => void;
   onGraded: (attemptId: string, band: number, comments: string) => void;
+  groupTitle?: string;
 }) {
   const isPending = attempt.reviewStatus === 'pending_review';
-  const Icon = attempt.skill === 'writing' ? PenTool : Mic;
+  const isWriting = attempt.skill === 'writing';
+  const Icon = isWriting ? PenTool : Mic;
   const [band, setBand] = useState<string>(attempt.teacherGrade?.band != null ? String(attempt.teacherGrade.band) : '6.5');
   const [comments, setComments] = useState(attempt.teacherGrade?.comments || '');
+  const savedCriteria = (attempt.teacherGrade as { criteria?: IeltsWritingCriteria } | undefined)?.criteria;
+  // Writing rubric sub-scores; '' = not scored (band stays manual).
+  const [criteria, setCriteria] = useState<Record<keyof IeltsWritingCriteria, string>>({
+    ta: savedCriteria ? String(savedCriteria.ta) : '',
+    cc: savedCriteria ? String(savedCriteria.cc) : '',
+    lr: savedCriteria ? String(savedCriteria.lr) : '',
+    gra: savedCriteria ? String(savedCriteria.gra) : '',
+  });
   const [isSaving, setIsSaving] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [ai, setAi] = useState<AiWritingEstimate | null>((attempt as { aiEstimate?: AiWritingEstimate }).aiEstimate || null);
+
+  const criteriaComplete = (['ta', 'cc', 'lr', 'gra'] as const).every((k) => criteria[k] !== '');
+
+  const setCriterion = (key: keyof IeltsWritingCriteria, value: string) => {
+    const next = { ...criteria, [key]: value };
+    setCriteria(next);
+    // Auto-average once all four are scored (.25/.75 rounds up via doubled Math.round).
+    if ((['ta', 'cc', 'lr', 'gra'] as const).every((k) => next[k] !== '')) {
+      const mean = (Number(next.ta) + Number(next.cc) + Number(next.lr) + Number(next.gra)) / 4;
+      setBand(String(Math.round(mean * 2) / 2));
+    }
+  };
+
+  const handleAiDraft = async () => {
+    setAiLoading(true);
+    try {
+      const { aiEstimate } = await analyzeWritingAttempt(attempt.id);
+      setAi(aiEstimate);
+      setCriteria({
+        ta: String(aiEstimate.criteria.ta), cc: String(aiEstimate.criteria.cc),
+        lr: String(aiEstimate.criteria.lr), gra: String(aiEstimate.criteria.gra),
+      });
+      setBand(String(aiEstimate.band));
+      if (!comments.trim()) {
+        setComments(aiEstimate.feedback?.[lang as 'uz' | 'ru' | 'en'] || aiEstimate.feedback?.en || '');
+      }
+      toast.success(t.aiApplied);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || t.fail);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const b = Number(band);
-      await gradeWSAttempt(attempt.id, b, comments.trim());
+      const crit = isWriting && criteriaComplete
+        ? { ta: Number(criteria.ta), cc: Number(criteria.cc), lr: Number(criteria.lr), gra: Number(criteria.gra) }
+        : undefined;
+      await gradeWSAttempt(attempt.id, b, comments.trim(), crit);
       toast.success(t.gradedOk);
       onGraded(attempt.id, b, comments.trim());
     } catch (e) {
@@ -173,6 +238,7 @@ function ReviewCard({
           </p>
           <p className="text-[11px] font-bold text-on-surface-variant mt-0.5">
             {timeAgo(toDateSafe(attempt.submittedAt), lang)}
+            {groupTitle ? <span> · {groupTitle}</span> : null}
           </p>
         </div>
         {isPending ? (
@@ -247,6 +313,42 @@ function ReviewCard({
 
               {/* Grading form */}
               <div className="flex flex-col gap-3 pt-1">
+                {isWriting && (
+                  <>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="text-[11px] font-bold text-on-surface-variant">{t.criteriaHint}</p>
+                      <Button
+                        variant="tonal"
+                        size="sm"
+                        onClick={handleAiDraft}
+                        loading={aiLoading}
+                        icon={<Sparkles size={14} strokeWidth={2.5} />}
+                      >
+                        {t.aiDraft}{ai ? ` · ~${Number(ai.band).toFixed(1)}` : ''}
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {(['ta', 'cc', 'lr', 'gra'] as const).map((key) => (
+                        <div key={key} className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-wider text-center">
+                            {key.toUpperCase()}
+                          </span>
+                          <select
+                            value={criteria[key]}
+                            onChange={(e) => setCriterion(key, e.target.value)}
+                            className="px-1.5 py-2 bg-surface-container-lowest border border-outline-variant rounded-m3-md text-[13px] font-black text-on-surface text-center outline-none focus:border-primary cursor-pointer appearance-none transition-colors"
+                          >
+                            <option value="">—</option>
+                            {BAND_OPTIONS.map((b) => (
+                              <option key={b} value={String(b)}>{b.toFixed(1)}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                    {ai && <p className="text-[11px] font-bold text-on-surface-variant">{t.aiNote}</p>}
+                  </>
+                )}
                 <div className="flex items-end gap-3">
                   <div className="flex flex-col gap-1.5 shrink-0">
                     <span className="text-[11px] font-black text-on-surface-variant uppercase tracking-wider">{t.bandLabel}</span>

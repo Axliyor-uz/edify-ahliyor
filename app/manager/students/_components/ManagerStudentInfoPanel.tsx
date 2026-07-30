@@ -475,6 +475,10 @@ export default function ManagerStudentInfoPanel({
     try {
       for (const c of classes) {
         await updateDoc(doc(db, "classes", c.id), { studentIds: arrayRemove(studentUid) });
+        // Center IELTS group — keep the ielts_groups roster mirror in sync.
+        if (c.ieltsGroupId) {
+          await updateDoc(doc(db, "ielts_groups", c.ieltsGroupId), { studentIds: arrayRemove(studentUid) }).catch(() => {});
+        }
       }
       await deleteDoc(doc(db, "center_students", `${centerId}_${studentUid}`)).catch(() => {});
       toast.success(t.removedFromCenter);

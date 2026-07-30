@@ -46,7 +46,12 @@ export default function ClassesPage() {
     if (!user) return;
     const q = query(collection(db, 'classes'), where('teacherId', '==', user.uid), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setClasses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      // Center IELTS groups (classes carrying ieltsGroupId) live in
+      // /teacher/ielts/groups — their IELTS group page has its own tabs
+      // (incl. attendance), so the twin class is hidden here.
+      setClasses(snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as any))
+        .filter(cls => !cls.ieltsGroupId));
       setIsLoadingData(false);
     });
     return () => unsubscribe();

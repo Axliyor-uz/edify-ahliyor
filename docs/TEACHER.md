@@ -132,6 +132,50 @@ A class with `centerId != ''` is a **center group** — its roster, identity and
 - **Materials** (`UploadMaterialModal`): Storage path `classes/{classId}/materials/{ts}_{rand}{ext}` or external link (`isExternal`); doc has `isVisible`/`isArchived` toggles, `orderIndex: Date.now()`, `viewCount`/`downloadCount` (initialized, never incremented teacher-side). Delete removes Storage object + doc.
 - **Schedule**: `classes.schedule` is read by `AttendanceTab` but **no teacher UI writes it** — schedules are managed by the center manager ([MANAGER.md](MANAGER.md)/[ROOMS.md](ROOMS.md)).
 
+## 🏢 Center hub — `app/teacher/center/` (2026-07-29)
+
+The teacher-side counterpart of the student's `/center`. **Everything is read-only** except the
+attendance deep-links; the teacher has no write path to rosters, schedules or money
+([MANAGER.md](MANAGER.md) — center groups are manager-run and the rules' teacher branch requires
+`centerId == ''`). No new Firestore collections, no rules changes, no new indexes.
+
+- **Gating**: the "Markazim" nav entry (layout) and the dashboard center strip render only when
+  `useTeacherCenter().centerId` is non-empty. A solo teacher sees **zero** change anywhere, and
+  `/teacher/center` reached directly renders a friendly "not linked" empty state — never an error.
+  This also covers being removed from a center mid-session.
+- **Groups source**: `services/teacherCenterService.ts` → `classes where teacherId == uid`, filtered
+  client-side to `centerId === myCenterId` (membership is `classes.centerId`-anchored). Single-field
+  equality query, so **no composite index**. Module-cached 60s per (teacher, center); the dashboard
+  and every hub tab share the one fetch. `groupHref()` sends center IELTS twins to
+  `/teacher/ielts/groups/{ieltsGroupId}` — they are hidden from `/teacher/classes`.
+- **Tabs**: Umumiy (stat tiles + today's lessons) · Guruhlar (link-only cards — each group already
+  has a full page; do not duplicate roster/assignment UI here) · Jadval (merged Monday-first week,
+  7-column ≥md / one day per row below) · Davomat (per-month rate, per-group bars, recent sessions,
+  month nav) · Maosh ([FINANCE.md](FINANCE.md) §9.1).
+- **`components/center/TeacherTodayLessons.tsx`** — shared by the hub AND the dashboard (hence
+  `components/`, not `_components/`). Lessons come from `classes.schedule`; marking progress is LIVE
+  via ONE `center_attendance where centerId== and date==today` listener covering every group
+  (`centerId+date` index; `list: if isAuth()` — never a per-doc `get()`, see [ATTENDANCE.md](ATTENDANCE.md)).
+  Its "Davomat olish" button deep-links to `…?tab=attendance`.
+- **`?tab=` deep links**: `/teacher/classes/[classId]`, `/teacher/ielts/groups/[groupId]` and the hub
+  itself seed their initial tab from `window.location.search` in a lazy `useState` initializer —
+  **not `useSearchParams`**, which would force a Suspense boundary at build time. The IELTS group page
+  falls back to `dashboard` when the requested tab doesn't exist for that group (e.g.
+  `?tab=attendance` on a non-managed group), so it can never render blank.
+- **`lib/weekSchedule.ts`** holds the pure timetable helpers (flatten/group/next-lesson, Monday-first
+  order, Tashkent clock reads) shared with the student hub — rendering can't be shared across the
+  three UI kits, so the logic is. ⚠️ `todayDowTashkent()`/`nowHmTashkent()` read the clock: call them
+  in lazy `useState` initializers, never inside `useMemo` (the React Compiler bails on the component).
+- **Dashboard**: for center teachers the "Faol Sinflar"/"O'quvchilar" stat cards now show real
+  center-derived counts instead of `users.activeClassCount`/`totalStudents`, which are
+  Cloud-Function-generated with no `functions/` dir in the repo (often stale/absent). Solo teachers
+  still read those fields — unchanged. The old center *chip* in the greeting was replaced by the
+  center strip below it.
+- ⚠️ The teacher **cannot list `center_students`** (rules `list` allows manager or self only) — never
+  add a center-wide roster here; student info must come from `classes.studentIds`.
+- Mobile: the entry lives in the ☰ drawer (the bottom bar is at its M3 cap of 4 + Menu) plus the
+  dashboard strip.
+
 ## Analytics & print
 
 - `analytics/page.tsx`: modes assignment/student; aggregates `attempts`, anonymizes, POSTs to `/api/analyze` (see [AI.md](AI.md) — daily limit from Remote Config `ai_daily_limit`, spoofable). Chats persisted to `ai_sessions/{sess_${Date.now()}}` `{teacherId, title, createdAt ISO, messages[]}`; history paged 5 by `teacherId+createdAt desc`. ⚠️ Calls `/api/stt` which **does not exist**.

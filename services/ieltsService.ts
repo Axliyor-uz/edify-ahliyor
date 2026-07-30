@@ -1,16 +1,16 @@
 // IELTS data layer. Client SDK for teacher/admin authoring and reads; the graded student
 // submission path goes through /api/ielts/* (server holds the answer key).
 import {
-  addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs,
-  orderBy, query, runTransaction, serverTimestamp, setDoc,
+  addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getCountFromServer,
+  getDoc, getDocs, orderBy, query, runTransaction, serverTimestamp,
   updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { applyUserXp, mirrorLeaderboards, notifyLevelUp } from '@/lib/xp';
-import { extractAnswerKey, renumberTest, stripAnswers } from '@/lib/ielts/testSchema';
+import { extractAnswerKey, renumberTest, stripAnswers, typeBreakdown } from '@/lib/ielts/testSchema';
 import type {
   IeltsAssignment, IeltsListeningTest, IeltsReadingTest, IeltsSkill,
-  IeltsSpeakingTest, IeltsWritingTest,
+  IeltsSpeakingTest, IeltsWritingCriteria, IeltsWritingTest,
 } from '@/lib/ielts/types';
 
 const TEST_COLLECTIONS: Record<IeltsSkill, string> = {
@@ -32,6 +32,17 @@ async function idToken(): Promise<string> {
   return user.getIdToken();
 }
 
+/** Client-side mirror of the API's structured errors — branch on `code`, never on message text. */
+export class IeltsClientError extends Error {
+  code: string;
+  status: number;
+  constructor(message: string, code: string, status: number) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await idToken();
   const res = await fetch(path, {
@@ -39,7 +50,13 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...init?.headers },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    throw new IeltsClientError(
+      data.error || `Request failed (${res.status})`,
+      data.code || 'SERVER_ERROR',
+      res.status,
+    );
+  }
   return data as T;
 }
 
@@ -75,12 +92,24 @@ export async function saveIeltsTest(
     status: 'published',
   });
   batch.set(keyRef, { testId: testData.test_id, teacherId: owner, skill, keys });
+  // Lightweight library-card summary (never contains answers) — list pages read this
+  // instead of downloading every passage/part. Old tests get one on re-save.
+  batch.set(doc(db, 'ielts_test_meta', testData.test_id), {
+    testId: testData.test_id,
+    skill,
+    test_title: testData.test_title || '',
+    teacherId: owner,
+    source: opts?.asPlatform ? 'platform' : 'teacher',
+    ...(testData.test_category ? { test_category: testData.test_category } : {}),
+    total_questions: testData.total_questions || 0,
+    total_time_minutes: testData.total_time_minutes || 0,
+    typeBreakdown: typeBreakdown(testData),
+    createdAt: existing.exists() ? existing.data().createdAt : serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
   await batch.commit();
   return { success: true, testId: testData.test_id };
 }
-
-/** Legacy alias kept for the existing reading builder import. */
-export const saveIeltsReadingTest = (testData: IeltsReadingTest) => saveIeltsTest(testData);
 
 /** Load a test WITH its inline answers for editing (owner/admin only — key doc is teacher-read). */
 export async function loadTestForEdit(skill: IeltsSkill, testId: string) {
@@ -111,40 +140,52 @@ export async function deleteIeltsTest(skill: IeltsSkill, testId: string) {
   const batch = writeBatch(db);
   batch.delete(doc(db, TEST_COLLECTIONS[skill], testId));
   batch.delete(doc(db, 'ielts_answer_keys', testId));
+  batch.delete(doc(db, 'ielts_test_meta', testId));
   await batch.commit();
 }
 
 // ---------- writing / speaking authoring ----------
 
-export async function saveWritingTest(t: Partial<IeltsWritingTest> & { test_id: string }, opts?: { asPlatform?: boolean }) {
+async function saveWSTest(
+  skill: 'writing' | 'speaking',
+  t: (Partial<IeltsWritingTest> | Partial<IeltsSpeakingTest>) & { test_id: string },
+  opts?: { asPlatform?: boolean },
+) {
   const uid = requireUid();
-  const ref = doc(db, 'ielts_writing_tests', t.test_id);
+  const owner = opts?.asPlatform ? null : uid;
+  const source = opts?.asPlatform ? 'platform' : 'teacher';
+  const ref = doc(db, TEST_COLLECTIONS[skill], t.test_id);
   const existing = await getDoc(ref);
-  await setDoc(ref, {
+  const createdAt = existing.exists() ? existing.data().createdAt : serverTimestamp();
+  const batch = writeBatch(db);
+  batch.set(ref, {
     ...t,
-    module: 'writing',
-    teacherId: opts?.asPlatform ? null : uid,
-    source: opts?.asPlatform ? 'platform' : 'teacher',
-    createdAt: existing.exists() ? existing.data().createdAt : serverTimestamp(),
+    module: skill,
+    teacherId: owner,
+    source,
+    createdAt,
     updatedAt: serverTimestamp(),
     status: 'published',
   });
+  batch.set(doc(db, 'ielts_test_meta', t.test_id), {
+    testId: t.test_id,
+    skill,
+    test_title: (t as { test_title?: string }).test_title || '',
+    teacherId: owner,
+    source,
+    total_questions: (t as { total_questions?: number }).total_questions || 0,
+    total_time_minutes: (t as { total_time_minutes?: number }).total_time_minutes || 0,
+    createdAt,
+    updatedAt: serverTimestamp(),
+  });
+  await batch.commit();
 }
 
-export async function saveSpeakingTest(t: Partial<IeltsSpeakingTest> & { test_id: string }, opts?: { asPlatform?: boolean }) {
-  const uid = requireUid();
-  const ref = doc(db, 'ielts_speaking_tests', t.test_id);
-  const existing = await getDoc(ref);
-  await setDoc(ref, {
-    ...t,
-    module: 'speaking',
-    teacherId: opts?.asPlatform ? null : uid,
-    source: opts?.asPlatform ? 'platform' : 'teacher',
-    createdAt: existing.exists() ? existing.data().createdAt : serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    status: 'published',
-  });
-}
+export const saveWritingTest = (t: Partial<IeltsWritingTest> & { test_id: string }, opts?: { asPlatform?: boolean }) =>
+  saveWSTest('writing', t, opts);
+
+export const saveSpeakingTest = (t: Partial<IeltsSpeakingTest> & { test_id: string }, opts?: { asPlatform?: boolean }) =>
+  saveWSTest('speaking', t, opts);
 
 // ---------- libraries ----------
 
@@ -158,6 +199,53 @@ export async function fetchPlatformTests(skill: IeltsSkill) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ({ id: string } & Record<string, unknown>)[];
 }
 
+/** Library-card shape shared by the meta path and the full-doc fallback. */
+export interface PlatformTestSummary {
+  id: string;
+  test_title: string;
+  total_questions: number;
+  total_time_minutes: number;
+  typeBreakdown: Record<string, number>;
+}
+
+/**
+ * Platform library summaries — reads ielts_test_meta (tiny docs) instead of every full
+ * test. Legacy tests have no meta until re-saved, so a server-side count guards the
+ * switch: any mismatch falls back to the old full-doc fetch (correctness over speed).
+ */
+export async function fetchPlatformTestSummaries(skill: IeltsSkill): Promise<PlatformTestSummary[]> {
+  try {
+    const [metaSnap, countSnap] = await Promise.all([
+      getDocs(query(collection(db, 'ielts_test_meta'),
+        where('skill', '==', skill), where('source', '==', 'platform'))),
+      getCountFromServer(query(collection(db, TEST_COLLECTIONS[skill]), where('source', '==', 'platform'))),
+    ]);
+    if (metaSnap.size >= countSnap.data().count) {
+      return metaSnap.docs.map((d) => {
+        const m = d.data();
+        return {
+          id: String(m.testId || d.id),
+          test_title: String(m.test_title || ''),
+          total_questions: Number(m.total_questions) || 0,
+          total_time_minutes: Number(m.total_time_minutes) || 0,
+          typeBreakdown: (m.typeBreakdown as Record<string, number>) || {},
+        };
+      });
+    }
+  } catch { /* fall through to full fetch */ }
+  const { typeBreakdown: computeBreakdown } = await import('@/lib/ielts/testSchema');
+  const full = await fetchPlatformTests(skill);
+  return full.map((t) => ({
+    id: t.id,
+    test_title: String(t.test_title || t.id),
+    total_questions: Number(t.total_questions) || 0,
+    total_time_minutes: Number(t.total_time_minutes) || 0,
+    typeBreakdown: (skill === 'reading' || skill === 'listening')
+      ? computeBreakdown(t as never)
+      : {},
+  }));
+}
+
 /** Admin: copy a teacher's test into the platform dataset (test + key). */
 export async function promoteTestToPlatform(skill: 'reading' | 'listening' | 'writing' | 'speaking', testId: string) {
   const testSnap = await getDoc(doc(db, TEST_COLLECTIONS[skill], testId));
@@ -169,14 +257,14 @@ export async function promoteTestToPlatform(skill: 'reading' | 'listening' | 'wr
   if (keySnap.exists()) {
     batch.set(doc(db, 'ielts_answer_keys', testId), { ...keySnap.data(), teacherId: null });
   }
+  const metaSnap = await getDoc(doc(db, 'ielts_test_meta', testId));
+  if (metaSnap.exists()) {
+    batch.set(doc(db, 'ielts_test_meta', testId), { ...metaSnap.data(), teacherId: null, source: 'platform' });
+  }
   await batch.commit();
 }
 
 // ---------- groups: join / requests ----------
-
-export function generateJoinCode(): string {
-  return 'I-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-}
 
 /**
  * 6-char join code (2.2B combinations — collisions practically impossible, and
@@ -204,6 +292,22 @@ export async function approveJoinRequest(groupId: string, requestId: string, stu
 
 export async function removeStudentFromGroup(groupId: string, studentId: string) {
   await updateDoc(doc(db, 'ielts_groups', groupId), { studentIds: arrayRemove(studentId) });
+}
+
+/**
+ * Center-managed IELTS groups (docs/IELTS.md): the manager's roster write must hit
+ * BOTH docs of the linked pair atomically — classes/{classId}.studentIds (the
+ * source of truth for timetable/attendance/finance) and its ielts_groups mirror.
+ * Rules: the manager branch on ielts_groups allows exactly this limited-key update.
+ */
+export async function managedRosterBatch(
+  classId: string, ieltsGroupId: string, studentId: string, op: 'add' | 'remove',
+) {
+  const fv = op === 'add' ? arrayUnion(studentId) : arrayRemove(studentId);
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'classes', classId), { studentIds: fv });
+  batch.update(doc(db, 'ielts_groups', ieltsGroupId), { studentIds: fv });
+  await batch.commit();
 }
 
 // ---------- assignments ----------
@@ -316,10 +420,58 @@ export async function fetchGroupAttempts(groupId: string) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-/** Teacher grades a writing/speaking attempt. */
-export async function gradeWSAttempt(attemptId: string, band: number, comments: string) {
+/** Cross-group grading queue: pending W/S reviews across the teacher's groups.
+ *  Per-group queries keep the rules' groupId-equality check provable. */
+export async function fetchPendingReviews(groupIds: string[]) {
+  const all = await Promise.all(groupIds.map(async (gid) => {
+    const snap = await getDocs(query(
+      collection(db, 'ielts_attempts'),
+      where('groupId', '==', gid),
+      where('reviewStatus', '==', 'pending_review'),
+    ));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }));
+  return all.flat();
+}
+
+/** Teacher grades a writing/speaking attempt. Criteria sub-scores (writing rubric) are optional. */
+export async function gradeWSAttempt(
+  attemptId: string,
+  band: number,
+  comments: string,
+  criteria?: IeltsWritingCriteria,
+) {
   await updateDoc(doc(db, 'ielts_attempts', attemptId), {
     reviewStatus: 'graded',
-    teacherGrade: { band, comments, gradedAt: serverTimestamp() },
+    teacherGrade: {
+      band, comments, gradedAt: serverTimestamp(),
+      ...(criteria ? { criteria } : {}), // never write undefined to Firestore
+    },
   });
+}
+
+/** Practice self-check: per-question correctness for the answers given so far (platform tests only). */
+export async function checkPracticeAnswers(
+  testId: string,
+  skill: 'reading' | 'listening',
+  answers: Record<string, string | string[]>,
+) {
+  return api<{ perQuestion: Record<string, { correct: boolean; type: string }>; checked: number }>(
+    '/api/ielts/check', { method: 'POST', body: JSON.stringify({ testId, skill, answers }) },
+  );
+}
+
+export interface AiWritingEstimate {
+  band: number;
+  criteria: IeltsWritingCriteria;
+  feedback: { uz: string; ru: string; en: string };
+  model: string;
+  createdAt: unknown;
+}
+
+/** AI first-pass writing estimate (cached on the attempt server-side — safe to call repeatedly). */
+export async function analyzeWritingAttempt(attemptId: string) {
+  return api<{ aiEstimate: AiWritingEstimate; cached?: boolean }>(
+    '/api/ielts/analyze-writing', { method: 'POST', body: JSON.stringify({ attemptId }) },
+  );
 }

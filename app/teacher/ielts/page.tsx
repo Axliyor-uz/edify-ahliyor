@@ -1,9 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTeacherLanguage } from '../layout';
 import { motion } from 'framer-motion';
-import { Headphones, BookOpen, PenTool, Mic, ArrowRight, Sparkles, Users, Target } from 'lucide-react';
+import { Headphones, BookOpen, PenTool, Mic, ArrowRight, ClipboardCheck, Users, Target, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/lib/AuthContext';
+import { fetchPendingReviews } from '@/services/ieltsService';
 
 const PAGE_TRANSLATIONS: Record<string, any> = {
   uz: {
@@ -16,8 +21,9 @@ const PAGE_TRANSLATIONS: Record<string, any> = {
       speaking: { title: "Speaking", desc: "Part 1–3 savollari va cue card to'plamlari." },
     },
     action: "Boshqarish",
-    aiPowered: "AI yordamida",
-    groupTeaser: "Guruhlarni Boshqarish"
+    groupTeaser: "Guruhlarni Boshqarish",
+    reviewQueue: (n: number) => `${n} ta ish tekshirishni kutmoqda`,
+    reviewQueueDesc: "Writing va Speaking topshiriqlarini bir joydan baholang",
   },
   en: {
     title: "IELTS Module",
@@ -29,8 +35,9 @@ const PAGE_TRANSLATIONS: Record<string, any> = {
       speaking: { title: "Speaking", desc: "Part 1–3 questions and cue-card sets." },
     },
     action: "Manage",
-    aiPowered: "AI Powered",
-    groupTeaser: "Manage Groups"
+    groupTeaser: "Manage Groups",
+    reviewQueue: (n: number) => `${n} submission${n === 1 ? '' : 's'} waiting for review`,
+    reviewQueueDesc: "Grade Writing and Speaking work from every group in one place",
   },
   ru: {
     title: "Модуль IELTS",
@@ -42,21 +49,39 @@ const PAGE_TRANSLATIONS: Record<string, any> = {
       speaking: { title: "Говорение", desc: "Вопросы Part 1–3 и наборы cue card." },
     },
     action: "Управлять",
-    aiPowered: "На базе ИИ",
-    groupTeaser: "Управление Группами"
+    groupTeaser: "Управление Группами",
+    reviewQueue: (n: number) => `Работ на проверку: ${n}`,
+    reviewQueueDesc: "Оценивайте Writing и Speaking из всех групп в одном месте",
   }
 };
 
 const IELTS_CARDS = [
-  { id: 'listening', icon: Headphones, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent', isAI: false, href: '/teacher/ielts/listening' },
-  { id: 'reading', icon: BookOpen, color: 'text-on-secondary-container', bg: 'bg-secondary-container', border: 'border-transparent', isAI: false, href: '/teacher/ielts/reading' },
-  { id: 'writing', icon: PenTool, color: 'text-on-tertiary-container', bg: 'bg-tertiary-container', border: 'border-transparent', isAI: false, href: '/teacher/ielts/writing' },
-  { id: 'speaking', icon: Mic, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent', isAI: false, href: '/teacher/ielts/speaking' },
+  { id: 'listening', icon: Headphones, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent', href: '/teacher/ielts/listening' },
+  { id: 'reading', icon: BookOpen, color: 'text-on-secondary-container', bg: 'bg-secondary-container', border: 'border-transparent', href: '/teacher/ielts/reading' },
+  { id: 'writing', icon: PenTool, color: 'text-on-tertiary-container', bg: 'bg-tertiary-container', border: 'border-transparent', href: '/teacher/ielts/writing' },
+  { id: 'speaking', icon: Mic, color: 'text-on-primary-container', bg: 'bg-primary-container', border: 'border-transparent', href: '/teacher/ielts/speaking' },
 ];
 
 export default function IELTSDashboard() {
   const { lang } = useTeacherLanguage();
+  const { user } = useAuth();
   const t = PAGE_TRANSLATIONS[lang] || PAGE_TRANSLATIONS['uz'];
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Cross-group grading-queue badge (best-effort decoration; failures stay silent).
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'ielts_groups'), where('teacherId', '==', user.uid)));
+        if (snap.empty) return;
+        const pending = await fetchPendingReviews(snap.docs.map(d => d.id));
+        if (alive) setPendingCount(pending.length);
+      } catch { /* badge only */ }
+    })();
+    return () => { alive = false; };
+  }, [user]);
 
   return (
     <div className="min-h-[100dvh] bg-surface font-t-body pb-28">
@@ -93,6 +118,24 @@ export default function IELTSDashboard() {
 
       {/* ── Content ── */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+
+        {/* Cross-group grading queue */}
+        {pendingCount > 0 && (
+          <Link
+            href="/teacher/ielts/reviews"
+            className="group mb-5 flex items-center gap-3 bg-warning-container border border-transparent rounded-m3-lg p-4 shadow-elev-1 hover:shadow-elev-2 transition-all"
+          >
+            <div className="w-11 h-11 rounded-m3-md bg-surface flex items-center justify-center text-on-surface shrink-0">
+              <ClipboardCheck size={20} strokeWidth={2.5} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-black text-on-warning-container">{t.reviewQueue(pendingCount)}</p>
+              <p className="text-[12.5px] font-bold text-on-warning-container opacity-80">{t.reviewQueueDesc}</p>
+            </div>
+            <ChevronRight size={18} strokeWidth={2.5} className="text-on-warning-container shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {IELTS_CARDS.map((card, index) => {
             const moduleText = t.modules[card.id as keyof typeof t.modules];
@@ -112,12 +155,6 @@ export default function IELTSDashboard() {
                     <div className={`w-12 h-12 rounded-m3-md flex items-center justify-center border ${card.bg} ${card.border} ${card.color}`}>
                       <card.icon size={22} strokeWidth={2.5} />
                     </div>
-                    {card.isAI && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-tertiary-container border border-transparent rounded-m3-sm">
-                        <Sparkles size={11} className="text-on-tertiary-container" strokeWidth={2.5} />
-                        <span className="text-[10px] font-black text-on-tertiary-container uppercase tracking-widest">{t.aiPowered}</span>
-                      </div>
-                    )}
                   </div>
 
                   <div className="flex-1">

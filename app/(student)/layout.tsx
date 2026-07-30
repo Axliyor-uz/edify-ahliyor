@@ -16,8 +16,9 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import {
   LayoutDashboard, BookOpen, User as UserIcon,
   LogOut, GraduationCap, Flame, Trophy, ChevronDown, Check,
-  Settings, BookMarked, Gamepad2, Globe, BadgeCheck,
+  Settings, BookMarked, Gamepad2, Globe, Building2, BadgeCheck,
 } from 'lucide-react';
+import { fetchMyCenters } from '@/services/studentCenterService';
 
 // Components
 import NotificationBell from '@/components/NotificationBell';
@@ -54,7 +55,7 @@ export function useStudentLanguage() {
 // ============================================================================
 const LAYOUT_TRANSLATIONS: any = {
   uz: {
-    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", ielts: "IELTS", profile: "Profil", raschmodel: "Rasch", milliy: "Milliy sertifikat" },
+    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", ielts: "IELTS", profile: "Profil", raschmodel: "Rasch", milliy: "Milliy sertifikat", center: "Markazim" },
     topbar: { streak: "Seriya", profile: "Profil", settings: "Sozlamalar", logout: "Chiqish", language: "Til" },
     loading: "Yuklanmoqda...",
     logoutConfirm: { title: "Tizimdan chiqish", desc: "Haqiqatan ham hisobingizdan chiqmoqchimisiz?", cancel: "Bekor qilish", confirm: "Ha, chiqish" }
@@ -114,6 +115,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isCenterStudent, setIsCenterStudent] = useState(false);
 
   const topbarRef = useRef<HTMLDivElement>(null);
 
@@ -141,6 +143,19 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     }
     checkRole();
   }, [user, loading, router]);
+
+  // 🏢 Center membership — decides whether the "Markazim" nav entry exists.
+  // `center_students` own-links are readable by the student (rules `list` allows
+  // a `studentId ==` filter), and the service caches for 60s, so this is one
+  // cheap query per session shared with the dashboard banner and /center.
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    fetchMyCenters(user.uid)
+      .then((centers) => mounted && setIsCenterStudent(centers.length > 0))
+      .catch(() => {/* nav entry simply stays hidden */});
+    return () => { mounted = false; };
+  }, [user]);
 
   // Live Stats Listener
   useEffect(() => {
@@ -191,12 +206,18 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }
   if (!user) return null;
 
+  // 🏢 Center students get a "Markazim" destination (groups, timetable,
+  // attendance, payments). Students with no `center_students` link never see it,
+  // and /center itself renders an empty state if reached directly.
+  // M3 caps a bottom bar at 5 destinations, so on phones Markazim takes
+  // Leaderboard's slot — Reyting stays one tap away in the ☰ drawer.
   const menuItems: NavItem[] = [
     { href: '/dashboard', label: t.menu.dashboard, icon: LayoutDashboard },
     { href: '/classes', label: t.menu.classes, icon: BookOpen },
+    ...(isCenterStudent ? [{ href: '/center', label: t.menu.center, icon: Building2 }] : []),
     { href: '/library', label: t.menu.library, icon: BookMarked, hideOnMobile: true },
     { href: '/games', label: t.menu.games, icon: Gamepad2 },
-    { href: '/leaderboard', label: t.menu.leaderboard, icon: Trophy },
+    { href: '/leaderboard', label: t.menu.leaderboard, icon: Trophy, hideOnMobile: isCenterStudent },
     { href: '/ielts', label: t.menu.ielts, icon: Globe },
     // ⚠️ **Milliy sertifikat is the ONLY entry to the exam programme, including
     // maths.** `/raschmodel` used to sit here beside it, which read as two

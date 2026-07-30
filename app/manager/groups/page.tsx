@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Users, Copy, Lock, ChevronRight, CalendarX2 } from "lucide-react";
+import { Plus, Users, Copy, Lock, ChevronRight, CalendarX2, BookOpenCheck } from "lucide-react";
 import { Button } from "@/components/manager-ui";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
@@ -271,6 +271,11 @@ function GroupRow({ cls, t, onOpen }: { cls: ClassData; t: T; onOpen: () => void
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <h3 className="text-[14.5px] font-semibold text-on-surface truncate">{cls.title}</h3>
+          {cls.ieltsGroupId && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-m3-xs text-[10px] font-black bg-tertiary-container text-on-tertiary-container shrink-0">
+              IELTS
+            </span>
+          )}
           {cls.isLocked && <Lock size={13} className="text-error shrink-0" />}
         </div>
         <p className="text-[12.5px] text-on-surface-variant truncate mt-0.5">
@@ -295,9 +300,16 @@ function GroupCard({ cls, t, onOpen, onCopy }: { cls: ClassData; t: T; onOpen: (
       <div className="flex items-start gap-3">
         <Avatar title={cls.title} />
         <div className="min-w-0 flex-1">
-          <h3 className="text-[14.5px] font-semibold text-on-surface tracking-tight truncate group-hover:text-primary transition-colors">
-            {cls.title}
-          </h3>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="text-[14.5px] font-semibold text-on-surface tracking-tight truncate group-hover:text-primary transition-colors">
+              {cls.title}
+            </h3>
+            {cls.ieltsGroupId && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-m3-xs text-[10px] font-black bg-tertiary-container text-on-tertiary-container shrink-0">
+                IELTS
+              </span>
+            )}
+          </div>
           <p className="text-[12.5px] text-on-surface-variant truncate mt-0.5">{cls.teacherName || t.noTeacher}</p>
         </div>
 
@@ -320,14 +332,22 @@ function GroupCard({ cls, t, onOpen, onCopy }: { cls: ClassData; t: T; onOpen: (
           <span className="text-xs text-on-surface-variant">{t.studentSuffix}</span>
         </div>
 
-        <button
-          onClick={(e) => { e.stopPropagation(); onCopy(cls.joinCode); }}
-          title={t.copyJoinCode}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low hover:bg-state-hover border border-outline-variant rounded-full transition-colors group/code"
-        >
-          <span className="text-xs font-mono font-bold text-on-surface tracking-widest">{cls.joinCode}</span>
-          <Copy size={12} className="text-on-surface-variant group-hover/code:text-primary" />
-        </button>
+        {cls.ieltsGroupId ? (
+          // Managed IELTS group: enrollment is manager-only — the join code is
+          // meaningless, show the group type instead.
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-tertiary-container text-on-tertiary-container rounded-full text-xs font-bold">
+            <BookOpenCheck size={12} /> IELTS
+          </span>
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); onCopy(cls.joinCode); }}
+            title={t.copyJoinCode}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low hover:bg-state-hover border border-outline-variant rounded-full transition-colors group/code"
+          >
+            <span className="text-xs font-mono font-bold text-on-surface tracking-widest">{cls.joinCode}</span>
+            <Copy size={12} className="text-on-surface-variant group-hover/code:text-primary" />
+          </button>
+        )}
       </div>
     </div>
   );

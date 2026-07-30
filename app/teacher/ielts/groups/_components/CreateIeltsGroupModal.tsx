@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { generateJoinCode, generateUniqueJoinCode } from '@/services/ieltsService';
+import { generateUniqueJoinCode } from '@/services/ieltsService';
 import { X, Hash, CheckCircle, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/AuthContext';
@@ -64,9 +64,7 @@ export default function CreateIeltsGroupModal({ isOpen, onClose }: Props) {
     if (!isOpen) return;
     let alive = true;
     setJoinCode('');
-    generateUniqueJoinCode()
-      .then(code => { if (alive) setJoinCode(code); })
-      .catch(() => { if (alive) setJoinCode(generateJoinCode()); }); // offline fallback
+    generateUniqueJoinCode().then(code => { if (alive) setJoinCode(code); });
     return () => { alive = false; };
   }, [isOpen]);
 

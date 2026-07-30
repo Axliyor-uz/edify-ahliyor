@@ -2,7 +2,7 @@
 
 // Listening test library — mirrors the reading list page: "My Tests" (teacher-owned) and
 // "Platform" (read-only dataset) tabs, type-breakdown chips, edit/delete/preview.
-// Preview reuses the reading PreviewModal with the parts flattened into one synthetic passage.
+// Preview links to /teacher/ielts/listening/view/[id] (shared TestPreview).
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,10 +13,9 @@ import toast from 'react-hot-toast';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { fetchTeacherTests, fetchPlatformTests, deleteIeltsTest } from '@/services/ieltsService';
 import { typeBreakdown } from '@/lib/ielts/testSchema';
-import { breakdownChips } from '../_shared/typeLabels';
+import { breakdownChips } from '@/lib/ielts/typeLabels';
 
 import { Button, IconButton, Spinner, SearchBar, EmptyState } from '@/components/ui';
-import PreviewModal from '../reading/manual/_components/preview';
 
 const TRANSLATIONS = {
   uz: {
@@ -102,7 +101,6 @@ export default function ListeningDashboard() {
   const [activeTab, setActiveTab] = useState<'myTests' | 'platform'>('myTests');
   const [searchQuery, setSearchQuery] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [previewTest, setPreviewTest] = useState<any | null>(null);
 
   const [myTests, setMyTests] = useState<any[]>([]);
   const [platformTests, setPlatformTests] = useState<any[]>([]);
@@ -150,17 +148,6 @@ export default function ListeningDashboard() {
     }
     setOpenDropdownId(null);
   };
-
-  // Flatten all parts into one synthetic "passage" for the shared PreviewModal.
-  const previewPassage = previewTest ? {
-    passage_number: 1,
-    title: previewTest.title,
-    subtitle: '',
-    blocks: (previewTest.raw.parts || [])
-      .filter((p: any) => (p.transcript || '').trim())
-      .map((p: any) => ({ type: 'text', label: `P${p.part_number}`, content: p.transcript })),
-    questions: (previewTest.raw.parts || []).flatMap((p: any) => p.questions || []),
-  } : null;
 
   const filteredData = (activeTab === 'myTests' ? myTests : platformTests).filter((test) =>
     test.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -240,9 +227,9 @@ export default function ListeningDashboard() {
 
                 <div className="flex items-center gap-2 self-end md:self-auto relative shrink-0">
 
-                  <button onClick={() => setPreviewTest(test)} className="m3-interactive px-3 py-2 bg-secondary-container text-on-secondary-container text-[12px] font-bold rounded-m3-sm transition-colors flex items-center gap-1.5">
+                  <Link href={`/teacher/ielts/listening/view/${test.id}`} className="m3-interactive px-3 py-2 bg-secondary-container text-on-secondary-container text-[12px] font-bold rounded-m3-sm transition-colors flex items-center gap-1.5">
                     <Eye size={14} /> {t.preview}
-                  </button>
+                  </Link>
 
                   {activeTab === 'myTests' && (
                     <>
@@ -277,16 +264,6 @@ export default function ListeningDashboard() {
         )}
       </div>
 
-      <AnimatePresence>
-        {previewTest && previewPassage && (
-          <PreviewModal
-            isOpen={!!previewTest}
-            onClose={() => setPreviewTest(null)}
-            meta={{ title: previewTest.title }}
-            passage={previewPassage}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }

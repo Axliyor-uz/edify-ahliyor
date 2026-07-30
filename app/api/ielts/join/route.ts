@@ -15,12 +15,20 @@ export async function POST(request: Request) {
 
     const snap = await adminDb.collection('ielts_groups').where('joinCode', '==', clean).get();
     if (snap.empty) throw new IeltsApiError('Bunday kodli guruh topilmadi.', 404);
-    if (snap.size > 1) throw new IeltsApiError('Kod bo‘yicha bir nechta guruh topildi. O‘qituvchingizga murojaat qiling.', 409);
+    if (snap.size > 1) throw new IeltsApiError('Kod bo‘yicha bir nechta guruh topildi. O‘qituvchingizga murojaat qiling.', 409, 'DUPLICATE_CODE');
 
     const groupSnap = snap.docs[0];
     const group = groupSnap.data();
     if (Array.isArray(group.studentIds) && group.studentIds.includes(uid)) {
       return Response.json({ status: 'member', groupTitle: group.title });
+    }
+    // Center-managed groups: the roster is manager-owned — no self-join, even
+    // with a leaked code (the manager enrolls from the center roster instead).
+    if (group.managed || group.centerId) {
+      throw new IeltsApiError(
+        "Bu guruh o'quv markazi tomonidan boshqariladi — qo'shilish uchun markaz menejeriga murojaat qiling.",
+        403, 'CENTER_MANAGED',
+      );
     }
 
     const existing = await groupSnap.ref.collection('requests').where('studentId', '==', uid).limit(1).get();

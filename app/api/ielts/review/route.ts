@@ -28,9 +28,9 @@ export async function GET(request: Request) {
         .collection('assignments').doc(attempt.assignmentId).get();
       const vis = aSnap.exists ? (aSnap.data()!.resultsVisibility || 'always') : 'always';
       const dueMs = aSnap.exists ? (aSnap.data()!.dueAt?.toMillis?.() ?? null) : null;
-      if (vis === 'never') throw new IeltsApiError('Natijalar yopiq.', 403);
+      if (vis === 'never') throw new IeltsApiError('Natijalar yopiq.', 403, 'RESULTS_HIDDEN');
       if (vis === 'after_due' && (!dueMs || Date.now() < dueMs)) {
-        throw new IeltsApiError('Natijalar muddat tugagach ochiladi.', 403);
+        throw new IeltsApiError('Natijalar muddat tugagach ochiladi.', 403, 'RESULTS_AFTER_DUE');
       }
     }
 

@@ -337,6 +337,28 @@ Deploy: `firebase deploy --only firestore:rules,firestore:indexes`.
   UI: `PayrollTab` (config modal + approve modal + mark-paid), `ExpensesTab` (add modal,
   category totals, cancel), `percentBase` picker in `SettingsTab`.
 
+### 9.1 Teacher-visible salary (2026-07-29)
+
+`GET /api/teacher/payroll` — read-only, Admin SDK, guarded by `requireCenterTeacher`
+([lib/server/verifyCenterTeacher.ts](../lib/server/verifyCenterTeacher.ts)). Rendered by the **Maosh**
+tab of the teacher center hub (`app/teacher/center/_components/SalaryTab.tsx`).
+
+- **Why an API at all**: `center_payouts` is manager-only in the rules (`list: isCenterManager`,
+  `write: if false`) and listing it client-side would expose every colleague's salary. Same posture as
+  `/api/student/finance` — **the finance rules were NOT relaxed**, and never should be.
+- **The guard's boundary is the `center_teachers/{uid}` link doc**, not `users/{uid}.centerId` — the
+  user doc is client-writable, so its `centerId`/`role` are attacker-controlled hints. The link doc's
+  **id must equal the teacher uid** (rules-enforced), which is what makes `doc(uid)` trustworthy.
+  A teacher with no link gets `{ linked: false }`, **not** an error — being solo is the normal case.
+- **Returns**: `salary` config (from the link doc), `payouts[]` (own `teacherId ==` only, re-filtered
+  on `centerId` so a teacher who moved centers can't see the old center's payouts), `totalPaid`.
+- ⚠️ **Deliberately NOT returned: any un-approved amount.** `calculatePayroll` needs the whole
+  center's revenue, so running it here would leak other groups' money AND show a figure the manager
+  has not agreed to. The teacher sees only persisted (approved/paid) payouts; the current month reads
+  "not yet approved" until the manager approves it. Don't "helpfully" add a live estimate.
+- The `percent.baseAmount` inside a payout's breakdown IS shown — it is the revenue of that teacher's
+  own groups and they cannot verify a % salary without it.
+
 ## 10. Later phases (context for reviewers)
 
 - **Phase 2 polish (NOT built)**: printable receipt, balance-recalculate repair (no route re-derives
@@ -345,10 +367,12 @@ Deploy: `firebase deploy --only firestore:rules,firestore:indexes`.
 - **Phase 4 (NOT built)**: Payme/Click gateway (webhook → `financeOps.recordPayment` with
   `source: 'payme_gateway'` — the `PaymentSource` type already includes the gateway values but
   nothing produces them), SMS reminders (Eskiz.uz),
-  teacher-visible salary, un-pay/cancel flow for paid payouts (paid payouts are currently immutable).
+  un-pay/cancel flow for paid payouts (paid payouts are currently immutable).
   🟢 The **student-visible balance** part of Phase 4 shipped 2026-07-20 as `GET /api/student/finance`
   (read-only, Admin SDK, uid from the verified token; centers resolved via `center_students`) +
   `app/(student)/payments/page.tsx`. The rules on the finance collections were NOT relaxed.
+  🟢 **Teacher-visible salary** shipped 2026-07-29 as `GET /api/teacher/payroll` (read-only, Admin
+  SDK) + the Maosh tab of `app/teacher/center/` — see §9.1 below. Rules unchanged there too.
 
 ## 11. Legacy note
 

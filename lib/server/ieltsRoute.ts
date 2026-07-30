@@ -2,23 +2,33 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { extractAnswerKey } from '@/lib/ielts/testSchema';
 import type { IeltsAnswerKeyDoc } from '@/lib/ielts/types';
 
+// Stable machine-readable codes — clients branch on `code`, never on the (Uzbek) message text.
+export type IeltsApiErrorCode =
+  | 'AUTH_REQUIRED' | 'SESSION_EXPIRED' | 'BAD_REQUEST' | 'NOT_FOUND' | 'FORBIDDEN'
+  | 'NOT_MEMBER' | 'NOT_ASSIGNED' | 'NOT_OPEN' | 'PAST_DUE' | 'NO_ATTEMPTS_LEFT'
+  | 'RESULTS_HIDDEN' | 'RESULTS_AFTER_DUE' | 'DUPLICATE_CODE' | 'LIMIT_REACHED'
+  | 'CENTER_MANAGED' | 'SERVER_ERROR';
+
 export class IeltsApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  code: IeltsApiErrorCode;
+  constructor(message: string, status: number, code?: IeltsApiErrorCode) {
     super(message);
     this.status = status;
+    this.code = code
+      || (status === 400 ? 'BAD_REQUEST' : status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : 'SERVER_ERROR');
   }
 }
 
 /** Verify Authorization: Bearer <idToken>. Any signed-in user; per-route checks follow. */
 export async function requireUser(request: Request): Promise<{ uid: string }> {
   const match = (request.headers.get('authorization') || '').match(/^Bearer (.+)$/);
-  if (!match) throw new IeltsApiError('Avtorizatsiya talab qilinadi.', 401);
+  if (!match) throw new IeltsApiError('Avtorizatsiya talab qilinadi.', 401, 'AUTH_REQUIRED');
   try {
     const decoded = await adminAuth.verifyIdToken(match[1]);
     return { uid: decoded.uid };
   } catch {
-    throw new IeltsApiError('Sessiya muddati tugagan. Qaytadan kiring.', 401);
+    throw new IeltsApiError('Sessiya muddati tugagan. Qaytadan kiring.', 401, 'SESSION_EXPIRED');
   }
 }
 
@@ -51,8 +61,8 @@ export async function loadAnswerKey(
 
 export function jsonError(e: unknown): Response {
   if (e instanceof IeltsApiError) {
-    return Response.json({ error: e.message }, { status: e.status });
+    return Response.json({ error: e.message, code: e.code }, { status: e.status });
   }
   console.error('IELTS API error:', e);
-  return Response.json({ error: 'Server xatosi. Qayta urinib ko‘ring.' }, { status: 500 });
+  return Response.json({ error: 'Server xatosi. Qayta urinib ko‘ring.', code: 'SERVER_ERROR' }, { status: 500 });
 }

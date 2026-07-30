@@ -137,6 +137,27 @@ export interface IeltsAnswerKeyDoc {
   keys: Record<string, IeltsKeyEntry>;
 }
 
+// ielts_groups/{groupId} — read rule is teacher/member only; join goes through /api/ielts/join.
+export interface IeltsGroup {
+  id?: string;
+  title: string;
+  targetBand: number;        // e.g. 7.0
+  joinCode: string;          // MUST start with "I-" (join API regex depends on it)
+  teacherId: string;
+  teacherName: string;
+  description?: string;
+  studentIds: string[];
+  createdAt: unknown;
+  // ── Center-managed groups (2026-07-29, additive-only) ──────────────────────
+  // Set ONLY by POST /api/manager/ielts-groups (Admin SDK). When `managed`,
+  // the roster is manager-owned: join-by-code is refused (CENTER_MANAGED),
+  // teacher UI hides Requests/add/remove, and studentIds mirrors the linked
+  // classes/{classId} doc (which carries schedule/attendance/finance).
+  centerId?: string | null;
+  classId?: string | null;
+  managed?: boolean;
+}
+
 // ielts_groups/{groupId}/assignments/{assignmentId}
 export interface IeltsAssignment {
   testId: string;
@@ -154,6 +175,31 @@ export interface IeltsAssignment {
   createdAt: unknown;
   status: 'active';
   completedBy: string[];
+}
+
+/** IELTS writing rubric: Task Achievement/Response, Coherence & Cohesion, Lexical Resource, Grammatical Range & Accuracy. */
+export interface IeltsWritingCriteria {
+  ta: number;
+  cc: number;
+  lr: number;
+  gra: number;
+}
+
+// ielts_test_meta/{testId} — lightweight library-card summary written in the same batch as the
+// test doc (saveIeltsTest / W&S saves). Never contains answers. Old tests get one on re-save;
+// readers fall back to full-doc fetch when metas are missing (count mismatch).
+export interface IeltsTestMeta {
+  testId: string;
+  skill: IeltsSkill;
+  test_title: string;
+  teacherId: string | null;
+  source: 'teacher' | 'platform';
+  test_category?: IeltsTestCategory;
+  total_questions: number;
+  total_time_minutes: number;
+  typeBreakdown?: Record<string, number>; // reading/listening only
+  updatedAt: unknown;
+  createdAt?: unknown;
 }
 
 export interface IeltsPerQuestionResult {
@@ -183,7 +229,21 @@ export interface IeltsAttempt {
   writing?: { task1Text: string; task2Text: string; task1Words: number; task2Words: number };
   speaking?: { part1AudioUrl?: string; part2AudioUrl?: string; part3AudioUrl?: string };
   reviewStatus?: 'pending_review' | 'graded';
-  teacherGrade?: { band: number; comments: string; gradedAt: unknown };
+  teacherGrade?: {
+    band: number;
+    comments: string;
+    gradedAt: unknown;
+    /** Optional IELTS rubric sub-scores (whole/half bands). Additive — old grades have band+comments only. */
+    criteria?: IeltsWritingCriteria;
+  };
+  /** AI first-pass writing estimate (server-written by /api/ielts/analyze-writing). Advisory only — teacherGrade always wins. */
+  aiEstimate?: {
+    band: number;
+    criteria: IeltsWritingCriteria;
+    feedback: { uz: string; ru: string; en: string };
+    model: string;
+    createdAt: unknown;
+  };
   tabSwitches: number;
   timeSpentSeconds: number;
   attemptsTaken?: number;
