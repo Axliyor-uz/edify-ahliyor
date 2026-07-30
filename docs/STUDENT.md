@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/(student)/*`, XP/streak/leaderboard logic, `services/quizService.ts`, `services/historyService.ts`, or `lib/social.ts`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-30 (Milliy sertifikat is the only nav entry, maths inside it; full-screen exam lockdown; Milliy sertifikat subject papers + the single code box); 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
+**Last verified:** 2026-07-30 (`MilliyCard` on the dashboard replaces `MathLevelSummary`, because the mobile dock has no slot for the programme; Milliy sertifikat is the only nav entry, maths inside it; full-screen exam lockdown; Milliy sertifikat subject papers + the single code box); 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
 
 ## Purpose & scope
 
@@ -99,12 +99,31 @@ Every recharts chart mounts inside [components/ChartFrame.tsx](../components/Cha
 ## The dashboard's two "levels" (they measure different things)
 
 - **Level** (the stat tile) is XP: `floor(totalXP/1000)+1` — how much the student has *done*.
-- **Mathematics level** (`MathLevelSummary`, under the stat grid) is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). It is the same card the Rasch hub (`/raschmodel`) shows, reading the same `RASCH_levels/{uid}` document through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so mounting it on the dashboard costs no extra read on a warm cache. It renders `null` until that read resolves. **`MmsCard` sits directly below it** — see the next section.
+- **Mathematics level** is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). ⚠️ **Since 2026-07-30 the dashboard shows it inside `MmsCard`, not in its own card.** `MathLevelSummary` — the ability card with the seven-dimension strip — used to sit under the stat grid; it now renders **only on `/raschmodel`**, and its dashboard slot belongs to `MilliyCard` (next section). Nothing was lost: `MmsCard` already prints `formatLevel(math.level)/MASTER_LEVEL`, the expected score and the weakest dimension, from the same read. Both read `RASCH_levels/{uid}` through the same 12h localStorage cache in `services/RASCHProgressService.ts` and render `null` until it resolves.
+
+## `MilliyCard` — the dashboard's door to the programme (2026-07-30)
+
+`app/(student)/dashboard/_components/MilliyCard.tsx` sits under the stat grid,
+where `MathLevelSummary` used to be, and links to `/milliy-sertifikat` plus every
+built subject directly (`Matematika` → `/raschmodel`, `Biologiya`/`Kimyo` →
+`/milliy-sertifikat/{id}`; unbuilt subjects render as inert *soon* chips).
+
+- ⚠️ **Why it is on the dashboard at all: the mobile dock cannot hold the nav
+  entry.** M3 caps a bottom bar at 5 destinations, so `/milliy-sertifikat` is
+  `hideOnMobile: true` in the student layout — on a phone the whole exam programme
+  was reachable only through the ☰ drawer. This card is the phone's first-class
+  route to it. Don't remove it without giving the programme a dock slot.
+- **Zero Firestore reads** — the subject list is `MILLIY_SUBJECTS`, exactly like
+  the hub. That is why replacing a data-driven card with it costs nothing.
+- ⚠️ **Destinations come from `studentSubjectHref`**, never `MilliySubject.href`
+  (that is the TEACHER's route for the same subject). See [MILLIY_QUIZ.md](MILLIY_QUIZ.md).
+- The subject chips are siblings of the header link, not nested inside it — an
+  `<a>` inside an `<a>` is invalid and React will warn.
 
 ## MMS — the dashboard's exam card (2026-07-29)
 
 `MmsCard` (`app/(student)/raschmodel/components/MmsCard.tsx`) sits directly under
-`MathLevelSummary` on the dashboard and names the mock exam the way a student
+`MilliyCard` on the dashboard and names the mock exam the way a student
 actually knows it: **Matematika Milliy Sertifikat**, `45` questions,
 `150` minutes, `100` points. Those three numbers are read from
 `EXAM_TOTAL_QUESTIONS` / `EXAM_DURATION_MINUTES` ([lib/Examblueprint.ts](../lib/Examblueprint.ts))
@@ -112,14 +131,16 @@ and `PAPER_TOTAL` ([lib/RASCHmarks.ts](../lib/RASCHmarks.ts)), never typed into
 the copy — the paper's shape must not be able to drift from what the dashboard
 advertises.
 
-- **Why it exists.** The pair above it answers *"where am I"* and links to a
-  report. Nothing on the dashboard said what the exam IS or let a student start
-  one, so the feature the whole Rasch subsystem exists for sat two navigations
-  deep behind a four-letter word (`RASCH`) that means nothing to a student.
+- **Why it exists.** Nothing on the dashboard said what the exam IS or let a
+  student start one, so the feature the whole Rasch subsystem exists for sat two
+  navigations deep behind a four-letter word (`RASCH`) that means nothing to a
+  student. ⚠️ Since 2026-07-30 it is also the dashboard's **only** readout of the
+  measured 0–5 level (`MathLevelSummary` moved off this screen), so don't strip
+  the level line out of it.
 - ⚠️ **Zero extra reads.** It calls `getRASCHLevels` — the SAME 12h
-  localStorage-cached single document `MathLevelSummary` and `/progress` read —
-  so the pair on one screen costs one read, not two. That is the only reason it
-  is allowed to be data-driven rather than a static banner.
+  localStorage-cached single document `/raschmodel` and `/progress` read — so this
+  card is free on a warm cache. That is the only reason it is allowed to be
+  data-driven rather than a static banner.
 - **What makes it useful, not decorative:** `expectedScore(θ)` — the score this
   student would be expected to get on the standard paper at their measured
   ability — plus their **weakest measured dimension**, linked straight to
@@ -157,7 +178,8 @@ is still running. Full contract, traps and the answer-key caveat:
 ⚠️ **`/raschmodel` is no longer a nav destination of its own.** It used to sit
 beside "Milliy sertifikat", which read as two separate products; it is the **maths
 section** of this one. The nav now has a single `Milliy sertifikat` entry
-(`BadgeCheck`, hidden from the mobile dock — M3 caps a bottom bar at 5), and:
+(`BadgeCheck`, hidden from the mobile dock — M3 caps a bottom bar at 5, which is
+exactly why the dashboard carries `MilliyCard`), and:
 
 - `/milliy-sertifikat` — the **subject hub**: cards only, **zero Firestore reads**
   (the list is `MILLIY_SUBJECTS`). Matematika → `/raschmodel`; every other built

@@ -12,9 +12,9 @@ import {
 import { useStudentLanguage } from '../layout';
 import { AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
 import ChartFrame from '@/components/ChartFrame';
-import MathLevelSummary from '../raschmodel/components/MathLevelSummary';
 import MmsCard from '../raschmodel/components/MmsCard';
 
+import MilliyCard from './_components/MilliyCard';
 import TodayScheduleCard from './_components/TodayScheduleCard';
 
 import { calculateStreak, last7Days, xpDayKey } from '@/lib/xpDays';
@@ -308,16 +308,18 @@ export default function StudentDashboard() {
           </Card>
         </div>
 
-        {/* 🟢 MATHEMATICS ABILITY (Rasch θ → a 0–3 level)
-            The XP level above measures activity; this one measures ability. It
-            costs no extra read on a warm cache — the Rasch hub and /progress read
-            the same RASCH_levels/{uid} document through the same 12h cache. */}
-        <MathLevelSummary lang={lang} className="" />
+        {/* 🟢 MILLIY SERTIFIKAT — the programme's door, zero Firestore reads.
+            ⚠️ It stands here BECAUSE the mobile dock cannot hold the nav entry
+            (M3 caps a bottom bar at 5, so `/milliy-sertifikat` is hideOnMobile).
+            It replaced `MathLevelSummary`, whose 0–5 level and report link are
+            both already covered by `MmsCard` directly below. */}
+        <MilliyCard lang={lang} />
 
-        {/* 🟢 MMS — the exam itself, one tap away.
-            `MathLevelSummary` above answers "where am I" and links to a report;
-            this answers "what do I do about it". Both read the SAME 12h-cached
-            RASCH_levels document, so the pair costs one read, not two. */}
+        {/* 🟢 MMS — the maths paper itself, one tap away. `MilliyCard` above is
+            the programme (which subject); this is the sitting, and it carries the
+            measured 0–5 level + expected score that `MathLevelSummary` used to
+            show here (that card still lives on /raschmodel). One read: the
+            12h-cached RASCH_levels document. */}
         <MmsCard lang={lang} />
 
         {/* 🟢 MAIN CONTENT AREA */}
