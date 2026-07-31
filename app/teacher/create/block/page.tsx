@@ -13,9 +13,11 @@ import { useAuth } from "@/lib/AuthContext";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import { SUBJECTS, findSubject, findTopic } from "@/lib/questionTopics";
 import RichQuestionInput from "@/app/teacher/create/_components/RichQuestionInput";
+import { backWithQuestion, safeBackTo } from "@/app/teacher/create/_components/returnTo";
 import ImagePicker from "@/app/teacher/create/question/_components/ImagePicker";
 import CreatedQuestionsList from "@/app/teacher/create/question/_components/CreatedQuestionsList";
 import { normalizeQuestion } from "@/lib/questionSchema";
+import { cacheQuestion } from "@/lib/questionCache";
 import { OPTION_LETTERS, emptyOption, fetchQuestionById, uploadQuestionImage, type OptionDraft } from "@/services/questionBankService";
 import {
   LETTER_LABELS, MAX_PARTS, MAX_POOL, blockDraftFromQuestion, newPart, newQuestionId, partUsesOptions,
@@ -44,7 +46,9 @@ const T = {
       openDesc: "Bir nechta savol — har biriga yozma (matnli) javob beriladi (masalan: 39-masala).",
     },
     stem: { title: "Umumiy shart", desc: "Barcha savollar uchun umumiy matn va rasm (chizma).", label: "Shart matni", placeholder: "Masalan: Parallelepiped shaklidagi yopiq quti..." },
-    image: { add: "Chizma/rasm yuklash", change: "Almashtirish", remove: "O'chirish", hint: "PNG, JPG — 5 MB gacha", uploading: "Yuklanmoqda..." },
+    image: { add: "Chizma/rasm yuklash", camera: "Kamera", change: "Almashtirish", remove: "O'chirish", hint: "PNG, JPG — 5 MB gacha", uploading: "Yuklanmoqda..." },
+    backBanner: "Variant tuzilmoqda — blokni saqlaganingizdan keyin variantga qaytasiz.",
+    backNow: "Variantga qaytish",
     topic: { title: "Mavzu", desc: "Blok qaysi mavzuga tegishli.", subject: "Fan", topicLabel: "Mavzu", subtopic: "Ichki mavzu", choose: "Tanlang..." },
     pool: { title: "Umumiy variantlar", desc: "Bu ro'yxat blok yonida bir marta chop etiladi va barcha savollar shundan tanlaydi.", add: "Variant qo'shish", placeholder: "Variant matni..." },
     parts: { title: "Savollar", add: "Savol qo'shish", label: "Belgi", prompt: "Savol matni", promptPlaceholder: "Savol matnini yozing...", type: "Turi", points: "Ball", correct: "To'g'ri javob", correctText: "To'g'ri javob (matn)", accepted: "Muqobil javoblar (vergul bilan)", ownOptions: "Variantlar", addOption: "Variant" },
@@ -99,7 +103,9 @@ const T = {
       openDesc: "Several questions — each answered by typing (like problem 39).",
     },
     stem: { title: "Shared stem", desc: "The text and diagram every sub-question refers to.", label: "Stem text", placeholder: "e.g. A closed box shaped like a parallelepiped..." },
-    image: { add: "Upload diagram/image", change: "Replace", remove: "Remove", hint: "PNG, JPG — up to 5 MB", uploading: "Uploading..." },
+    image: { add: "Upload diagram/image", camera: "Camera", change: "Replace", remove: "Remove", hint: "PNG, JPG — up to 5 MB", uploading: "Uploading..." },
+    backBanner: "You are building a paper — saving this block takes you back to it.",
+    backNow: "Back to the paper",
     topic: { title: "Topic", desc: "Which topic the block belongs to.", subject: "Subject", topicLabel: "Topic", subtopic: "Subtopic", choose: "Choose..." },
     pool: { title: "Shared options", desc: "Printed once beside the block; every sub-question picks from it.", add: "Add option", placeholder: "Option text..." },
     parts: { title: "Questions", add: "Add question", label: "Label", prompt: "Question text", promptPlaceholder: "Write the question...", type: "Type", points: "Points", correct: "Correct answer", correctText: "Correct answer (text)", accepted: "Accepted alternatives (comma separated)", ownOptions: "Options", addOption: "Option" },
@@ -154,7 +160,9 @@ const T = {
       openDesc: "Несколько вопросов — на каждый пишется ответ (как задача 39).",
     },
     stem: { title: "Общее условие", desc: "Текст и чертёж, общие для всех вопросов.", label: "Текст условия", placeholder: "Например: Закрытая коробка в форме параллелепипеда..." },
-    image: { add: "Загрузить чертёж", change: "Заменить", remove: "Удалить", hint: "PNG, JPG — до 5 МБ", uploading: "Загрузка..." },
+    image: { add: "Загрузить чертёж", camera: "Камера", change: "Заменить", remove: "Удалить", hint: "PNG, JPG — до 5 МБ", uploading: "Загрузка..." },
+    backBanner: "Вы составляете вариант — после сохранения блока вернётесь к нему.",
+    backNow: "Вернуться к варианту",
     topic: { title: "Тема", desc: "К какой теме относится блок.", subject: "Предмет", topicLabel: "Тема", subtopic: "Подтема", choose: "Выберите..." },
     pool: { title: "Общие варианты", desc: "Печатается один раз рядом с блоком; все вопросы выбирают из него.", add: "Добавить вариант", placeholder: "Текст варианта..." },
     parts: { title: "Вопросы", add: "Добавить вопрос", label: "Метка", prompt: "Текст вопроса", promptPlaceholder: "Введите вопрос...", type: "Тип", points: "Баллы", correct: "Правильный ответ", correctText: "Правильный ответ (текст)", accepted: "Альтернативы (через запятую)", ownOptions: "Варианты", addOption: "Вариант" },
@@ -237,6 +245,18 @@ function BlockBuilder() {
   const [formKey, setFormKey] = useState(0);
 
   useEffect(() => setQuestionId(newQuestionId()), []);
+
+  /**
+   * Where a PAPER BUILDER sent the teacher from, if one did — the same `?back=`
+   * contract the single-question builder honours (see returnTo.ts).
+   */
+  const backTo = safeBackTo(searchParams.get("back"));
+
+  const prefillSubject = searchParams.get("subject");
+  useEffect(() => {
+    if (!prefillSubject || !findSubject(prefillSubject)) return;
+    setForm((p) => (p.subjectId ? p : { ...p, subjectId: prefillSubject }));
+  }, [prefillSubject]);
 
   useEffect(() => {
     if (!user) return;
@@ -347,6 +367,16 @@ function BlockBuilder() {
       setSessionBlocks((prev) => [normalized, ...prev.filter((q) => q.id !== normalized.id)]);
 
       toast.success(editing ? t.updated : t.savedAs(parts.length));
+
+      // Came from a paper builder → back to it, carrying the new block so the
+      // paper picks it up with no read. Only a NEW block rides back: an edited
+      // one is either already on the paper or was left off it on purpose.
+      if (backTo) {
+        cacheQuestion(normalized);
+        router.push(editing ? backTo : backWithQuestion(backTo, normalized.id));
+        return;
+      }
+
       if (editing) router.push("/teacher/create/my_questions");
       setEditing(null);
 
@@ -369,7 +399,7 @@ function BlockBuilder() {
     }
   };
 
-  const imageLabels = { add: t.image.add, change: t.image.change, remove: t.image.remove, hint: t.image.hint };
+  const imageLabels = { add: t.image.add, camera: t.image.camera, change: t.image.change, remove: t.image.remove, hint: t.image.hint };
   const filledPool = sharedOptions.filter((o) => o.text.trim() || o.imageUrl);
   const totalPoints = parts.reduce((sum, p) => sum + (p.points || 0), 0);
 
@@ -379,7 +409,7 @@ function BlockBuilder() {
       {/* HEADER */}
       <div className="sticky top-0 z-30 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant px-3 md:px-8 py-3 flex justify-between items-center shadow-elev-1">
         <div className="flex items-center gap-2 md:gap-3">
-          <IconButton aria-label="Orqaga" size="sm" onClick={() => router.push("/teacher/create")}>
+          <IconButton aria-label="Orqaga" size="sm" onClick={() => router.push(backTo ?? "/teacher/create")}>
             <ArrowLeft />
           </IconButton>
           <h1 className="text-[15px] md:text-[18px] font-bold text-on-surface tracking-tight flex items-center gap-2">
@@ -397,6 +427,18 @@ function BlockBuilder() {
       </div>
 
       <main className="w-full max-w-[900px] mx-auto px-3 md:px-8 pt-5 md:pt-8 space-y-4 md:space-y-6">
+
+        {/* Sent here by a paper builder — the paper is parked in localStorage and
+            the way back is always one tap away, saved or not. */}
+        {backTo && (
+          <div className="rounded-m3-lg border border-tertiary bg-tertiary-container text-on-tertiary-container px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] font-bold flex items-center gap-2">
+              <ArrowLeft size={15} className="shrink-0" />
+              {t.backBanner}
+            </p>
+            <Button variant="text" size="sm" onClick={() => router.push(backTo)}>{t.backNow}</Button>
+          </div>
+        )}
 
         {editing && (
           <div className="rounded-m3-lg border border-primary bg-primary-container text-on-primary-container px-4 py-3 flex items-center gap-2">

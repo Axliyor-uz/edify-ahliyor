@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -16,9 +16,11 @@ import { findSubject } from "@/lib/questionTopics";
 import {
   MILLIY_MAX_BYTES, checkMilliyAdd, genericSubject, milliyByteSize,
   milliyDifficultyCounts, milliyItemPreview, milliyKindCounts, milliyPickedIds,
-  milliySlotCount, milliyTopicCounts, slimMilliyItem, subjectName,
+  milliyQuizItem, milliySlotCount, milliyTopicCounts, slimMilliyItem, subjectName,
 } from "@/lib/MilliyQuiz";
 import { hasSamplePaper, loadSamplePaper } from "@/lib/MilliyDefaultPaper";
+import { fetchQuestionById } from "@/services/questionBankService";
+import { questionBuilderHref } from "@/app/teacher/create/_components/returnTo";
 import {
   getMilliyQuiz, newMilliyQuizId, reserveMilliyCode, saveMilliyQuiz, setMilliyQuizStatus,
 } from "@/services/milliyQuizService";
@@ -92,6 +94,9 @@ const TR: Record<string, Record<string, string>> = {
     imageOnly: "Rasmli savol", full: "To'ldi",
     aiBadge: "AI",
     draftKept: "Variantingiz saqlab qo'yildi — savol yaratib qaytsangiz yo'qolmaydi.",
+    addedBack: "Yangi savol variantga qo'shildi.",
+    addBackMissing: "Yangi savolni topib bo'lmadi — quyidagi «Yuklash» orqali qo'shing.",
+    addBackSubject: "Bu savol boshqa fanga tegishli — {subject} variantiga qo'shilmadi.",
     discardDraft: "Tozalash",
     paper: "Variant",
     emptyPaper: "Hali savol qo'shilmagan.",
@@ -154,6 +159,9 @@ const TR: Record<string, Record<string, string>> = {
     imageOnly: "Вопрос с картинкой", full: "Заполнено",
     aiBadge: "ИИ",
     draftKept: "Ваш вариант сохранён — он не потеряется, пока вы создаёте вопрос.",
+    addedBack: "Новый вопрос добавлен в вариант.",
+    addBackMissing: "Не удалось найти новый вопрос — добавьте его кнопкой «Загрузить» ниже.",
+    addBackSubject: "Этот вопрос относится к другому предмету — в вариант «{subject}» он не добавлен.",
     discardDraft: "Очистить",
     paper: "Вариант",
     emptyPaper: "Вопросы ещё не добавлены.",
@@ -216,6 +224,9 @@ const TR: Record<string, Record<string, string>> = {
     imageOnly: "Image question", full: "Full",
     aiBadge: "AI",
     draftKept: "Your paper is saved — it survives going off to write a question.",
+    addedBack: "Your new question was added to the paper.",
+    addBackMissing: "Could not find the new question — add it with “Load” below.",
+    addBackSubject: "That question belongs to another subject — it was not added to the {subject} paper.",
     discardDraft: "Start over",
     paper: "The paper",
     emptyPaper: "No questions added yet.",
@@ -249,8 +260,10 @@ function BuilderInner() {
 
   const subject = genericSubject(routeParams.subject);
   const base = `/teacher/milliy-sertifikat/${routeParams.subject}`;
+  /** Where a question builder must return the teacher: THIS paper, not a new one. */
+  const backHere = `${base}/build${editId ? `?id=${editId}` : ""}`;
 
-  const [quizId] = useState(() => editId || newMilliyQuizId());
+  const [quizId, setQuizId] = useState(() => editId || newMilliyQuizId());
   const [title, setTitle] = useState("");
   const [minutes, setMinutes] = useState(subject?.defaultMinutes ?? 90);
   const [target, setTarget] = useState(subject?.defaultQuestions ?? 30);
@@ -261,6 +274,12 @@ function BuilderInner() {
   const [items, setItems] = useState<MilliyQuizItem[]>([]);
 
   const [loading, setLoading] = useState(!!editId);
+  /**
+   * The paper is settled: the draft (or the server copy) is in state. ⚠️ The
+   * auto-add below MUST wait for it, or it would check a question against an
+   * empty paper and stash a draft that has lost every question on it.
+   */
+  const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [filling, setFilling] = useState(false);
@@ -280,6 +299,11 @@ function BuilderInner() {
       && (editId ? draft.quizId === editId : true);
 
     if (draft && mine) {
+      // ⚠️ ADOPT the draft's id. A new one is minted on mount, so a paper that
+      // had already been saved once would fork into a SECOND document — with the
+      // first one's access code on it — the moment the teacher came back from
+      // writing a question.
+      setQuizId(draft.quizId);
       setTitle(draft.title);
       setMinutes(draft.minutes);
       setTarget(draft.target);
@@ -290,10 +314,11 @@ function BuilderInner() {
       setItems(draft.items);
       setRestored(true);
       setLoading(false);
+      setHydrated(true);
       return;
     }
 
-    if (!editId) return;
+    if (!editId) { setHydrated(true); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -314,7 +339,7 @@ function BuilderInner() {
         console.error(err);
         if (!cancelled) setLoadError(t.loadFailed);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) { setLoading(false); setHydrated(true); }
       }
     })();
     return () => { cancelled = true; };
@@ -347,7 +372,7 @@ function BuilderInner() {
    * ⚠️ The check runs OUTSIDE the state updater. `setItems(prev => …)` may be
    * invoked twice in dev, and a toast fired from inside would fire twice with it.
    */
-  const addItem = useCallback((item: MilliyQuizItem) => {
+  const addItem = useCallback((item: MilliyQuizItem): MilliyQuizItem | null => {
     // A `shared_options` block occupies one slot per sub-question, so it is added
     // whole or not at all — truncating it would break its shared pool.
     const slim = slimMilliyItem(item);
@@ -356,9 +381,11 @@ function BuilderInner() {
     if (!check.ok) {
       if (check.reason === "full") toast.error(fmt(t.overFull, { n: target }));
       else if (check.reason === "duplicate") toast.error(t.dupe);
-      return;
+      return null;
     }
     setItems((prev) => (prev.some((q) => q.id === slim.id) ? prev : [...prev, slim]));
+    // What actually landed on the paper — the auto-add below re-stashes with it.
+    return slim;
   }, [items, target, t]);
 
   /**
@@ -413,14 +440,64 @@ function BuilderInner() {
     });
 
   /** Park the paper before leaving for a question builder. */
-  const stash = () => {
+  const stashItems = useCallback((list: MilliyQuizItem[]) => {
     if (!subject) return;
     writeMilliyDraft({
       quizId,
       subject: subject.id as MilliySubjectId,
-      title, minutes, target, shuffle, showAnswers, accessCode, status, items,
+      title, minutes, target, shuffle, showAnswers, accessCode, status, items: list,
     });
-  };
+  }, [subject, quizId, title, minutes, target, shuffle, showAnswers, accessCode, status]);
+
+  const stash = () => stashItems(items);
+
+  /**
+   * The return trip from a question builder (`?add=<questionId>`, see
+   * returnTo.ts): the question that was just written lands on the paper by
+   * itself, so "write a question" and "put it on the paper" are one act.
+   *
+   * ⚠️ It waits for `hydrated` — running against a paper that has not been
+   * restored yet would check the add against nothing and then STASH that empty
+   * paper over the real draft.
+   *
+   * ⚠️ Costs **zero reads** on the normal path: the question builder puts the
+   * document it just wrote into `questionCache`, which `fetchQuestionById`
+   * consults first. A cold reload of the link pays one read.
+   */
+  const addBackId = params.get("add");
+  const addBackRef = useRef(false);
+  useEffect(() => {
+    if (!addBackId || !subject || !hydrated || addBackRef.current) return;
+    addBackRef.current = true;
+
+    (async () => {
+      try {
+        const question = await fetchQuestionById(addBackId);
+        if (!question) { toast.error(t.addBackMissing); return; }
+        // A biology paper must not silently swallow a chemistry question — the
+        // picker below could never have offered it.
+        if (question.subjectId !== subject.taxonomySlug) {
+          toast.error(fmt(t.addBackSubject, { subject: subjectName(subject, L) }));
+          return;
+        }
+        const added = addItem(milliyQuizItem(question));
+        if (!added) return; // addItem has already said why
+        // The stash was written on the way OUT and knows nothing of this
+        // question; refreshing now would restore the paper without it.
+        stashItems([...items, added]);
+        toast.success(t.addedBack);
+      } catch (err) {
+        console.error(err);
+        toast.error(t.addBackMissing);
+      } finally {
+        // Drop the parameter: a refresh must not try to add it a second time.
+        router.replace(editId ? `${base}/build?id=${editId}` : `${base}/build`);
+      }
+    })();
+    // Runs once per return trip — `addItem`/`items` are read from the render
+    // that hydrated the paper, and re-running it would re-add the question.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addBackId, hydrated, subject?.id]);
 
   const discard = () => {
     clearMilliyDraft();
@@ -659,10 +736,13 @@ function BuilderInner() {
               option, blocks, the validated topic path — and a second
               half-featured editor would drift from the canonical one the moment
               either was touched. These two cover the two shapes a question takes.
-              Both links STASH the paper first (see draft.ts). */}
+              Both links STASH the paper first (see draft.ts), and both carry
+              `?back=` so saving a question RETURNS here with it (returnTo.ts) —
+              plus `?subject=`, so the Fan dropdown cannot start on the wrong
+              subject and produce a question this paper would refuse. */}
           <div className="mb-4 grid gap-2 sm:grid-cols-2">
             <Link
-              href="/teacher/create/question"
+              href={questionBuilderHref("/teacher/create/question", backHere, subject.taxonomySlug)}
               onClick={stash}
               className="m3-interactive flex items-start gap-3 rounded-m3-md border border-outline-variant bg-surface-container-lowest p-3 transition-colors hover:bg-surface-container"
             >
@@ -676,7 +756,7 @@ function BuilderInner() {
             </Link>
 
             <Link
-              href="/teacher/create/block"
+              href={questionBuilderHref("/teacher/create/block", backHere, subject.taxonomySlug)}
               onClick={stash}
               className="m3-interactive flex items-start gap-3 rounded-m3-md border border-outline-variant bg-surface-container-lowest p-3 transition-colors hover:bg-surface-container"
             >

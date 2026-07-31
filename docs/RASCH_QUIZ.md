@@ -10,7 +10,7 @@
 > and [RASCH_SKILLS.md](RASCH_SKILLS.md); the question schema is in
 > [QUESTIONS.md](QUESTIONS.md).
 
-**Last verified:** 2026-07-30 (moved to `app/teacher/milliy-sertifikat/math`; full-screen exam lockdown; Milliy sertifikat hub is a second entry point to this same builder; dynamic per-question marks 2026-07-29).
+**Last verified:** 2026-07-31 (the question-builder round trip is closed — `?back=`/`?add=`); 2026-07-30: moved to `app/teacher/milliy-sertifikat/math`; full-screen exam lockdown; Milliy sertifikat hub is a second entry point to this same builder; dynamic per-question marks 2026-07-29.
 
 ## Purpose & scope
 
@@ -62,6 +62,7 @@ invariants below before you do. The non-maths subjects have their own subsystem:
 | `app/teacher/milliy-sertifikat/math/build/page.tsx` | The builder (`?id=` to edit). |
 | `app/teacher/milliy-sertifikat/math/_components/QuestionPickers.tsx` | The two pools: `MyBankPicker` (own `teacher_questions`, default, with the closed/open filter) and `BankPicker` (`questions1`). |
 | `app/teacher/milliy-sertifikat/math/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
+| [app/teacher/create/_components/returnTo.ts](../app/teacher/create/_components/returnTo.ts) | The `?back=` / `?add=` contract — how a builder sends a teacher to write a question **and gets them back with it**. Shared with the subject papers. |
 | `app/teacher/milliy-sertifikat/math/results/[quizId]/page.tsx` | Who sat it; per-dimension 0–5 levels, per class **and per student**. |
 | [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **Dynamic marks** — cohort solve rate → an absolute 1.30–6.00 ball per question, and the student's score normalised to 100. Pure. ⚠️ **Shared with every Milliy sertifikat subject** since 2026-07-30 ([MILLIY_QUIZ.md](MILLIY_QUIZ.md)); the only maths-specific part is the `printed` fallback, which is now an argument to `paperMarks`. |
 | [lib/RASCHband.ts](../lib/RASCHband.ts) | Band → colour/name, kit-agnostic. ⚠️ Read by BOTH UI kits — keep it free of component imports. |
@@ -133,6 +134,37 @@ would have drifted from the canonical one the moment either was touched. The new
 question lands in `teacher_questions`, so pressing **Load** on return picks it up
 newest-first.
 
+### 🟢 The round trip is closed: save a question → back on the paper, with it (2026-07-31)
+
+Leaving was safe (the stash below) but **arriving back was the teacher's problem**:
+`/teacher/create/question` dropped them at the create hub, and the half-built
+paper was something they had to find their own way back to. Both links now carry
+`?back=<this builder>` ([app/teacher/create/_components/returnTo.ts](../app/teacher/create/_components/returnTo.ts)):
+
+- the question builder's **back arrow** returns here instead of the create hub,
+  a banner at the top says a paper is waiting and offers the way back at any
+  time, and **a successful save returns here by itself**;
+- the save carries `?add=<questionId>`, and the builder **puts that question on
+  the paper on arrival** — writing a question and putting it on the paper are one
+  act, not two.
+
+⚠️ **The auto-add waits for `hydrated`** (the draft/server copy in state). Adding
+against a paper that has not been restored yet would check the blueprint quota
+against nothing and then **stash that empty paper over the real draft**.
+
+⚠️ **It costs zero reads**: the question builder leaves the document it just
+wrote in `questionCache`, which `fetchQuestionById` consults first. A cold reload
+of the link pays one read. ⚠️ It then **re-stashes**, because the draft was
+written on the way OUT and knows nothing of the new question — a refresh would
+otherwise restore the paper without it. And ⚠️ **the blueprint still rules**: a
+new question with no slot is refused here exactly as in the picker, by the same
+`addItem` and with the same message. `?back=` is user input, so only an in-app
+`/teacher/…` path is ever pushed.
+
+⚠️ **Only a NEW question rides back.** An edited one is either already on the
+paper (a duplicate) or was left off it on purpose; the return trip happens, the
+`add` does not.
+
 ⚠️ **Those links navigate, so the paper is stashed to localStorage first**
 (`_components/draft.ts`, `stash()` on click). Without it, clicking one would
 silently destroy up to 45 hand-picked questions — the builder holds the paper in
@@ -144,6 +176,12 @@ would throw away exactly what the stash was protecting. It is cleared once the
 paper is safely saved, and the restore is announced with a banner carrying a
 "start over" action rather than happening silently. One draft at a time, 24h TTL;
 the `quizId` rides inside the record so the loader can refuse another paper's.
+
+⚠️ **A restore ADOPTS the draft's `quizId`.** A fresh id is minted on mount, so a
+paper that had already been saved once used to fork into a SECOND document —
+carrying the first one's access code — as soon as the teacher came back from
+writing a question. Harmless while the round trip was rare; not once saving a
+question returns here by itself.
 
 Every add goes through `bankQuizItem` / `teacherQuizItem` → `slimQuizItem`, and
 the whole paper is written as **one document**.
@@ -790,10 +828,17 @@ Then `npm run dev`, as a **teacher**:
    few. Switch to **Milliy baza**, pick a chapter and
    difficulty, press Load (10 documents read, the count shown on screen) and add
    a few more; both sources must land in the same paper.
-3. Press **Bitta savol yaratish**. It must leave for `/teacher/create/question`.
-   Write a question, save it, come back to the builder: the paper must still be
-   there with a "saved" banner, and pressing Load must now show the new question
-   first. Repeat with **Ko'p savolli test yaratish** → `/teacher/create/block`.
+3. Press **Bitta savol yaratish**. It must leave for `/teacher/create/question`
+   with a banner saying a paper is waiting. Write an **open, algebra** question
+   and save it: **the browser returns to the builder by itself**, the paper is
+   still there with a "saved" banner, the new question is **already on it** in an
+   O row, and the network tab shows **no read** for it. Reload the page: the
+   question is still on the paper (the stash was rewritten). Now press the link
+   again and use the banner's **Variantga qaytish** without saving — the paper
+   must come back untouched. Repeat the save trip with **Ko'p savolli test
+   yaratish** → `/teacher/create/block`. Finally write a question the blueprint
+   has no slot for; the return trip must refuse it with the same message the
+   picker gives, not add it.
 3. The coverage panel lists the **13 blueprint rows grouped by test type**
    (Y-1 32, Y-2 3, O 10), each reading `have/want` and green only when the two
    match. Fill one row — say **Funksiyalar Y-1 (2)** — then look at the pickers:

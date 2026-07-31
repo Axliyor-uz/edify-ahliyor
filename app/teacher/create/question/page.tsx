@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import { SUBJECTS, findSubject, findTopic } from "@/lib/questionTopics";
 import RichQuestionInput from "@/app/teacher/create/_components/RichQuestionInput";
+import { backWithQuestion, safeBackTo } from "@/app/teacher/create/_components/returnTo";
 import ImagePicker from "./_components/ImagePicker";
 import CreatedQuestionsList from "./_components/CreatedQuestionsList";
 import {
@@ -42,7 +43,9 @@ const T = {
     prompt: { title: "Savol", desc: "Matn yozing (matematik belgilar uchun ∑ tugmasi) va/yoki rasm yuklang." },
     promptLabel: "Savol matni",
     promptPlaceholder: "Masalan: Tenglamani yeching...",
-    image: { add: "Rasm yuklash", change: "Almashtirish", remove: "O'chirish", hint: "PNG, JPG — 5 MB gacha", uploading: "Rasmlar yuklanmoqda..." },
+    image: { add: "Rasm yuklash", camera: "Kamera", change: "Almashtirish", remove: "O'chirish", hint: "PNG, JPG — 5 MB gacha", uploading: "Rasmlar yuklanmoqda..." },
+    backBanner: "Variant tuzilmoqda — savolni saqlaganingizdan keyin variantga qaytasiz.",
+    backNow: "Variantga qaytish",
     topic: { title: "Mavzu", desc: "Savol qaysi fan, mavzu va ichki mavzuga tegishli.", subject: "Fan", topicLabel: "Mavzu", subtopic: "Ichki mavzu", choose: "Tanlang..." },
     answer: { title: "Savol turi va javob", desc: "Savol turini tanlang, so'ng javobni kiriting." },
     typeLabel: "Savol turi",
@@ -98,7 +101,9 @@ const T = {
     prompt: { title: "Question", desc: "Type the prompt (use ∑ for math symbols) and/or attach an image." },
     promptLabel: "Question text",
     promptPlaceholder: "e.g. Solve the equation...",
-    image: { add: "Upload image", change: "Replace", remove: "Remove", hint: "PNG, JPG — up to 5 MB", uploading: "Uploading images..." },
+    image: { add: "Upload image", camera: "Camera", change: "Replace", remove: "Remove", hint: "PNG, JPG — up to 5 MB", uploading: "Uploading images..." },
+    backBanner: "You are building a paper — saving this question takes you back to it.",
+    backNow: "Back to the paper",
     topic: { title: "Topic", desc: "Which subject, topic and subtopic this question belongs to.", subject: "Subject", topicLabel: "Topic", subtopic: "Subtopic", choose: "Choose..." },
     answer: { title: "Question type & answer", desc: "Pick the question type, then enter the answer." },
     typeLabel: "Question type",
@@ -154,7 +159,9 @@ const T = {
     prompt: { title: "Вопрос", desc: "Введите текст (кнопка ∑ для матем. символов) и/или загрузите изображение." },
     promptLabel: "Текст вопроса",
     promptPlaceholder: "Например: Решите уравнение...",
-    image: { add: "Загрузить изображение", change: "Заменить", remove: "Удалить", hint: "PNG, JPG — до 5 МБ", uploading: "Загрузка изображений..." },
+    image: { add: "Загрузить изображение", camera: "Камера", change: "Заменить", remove: "Удалить", hint: "PNG, JPG — до 5 МБ", uploading: "Загрузка изображений..." },
+    backBanner: "Вы составляете вариант — после сохранения вопроса вернётесь к нему.",
+    backNow: "Вернуться к варианту",
     topic: { title: "Тема", desc: "К какому предмету, теме и подтеме относится вопрос.", subject: "Предмет", topicLabel: "Тема", subtopic: "Подтема", choose: "Выберите..." },
     answer: { title: "Тип вопроса и ответ", desc: "Выберите тип вопроса, затем введите ответ." },
     typeLabel: "Тип вопроса",
@@ -259,6 +266,21 @@ function QuestionBuilder() {
 
   // The ID is reserved client-side so images can be filed under it before the doc exists.
   useEffect(() => setQuestionId(newQuestionId()), []);
+
+  /**
+   * Where a PAPER BUILDER sent the teacher from, if one did (docs/MILLIY_QUIZ.md).
+   * Set ⇒ the back arrow and a successful save both return there instead of
+   * dropping the teacher at the create hub with a half-built paper behind them.
+   */
+  const backTo = safeBackTo(searchParams.get("back"));
+
+  // The builder also names its subject, so the Fan dropdown starts on the right
+  // one — a question filed under another subject cannot join that paper.
+  const prefillSubject = searchParams.get("subject");
+  useEffect(() => {
+    if (!prefillSubject || !findSubject(prefillSubject)) return;
+    setForm((p) => (p.subjectId ? p : { ...p, subjectId: prefillSubject }));
+  }, [prefillSubject]);
 
   // The teacher's name is stamped onto every question; Auth's displayName can be
   // empty for accounts created through the username flow, so fall back to users/{uid}.
@@ -474,6 +496,18 @@ function QuestionBuilder() {
       setSessionQuestions((prev) => [normalized, ...prev.filter((q) => q.id !== normalized.id)]);
 
       toast.success(editing ? t.updated : t.saved);
+
+      // Came from a paper builder → go straight back to it, carrying the new
+      // question so the paper picks it up with NO read (questionCache) and the
+      // teacher does not have to hunt for it in the bank picker.
+      // ⚠️ Only a NEW question rides back: one that was merely edited is either
+      // already on the paper (a duplicate) or was left off it on purpose.
+      if (backTo) {
+        cacheQuestion(normalized);
+        router.push(editing ? backTo : backWithQuestion(backTo, normalized.id));
+        return;
+      }
+
       if (!editing) toast(t.savedHint, { icon: "💡" });
       resetForm();
     } catch (err) {
@@ -485,7 +519,7 @@ function QuestionBuilder() {
     }
   };
 
-  const imageLabels = { add: t.image.add, change: t.image.change, remove: t.image.remove, hint: t.image.hint };
+  const imageLabels = { add: t.image.add, camera: t.image.camera, change: t.image.change, remove: t.image.remove, hint: t.image.hint };
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-surface pb-28 lg:pb-12">
@@ -493,7 +527,7 @@ function QuestionBuilder() {
       {/* HEADER */}
       <div className="sticky top-0 z-30 bg-[color-mix(in_oklab,var(--m3-surface)_85%,transparent)] backdrop-blur-md border-b border-outline-variant px-3 md:px-8 py-3 flex justify-between items-center shadow-elev-1">
         <div className="flex items-center gap-2 md:gap-3">
-          <IconButton aria-label="Orqaga" size="sm" onClick={() => router.push("/teacher/create")}>
+          <IconButton aria-label="Orqaga" size="sm" onClick={() => router.push(backTo ?? "/teacher/create")}>
             <ArrowLeft />
           </IconButton>
           <h1 className="text-[15px] md:text-[18px] font-bold text-on-surface tracking-tight flex items-center gap-2">
@@ -519,6 +553,18 @@ function QuestionBuilder() {
       </div>
 
       <main className="w-full max-w-[900px] mx-auto px-3 md:px-8 pt-5 md:pt-8 space-y-4 md:space-y-6">
+
+        {/* Sent here by a paper builder — the paper is parked in localStorage and
+            the way back is always one tap away, saved or not. */}
+        {backTo && (
+          <div className="rounded-m3-lg border border-tertiary bg-tertiary-container text-on-tertiary-container px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] font-bold flex items-center gap-2">
+              <ArrowLeft size={15} className="shrink-0" />
+              {t.backBanner}
+            </p>
+            <Button variant="text" size="sm" onClick={() => router.push(backTo)}>{t.backNow}</Button>
+          </div>
+        )}
 
         {/* Editing an existing question — the form writes back to the SAME doc. */}
         {editing && (
