@@ -73,3 +73,8 @@ if (APPLY) {
   await ref.set(payload, { merge: true });
   console.log('done.');
 }
+
+// The admin SDK keeps its gRPC channel open, so node never exits on its own
+// after a write — the script would hang forever looking like a failed write.
+// The set() above is already acked, so exiting here loses nothing.
+process.exit(0);
