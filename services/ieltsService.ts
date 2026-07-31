@@ -9,7 +9,7 @@ import { auth, db } from '@/lib/firebase';
 import { applyUserXp, mirrorLeaderboards, notifyLevelUp } from '@/lib/xp';
 import { extractAnswerKey, renumberTest, stripAnswers, typeBreakdown } from '@/lib/ielts/testSchema';
 import type {
-  IeltsAssignment, IeltsListeningTest, IeltsReadingTest, IeltsSkill,
+  IeltsAssignment, IeltsCatalogControls, IeltsListeningTest, IeltsReadingTest, IeltsSkill,
   IeltsSpeakingTest, IeltsWritingCriteria, IeltsWritingTest,
 } from '@/lib/ielts/types';
 
@@ -19,6 +19,40 @@ const TEST_COLLECTIONS: Record<IeltsSkill, string> = {
   writing: 'ielts_writing_tests',
   speaking: 'ielts_speaking_tests',
 };
+
+// ---------- platform catalog: admin-managed order + per-audience visibility ----------
+
+/** Who is looking at the platform dataset. `all` = the admin panel (sees everything). */
+export type CatalogAudience = 'student' | 'teacher' | 'all';
+
+const CATALOG_KEYS = ['catalogOrder', 'hiddenFromStudents', 'hiddenFromTeachers'] as const;
+
+/** Carry admin catalog controls across a re-save (the builders never send them). */
+function carryCatalog(existing: Record<string, unknown> | undefined): IeltsCatalogControls {
+  const out: IeltsCatalogControls = {};
+  if (!existing) return out;
+  for (const k of CATALOG_KEYS) {
+    const v = existing[k];
+    if (v !== undefined && v !== null) (out as Record<string, unknown>)[k] = v;
+  }
+  return out;
+}
+
+function isVisibleTo(row: Record<string, unknown>, audience: CatalogAudience): boolean {
+  if (audience === 'student') return row.hiddenFromStudents !== true;
+  if (audience === 'teacher') return row.hiddenFromTeachers !== true;
+  return true;
+}
+
+/** Admin order first (dense, 0-based); anything unordered falls to the end, A→Z. */
+export function compareCatalog(a: unknown, b: unknown): number {
+  const x = (a ?? {}) as { catalogOrder?: unknown; test_title?: unknown };
+  const y = (b ?? {}) as { catalogOrder?: unknown; test_title?: unknown };
+  const xo = typeof x.catalogOrder === 'number' ? x.catalogOrder : Number.MAX_SAFE_INTEGER;
+  const yo = typeof y.catalogOrder === 'number' ? y.catalogOrder : Number.MAX_SAFE_INTEGER;
+  if (xo !== yo) return xo - yo;
+  return String(x.test_title || '').localeCompare(String(y.test_title || ''));
+}
 
 function requireUid(): string {
   const uid = auth.currentUser?.uid;
@@ -81,10 +115,13 @@ export async function saveIeltsTest(
   const testRef = doc(db, TEST_COLLECTIONS[skill], testData.test_id);
   const keyRef = doc(db, 'ielts_answer_keys', testData.test_id);
   const existing = await getDoc(testRef);
+  // Order/visibility are admin state, not authoring state — a re-save must not reset them.
+  const catalog = carryCatalog(existing.data());
 
   const batch = writeBatch(db);
   batch.set(testRef, {
     ...publicDoc,
+    ...catalog,
     teacherId: owner,
     source: opts?.asPlatform ? 'platform' : 'teacher',
     createdAt: existing.exists() ? existing.data().createdAt : serverTimestamp(),
@@ -95,6 +132,7 @@ export async function saveIeltsTest(
   // Lightweight library-card summary (never contains answers) — list pages read this
   // instead of downloading every passage/part. Old tests get one on re-save.
   batch.set(doc(db, 'ielts_test_meta', testData.test_id), {
+    ...catalog,
     testId: testData.test_id,
     skill,
     test_title: testData.test_title || '',
@@ -157,9 +195,11 @@ async function saveWSTest(
   const ref = doc(db, TEST_COLLECTIONS[skill], t.test_id);
   const existing = await getDoc(ref);
   const createdAt = existing.exists() ? existing.data().createdAt : serverTimestamp();
+  const catalog = carryCatalog(existing.data());
   const batch = writeBatch(db);
   batch.set(ref, {
     ...t,
+    ...catalog,
     module: skill,
     teacherId: owner,
     source,
@@ -168,6 +208,7 @@ async function saveWSTest(
     status: 'published',
   });
   batch.set(doc(db, 'ielts_test_meta', t.test_id), {
+    ...catalog,
     testId: t.test_id,
     skill,
     test_title: (t as { test_title?: string }).test_title || '',
@@ -194,9 +235,18 @@ export async function fetchTeacherTests(skill: IeltsSkill, teacherId: string) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ({ id: string } & Record<string, unknown>)[];
 }
 
-export async function fetchPlatformTests(skill: IeltsSkill) {
+/**
+ * Full platform test docs. `audience` applies the admin catalog: teachers never see a
+ * test flagged `hiddenFromTeachers`, and everything comes back in the admin's order.
+ * The admin panel passes `all` so it can manage hidden entries too.
+ */
+export async function fetchPlatformTests(skill: IeltsSkill, opts?: { audience?: CatalogAudience }) {
+  const audience = opts?.audience ?? 'all';
   const snap = await getDocs(query(collection(db, TEST_COLLECTIONS[skill]), where('source', '==', 'platform')));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ({ id: string } & Record<string, unknown>)[];
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as { id: string } & Record<string, unknown>)
+    .filter((t) => isVisibleTo(t, audience))
+    .sort(compareCatalog);
 }
 
 /** Library-card shape shared by the meta path and the full-doc fallback. */
@@ -206,14 +256,35 @@ export interface PlatformTestSummary {
   total_questions: number;
   total_time_minutes: number;
   typeBreakdown: Record<string, number>;
+  catalogOrder?: number;
+  hiddenFromStudents?: boolean;
+  hiddenFromTeachers?: boolean;
 }
 
 /**
  * Platform library summaries — reads ielts_test_meta (tiny docs) instead of every full
  * test. Legacy tests have no meta until re-saved, so a server-side count guards the
  * switch: any mismatch falls back to the old full-doc fetch (correctness over speed).
+ * Filtering/sorting happens client-side on purpose: the catalog is admin-sized (tens of
+ * docs) and a `where('hiddenFromStudents','!=',true)` query would drop legacy docs that
+ * have no such field at all.
  */
-export async function fetchPlatformTestSummaries(skill: IeltsSkill): Promise<PlatformTestSummary[]> {
+export async function fetchPlatformTestSummaries(
+  skill: IeltsSkill,
+  opts?: { audience?: CatalogAudience },
+): Promise<PlatformTestSummary[]> {
+  const audience = opts?.audience ?? 'student';
+  const shape = (m: Record<string, unknown>, id: string, breakdown: Record<string, number>): PlatformTestSummary => ({
+    id,
+    test_title: String(m.test_title || id),
+    total_questions: Number(m.total_questions) || 0,
+    total_time_minutes: Number(m.total_time_minutes) || 0,
+    typeBreakdown: breakdown,
+    ...(typeof m.catalogOrder === 'number' ? { catalogOrder: m.catalogOrder } : {}),
+    ...(m.hiddenFromStudents === true ? { hiddenFromStudents: true } : {}),
+    ...(m.hiddenFromTeachers === true ? { hiddenFromTeachers: true } : {}),
+  });
+
   try {
     const [metaSnap, countSnap] = await Promise.all([
       getDocs(query(collection(db, 'ielts_test_meta'),
@@ -221,29 +292,59 @@ export async function fetchPlatformTestSummaries(skill: IeltsSkill): Promise<Pla
       getCountFromServer(query(collection(db, TEST_COLLECTIONS[skill]), where('source', '==', 'platform'))),
     ]);
     if (metaSnap.size >= countSnap.data().count) {
-      return metaSnap.docs.map((d) => {
-        const m = d.data();
-        return {
-          id: String(m.testId || d.id),
-          test_title: String(m.test_title || ''),
-          total_questions: Number(m.total_questions) || 0,
-          total_time_minutes: Number(m.total_time_minutes) || 0,
-          typeBreakdown: (m.typeBreakdown as Record<string, number>) || {},
-        };
-      });
+      return metaSnap.docs
+        .map((d) => {
+          const m = d.data();
+          return shape(m, String(m.testId || d.id), (m.typeBreakdown as Record<string, number>) || {});
+        })
+        .filter((t) => isVisibleTo(t as unknown as Record<string, unknown>, audience))
+        .sort(compareCatalog);
     }
   } catch { /* fall through to full fetch */ }
   const { typeBreakdown: computeBreakdown } = await import('@/lib/ielts/testSchema');
-  const full = await fetchPlatformTests(skill);
-  return full.map((t) => ({
-    id: t.id,
-    test_title: String(t.test_title || t.id),
-    total_questions: Number(t.total_questions) || 0,
-    total_time_minutes: Number(t.total_time_minutes) || 0,
-    typeBreakdown: (skill === 'reading' || skill === 'listening')
-      ? computeBreakdown(t as never)
-      : {},
-  }));
+  const full = await fetchPlatformTests(skill, { audience });
+  return full.map((t) => shape(
+    t,
+    t.id,
+    (skill === 'reading' || skill === 'listening') ? computeBreakdown(t as never) : {},
+  ));
+}
+
+/**
+ * Admin: hide/show a platform test per audience. Writes the flags to BOTH the test doc
+ * and its meta doc so the full-doc readers (teacher) and the meta readers (student
+ * library) agree. Admin writes bypass rules via the super_admin god-mode wildcard.
+ */
+export async function setPlatformTestVisibility(
+  skill: IeltsSkill,
+  testId: string,
+  patch: { hiddenFromStudents?: boolean; hiddenFromTeachers?: boolean },
+) {
+  const clean: Record<string, boolean> = {};
+  if (typeof patch.hiddenFromStudents === 'boolean') clean.hiddenFromStudents = patch.hiddenFromStudents;
+  if (typeof patch.hiddenFromTeachers === 'boolean') clean.hiddenFromTeachers = patch.hiddenFromTeachers;
+  if (!Object.keys(clean).length) return;
+  const batch = writeBatch(db);
+  batch.set(doc(db, TEST_COLLECTIONS[skill], testId), clean, { merge: true });
+  batch.set(doc(db, 'ielts_test_meta', testId), clean, { merge: true });
+  await batch.commit();
+}
+
+/**
+ * Admin: persist the display order of a skill's platform dataset. `orderedIds` is the
+ * complete list in the wanted order — every entry is stamped with a dense 0-based
+ * `catalogOrder` on both its test doc and its meta doc (2 writes per test; a Firestore
+ * batch caps at 500, so this covers 250 tests per skill).
+ */
+export async function savePlatformTestOrder(skill: IeltsSkill, orderedIds: string[]) {
+  if (!orderedIds.length) return;
+  if (orderedIds.length > 250) throw new Error('Too many tests to reorder in one batch (max 250).');
+  const batch = writeBatch(db);
+  orderedIds.forEach((id, i) => {
+    batch.set(doc(db, TEST_COLLECTIONS[skill], id), { catalogOrder: i }, { merge: true });
+    batch.set(doc(db, 'ielts_test_meta', id), { catalogOrder: i }, { merge: true });
+  });
+  await batch.commit();
 }
 
 /** Admin: copy a teacher's test into the platform dataset (test + key). */

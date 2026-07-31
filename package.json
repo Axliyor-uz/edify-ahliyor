@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:rules": "firebase emulators:exec --only firestore --project demo-edify-rules \"node --test tests/rules/*.test.mjs\"",
-    "backfill:rand": "tsx scripts/backfillrandfield.ts"
+    "backfill:rand": "tsx scripts/backfillrandfield.ts",
+    "ielts:verify": "tsx \"data/ielts practise/verify.ts\""
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

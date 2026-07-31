@@ -119,10 +119,12 @@ export default function ListeningDashboard() {
       try {
         const [mine, platform] = await Promise.all([
           fetchTeacherTests('listening', user.uid),
-          fetchPlatformTests('listening'),
+          // audience 'teacher' → admin-hidden papers are dropped and the list arrives in
+          // the admin's catalog order; do NOT re-sort it by date.
+          fetchPlatformTests('listening', { audience: 'teacher' }),
         ]);
         const mapped = mine.map((d) => mapDoc(d, t.untitled)).sort((a, b) => b.rawDate - a.rawDate);
-        const mappedPlatform = platform.map((d) => mapDoc(d, t.untitled)).sort((a, b) => b.rawDate - a.rawDate);
+        const mappedPlatform = platform.map((d) => mapDoc(d, t.untitled));
         setMyTests(mapped);
         setPlatformTests(mappedPlatform);
       } catch (error) {

@@ -84,7 +84,23 @@ export interface IeltsListeningPart {
   questions: IeltsQuestionBlock[];
 }
 
-interface IeltsTestBase {
+/**
+ * Admin-managed catalog controls for the PLATFORM dataset (additive, 2026-07-31).
+ * Written by the admin panel only (`/admin/ielts`) and mirrored onto BOTH the test doc
+ * and `ielts_test_meta/{testId}` so every reader — full-doc (teacher) and meta-only
+ * (student library) — sees the same order and the same hidden flags.
+ * Missing = visible, and unordered items sort after ordered ones.
+ */
+export interface IeltsCatalogControls {
+  /** Ascending display position within a skill. Admin-assigned, 0-based, dense. */
+  catalogOrder?: number;
+  /** Hide from the student Practice Library. */
+  hiddenFromStudents?: boolean;
+  /** Hide from the teacher platform lists + the assign-test picker. */
+  hiddenFromTeachers?: boolean;
+}
+
+interface IeltsTestBase extends IeltsCatalogControls {
   test_id: string;
   test_title: string;
   total_time_minutes: number;
@@ -188,7 +204,7 @@ export interface IeltsWritingCriteria {
 // ielts_test_meta/{testId} — lightweight library-card summary written in the same batch as the
 // test doc (saveIeltsTest / W&S saves). Never contains answers. Old tests get one on re-save;
 // readers fall back to full-doc fetch when metas are missing (count mismatch).
-export interface IeltsTestMeta {
+export interface IeltsTestMeta extends IeltsCatalogControls {
   testId: string;
   skill: IeltsSkill;
   test_title: string;

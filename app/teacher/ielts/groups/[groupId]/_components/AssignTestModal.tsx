@@ -226,7 +226,10 @@ export default function AssignTestModal({ groupId, group, isOpen, onClose, onCre
     let alive = true;
     setLoadingTests(true);
     setTests([]);
-    const load = source === 'mine' ? fetchTeacherTests(skill, user.uid) : fetchPlatformTests(skill);
+    // Platform side: audience 'teacher' drops admin-hidden papers and keeps the catalog order.
+    const load = source === 'mine'
+      ? fetchTeacherTests(skill, user.uid)
+      : fetchPlatformTests(skill, { audience: 'teacher' });
     load
       .then((list) => {
         if (!alive) return;
