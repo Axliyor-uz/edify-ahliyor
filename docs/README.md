@@ -15,6 +15,7 @@ This directory is the **source of truth** for how Edify works. The workflow cont
 | Any Firestore read/write, collection shapes, indexes, timestamps | [DATA_MODEL.md](DATA_MODEL.md) + the domain doc |
 | **Anything that creates, stores, renders or grades a question** — `teacher_questions`, `questions1`, embedded `custom_tests.questions[]`, the v1 schema, the normalizer | [QUESTIONS.md](QUESTIONS.md) |
 | Student app `app/(student)/*` — dashboard, classes, test/exam runners, XP/streak/leaderboards, games, library, notifications, social, explore | [STUDENT.md](STUDENT.md) |
+| **Announcing something to students** — `lib/announcements.ts` (the dashboard's rotating hero) | [STUDENT.md](STUDENT.md) |
 | **The skill axis** — `lib/RASCHskills.ts`, the syllabus→skill map, skills inside the heptagon, exam skill detection | [RASCH_SKILLS.md](RASCH_SKILLS.md) |
 | **The Milliy sertifikat MATHS paper (a.k.a. the Rasch paper)** — `teacher_rasch_quizzes`/`teacher_rasch_results`, the 6-digit access code, `app/teacher/milliy-sertifikat/math/*`, `/raschmodel/quiz`, the shared `ExamRunner`/`ExamReview` | [RASCH_QUIZ.md](RASCH_QUIZ.md) |
 | **Milliy sertifikat SUBJECT papers (biology, chemistry, physics, English)** — `milliy_quizzes`/`milliy_quiz_results`, `app/teacher/milliy-sertifikat/*`, `app/(student)/milliy-sertifikat/*`, the subject registry, the cross-collection code lookup, the sample papers | [MILLIY_QUIZ.md](MILLIY_QUIZ.md) |

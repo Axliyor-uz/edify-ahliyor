@@ -88,12 +88,25 @@ export function StatTile({ label, value, delta, icon, tone = 'surface', trend, c
           {delta.direction === 'up' ? '▲' : delta.direction === 'down' ? '▼' : '—'} {delta.value}
         </span>
       )}
-      {trend && trend.length > 1 && <Sparkline data={trend} className="mt-3" />}
+      {/* ⚠️ A flat series is NOT drawn. With every point equal (the common case:
+          a student whose last 7 days are all 0 XP) the line lands on the baseline
+          and renders as a hard rule across the tile with a dot on the end — it
+          reads as a divider or a glitch, not as data, and it makes this tile
+          taller than its neighbours for no information. No variation ⇒ no chart. */}
+      {trend && trend.length > 1 && Math.min(...trend) !== Math.max(...trend) && (
+        <Sparkline data={trend} className="mt-3" />
+      )}
     </div>
   );
 }
 
-/** Small trend line with an emphasised endpoint. */
+/**
+ * Small trend line with an emphasised endpoint.
+ *
+ * ⚠️ Callers must skip it for a **flat** series (see `StatTile`): with
+ * `max === min` the fallback `span = 1` puts every point on the baseline, which
+ * draws a full-width rule instead of a trend.
+ */
 export function Sparkline({ data, className }: { data: number[]; className?: string }) {
   const w = 160;
   const h = 40;

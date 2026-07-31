@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching anything that creates, stores, renders or grades a question — `teacher_questions`, `questions1`, the embedded `custom_tests.questions[]` snapshots, any `app/teacher/create/*` page, or a student runner. Also read [DATA_MODEL.md](DATA_MODEL.md). Index: [README.md](README.md).
 
-**Last verified:** 2026-07-30 (biology + chemistry added to the taxonomy); rest 2026-07-14.
+**Last verified:** 2026-07-31 (camera capture on every image slot; the `?back=` return trip from a paper builder); 2026-07-30 (biology + chemistry added to the taxonomy); rest 2026-07-14.
 
 ## The one rule
 
@@ -140,6 +140,51 @@ The student RASCH exam ([lib/ExamTeacher.ts](../lib/ExamTeacher.ts)) draws slots
 
 This lives entirely in the exam layer (`ExamQuestion.parts` / `qType` / `examMode` / `examSlotCount` / `examScore`), not in the v1 schema — `gradeQuestion`/`isAnswerCorrect` are unchanged, and the teacher-facing surfaces still treat any block as one document. Slot numbers advance by `examSlotCount`, so `ExamQuestion.slotNumber` is a card's FIRST slot and `toItemResponses` emits one `ItemResponse` per sub-question for a shared_options block.
 
+## Images: file **or** camera (2026-07-31)
+
+Every image slot in both builders — the prompt, each option, a block's shared
+diagram — is one `ImagePicker`
+([app/teacher/create/question/_components/ImagePicker.tsx](../app/teacher/create/question/_components/ImagePicker.tsx)),
+and it offers **Rasm yuklash** and **Kamera** side by side. The camera exists
+because a teacher writing a question is usually looking at it on paper: a
+textbook, a board, a printed variant. "Save the photo, then find it in the
+picker" was three steps for something the camera does in one.
+
+- **In a secure context** (https or localhost) the button opens
+  `CameraCapture` — a live `getUserMedia` view inside a dialog, with capture /
+  retake / use, and a flip button **only when `enumerateDevices` reports more
+  than one camera**. This is the path that also works on a laptop.
+- ⚠️ **Where `getUserMedia` is missing** (plain http, an old in-app webview) the
+  same button falls back to `<input type="file" capture="environment">`, which
+  hands off to the OS camera app. Both paths end in the same `onPick(file)`, so
+  nothing downstream knows which one ran.
+- ⚠️ **The shot is DOWNSCALED before it leaves the dialog** (long edge 1600px,
+  JPEG 0.85). A phone camera returns 4–12 MB per frame — over `MAX_IMAGE_BYTES`,
+  so it would simply be refused — and every one of these files is uploaded to
+  Storage and then fetched by every student who sits the paper.
+- ⚠️ **The preview is mirrored for the front camera; the saved photo is not.**
+  Mirroring helps a person aim, and ruins a photo of a page.
+- The stream is stopped whenever the dialog closes **and** while a shot is
+  frozen — a camera left running keeps the indicator light on for nothing.
+
+Uploading is still the caller's job and still happens **on save**, so an
+abandoned form uploads nothing.
+
+## Sent here by a paper builder (`?back=`)
+
+`/teacher/create/question` and `/teacher/create/block` accept three parameters
+from a Milliy sertifikat paper builder
+([app/teacher/create/_components/returnTo.ts](../app/teacher/create/_components/returnTo.ts)):
+`?back=` (where to return), `?subject=` (pre-picks the **Fan** dropdown) and — on
+the way back — `?add=`. With `back` set, the header's back arrow and a banner
+both return to the paper, and **a successful save returns there automatically**,
+carrying the new question's id so the paper picks it up. The saved question is
+put into `questionCache` first, so that pick-up costs **zero reads**.
+⚠️ `back` is user input: `safeBackTo` accepts only an in-app `/teacher/…` path.
+⚠️ Only a NEW question rides back with `add` — an edited one is either already on
+the paper or was left off it deliberately. Full contract:
+[MILLIY_QUIZ.md](MILLIY_QUIZ.md) and [RASCH_QUIZ.md](RASCH_QUIZ.md).
+
 ## Reads are on demand, never on mount
 
 The builder page (`create/question`) shows the question you just created **from memory** — saving does not read it back. It touches Firestore only when the teacher presses **"load 10"**, and then fetches exactly 10 docs per press (`fetchMyQuestionsPage`, cursor-paged). Opening the form costs **zero reads**. Don't add an auto-fetch-on-mount or a refetch-after-save; that was removed deliberately.
@@ -211,11 +256,14 @@ Question content is written once and read constantly; statistics churn on every 
 | Bank writes/reads/deletes (+ image upload & GC) | [services/questionBankService.ts](../services/questionBankService.ts) |
 | Subject → topic → subtopic taxonomy | [data/question_topics.json](../data/question_topics.json) via [lib/questionTopics.ts](../lib/questionTopics.ts) |
 | Single-question builder UI | [app/teacher/create/question/](../app/teacher/create/question/) |
+| Image slot: file picker + live camera | [app/teacher/create/question/_components/ImagePicker.tsx](../app/teacher/create/question/_components/ImagePicker.tsx) + [CameraCapture.tsx](../app/teacher/create/question/_components/CameraCapture.tsx) |
+| The `?back=` return trip from a paper builder | [app/teacher/create/_components/returnTo.ts](../app/teacher/create/_components/returnTo.ts) |
 
 ## How to verify a change
 
 `npm run dev`, then:
 1. Create one `mcq` (with an image on the prompt *and* on an option) and one `open` question at `/teacher/create/question` → both appear in the list below the form, and in `/teacher/create/my_questions`.
+1b. Press **Kamera** on the prompt (on https or localhost): a live view opens, **Suratga olish** freezes it, **Qayta olish** goes back to live, **Ishlatish** drops it into the preview — and the camera indicator goes out as soon as the dialog closes. Save, then check the stored file: it must be a JPEG whose long edge is ≤1600px and a few hundred KB, not a multi-megabyte frame. Deny the permission once and the dialog must say so and still let you upload a file.
 2. Check the Firestore doc: `options` is an array, `correctAnswer.value` is set, `difficulty` is an object, and the flat `creatorId`/`difficultyId`/`creationMethod`/`createdAt` mirrors are present.
 3. Filter by difficulty in my_questions → the new question shows up (this is the flat-mirror path).
 4. Publish a test containing it, assign it to a class, answer it as a student → options render, the image shows, grading is correct.

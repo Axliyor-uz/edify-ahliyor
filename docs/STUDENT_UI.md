@@ -5,7 +5,7 @@
 > same change whenever you alter behavior described here.
 > Index: [README.md](README.md). Student *logic* lives in [STUDENT.md](STUDENT.md).
 
-**Last verified:** 2026-07-23 (shell variants extended: 9 desktop + 5 mobile, recipe-driven via shellStyles.ts).
+**Last verified:** 2026-07-30 (`StatTile` skips a flat sparkline); 2026-07-23 (shell variants extended: 9 desktop + 5 mobile, recipe-driven via shellStyles.ts).
 
 ## The one thing to know
 
@@ -177,6 +177,13 @@ npx tsx scripts/genStudentPalettes.mjs                     # plain node fails �
   `.s-contain`, and the CSS rule is `.s-list-group:not(.s-contain *)`. **Any new
   bounded surface that can contain a list needs `s-contain`.**
 - ⚠️ `IconButton` requires `aria-label` (typed as mandatory).
+- ⚠️ **`StatTile` draws no sparkline for a flat `trend`** (2026-07-30). `Sparkline`
+  falls back to `span = 1` when `max === min`, which puts every point on the
+  baseline — a full-width rule with a dot on the end, which reads as a divider or a
+  rendering glitch and makes the tile taller than its neighbours for zero
+  information. The dashboard's XP tile hit this for every student with a quiet week
+  (seven 0-XP days). The guard is in `StatTile`, so pass `trend` freely; a new
+  direct `Sparkline` caller has to make the same check itself.
 - Motion: `Motion_level="none"` **and** the OS `prefers-reduced-motion` setting
   both collapse animation. Guard JS animations with `MOTION_ON` plus a
   `matchMedia` check (`useRipple` and `Celebration` do).

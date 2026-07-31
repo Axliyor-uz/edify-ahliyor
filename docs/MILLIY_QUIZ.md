@@ -9,7 +9,7 @@
 > subsystem — see below). Update this doc in the same change whenever you alter
 > behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-30 (subsystem introduced; biology **and chemistry** live, each with a sample paper; the SAME dynamic marking as maths; full-screen exam lockdown).
+**Last verified:** 2026-07-31 (the question-builder round trip is closed — `?back=`/`?add=`/`?subject=`); 2026-07-30: subsystem introduced; biology **and chemistry** live, each with a sample paper; the SAME dynamic marking as maths; full-screen exam lockdown.
 
 ## Purpose & scope
 
@@ -89,8 +89,10 @@ label. Same rule the maths paper follows.
 | `app/teacher/milliy-sertifikat/[subject]/results/[quizId]/page.tsx` | Who sat it; percent, per-topic counts, per-question solve rate. |
 | `app/teacher/milliy-sertifikat/_components/SubjectBankPicker.tsx` | The one pool: the teacher's own `teacher_questions`, narrowed to the subject **server-side**. |
 | `app/teacher/milliy-sertifikat/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
+| [app/teacher/create/_components/returnTo.ts](../app/teacher/create/_components/returnTo.ts) | The `?back=` / `?add=` / `?subject=` contract — how a builder sends a teacher to write a question **and gets them back with it**. Shared with the maths builder. |
 | `app/(student)/milliy-sertifikat/page.tsx` | **The student's subject hub — and their only nav entry to the programme.** Cards only, zero reads. Maths → `/raschmodel`. |
 | `app/(student)/dashboard/_components/MilliyCard.tsx` | **The dashboard's door to the programme** (2026-07-30) — the hub plus a chip per subject. Zero reads. ⚠️ It exists because the nav entry is `hideOnMobile`, so on a phone the drawer was the only way in. See [STUDENT.md](STUDENT.md). |
+| [lib/announcements.ts](../lib/announcements.ts) | Where each subject is **announced** on the dashboard (maths / biology / chemistry entries). ⚠️ A new subject going live wants an entry here too — and ⚠️ **no question count for a generic subject**, whose length is the teacher's. See [STUDENT.md](STUDENT.md). |
 | `app/(student)/milliy-sertifikat/[subject]/page.tsx` | One subject for the student: code box, sitting, result, its sat papers. |
 | [scripts/addBiologyTopics.mjs](../scripts/addBiologyTopics.mjs) | How the biology taxonomy was appended to `data/question_topics.json`. |
 | [scripts/addChemistryTopics.mjs](../scripts/addChemistryTopics.mjs) | The same for chemistry — **the pattern for physics / English.** Idempotent; re-running replaces its own subject entry. |
@@ -144,7 +146,9 @@ docs, so a typo is a topic path that can never be matched again), then flip its
 registry entry from `soon` to `generic` with the right `taxonomySlug` and `href`,
 and optionally add `data/<subject>-default-paper.json` + one line in
 `SAMPLE_FILES`. **That is the whole change** — chemistry needed no new component,
-route, service, rule or index. ⚠️ **Do not point a new subject at the Rasch
+route, service, rule or index. (Then tell students: one entry in
+[lib/announcements.ts](../lib/announcements.ts), which is the dashboard's hero —
+[STUDENT.md](STUDENT.md).) ⚠️ **Do not point a new subject at the Rasch
 flow**: its quota rules, difficulty bands and ability model are maths-specific.
 
 ### Biology's taxonomy (2026-07-30)
@@ -316,7 +320,43 @@ One pool: the teacher's own `teacher_questions`, filtered to the subject.
   **and its `subject`**, so it can never drop biology questions onto a chemistry
   paper, and on mount **the draft wins over the server copy** (it is only written
   when the teacher leaves, so it is strictly newer). Separate key from the Rasch
-  draft.
+  draft. ⚠️ **A restore ADOPTS the draft's `quizId`** — a fresh one is minted on
+  mount, so a paper already saved once used to fork into a second document with
+  the first one's access code the moment the teacher came back.
+
+### 🟢 The round trip is closed: save a question → back on the paper, with it (2026-07-31)
+
+Leaving was safe; **arriving back was the teacher's problem.** The question
+builder dropped them at the create hub and finding the way back to a half-built
+paper was theirs to work out. Both links now carry `?back=<this builder>` and
+`?subject=<taxonomySlug>`
+([app/teacher/create/_components/returnTo.ts](../app/teacher/create/_components/returnTo.ts)):
+
+- the question builder's **back arrow** returns to the paper instead of the
+  create hub, a banner says a paper is waiting and offers the way back at any
+  time, and **a successful save returns there by itself**;
+- the save carries `?add=<questionId>` and the builder **puts that question on
+  the paper on arrival** — writing a question and putting it on the paper are one
+  act, not two;
+- `?subject=` pre-picks the **Fan** dropdown, so a biology paper cannot send a
+  teacher off to write something it would then have to refuse.
+
+⚠️ **The auto-add waits for `hydrated`** (the draft/server copy in state). Adding
+against a paper that has not been restored yet would check the length against
+nothing and then **stash that empty paper over the real draft**.
+
+⚠️ **It costs zero reads**: the question builder leaves the document it just
+wrote in `questionCache`, which `fetchQuestionById` consults first (a cold reload
+of the link pays one read). ⚠️ It then **re-stashes** — the draft was written on
+the way OUT and knows nothing of the new question, so a refresh would otherwise
+restore the paper without it. ⚠️ **A question of another subject is refused**
+with a named toast even though `milliyQuizItem` would happily convert it: the
+picker below could never have offered it, and a paper is one subject's.
+`?back=` is user input, so only an in-app `/teacher/…` path is ever pushed.
+
+⚠️ **Only a NEW question rides back.** An edited one is either already on the
+paper (a duplicate) or was left off it on purpose; the return trip happens, the
+`add` does not.
 
 ⚠️ **Questions are EMBEDDED SNAPSHOTS, not refs** — the same trade
 `teacher_rasch_quizzes` and `custom_tests.questions[]` make. A ref list would
@@ -571,9 +611,16 @@ Then `npm run dev`, as a **teacher**:
    badged *Yopiq* or *Ochiq*. Add all three; the block's Add must be refused whole
    if it would overshoot 3. **Saqlash va faollashtirish** unlocks only at exactly
    3/3.
-4. Press **Bitta savol yaratish** — it leaves for `/teacher/create/question`.
-   Write a question, come back: the paper is still there with a "saved" banner, and
-   **Yuklash** now shows the new question first.
+4. Press **Bitta savol yaratish** — it leaves for `/teacher/create/question`
+   with **Fan** already on *Biologiya* and a banner saying a paper is waiting.
+   Write a question and save it: **the browser returns to the builder by itself**,
+   the paper is still there with a "saved" banner, the new question is **already
+   on it** (the counter went up), and the network tab shows **no read** for it.
+   Reload: it is still on the paper (the stash was rewritten). Press the link
+   again and use the banner's **Variantga qaytish** without saving — the paper
+   must come back untouched. Then, from the *Kimyo* builder, write a **biology**
+   question: the return must refuse it by name, not drop it onto the chemistry
+   paper.
 5. Publish → the list shows a 6-digit code; tapping it copies it.
 6. **Now do the same for Kimyo**, which is the check that the subsystem really is
    generic — nothing but the registry entry, the taxonomy and the JSON was added

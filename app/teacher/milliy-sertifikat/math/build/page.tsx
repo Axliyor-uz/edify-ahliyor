@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ArrowDown, ArrowUp, Blocks, Database, HelpCircle, KeyRound,
@@ -17,13 +17,15 @@ import {
   RASCH_QUIZ_DEFAULT_MINUTES, RASCH_QUIZ_TOTAL,
   QUIZ_MAX_BYTES, BLUEPRINT_SECTION_TARGET, checkQuizAdd, itemPreview, quizByteSize,
   quizDifficultyCounts, quizQuotaGaps, quizSectionCounts, quizSlotCount, sectionForItem,
-  slimQuizItem,
+  slimQuizItem, teacherQuizItem,
 } from "@/lib/RASCHquiz";
 import { EXAM_BLUEPRINT } from "@/lib/Examblueprint";
 import { loadDefaultPaper } from "@/lib/RASCHdefaultPaper";
 import {
   getQuiz, newQuizId, pickedIds, reserveAccessCode, saveQuiz, setQuizStatus,
 } from "@/services/teacherRaschQuizService";
+import { fetchQuestionById } from "@/services/questionBankService";
+import { questionBuilderHref } from "@/app/teacher/create/_components/returnTo";
 import { BankPicker, MyBankPicker, type PickerStrings } from "../_components/QuestionPickers";
 import { clearDraft, readDraft, writeDraft } from "../_components/draft";
 import {
@@ -92,6 +94,8 @@ const TR: Record<string, Record<string, string>> = {
     subject: "Fan", chapter: "Bo'lim", reads: "ta hujjat o'qildi",
     quotaFull: "to'ldi", quotaLeft: "yana kerak:", quotaNoSlot: "o'rin yo'q",
     draftKept: "Variantingiz saqlab qo'yildi — savol yaratib qaytsangiz yo'qolmaydi.",
+    addedBack: "Yangi savol variantga qo'shildi.",
+    addBackMissing: "Yangi savolni topib bo'lmadi — quyidagi «Yuklash» orqali qo'shing.",
     discardDraft: "Tozalash",
     paper: "Variant",
     emptyPaper: "Hali savol qo'shilmagan.",
@@ -158,6 +162,8 @@ const TR: Record<string, Record<string, string>> = {
     subject: "Предмет", chapter: "Раздел", reads: "документов прочитано",
     quotaFull: "заполнено", quotaLeft: "ещё нужно:", quotaNoSlot: "нет места",
     draftKept: "Ваш вариант сохранён — он не потеряется, пока вы создаёте вопрос.",
+    addedBack: "Новый вопрос добавлен в вариант.",
+    addBackMissing: "Не удалось найти новый вопрос — добавьте его кнопкой «Загрузить» ниже.",
     discardDraft: "Очистить",
     paper: "Вариант",
     emptyPaper: "Вопросы ещё не добавлены.",
@@ -224,6 +230,8 @@ const TR: Record<string, Record<string, string>> = {
     subject: "Subject", chapter: "Chapter", reads: "documents read",
     quotaFull: "full", quotaLeft: "still needed:", quotaNoSlot: "no slot",
     draftKept: "Your paper is saved — it survives going off to write a question.",
+    addedBack: "Your new question was added to the paper.",
+    addBackMissing: "Could not find the new question — add it with “Load” below.",
     discardDraft: "Start over",
     paper: "The paper",
     emptyPaper: "No questions added yet.",
@@ -253,7 +261,10 @@ function BuilderInner() {
   const { lang } = useTeacherLanguage();
   const t = TR[lang] || TR.uz;
 
-  const [quizId] = useState(() => editId || newQuizId());
+  /** Where a question builder must return the teacher: THIS paper, not a new one. */
+  const backHere = `/teacher/milliy-sertifikat/math/build${editId ? `?id=${editId}` : ""}`;
+
+  const [quizId, setQuizId] = useState(() => editId || newQuizId());
   const [title, setTitle] = useState("");
   const [minutes, setMinutes] = useState(RASCH_QUIZ_DEFAULT_MINUTES);
   const [shuffle, setShuffle] = useState(true);
@@ -263,6 +274,12 @@ function BuilderInner() {
   const [items, setItems] = useState<RaschQuizItem[]>([]);
 
   const [loading, setLoading] = useState(!!editId);
+  /**
+   * The paper is settled: the draft (or the server copy) is in state. ⚠️ The
+   * auto-add below MUST wait for it, or it would check a question against an
+   * empty paper and stash that empty paper over the real draft.
+   */
+  const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [filling, setFilling] = useState(false);
@@ -280,6 +297,11 @@ function BuilderInner() {
     const mine = draft && (editId ? draft.quizId === editId : true);
 
     if (draft && mine) {
+      // ⚠️ ADOPT the draft's id. A new one is minted on mount, so a paper that
+      // had already been saved once would fork into a SECOND document — with the
+      // first one's access code on it — the moment the teacher came back from
+      // writing a question.
+      setQuizId(draft.quizId);
       setTitle(draft.title);
       setMinutes(draft.minutes);
       setShuffle(draft.shuffle);
@@ -289,10 +311,11 @@ function BuilderInner() {
       setItems(draft.items);
       setRestored(true);
       setLoading(false);
+      setHydrated(true);
       return;
     }
 
-    if (!editId) return;
+    if (!editId) { setHydrated(true); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -312,7 +335,7 @@ function BuilderInner() {
         console.error(err);
         if (!cancelled) setLoadError(t.loadFailed);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) { setLoading(false); setHydrated(true); }
       }
     })();
     return () => { cancelled = true; };
@@ -382,7 +405,7 @@ function BuilderInner() {
    * ⚠️ The check runs OUTSIDE the state updater. `setItems(prev => …)` may be
    * invoked twice in dev, and a toast fired from inside would fire twice with it.
    */
-  const addItem = useCallback((item: RaschQuizItem) => {
+  const addItem = useCallback((item: RaschQuizItem): RaschQuizItem | null => {
     // A `shared_options` block occupies one slot per sub-question, so it is
     // added whole or not at all — truncating it would break its shared pool.
     const slim = slimQuizItem(item);
@@ -393,9 +416,11 @@ function BuilderInner() {
       else if (check.reason === "sectionFull") {
         toast.error(fmt(t.overTopic, { name: sectionName(check.sectionId), want: check.want }));
       } else if (check.reason === "noSlot") toast.error(t.noSlot);
-      return;
+      return null;
     }
     setItems((prev) => (prev.some((q) => q.id === slim.id) ? prev : [...prev, slim]));
+    // What actually landed on the paper — the auto-add below re-stashes with it.
+    return slim;
   }, [items, t, sectionName]);
 
   /**
@@ -454,9 +479,55 @@ function BuilderInner() {
    * and those links are ordinary navigations. It also closes a hazard that was
    * already there: a back-swipe used to lose the paper too.
    */
-  const stash = () => {
-    writeDraft({ quizId, title, minutes, shuffle, showAnswers, accessCode, status, items });
-  };
+  const stashItems = useCallback((list: RaschQuizItem[]) => {
+    writeDraft({ quizId, title, minutes, shuffle, showAnswers, accessCode, status, items: list });
+  }, [quizId, title, minutes, shuffle, showAnswers, accessCode, status]);
+
+  const stash = () => stashItems(items);
+
+  /**
+   * The return trip from a question builder (`?add=<questionId>`, see
+   * returnTo.ts): the question just written lands on the paper by itself, so
+   * "write a question" and "put it on the paper" are one act.
+   *
+   * ⚠️ It waits for `hydrated` — running against a paper that has not been
+   * restored yet would check the add against nothing and then STASH that empty
+   * paper over the real draft.
+   *
+   * ⚠️ A question the BLUEPRINT has no slot for is refused here exactly as it is
+   * in the picker (`addItem` says which quota stopped it) — the protocol does not
+   * bend because the question is new.
+   */
+  const addBackId = params.get("add");
+  const addBackRef = useRef(false);
+  useEffect(() => {
+    if (!addBackId || !hydrated || addBackRef.current) return;
+    addBackRef.current = true;
+
+    (async () => {
+      try {
+        // Zero reads on the normal path: the question builder leaves the document
+        // it just wrote in `questionCache`, which fetchQuestionById reads first.
+        const question = await fetchQuestionById(addBackId);
+        if (!question) { toast.error(t.addBackMissing); return; }
+        const added = addItem(teacherQuizItem(question));
+        if (!added) return; // addItem has already said why
+        // The stash was written on the way OUT and knows nothing of this
+        // question; refreshing now would restore the paper without it.
+        stashItems([...items, added]);
+        toast.success(t.addedBack);
+      } catch (err) {
+        console.error(err);
+        toast.error(t.addBackMissing);
+      } finally {
+        // Drop the parameter: a refresh must not try to add it a second time.
+        router.replace(editId ? `/teacher/milliy-sertifikat/math/build?id=${editId}` : "/teacher/milliy-sertifikat/math/build");
+      }
+    })();
+    // Runs once per return trip — `addItem`/`items` are read from the render that
+    // hydrated the paper, and re-running it would re-add the question.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addBackId, hydrated]);
 
   /** Throw the restored draft away and start the paper over. */
   const discard = () => {
@@ -732,7 +803,7 @@ function BuilderInner() {
               was touched. These two cover the two shapes a question can take. */}
           <div className="mb-4 grid gap-2 sm:grid-cols-2">
             <Link
-              href="/teacher/create/question"
+              href={questionBuilderHref("/teacher/create/question", backHere)}
               onClick={stash}
               className="m3-interactive flex items-start gap-3 rounded-m3-md border border-outline-variant bg-surface-container-lowest p-3 transition-colors hover:bg-surface-container"
             >
@@ -748,7 +819,7 @@ function BuilderInner() {
             </Link>
 
             <Link
-              href="/teacher/create/block"
+              href={questionBuilderHref("/teacher/create/block", backHere)}
               onClick={stash}
               className="m3-interactive flex items-start gap-3 rounded-m3-md border border-outline-variant bg-surface-container-lowest p-3 transition-colors hover:bg-surface-container"
             >

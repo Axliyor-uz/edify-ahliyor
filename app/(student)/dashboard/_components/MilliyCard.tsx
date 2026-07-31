@@ -18,10 +18,12 @@ import type { Lang } from '@/types/Math';
  * on the dashboard rather than being "one more banner".
  *
  * It replaced `MathLevelSummary` in that slot (2026-07-30). That card measured
- * *maths ability* and linked to a report; `MmsCard` directly below already shows
- * the same 0–5 level plus the expected score, so nothing was lost — and the
- * programme is bigger than maths now (biology, chemistry), so the dashboard
- * points at the hub, not at one subject's report.
+ * *maths ability* and linked to a report; the programme is bigger than maths now
+ * (biology, chemistry), so the dashboard points at the hub instead of at one
+ * subject's report. ⚠️ **The measured 0–5 level is therefore no longer on the
+ * dashboard at all** — it lives on `/raschmodel` (`MathLevelSummary`, the nav's
+ * level chip and `MmsCard`, which all share one cached read). Don't "restore" it
+ * here without checking that read is still warm.
  *
  * **Zero Firestore reads**, exactly like the hub itself: the subject list is
  * `MILLIY_SUBJECTS`, a bundled constant. ⚠️ Subject destinations come from

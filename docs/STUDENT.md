@@ -2,7 +2,7 @@
 
 > **Agent workflow:** read this BEFORE touching `app/(student)/*`, XP/streak/leaderboard logic, `services/quizService.ts`, `services/historyService.ts`, or `lib/social.ts`. Update this doc in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-30 (`MilliyCard` on the dashboard replaces `MathLevelSummary`, because the mobile dock has no slot for the programme; Milliy sertifikat is the only nav entry, maths inside it; full-screen exam lockdown; Milliy sertifikat subject papers + the single code box); 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
+**Last verified:** 2026-07-30 (**2 maths papers a day / 12-hour cooldown**; the dashboard's hero is now a **rotating announcement card** driven by `lib/announcements.ts`, and `MmsCard` moved to `/raschmodel`; `MilliyCard` replaces `MathLevelSummary` there, because the mobile dock has no slot for the programme; Milliy sertifikat is the only nav entry, maths inside it; full-screen exam lockdown; Milliy sertifikat subject papers + the single code box); 2026-07-28 (teacher-built Rasch papers, the shared exam runner, and the one level component).
 
 ## Purpose & scope
 
@@ -99,7 +99,72 @@ Every recharts chart mounts inside [components/ChartFrame.tsx](../components/Cha
 ## The dashboard's two "levels" (they measure different things)
 
 - **Level** (the stat tile) is XP: `floor(totalXP/1000)+1` — how much the student has *done*.
-- **Mathematics level** is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). ⚠️ **Since 2026-07-30 the dashboard shows it inside `MmsCard`, not in its own card.** `MathLevelSummary` — the ability card with the seven-dimension strip — used to sit under the stat grid; it now renders **only on `/raschmodel`**, and its dashboard slot belongs to `MilliyCard` (next section). Nothing was lost: `MmsCard` already prints `formatLevel(math.level)/MASTER_LEVEL`, the expected score and the weakest dimension, from the same read. Both read `RASCH_levels/{uid}` through the same 12h localStorage cache in `services/RASCHProgressService.ts` and render `null` until it resolves.
+- **Mathematics level** is Rasch ability θ mapped to **0–5** — how hard a problem the student can *solve* (1 simple, 2 easy, 3 medium, 4 hard, 5 olympiad; see [RASCH_SKILLS.md](RASCH_SKILLS.md#the-05-level-scale)). ⚠️ **Since 2026-07-30 it is NOT on the dashboard at all.** Both cards that showed it — `MathLevelSummary` and `MmsCard` — now live on **`/raschmodel`**, whose nav chip shows it too; the dashboard's two slots went to `MilliyCard` (the programme's door) and the announcement carousel (the platform's news). So the dashboard answers "what can I do", `/raschmodel` answers "how good am I at maths". Everything on that page reads `RASCH_levels/{uid}` through the same 12h localStorage cache in `services/RASCHProgressService.ts`, so all three surfaces cost **one** read and each renders `null` until it resolves.
+
+## The dashboard's hero is a rotating announcement (2026-07-30)
+
+`app/(student)/dashboard/_components/AnnouncementCarousel.tsx` is the ONE place the
+platform tells students what is new, and **[lib/announcements.ts](../lib/announcements.ts)
+is the only file to edit to say something.** It replaced `MmsCard` in that slot: a
+hero welded to one feature had to be rewritten, re-reviewed and re-translated
+every time something else shipped, so the maths paper, biology and chemistry are
+now three entries in an array.
+
+**It sits directly under the stat grid, ABOVE `MilliyCard`** — the news is what a
+student should read first, and the programme's door is where they go afterwards.
+
+- **Adding the next announcement** = one entry at the TOP of `ANNOUNCEMENTS`
+  (array order is display order). Retire one with `until: 'YYYY-MM-DD'` instead of
+  deleting it, or schedule one with `from:`; `activeAnnouncements()` filters the
+  window on the client, never at module scope, so a tab left open overnight ages
+  correctly. Every text field accepts a bare string (fills all three languages) or
+  a `{uz, ru, en}` object — `say()` resolves it, falling back to Uzbek.
+- ⚠️ **The window filter deliberately runs only after hydration** (a
+  `useSyncExternalStore` flag, not a setState in an effect — the React Compiler
+  forbids that). `/dashboard` is statically prerendered, so a clock read during
+  render is a hydration mismatch waiting to happen; today the auth gate means no
+  dashboard markup reaches that prerender at all, but don't "optimize" the guard
+  away on the strength of that. Same reason `prefers-reduced-motion` and
+  `document.visibilityState` are read through stores here.
+- ⚠️ **Numbers the code owns are imported, never typed.** The maths entry's
+  `45 / 150 / 100` come from `EXAM_TOTAL_QUESTIONS` / `EXAM_DURATION_MINUTES`
+  ([lib/Examblueprint.ts](../lib/Examblueprint.ts)) and `PAPER_TOTAL`
+  ([lib/RASCHmarks.ts](../lib/RASCHmarks.ts)) — the dashboard must not be able to
+  advertise a paper this app does not serve.
+- ⚠️ **The biology/chemistry entries deliberately advertise no question count.**
+  For every subject except maths the length is the TEACHER's
+  (`questionTarget` is not a national spec — [MILLIY_QUIZ.md](MILLIY_QUIZ.md)), so
+  a number here would be wrong for most papers.
+- **Zero Firestore reads** — bundled constant. That is what makes it acceptable to
+  spend the dashboard's hero on news.
+- ⚠️ It spends the student kit's **one `gradient` card** for the screen (which is
+  why `MmsCard` had to leave rather than sit beside it). White text ⇒ opacity
+  modifiers use plain palette colours (`border-white/30`), never `border-current/25`
+  and never an M3 token — neither can take a Tailwind opacity modifier.
+- **Rotation:** 8s, and it stops on hover, on keyboard focus, while the tab is
+  hidden, and permanently under `prefers-reduced-motion` (read with `matchMedia`,
+  which the browser can change mid-session). There is an explicit pause/play
+  control because APG requires one of any auto-moving content; the dots and arrows
+  keep working when it is paused, so nothing becomes unreachable.
+- ⚠️ **Every slide stays mounted in ONE grid cell** (`[grid-area:1/1]`), so the
+  card is as tall as the tallest slide and the page cannot jump mid-rotation.
+  Inactive slides are `aria-hidden` **and `inert`** — invisible content whose CTAs
+  still take Tab is a worse bug than a height jump.
+- **The transition is a directional slide, not a crossfade.** `shortestDelta()`
+  gives each slide its signed distance from the active one *the short way round*,
+  and that single number parks every waiting slide on the side it will arrive from
+  — so advancing always travels left→right and going back right→left, **including
+  across the wrap** from the last announcement to the first. `transform`
+  (`translate3d` + `scale` in one string, or they overwrite each other) and
+  `opacity` only: no layout, no paint, so it stays on the compositor on a cheap
+  phone. ⚠️ The 560ms/easeOutQuint is a deliberate arbitrary value, not a missing
+  token — `duration-m3-med`'s 200ms reads as a flicker over a 44px travel. Every
+  other transition on the card still uses the tokens.
+- **Phones swipe** (pointer events, 44px threshold) and get stacked full-width
+  CTAs; the side arrows appear from `sm` up. ⚠️ The swipe handler must not use
+  capture or `preventDefault` — a pointerdown on a CTA has to reach the link.
+- Controls are hidden entirely when only one announcement is active: dots and
+  arrows on a carousel of one read as broken.
 
 ## `MilliyCard` — the dashboard's door to the programme (2026-07-30)
 
@@ -120,27 +185,30 @@ built subject directly (`Matematika` → `/raschmodel`, `Biologiya`/`Kimyo` →
 - The subject chips are siblings of the header link, not nested inside it — an
   `<a>` inside an `<a>` is invalid and React will warn.
 
-## MMS — the dashboard's exam card (2026-07-29)
+## MMS — the Rasch hub's exam card (2026-07-29, moved 2026-07-30)
 
-`MmsCard` (`app/(student)/raschmodel/components/MmsCard.tsx`) sits directly under
-`MilliyCard` on the dashboard and names the mock exam the way a student
-actually knows it: **Matematika Milliy Sertifikat**, `45` questions,
-`150` minutes, `100` points. Those three numbers are read from
+`MmsCard` (`app/(student)/raschmodel/components/MmsCard.tsx`) names the mock exam
+the way a student actually knows it: **Matematika Milliy Sertifikat**, `45`
+questions, `150` minutes, `100` points. Those three numbers are read from
 `EXAM_TOTAL_QUESTIONS` / `EXAM_DURATION_MINUTES` ([lib/Examblueprint.ts](../lib/Examblueprint.ts))
 and `PAPER_TOTAL` ([lib/RASCHmarks.ts](../lib/RASCHmarks.ts)), never typed into
-the copy — the paper's shape must not be able to drift from what the dashboard
+the copy — the paper's shape must not be able to drift from what the app
 advertises.
 
-- **Why it exists.** Nothing on the dashboard said what the exam IS or let a
-  student start one, so the feature the whole Rasch subsystem exists for sat two
-  navigations deep behind a four-letter word (`RASCH`) that means nothing to a
-  student. ⚠️ Since 2026-07-30 it is also the dashboard's **only** readout of the
-  measured 0–5 level (`MathLevelSummary` moved off this screen), so don't strip
-  the level line out of it.
+- ⚠️ **It sits on `/raschmodel`, under `MathLevelSummary` — not on the dashboard.**
+  Built for the dashboard on 2026-07-29, moved on 2026-07-30 when that hero slot
+  became the generic announcement carousel. On the hub it replaced a purely
+  decorative "Imtihonga tayyorlaning!" gradient banner (whose `bannerTitle` /
+  `bannerDesc` strings went with it) and spends the same single `gradient` card,
+  so the swap is neutral on the kit's one-hero budget and strictly better content.
+- **Why it exists.** Nothing named what the exam IS or let a student start one, so
+  the feature the whole Rasch subsystem exists for sat behind a four-letter word
+  (`RASCH`) that means nothing to a student. The dashboard's *announcement* now
+  carries the invitation; this card carries the numbers.
 - ⚠️ **Zero extra reads.** It calls `getRASCHLevels` — the SAME 12h
-  localStorage-cached single document `/raschmodel` and `/progress` read — so this
-  card is free on a warm cache. That is the only reason it is allowed to be
-  data-driven rather than a static banner.
+  localStorage-cached single document `MathLevelSummary`, the nav's level chip and
+  `/progress` read — so three surfaces on one screen cost one read. That is the
+  only reason it is allowed to be data-driven rather than a static banner.
 - **What makes it useful, not decorative:** `expectedScore(θ)` — the score this
   student would be expected to get on the standard paper at their measured
   ability — plus their **weakest measured dimension**, linked straight to
@@ -148,7 +216,10 @@ advertises.
   pick: a dimension the paper never asked about is not a weakness.
 - **Two routes out**, both needed: `/raschmodel/exam` (the sampled paper) and
   `/raschmodel/quiz` (a teacher's paper, by code — previously reachable only from
-  the Rasch sub-nav).
+  the Rasch sub-nav). ⚠️ **While the 2-a-day cap is closed the first one renders
+  as a DISABLED button with the countdown and no `<Link>` at all** — a disabled
+  `<Button>` inside an anchor still navigates, which is exactly how a "disabled"
+  CTA lands a student on a screen that then refuses them.
 - Before any sitting it degrades to an invitation ("your level is not measured
   yet"), and a failed level read degrades it the same way rather than hiding it.
 - ⚠️ It spends the student kit's **one `gradient` hero card** for the screen. On
@@ -156,6 +227,54 @@ advertises.
   (`border-white/20`), never `border-current/25` — `currentColor` cannot take a
   Tailwind opacity modifier, and neither can an M3 token (see the cross-cutting
   trap in CLAUDE.md).
+
+## Two maths papers a day — the 12-hour cooldown (2026-07-30)
+
+[lib/RASCHquota.ts](../lib/RASCHquota.ts) owns the rule, and it is **one** rule
+expressed two ways: a **12-hour wait after each sitting**, which is exactly
+`EXAMS_PER_DAY = 2` (24h / 12h — derived in the module, never typed twice). The
+cooldown is the form that can be shown on screen; "0 of 2 left" cannot tell a
+student when to come back.
+
+**Why it exists:** the paper is a *measurement*, not a quiz. Unlimited sittings let
+a student farm `RASCH_levels` — sit ten papers in an afternoon and grind the
+ability estimate up on familiarity with the item pool rather than on maths (and
+spend 45 question reads a go).
+
+- ⚠️ **The timestamps come from the DATABASE, not the device.** `lastExamAt()`
+  takes the max `at` from `RASCH_levels.exams[]`, written by `saveExamResult` — so
+  clearing localStorage resets nothing. It is read through `getRASCHLevels`, which
+  is 12h-cached and single-flighted and which `RaschNav`'s level chip on the same
+  page already calls, so the cap costs **zero extra reads**. `saveExamResult` ends
+  with `writeCache(next)`, so the cooldown is visible the instant a paper is
+  submitted.
+- ⚠️ **It is a deterrent, not a security boundary.** The comparison is client-side
+  against `Date.now()`, so moving the device clock forward defeats it. Closing that
+  needs the draw behind an Admin-SDK route — deliberately not done, and stated the
+  same way the exam lockdown states its limits.
+- ⚠️ **Everything unknown FAILS OPEN.** `lastAt === null` (no sittings yet, or the
+  levels read threw) ⇒ allowed. A network blip must never lock a student out of an
+  exam. A `lastAt` in the **future** is clamped to now, so a clock-skewed
+  submission can't ban them for the length of the skew.
+- ⚠️ **`exams[]` cannot distinguish a mock paper from a teacher's paper**
+  (`ExamPoint` has no source field), so a teacher-code sitting also starts a
+  cooldown. That is intended — both move the same ability estimate — but
+  **`/raschmodel/quiz` itself is never blocked**: a teacher handing a code to a
+  class must not be defeated by it. The gate is only on the self-serve draw.
+- **Practice (`/raschmodel/practice`) is not capped.** A drill is not a
+  measurement, and capping it would punish the exact behaviour the cap exists to
+  encourage.
+- ⚠️ **A paper already in flight is never blocked.** The check lives on the intro
+  screen, which by construction only renders when there is no session; a restored
+  paper goes straight to `in-progress`. Don't move the check into `ExamRunner`.
+- ⚠️ `startExam()` re-checks the quota on entry. The button is disabled, but a
+  stale render or a devtools click must not draw a paper the cap has closed.
+- The intro's header row states the cap **before** it bites ("Kuniga 2 marta"); the
+  countdown banner appears only when it does. Finding out about a limit only after
+  it stops you reads as a fault.
+- The exam page ticks `now` every second on the intro too (a countdown that only
+  moves on navigation reads as frozen); `MmsCard` ticks every 30s, because a
+  summary card does not need second accuracy.
 
 ## Teacher-built Rasch papers (`/raschmodel/quiz`)
 
