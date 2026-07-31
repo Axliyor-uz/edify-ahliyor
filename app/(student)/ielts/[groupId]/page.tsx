@@ -537,7 +537,7 @@ export default function IeltsGroupPage() {
                           <ProgressBar value={pct} label={`${typeLabel(type)} — ${pct}%`} size="sm" tone={pct >= 70 ? 'success' : 'primary'} />
                           {/* Diagnostics → action: filter the Practice Library to tests containing this type */}
                           <Link
-                            href={`/ielts?skill=${skill}&type=${encodeURIComponent(type)}`}
+                            href={`/ielts?tab=practice&skill=${skill}&type=${encodeURIComponent(type)}`}
                             className="self-end text-[12.5px] font-black text-primary underline-offset-2 hover:underline"
                           >
                             {t.practiceCta} →

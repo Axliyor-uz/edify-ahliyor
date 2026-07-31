@@ -127,10 +127,12 @@ export default function ReadingDashboard() {
       try {
         const [mine, platform] = await Promise.all([
           fetchTeacherTests('reading', user.uid),
-          fetchPlatformTests('reading'),
+          // audience 'teacher' → admin-hidden papers are dropped and the list arrives in
+          // the admin's catalog order; do NOT re-sort it by date.
+          fetchPlatformTests('reading', { audience: 'teacher' }),
         ]);
         setMyTests(mine.map((d) => mapDoc(d, t.untitled)).sort((a, b) => b.rawDate - a.rawDate));
-        setPlatformTests(platform.map((d) => mapDoc(d, t.untitled)).sort((a, b) => b.rawDate - a.rawDate));
+        setPlatformTests(platform.map((d) => mapDoc(d, t.untitled)));
       } catch (error) {
         console.error(error);
         toast.error(t.loadError);

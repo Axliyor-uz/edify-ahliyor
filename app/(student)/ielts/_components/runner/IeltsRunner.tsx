@@ -11,16 +11,17 @@
 //     countdown after the last part → auto-submit;
 //   • listening practice: per-part native audio controls (seek/pause/replay);
 //   • bottom palette of every question number (answered/flagged/current),
-//     grouped by passage/part; select-to-highlight; font scaler; red timer at
+//     grouped by passage/part; select-to-highlight marker (see highlight.ts);
+//     8-step font scaler; drag-to-resize passage/questions split; red timer at
 //     10 min, pulsing at 5; session resilience + tab-switch anti-cheat cloned
 //     from the regular runner (localStorage cleared only after submit).
 //
 // Chrome suppression: like the regular test runner, this renders as a fixed
 // full-bleed overlay above the student shell (`fixed inset-0 z-[100]`).
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  AlertCircle, Check, CheckCheck, Clock, Eye, Headphones, Highlighter, Lock,
+  AlertCircle, Check, Clock, Eye, Headphones, Lock,
   Pause, Play, ShieldAlert, Volume2, X, Zap,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -29,12 +30,13 @@ import {
   Banner, Button, Card, Chip, ConfirmDialog, IconButton, Page, SegmentedControl,
   Slider, Spinner, cn, sToast,
 } from '@/components/student-ui';
-import { checkPracticeAnswers, submitIeltsAttempt, type SubmitResult } from '@/services/ieltsService';
+import { submitIeltsAttempt, type SubmitResult } from '@/services/ieltsService';
 import StudentQuestionRenderer from './StudentQuestionRenderer';
 import {
   buildPalette, clearSession, formatClock, isNumberAnswered, loadSession,
   saveSession, sessionKey, TYPE_LABELS, type AnswerMap, type PaletteNumber,
 } from './shared';
+import { toggleHighlight } from './highlight';
 import { runnerT } from './i18n';
 
 export interface IeltsRunnerProps {
@@ -50,8 +52,27 @@ export interface IeltsRunnerProps {
   backHref: string;
 }
 
-const FONT_SIZES = [14, 16, 18];
+// Reading comfort ramp — 8 steps from "fits more on screen" to large-print.
+const FONT_SIZES = [12, 14, 16, 18, 20, 23, 26, 30];
+const DEFAULT_FONT_STEP = 2; // 16px
+const FONT_PREF_KEY = 'ielts:runner:font';
+
+// Passage/questions split (desktop). Clamped so neither pane can be squeezed shut.
+const SPLIT_DEFAULT = 45;
+const SPLIT_MIN = 25;
+const SPLIT_MAX = 75;
+const SPLIT_PREF_KEY = 'ielts:runner:split';
+
 const CHECK_MS = 2 * 60 * 1000; // listening "check your answers" window
+
+const readPref = (key: string, fallback: number, min: number, max: number) => {
+  if (typeof window === 'undefined') return fallback;
+  const n = Number(window.localStorage.getItem(key));
+  return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
+};
+const writePref = (key: string, value: number) => {
+  try { window.localStorage.setItem(key, String(value)); } catch { /* private mode */ }
+};
 
 type Phase = 'lobby' | 'volume' | 'taking' | 'submitted';
 
@@ -78,15 +99,16 @@ export default function IeltsRunner({
 
   const [activeGroupIdx, setActiveGroupIdx] = useState(0);
   const [mobilePane, setMobilePane] = useState<'passage' | 'questions'>('passage');
-  const [fontStep, setFontStep] = useState(1);
-  const [highlightOn, setHighlightOn] = useState(false);
+  const [fontStep, setFontStep] = useState(DEFAULT_FONT_STEP);
   const [currentQn, setCurrentQn] = useState<number | null>(null);
 
-  // Practice self-check: qn → correct? (cleared whenever an answer changes).
-  const [checkResult, setCheckResult] = useState<Record<string, { correct: boolean }> | null>(null);
-  const [checking, setChecking] = useState(false);
+  // Draggable passage/questions divider (desktop only; % of the main row).
+  const [splitPct, setSplitPct] = useState(SPLIT_DEFAULT);
+  const [dragging, setDragging] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
 
   // Reading highlighter persistence (per passage, serialized block innerHTML).
+  const passageRef = useRef<HTMLDivElement | null>(null);
   const highlightsRef = useRef<Record<string, string[]>>({});
   const [hlVersion, setHlVersion] = useState(0);
 
@@ -159,6 +181,52 @@ export default function IeltsRunner({
   }, [user?.uid]);
 
   // ---------------------------------------------------------------------------
+  // Reading comfort prefs (font step + split ratio) — device-local, restored
+  // after mount so the server-rendered markup stays identical.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    setFontStep(readPref(FONT_PREF_KEY, DEFAULT_FONT_STEP, 0, FONT_SIZES.length - 1));
+    setSplitPct(readPref(SPLIT_PREF_KEY, SPLIT_DEFAULT, SPLIT_MIN, SPLIT_MAX));
+  }, []);
+
+  const changeFont = (delta: number) => {
+    setFontStep((f) => {
+      const next = Math.min(FONT_SIZES.length - 1, Math.max(0, f + delta));
+      writePref(FONT_PREF_KEY, next);
+      return next;
+    });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Passage / questions splitter (desktop). Pointer capture keeps the drag alive
+  // over the iframe-free panes; the ratio is remembered per device.
+  // ---------------------------------------------------------------------------
+  const moveSplit = useCallback((clientX: number) => {
+    const row = mainRef.current;
+    if (!row) return;
+    const rect = row.getBoundingClientRect();
+    if (!rect.width) return;
+    const pct = ((clientX - rect.left) / rect.width) * 100;
+    setSplitPct(Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, Math.round(pct * 10) / 10)));
+  }, []);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: PointerEvent) => { e.preventDefault(); moveSplit(e.clientX); };
+    const onUp = () => setDragging(false);
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [dragging, moveSplit]);
+
+  useEffect(() => { if (!dragging) writePref(SPLIT_PREF_KEY, splitPct); }, [dragging, splitPct]);
+
+  // ---------------------------------------------------------------------------
   // Auto-save
   // ---------------------------------------------------------------------------
   useEffect(() => {
@@ -208,9 +276,19 @@ export default function IeltsRunner({
       if (document.hidden) triggerFocusLoss();
       else isAwayRef.current = false;
     };
-    const onBlur = () => triggerFocusLoss();
+    // A bare `blur` is NOT proof the student left: selecting text raises the
+    // native selection toolbar on Android, and focusing an answer input opens
+    // the soft keyboard — both blur the window while the page still has focus.
+    // Counting those made "select some text" look like cheating (and popped the
+    // blocker mid-passage), so require the document to have actually lost focus.
+    const onBlur = () => {
+      if (typeof document.hasFocus === 'function' && document.hasFocus()) return;
+      triggerFocusLoss();
+    };
     const onFocus = () => { isAwayRef.current = false; };
-    const onContextMenu = (e: MouseEvent) => { if (isSim) e.preventDefault(); };
+    // Right-click is off for the whole sitting (both modes): the browser menu
+    // offers translate/search/copy on the passage and it fights the marker.
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('blur', onBlur);
     window.addEventListener('focus', onFocus);
@@ -224,78 +302,59 @@ export default function IeltsRunner({
   }, [phase, isSubmitting, showSubmitConfirm, showFocusWarning, isSim]);
 
   // ---------------------------------------------------------------------------
-  // Passage highlighter (surroundContents + serialized persistence).
-  // Highlight spans carry data-hl and removal is event-delegated, so the marks
-  // survive pane toggles / group switches / reloads via the session store.
+  // Passage highlighter — marks are created in highlight.ts (text-node walker,
+  // NOT surroundContents) and persisted as serialized per-block innerHTML, so
+  // they survive pane toggles / passage switches / reloads.
   // ---------------------------------------------------------------------------
-  const persistHighlights = () => {
-    const container = document.getElementById('ielts-passage');
+  const persistHighlights = useCallback(() => {
+    const container = passageRef.current;
     if (!container) return;
     const blocks = container.querySelectorAll<HTMLElement>('[data-hl-block]');
     highlightsRef.current[String(activeGroupIdx)] = Array.from(blocks).map((b) => b.innerHTML);
     setHlVersion((v) => v + 1); // triggers session save
-  };
+  }, [activeGroupIdx]);
+
+  const applyHighlight = useCallback(() => {
+    const container = passageRef.current;
+    if (!container) return;
+    if (toggleHighlight(container)) persistHighlights();
+  }, [persistHighlights]);
 
   // Restore saved highlights after React renders the (fresh) block content.
   // Safe with React: the blocks are dangerouslySetInnerHTML nodes, so React only
-  // rewrites them when the source content string itself changes (group switch).
+  // rewrites them when the source content string itself changes (passage switch).
   useEffect(() => {
     if (phase !== 'taking' || isListening) return;
+    const container = passageRef.current;
+    if (!container) return;
     const saved = highlightsRef.current[String(activeGroupIdx)];
     if (!saved?.length) return;
-    const container = document.getElementById('ielts-passage');
-    if (!container) return;
     const blocks = container.querySelectorAll<HTMLElement>('[data-hl-block]');
     blocks.forEach((b, i) => {
       if (saved[i] != null && saved[i] !== b.innerHTML) b.innerHTML = saved[i];
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, activeGroupIdx, isListening, mobilePane]);
 
-  // Create highlights while the tool is on.
-  useEffect(() => {
-    if (!highlightOn || phase !== 'taking' || isListening) return;
-    const onMouseUp = () => {
-      const selection = window.getSelection();
-      if (!selection || selection.isCollapsed) return;
-      const range = selection.getRangeAt(0);
-      const span = document.createElement('span');
-      span.className = 'bg-primary-container text-on-primary-container px-0.5 rounded-m3-xs cursor-pointer';
-      span.title = t.runner.clickToRemove;
-      span.setAttribute('data-hl', '1');
-      try {
-        range.surroundContents(span);
-        selection.removeAllRanges();
-        persistHighlights();
-      } catch { /* selection crossed element boundaries — ignore */ }
-    };
-    const container = document.getElementById('ielts-passage');
-    container?.addEventListener('mouseup', onMouseUp);
-    container?.addEventListener('touchend', onMouseUp);
-    return () => {
-      container?.removeEventListener('mouseup', onMouseUp);
-      container?.removeEventListener('touchend', onMouseUp);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [highlightOn, phase, activeGroupIdx, isListening, t.runner.clickToRemove]);
-
-  // Delegated removal — works even for spans restored from a serialized session.
+  // Selection → mark. Always on, no tool button: releasing a selection inside
+  // the passage marks it yellow, and selecting over yellow clears it.
+  //
+  // Listen on the document, not the pane: a drag that ends past the pane edge
+  // still releases here, and toggleHighlight ignores selections that do not
+  // touch the passage (e.g. text picked up in the questions pane). Touch gets a
+  // tick of slack — a touchend can land before the browser settles the range.
   useEffect(() => {
     if (phase !== 'taking' || isListening) return;
-    const container = document.getElementById('ielts-passage');
+    const container = passageRef.current;
     if (!container) return;
-    const onClick = (e: Event) => {
-      const span = (e.target as HTMLElement).closest?.('span[data-hl]');
-      if (!span?.parentNode) return;
-      span.parentNode.replaceChild(document.createTextNode(span.textContent || ''), span);
-      (span as HTMLElement).remove?.();
-      container.normalize?.();
-      persistHighlights();
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') applyHighlight();
+      else window.setTimeout(applyHighlight, 10);
     };
-    container.addEventListener('click', onClick);
-    return () => container.removeEventListener('click', onClick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, activeGroupIdx, isListening, mobilePane]);
+
+    document.addEventListener('pointerup', onPointerUp);
+    return () => document.removeEventListener('pointerup', onPointerUp);
+  }, [phase, activeGroupIdx, isListening, mobilePane, applyHighlight]);
 
   // ---------------------------------------------------------------------------
   // Listening simulation audio engine
@@ -362,24 +421,6 @@ export default function IeltsRunner({
   const handleAnswer = (qn: number, value: string | string[]) => {
     setAnswers((prev) => ({ ...prev, [String(qn)]: value }));
     setCurrentQn(qn);
-    setCheckResult(null); // stale after any change
-  };
-
-  // Practice self-check (platform tests): marks the palette green/red for
-  // answered questions without ending the attempt.
-  const handleCheck = async () => {
-    if (checking) return;
-    setChecking(true);
-    try {
-      const { perQuestion } = await checkPracticeAnswers(test.test_id, skill, answers);
-      setCheckResult(perQuestion);
-      const correct = Object.values(perQuestion).filter((r) => r.correct).length;
-      sToast.success(`${correct}/${Object.keys(perQuestion).length} ✓`);
-    } catch (e: any) {
-      sToast.error(e?.message || t.common.error);
-    } finally {
-      setChecking(false);
-    }
   };
 
   const toggleFlag = (blockKey: string) => {
@@ -694,35 +735,33 @@ export default function IeltsRunner({
         </div>
 
         <div className="flex flex-1 items-center justify-end gap-1.5">
-          <div className="hidden items-center rounded-m3-sm border border-outline-variant bg-surface-container p-0.5 sm:flex">
+          {/* Text size — 8 steps, remembered per device */}
+          <div
+            className="flex items-center rounded-m3-sm border border-outline-variant bg-surface-container p-0.5"
+            title={`${t.runner.textSize}: ${FONT_SIZES[fontStep]}px`}
+          >
             <button
               type="button"
-              onClick={() => setFontStep((f) => Math.max(0, f - 1))}
-              aria-label="A−"
-              className="rounded-m3-xs px-2 py-0.5 text-[12px] font-bold text-on-surface-variant hover:bg-state-hover"
+              onClick={() => changeFont(-1)}
+              disabled={fontStep === 0}
+              aria-label={`${t.runner.textSize} −`}
+              className="rounded-m3-xs px-2 py-0.5 text-[12px] font-bold text-on-surface-variant hover:bg-state-hover disabled:opacity-35"
             >
               A−
             </button>
+            <span className="s-num hidden min-w-[22px] text-center text-[11px] font-black text-on-surface-variant sm:block">
+              {FONT_SIZES[fontStep]}
+            </span>
             <button
               type="button"
-              onClick={() => setFontStep((f) => Math.min(FONT_SIZES.length - 1, f + 1))}
-              aria-label="A+"
-              className="rounded-m3-xs px-2 py-0.5 text-[14px] font-bold text-on-surface-variant hover:bg-state-hover"
+              onClick={() => changeFont(1)}
+              disabled={fontStep === FONT_SIZES.length - 1}
+              aria-label={`${t.runner.textSize} +`}
+              className="rounded-m3-xs px-2 py-0.5 text-[15px] font-bold text-on-surface-variant hover:bg-state-hover disabled:opacity-35"
             >
               A+
             </button>
           </div>
-          {!isListening && (
-            <IconButton
-              aria-label={t.runner.highlight}
-              size="sm"
-              selected={highlightOn}
-              variant={highlightOn ? 'tonal' : 'standard'}
-              onClick={() => setHighlightOn(!highlightOn)}
-            >
-              <Highlighter size={16} />
-            </IconButton>
-          )}
           <div
             className={cn(
               'flex items-center gap-1.5 rounded-m3-sm border px-2.5 py-1.5 text-[13px] font-black',
@@ -799,19 +838,24 @@ export default function IeltsRunner({
       )}
 
       {/* ---------------- MAIN ---------------- */}
-      <main className="flex min-h-0 flex-1 overflow-hidden">
+      <main
+        ref={mainRef}
+        className={cn('flex min-h-0 flex-1 overflow-hidden', dragging && 'select-none')}
+        style={{ '--ielts-split': `${splitPct}%` } as React.CSSProperties}
+      >
         {!isListening && (
           <>
-            {/* PASSAGE PANE */}
+            {/* PASSAGE PANE — width is the draggable split on md+ */}
             <div
               className={cn(
-                's-scroll overflow-y-auto bg-surface-container-lowest md:block md:w-[45%]',
+                's-scroll overflow-y-auto bg-surface-container-lowest md:block md:w-[var(--ielts-split)] md:shrink-0',
                 mobilePane === 'passage' ? 'block w-full' : 'hidden',
               )}
             >
               <div
                 id="ielts-passage"
-                className="mx-auto max-w-3xl p-4 pb-28 md:p-6"
+                ref={passageRef}
+                className="mx-auto w-full max-w-3xl p-4 pb-28 md:max-w-none md:p-6"
                 style={{ fontSize: `${fontSize}px`, lineHeight: 1.65 }}
               >
                 {group.instruction && (
@@ -821,7 +865,7 @@ export default function IeltsRunner({
                 {group.subtitle && (
                   <p className="mb-5 text-center font-serif text-[1em] italic text-on-surface-variant">{group.subtitle}</p>
                 )}
-                <div className="space-y-3 text-justify font-serif text-on-surface">
+                <div className="space-y-3 text-justify text-on-surface">
                   {group.blocks?.map((b: any, i: number) => (
                     <div key={i} className="flex items-start gap-3">
                       {b.label && <div className="mt-[0.15em] w-4 shrink-0 font-sans font-bold text-on-surface-variant">{b.label}</div>}
@@ -832,22 +876,63 @@ export default function IeltsRunner({
               </div>
             </div>
 
-            <div className="hidden w-px shrink-0 bg-outline-variant md:block" />
+            {/* DRAG HANDLE — drag to resize, double-click to reset, ←/→ to nudge */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t.runner.resizePanes}
+              aria-valuenow={Math.round(splitPct)}
+              aria-valuemin={SPLIT_MIN}
+              aria-valuemax={SPLIT_MAX}
+              tabIndex={0}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                setDragging(true);
+              }}
+              onDoubleClick={() => setSplitPct(SPLIT_DEFAULT)}
+              onKeyDown={(e) => {
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                e.preventDefault();
+                setSplitPct((p) =>
+                  Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, p + (e.key === 'ArrowLeft' ? -2 : 2))),
+                );
+              }}
+              className={cn(
+                'group hidden w-2 shrink-0 cursor-col-resize touch-none items-center justify-center',
+                'border-x border-outline-variant bg-surface-container-low md:flex',
+                'hover:bg-primary-container focus-visible:bg-primary-container focus-visible:outline-none',
+                dragging && 'bg-primary-container',
+              )}
+            >
+              <span
+                className={cn(
+                  'h-8 w-[3px] rounded-full bg-outline transition-colors',
+                  'group-hover:bg-primary',
+                  dragging && 'bg-primary',
+                )}
+              />
+            </div>
           </>
         )}
 
-        {/* QUESTIONS PANE */}
+        {/* QUESTIONS PANE — takes whatever the split leaves */}
         <div
           className={cn(
             's-scroll overflow-y-auto bg-surface',
             isListening
               ? 'block w-full'
-              : cn('md:block md:w-[55%] md:flex-1', mobilePane === 'questions' ? 'block w-full' : 'hidden'),
+              : cn('md:block md:min-w-0 md:flex-1', mobilePane === 'questions' ? 'block w-full' : 'hidden'),
           )}
         >
           <div
-            className="mx-auto max-w-3xl space-y-6 p-4 pb-28 md:p-6"
-            style={{ fontSize: `${fontSize}px`, lineHeight: 1.55 }}
+            className={cn(
+              'mx-auto w-full max-w-3xl space-y-6 p-4 pb-28 md:p-6',
+              // Reading: the pane width IS the split the student dragged, so the
+              // column must follow it. Listening has no split — keep the measure.
+              !isListening && 'md:max-w-none',
+            )}
+            style={{ fontSize: `${fontSize}px`, lineHeight: 1.65 }}
           >
             {isListening && isSim && audioPhase === 'check' && (
               <Banner status="warning" title={t.runner.checkTitle} description={t.runner.checkDesc} />
@@ -893,7 +978,6 @@ export default function IeltsRunner({
                   const done = isNumberAnswered(n, answers);
                   const isFlagged = flags.includes(n.blockKey);
                   const isCurrent = currentQn === n.qn;
-                  const checked = checkResult?.[String(n.qn)]; // practice self-check verdict
                   return (
                     <button
                       key={n.qn}
@@ -904,13 +988,9 @@ export default function IeltsRunner({
                       className={cn(
                         's-num grid h-8 min-w-[30px] shrink-0 place-items-center border text-[11px] font-bold transition-colors',
                         isFlagged ? 'rounded-full' : 'rounded-m3-xs', // flagged square → circle (official CD-IELTS)
-                        checked
-                          ? checked.correct
-                            ? 'border-transparent bg-success text-on-success'
-                            : 'border-transparent bg-error text-on-error'
-                          : done
-                            ? 'border-transparent bg-primary text-on-primary'
-                            : 'border-outline bg-surface text-on-surface-variant hover:bg-state-hover',
+                        done
+                          ? 'border-transparent bg-primary text-on-primary'
+                          : 'border-outline bg-surface text-on-surface-variant hover:bg-state-hover',
                         isCurrent && 'ring-2 ring-primary ring-offset-1 ring-offset-surface',
                       )}
                     >
@@ -921,19 +1001,6 @@ export default function IeltsRunner({
               </Fragment>
             ))}
           </div>
-          {/* Self-check: platform practice only (the API refuses assignment tests) */}
-          {kind === 'practice' && (
-            <Button
-              size="sm"
-              variant="outlined"
-              className="shrink-0"
-              loading={checking}
-              onClick={handleCheck}
-              icon={<CheckCheck size={15} strokeWidth={2.6} />}
-            >
-              {t.runner.check}
-            </Button>
-          )}
           <Button size="sm" tone="success" className="shrink-0" onClick={() => setShowSubmitConfirm(true)}>
             {t.common.submit}
           </Button>

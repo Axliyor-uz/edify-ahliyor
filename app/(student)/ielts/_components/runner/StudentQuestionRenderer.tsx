@@ -191,7 +191,7 @@ export default function StudentQuestionRenderer({
       <div className="rounded-m3-sm border border-outline-variant bg-surface-container-low p-3">
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
           {qb.options.map((opt: any, i: number) => (
-            <div key={i} className="flex items-start text-[0.95em] text-on-surface">
+            <div key={i} className="flex items-start text-[1em] text-on-surface">
               <strong className="mr-1.5 w-[1.5em] shrink-0 text-right text-primary">{opt.id}</strong>
               <span className="leading-snug">{opt.text}</span>
             </div>
@@ -295,7 +295,7 @@ export default function StudentQuestionRenderer({
           {Array.isArray(qb.options) && qb.options.length > 0 && (
             <div className="ml-1 flex flex-col space-y-1.5">
               {qb.options.map((opt: any, idx: number) => (
-                <div key={idx} className="flex items-start text-[0.95em] text-on-surface">
+                <div key={idx} className="flex items-start text-[1em] text-on-surface">
                   <strong className="w-[7.5em] shrink-0 font-bold uppercase tracking-wide">{opt.label || '?'}</strong>
                   <span className="flex-1 leading-relaxed">{opt.description || ''}</span>
                 </div>
@@ -330,7 +330,7 @@ export default function StudentQuestionRenderer({
                             onChange={(e) => set(q.question_number, e.target.value)}
                             className="h-[1.1em] w-[1.1em] cursor-pointer border-outline text-primary focus:ring-primary"
                           />
-                          <span className="text-[0.95em] font-medium uppercase text-on-surface">{opt.label}</span>
+                          <span className="text-[1em] font-medium uppercase text-on-surface">{opt.label}</span>
                         </label>
                       ))}
                     </div>
@@ -370,7 +370,7 @@ export default function StudentQuestionRenderer({
                           onChange={(e) => set(q.question_number, e.target.value)}
                           className="mt-[0.2em] h-[1.1em] w-[1.1em] shrink-0 cursor-pointer border-outline text-primary focus:ring-primary"
                         />
-                        <span className="text-[0.95em] font-medium leading-snug text-on-surface">
+                        <span className="text-[1em] font-medium leading-snug text-on-surface">
                           <strong className="mr-2">{opt.id}</strong>
                           {opt.text || ''}
                         </span>
@@ -425,7 +425,7 @@ export default function StudentQuestionRenderer({
                           }}
                           className="mt-[0.2em] h-[1.1em] w-[1.1em] shrink-0 cursor-pointer rounded-m3-xs border-outline text-primary focus:ring-primary"
                         />
-                        <span className="text-[0.95em] font-medium leading-snug text-on-surface">
+                        <span className="text-[1em] font-medium leading-snug text-on-surface">
                           <strong className="mr-2">{opt.id}</strong>
                           {opt.text || ''}
                         </span>
@@ -449,7 +449,7 @@ export default function StudentQuestionRenderer({
             <div className="rounded-m3-sm border border-outline-variant bg-surface-container-low p-4">
               <div className="flex flex-col space-y-2.5">
                 {qb.options.map((opt: any, idx: number) => (
-                  <div key={idx} className="flex items-start text-[0.95em] text-on-surface">
+                  <div key={idx} className="flex items-start text-[1em] text-on-surface">
                     <strong className="w-[3em] shrink-0 font-bold text-primary">{opt.id || '?'}</strong>
                     <span className="flex-1 leading-relaxed">{opt.text || ''}</span>
                   </div>
@@ -479,7 +479,7 @@ export default function StudentQuestionRenderer({
           <div className="space-y-4">
             {renderWordBank()}
             <div className="rounded-m3-sm border border-outline-variant bg-surface-container p-4">
-              <div className="text-justify text-[0.95em] font-medium leading-[2.4] text-on-surface md:text-[1em]">
+              <div className="text-justify text-[1em] font-medium leading-[2.4] text-on-surface">
                 {renderGapText(qb.summary_text || '', counter)}
               </div>
             </div>
@@ -497,7 +497,7 @@ export default function StudentQuestionRenderer({
             <div key={i} id={`question-${q?.question_number || i}`}>
               <div className="flex items-start gap-3">
                 <div className={cn(NUM_BADGE, 'mt-[0.3em]')}>{q.question_number || '?'}</div>
-                <div className="min-w-0 flex-1 text-[0.95em] font-medium leading-[2.4] text-on-surface md:text-[1em]">
+                <div className="min-w-0 flex-1 text-[1em] font-medium leading-[2.4] text-on-surface">
                   {renderGapRow(q.sentence || '', q.question_number)}
                 </div>
               </div>
@@ -590,7 +590,7 @@ export default function StudentQuestionRenderer({
                     </div>
                   )}
                   <div className="w-full rounded-m3-sm border border-outline-variant bg-surface-container-lowest p-3">
-                    <div className="text-center text-[0.95em] font-medium leading-[2.4] text-on-surface md:text-[1em]">
+                    <div className="text-center text-[1em] font-medium leading-[2.4] text-on-surface">
                       {renderGapText(step, counter)}
                     </div>
                   </div>
