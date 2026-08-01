@@ -112,3 +112,5 @@ The entire submission process is wrapped in a single **Firestore Transaction**. 
     * *Cost:* 1 Read on load + 1 Read per update (Push).
 * **Leaderboard:** Fetches only the top 50 documents from the specific timeframe bucket. 
     * *Cost:* Fixed at ~50 reads per page load, regardless of user base size (10k+ users).
+
+    asedgrf
