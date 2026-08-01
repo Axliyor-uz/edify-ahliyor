@@ -9,7 +9,7 @@
 > subsystem — see below). Update this doc in the same change whenever you alter
 > behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-31 (the question-builder round trip is closed — `?back=`/`?add=`/`?subject=`); 2026-07-30: subsystem introduced; biology **and chemistry** live, each with a sample paper; the SAME dynamic marking as maths; full-screen exam lockdown.
+**Last verified:** 2026-08-01 (the shared marking formula is now **base + difficulty bonus**, `B = Y + σ`); 2026-07-31: the question-builder round trip is closed — `?back=`/`?add=`/`?subject=`; 2026-07-30: subsystem introduced; biology **and chemistry** live, each with a sample paper; the SAME dynamic marking as maths; full-screen exam lockdown.
 
 ## Purpose & scope
 
@@ -47,17 +47,26 @@ Both are "the Rasch stuff" colloquially, and conflating them is the mistake this
 section exists to prevent:
 
 - **The dynamic marks ARE shared, verbatim** ([lib/RASCHmarks.ts](../lib/RASCHmarks.ts)).
-  A question's ball is `1.3 + 4.7·(1−p̂)²` where p̂ is the share of the cohort that
-  solved it — pure cohort arithmetic, no blueprint, no calibration, no taxonomy.
-  Nothing in it is maths-specific, so **the more of the class that solves a
-  question the less it is worth, on every subject.** The student's score is
+  Since 2026-08-01 a question's ball is `B = Y + σ`: a **guaranteed base** by test
+  type (`BASE_BALL` — closed `Y-1` 1.1, typed `O` 1.6 on a subject paper) plus a
+  share of the paper's **difficulty budget**, `σ = (100 − ΣY)·w/Σw` with
+  `w = (1−p̂)²` and p̂ the shrunk share of the cohort that solved it. Pure cohort
+  arithmetic — no blueprint, no calibration, no taxonomy. Nothing in it is
+  maths-specific, so **the fewer of the class that solve a question the more it
+  adds, on every subject**, while every question still keeps its base. The paper
+  sums to exactly 100 by construction, and the student's score is
   `Σ(balls earned) / Σ(balls) × 100`, which is what makes ten hard answers beat
-  ten easy ones. The paper is capped at 100.
-  - ⚠️ The ONE maths-specific part is the **printed** fallback: the DTM protocol
-    prints a per-position value, and a subject paper has no published protocol. So
+  ten easy ones.
+  - ⚠️ A subject paper's mix of types is whatever the teacher built, so its base
+    total (and therefore its budget) is NOT the maths paper's 55.1/44.9 — it is
+    summed per paper. A paper long enough that the bases alone would reach
+    `BASE_SHARE` of 100 has them scaled down by one factor (`baseBalls`); at
+    30–45 questions that never triggers.
+  - ⚠️ The ONE maths-specific part is the **printed** value: the DTM protocol
+    prints a per-position ball and a subject paper has no published protocol. So
     `paperMarks` takes `printed` as an argument and the subject pages pass
-    `evenPrinted(slots)` — an even split of 100. It is only ever shown for a slot
-    **nobody has answered yet**; from the first sitting on the curve takes over.
+    `evenPrinted(slots)` — an even split of 100. It is a "before" for display
+    beside a moved mark, **not** a value the marking ever falls back to.
 - **θ and the 0–5 levels are NOT shared.** `RASCH_TOPICS` are the seven maths
   dimensions, `questions1` holds algebra and geometry only, and `DIFFICULTY_LOGIT`
   and the calibrated `b` values are anchored on the maths bank. A θ from biology
@@ -66,7 +75,7 @@ section exists to prevent:
   may show a 0–5 level**, and `milliy_quiz_results` deliberately has no `theta`.
 
 ⚠️ The student still sees **percent**, not the ball score, on their own result.
-A ball is a property of the whole COHORT — `ballFor` needs every sitting — and a
+A ball is a property of the whole COHORT — `paperMarks` needs every sitting — and a
 student may not read their classmates' rows (correctly, and the rules enforce it).
 A ball computed from one sitting would be a different number wearing the teacher's
 label. Same rule the maths paper follows.
@@ -83,10 +92,10 @@ label. Same rule the maths paper follows.
 | [lib/MilliyDefaultPaper.ts](../lib/MilliyDefaultPaper.ts) | The **sample paper** — validates `data/<subject>-default-paper.json` and turns it into `MilliyQuizItem`s. Pure; no Firestore. `SAMPLE_FILES` is the registry of which subjects ship one. |
 | [data/biology-default-paper.json](../data/biology-default-paper.json) | **The biology sample paper's content — the only file to edit to change it.** 31 questions. |
 | [data/chemistry-default-paper.json](../data/chemistry-default-paper.json) | **The chemistry sample paper's content.** 40 questions — the DTM part-1 distribution, see below. |
-| [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **The dynamic marks, shared with maths.** Cohort solve rate → a ball per question; `evenPrinted` is the no-protocol fallback. Pure. |
+| [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **The dynamic marks, shared with maths.** A guaranteed base per test type + a share of the difficulty budget from the cohort solve rate (`B = Y + σ`), summing to 100; `evenPrinted` is the no-protocol "before" value. Pure. |
 | `app/teacher/milliy-sertifikat/[subject]/page.tsx` | One subject's papers: code, status, edit, results, delete. |
 | `app/teacher/milliy-sertifikat/[subject]/build/page.tsx` | The builder (`?id=` to edit). |
-| `app/teacher/milliy-sertifikat/[subject]/results/[quizId]/page.tsx` | Who sat it; percent, per-topic counts, per-question solve rate. |
+| `app/teacher/milliy-sertifikat/[subject]/results/[quizId]/page.tsx` | Who sat it; dynamic ball score, per-topic counts, and the per-question marks grid — **the same surface as the maths results page** (grouped by topic, dense, solve-rate coloured). |
 | `app/teacher/milliy-sertifikat/_components/SubjectBankPicker.tsx` | The one pool: the teacher's own `teacher_questions`, narrowed to the subject **server-side**. |
 | `app/teacher/milliy-sertifikat/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
 | [app/teacher/create/_components/returnTo.ts](../app/teacher/create/_components/returnTo.ts) | The `?back=` / `?add=` / `?subject=` contract — how a builder sends a teacher to write a question **and gets them back with it**. Shared with the maths builder. |
@@ -460,8 +469,30 @@ Stored alongside the score:
 ### Reporting
 
 The teacher's results page: sat / average / best, a per-student row that expands
-into a green-red slot grid, per-topic counts **weakest first**, and a
-per-question solve rate.
+into a green-red slot grid, per-topic counts **weakest first**, and the
+per-question marks.
+
+🟢 **The marks surface is now the maths one, feature for feature (2026-08-01).**
+It was a 40-row list of `slot · topic · rate · ball` while maths had a grouped
+grid, so the two subsystems reported the same numbers in two shapes:
+
+- **Grouped by TOPIC, with what that topic currently adds up to** in the row
+  header. ⚠️ That comes free: these papers have no blueprint, so `slotMeta` stores
+  the question's own topic slug as `sectionId`, which makes `SlotMark.sectionTotal`
+  a per-topic total here and a per-blueprint-row total on maths. Reported, never
+  reserved — the paper is priced as a whole.
+- **A dense grid, up to 12 cells a row** (number · ball · solve rate), so a
+  40-question paper is one glance. Coloured by the **solve rate**, dashed under
+  `MIN_RESPONSES`; the `base + bonus` split, the closed/typed label and the raw
+  `correct/seen` are in the tooltip. The per-student expanded grid matches it.
+- **The paper's own split** is printed under the hint — `44.00 + 56.00 = 100.00`.
+  ⚠️ Not the maths paper's `55.10 + 44.90`: a subject paper's base total follows
+  the teacher's own mix of closed (1.1) and typed (1.6) items, so it is summed per
+  paper, never assumed.
+- ⚠️ **No struck-through / underlined "before".** That flags a mark that moved off
+  the DTM printed value, and these papers have no printed protocol —
+  `evenPrinted` is a flat split, not a protocol, and dressing it up as one would
+  invent an authority that does not exist.
 
 ⚠️ Sittings with no `items` map are **excluded from the solve-rate denominator**
 rather than counted as wrong — an older client wrote no outcomes, and treating
@@ -657,13 +688,21 @@ As a **student**, in another account:
 
 Back as the **teacher**:
 
-13. Biologiya → **Natijalar**. ⚠️ **Check the marking.** After the FIRST sitting
-    every question carries a live ball to two decimals, colour-coded by solve rate
-    and dashed while under 5 answers. Sit the paper on several accounts, failing one
-    question on all of them and passing another on all of them: the failed one climbs
-    toward the dearest end, the passed one falls toward the cheapest, and every
-    student's score is recomputed. **The section header total must read
-    `x/100`** — that is `capBalls`. Then check that the marking actually rewards
+13. Biologiya → **Natijalar**. ⚠️ **Check the marking.** The per-question card must
+    be the maths one: **grouped by topic** with each topic's current total on the
+    right, a **dense grid up to 12 a row** (number · ball · solve rate) with the
+    whole paper visible without scrolling the card, and the paper's own split
+    printed under the hint (`x + y = 100.00`, ⚠️ *not* 55.10 + 44.90 — a subject
+    paper's base total follows its own mix of closed and typed items). After the
+    FIRST sitting every question carries a live ball to two decimals, colour-coded
+    by solve rate and dashed while under 5 answers; hover one for its
+    `base + bonus`, its closed/typed label and `correct/seen`. Sit the
+    paper on several accounts, failing one question on all of them and passing
+    another on all of them: the failed one climbs, the passed one falls back
+    toward its base (1.10 closed / 1.60 typed — ⚠️ **never below it**), and every
+    student's score is recomputed. **The paper total must read `100.00/100`
+    always** — `B = Y + σ` prices to 100 by construction, with no cap and no
+    easy-paper exception. Then check that the marking actually rewards
     difficulty: a student who solved only hard questions must score ABOVE one who
     solved the same NUMBER of easy ones (expand both and compare their per-question
     grids, which add up to the headline by construction). Per-topic counts are

@@ -20,7 +20,7 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | Rasch **skill axis** — `lib/RASCHskills.ts`, skills inside the heptagon, exam skill detection | [docs/RASCH_SKILLS.md](docs/RASCH_SKILLS.md) |
 | **Teacher-built Rasch papers = the Milliy sertifikat maths paper** — `teacher_rasch_quizzes`, the 6-digit code, `/raschmodel/quiz`, the shared exam runner, `app/teacher/milliy-sertifikat/math/` | [docs/RASCH_QUIZ.md](docs/RASCH_QUIZ.md) |
 | **Milliy sertifikat SUBJECT papers** (biology…) — `milliy_quizzes`, `app/teacher/milliy-sertifikat/*`, `app/(student)/milliy-sertifikat/*`, `MILLIY_SUBJECTS`, sample papers | [docs/MILLIY_QUIZ.md](docs/MILLIY_QUIZ.md) |
-| **Dynamic marking** — `lib/RASCHmarks.ts`: cohort solve rate → what a question is worth. Shared by every subject | [docs/MILLIY_QUIZ.md](docs/MILLIY_QUIZ.md) |
+| **Dynamic marking** — `lib/RASCHmarks.ts`: guaranteed base per test type + a share of the difficulty budget from the cohort solve rate (`B = Y + σ`, always 100). Shared by every subject | [docs/MILLIY_QUIZ.md](docs/MILLIY_QUIZ.md) |
 | `app/teacher/*` — test creation, classes, grading, analytics, subscription | [docs/TEACHER.md](docs/TEACHER.md) |
 | AI routes, credit limits, `lib/ai/*`, `/api/analyze`, TTS | [docs/AI.md](docs/AI.md) |
 | `app/manager/*` core — approval gate, groups, teachers, enrollment, walk-in | [docs/MANAGER.md](docs/MANAGER.md) |
