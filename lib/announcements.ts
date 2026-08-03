@@ -32,7 +32,7 @@
 // runs per render so a card left open overnight still ages correctly.
 
 import {
-  BadgeCheck, FlaskConical, Sigma, Sparkles,
+  Atom, BadgeCheck, BookText, FlaskConical, Sigma, Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -157,6 +157,50 @@ export const ANNOUNCEMENTS: Announcement[] = [
     ],
   },
   {
+    id: 'mms-fizika-2026',
+    icon: Atom,
+    badge: { uz: 'Yangi', ru: 'Новое', en: 'New' },
+    title: {
+      uz: 'Fizika Milliy Sertifikat',
+      ru: 'Национальный сертификат по физике',
+      en: 'Physics National Certificate',
+    },
+    body: {
+      uz: "Fizika variantlari ochildi — o'qituvchi kodi bilan kiring. Hisob-kitob javoblari raqam sifatida tekshiriladi.",
+      ru: 'Варианты по физике открыты — войдите по коду учителя. Расчётные ответы проверяются как числа.',
+      en: 'Physics papers are live — open one by your teacher’s code. Calculated answers are graded as numbers.',
+    },
+    ctas: [
+      {
+        label: { uz: 'Kod bilan kirish', ru: 'Войти по коду', en: 'Enter a code' },
+        href: '/milliy-sertifikat/fizika',
+        variant: 'filled',
+      },
+    ],
+  },
+  {
+    id: 'mms-ona-tili-2026',
+    icon: BookText,
+    badge: { uz: 'Yangi', ru: 'Новое', en: 'New' },
+    title: {
+      uz: 'Ona tili Milliy Sertifikat',
+      ru: 'Национальный сертификат по родному языку',
+      en: 'Uzbek Language National Certificate',
+    },
+    body: {
+      uz: "Fonetika, leksikologiya, morfologiya, sintaksis va imlo — o'qituvchi kodi bilan variantni oching.",
+      ru: 'Фонетика, лексикология, морфология, синтаксис и орфография — откройте вариант по коду учителя.',
+      en: 'Phonetics, lexicology, morphology, syntax and spelling — open a paper with your teacher’s code.',
+    },
+    ctas: [
+      {
+        label: { uz: 'Kod bilan kirish', ru: 'Войти по коду', en: 'Enter a code' },
+        href: '/milliy-sertifikat/ona-tili',
+        variant: 'filled',
+      },
+    ],
+  },
+  {
     id: 'milliy-hub-2026',
     icon: BadgeCheck,
     title: {
@@ -165,9 +209,9 @@ export const ANNOUNCEMENTS: Announcement[] = [
       en: 'Every subject in one place',
     },
     body: {
-      uz: 'Milliy sertifikat bo‘limida fanni tanlaysiz, variant topshirasiz va natijalaringizni ko‘rasiz. Fizika va ingliz tili tez kunda.',
-      ru: 'В разделе Milliy sertifikat выберите предмет, пройдите вариант и смотрите результаты. Физика и английский — скоро.',
-      en: 'In the Milliy sertifikat section you pick a subject, sit a paper and see your results. Physics and English are coming.',
+      uz: 'Milliy sertifikat bo‘limida fanni tanlaysiz, variant topshirasiz va natijalaringizni ko‘rasiz. Ingliz tili tez kunda.',
+      ru: 'В разделе Milliy sertifikat выберите предмет, пройдите вариант и смотрите результаты. Английский — скоро.',
+      en: 'In the Milliy sertifikat section you pick a subject, sit a paper and see your results. English is coming.',
     },
     ctas: [
       {

@@ -80,8 +80,33 @@ service cloud.firestore {
     }
 
     // --- 1.5 PARENTS COLLECTION ---
+    // ⚠️ LEGACY / UNUSED: a parent-with-an-account model that no app code reads or
+    // writes (only the `isParentOf` helper above mentions it). The parent feature
+    // that actually shipped is account-free and lives in `parent_links` below —
+    // see docs/PARENTS.md before building anything on this collection.
     match /parents/{parentId} {
       allow read, write: if isOwner(parentId);
+    }
+
+    // --- 1.6 PARENT QR ACCESS (docs/PARENTS.md) ---
+    //
+    // ⚠️ **Denied to every client, on purpose — this is not an oversight.**
+    // (The god-mode wildcard above still admits a `super_admin` custom claim, as
+    // it does for every collection; that is the platform owner, not an app user.)
+    // The document id of a `parent_links` doc IS the parent's credential: a
+    // browser able to `list` this collection could open every family's report in
+    // the center, and one able to `get` a doc it already knows could read the
+    // scope and the student id behind someone else's link.
+    //
+    // Both sides therefore go through the Admin SDK and nothing else:
+    //   manager → /api/manager/parent-links[/{token}]  (requireActiveCenterManager)
+    //   parent  → /api/parent/{token}                  (no auth — the token IS it)
+    //
+    // A parent has no Firebase account at all, so there is no `request.auth` for
+    // a rule here to authorize even in principle. Do not "open this up a little"
+    // to save an API route.
+    match /parent_links/{token} {
+      allow read, write: if false;
     }
 
     // --- 2. USERS (Profile + XP Memory) ---

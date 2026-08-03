@@ -100,10 +100,29 @@ export const MILLIY_SUBJECTS: MilliySubject[] = [
   },
   {
     id: 'fizika',
-    kind: 'soon',
+    kind: 'generic',
     name: { uz: 'Fizika', ru: 'Физика', en: 'Physics' },
-    taxonomySlug: null,
-    href: null,
+    taxonomySlug: 'fizika',
+    href: '/teacher/milliy-sertifikat/fizika',
+    // ⚠️ 35 / 100 is THIS REPO's default, not a national spec. No physics
+    // blueprint is encoded anywhere here (maths has `EXAM_BLUEPRINT`; nothing
+    // equivalent exists for physics), so rather than invent one these match
+    // `data/physics-default-paper.json` — pressing "Namunaviy variant" then
+    // fills the builder to exactly its target instead of overshooting it.
+    defaultQuestions: 35,
+    defaultMinutes: 100,
+  },
+  {
+    id: 'ona-tili',
+    kind: 'generic',
+    name: { uz: 'Ona tili', ru: 'Родной язык', en: 'Uzbek language' },
+    taxonomySlug: 'ona-tili',
+    href: '/teacher/milliy-sertifikat/ona-tili',
+    // ⚠️ **Ona tili, NOT "ona tili va adabiyot".** The taxonomy has no literature
+    // topic on purpose (scripts/addNativeLanguageTopics.mjs) — literature is its
+    // own subject with its own texts, and filing it under a grammar section
+    // would put a second subject inside this one's per-topic report.
+    // 30 / 90 matches `data/ona-tili-default-paper.json`, same reasoning as fizika.
     defaultQuestions: 30,
     defaultMinutes: 90,
   },

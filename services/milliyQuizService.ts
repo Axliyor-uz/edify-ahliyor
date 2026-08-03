@@ -1,7 +1,7 @@
 // services/milliyQuizService.ts
 //
 // Every Firestore read and write for the teacher-built **Milliy sertifikat
-// subject paper** (biology today; chemistry / physics / English next). The rules
+// subject paper** (biology, chemistry, physics, ona tili; English next). The rules
 // and the arithmetic live in lib/MilliyQuiz.ts; this file only talks to the
 // database. Contract + traps: docs/MILLIY_QUIZ.md.
 

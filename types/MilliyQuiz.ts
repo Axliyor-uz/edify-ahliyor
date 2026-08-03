@@ -1,8 +1,8 @@
 // types/MilliyQuiz.ts
 //
 // A teacher-built **Milliy sertifikat subject paper** for the subjects that are
-// NOT maths: biology today, chemistry / physics / English next. Contract + traps:
-// docs/MILLIY_QUIZ.md.
+// NOT maths: biology, chemistry, physics and ona tili today, English next.
+// Contract + traps: docs/MILLIY_QUIZ.md.
 //
 // ⚠️ **Maths does not use these types.** The Milliy sertifikat maths paper is the
 // 45-question DTM blueprint paper that `teacher_rasch_quizzes` already stores
@@ -30,7 +30,7 @@ import type { ExamQuestion } from './Exam';
  *
  * ⚠️ `'math'` is NOT in this union on purpose — it lives in the Rasch subsystem.
  */
-export type MilliySubjectId = 'biologiya' | 'kimyo' | 'fizika' | 'ingliz';
+export type MilliySubjectId = 'biologiya' | 'kimyo' | 'fizika' | 'ona-tili' | 'ingliz';
 
 /**
  * One stored question — an `ExamQuestion` minus the two fields that are POSITION

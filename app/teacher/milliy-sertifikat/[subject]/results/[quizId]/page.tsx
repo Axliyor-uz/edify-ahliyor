@@ -7,7 +7,6 @@ import { ArrowLeft, BadgeCheck, ChevronDown, Users } from "lucide-react";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import { useAuth } from "@/lib/AuthContext";
 import { findSubject } from "@/lib/questionTopics";
-import { examSlotKeys } from "@/lib/ExamTeacher";
 import {
   PAPER_TOTAL, cohortStats, evenPrinted, normalizedScore, paperMarks, paperSlots,
   paperTotal, scoreFor,
@@ -23,20 +22,22 @@ import type { Lang } from "@/types/Math";
 /**
  * Who sat one subject paper, and how the class did.
  *
- * ## 🟢 The SAME dynamic marking as maths (2026-07-30)
+ * ## 🟢 The SAME dynamic marking as maths (2026-07-30; formula rewritten 2026-08-01)
  *
- * Every question is priced from the share of the cohort that solved it —
- * `ball = 1.3 + 4.7·(1−p̂)²`, so a question everybody gets right is worth the
- * least and one almost nobody gets is worth the most, and the whole paper is
- * capped at 100. The student's score is `Σ(balls earned) / Σ(balls) × 100`.
- * ⚠️ That is what makes ten hard answers beat ten easy ones — a flat "20 of 30"
- * cannot say it. All of it is [lib/RASCHmarks.ts](../../../../../../lib/RASCHmarks.ts),
- * shared verbatim with the maths paper.
+ * Every question carries a **guaranteed base** by test type (`Y-1` 1.1 closed,
+ * `O` 1.6 typed — `BASE_BALL`), and whatever is left of the paper's 100 is the
+ * **difficulty budget**, shared out in proportion to `(1−p̂)²` — so the fewer of
+ * the class that solved a question, the bigger its bonus. `B = Y + σ`, and the
+ * paper sums to exactly 100 by construction. The student's score is
+ * `Σ(balls earned) / Σ(balls) × 100`. ⚠️ That is what makes ten hard answers beat
+ * ten easy ones — a flat "20 of 30" cannot say it. All of it is
+ * [lib/RASCHmarks.ts](../../../../../../lib/RASCHmarks.ts), shared verbatim with
+ * the maths paper.
  *
  * ⚠️ **`evenPrinted` is the one difference.** The maths paper has DTM printed
- * per-position values to fall back on; this one has no published protocol, so an
- * unanswered slot falls back to an even split of 100. From the first sitting on,
- * the cohort curve takes over and the two subjects are marked identically.
+ * per-position values to show a moved mark against; this one has no published
+ * protocol, so it passes an even split of 100. It is a "before" for display, not
+ * a fallback the marking ever uses.
  *
  * ⚠️ **Still NO ability model.** θ and the 0–5 levels come from the 3PL fit in
  * `lib/RASCHtheta.ts`, which IS anchored on calibrated maths item difficulty.
@@ -49,11 +50,13 @@ import type { Lang } from "@/types/Math";
 const TR: Record<string, Record<string, string>> = {
   uz: {
     back: "Orqaga",
-    scoreHint: "Ball dinamik: sinf ko'p yechgan savol arzon, kam yechilgan savol qimmat baholanadi. Variant jami 100 ball. Yangi o'quvchi ishlagani sayin ballar qayta hisoblanadi.",
+    scoreHint: "Har bir savol kafolatlangan asosiy ball oladi (yopiq 1,10 · ochiq 1,60), qolgan ballar esa qiyinlikka bo'lib beriladi: sinf ko'p yechgan savol arzon, kam yechilgani qimmat. Variant jami 100 ball. Yangi o'quvchi ishlagani sayin ballar qayta hisoblanadi.",
     rawCorrect: "to'g'ri",
     ball: 'ball',
     legacyRow: 'savollar bo\u2018yicha saqlanmagan',
     paperTotal: 'Variant jami',
+    marksSplit: "Asosiy ball + qiyinlik ulushi",
+    topicTotal: "Mavzuning hozirgi jami bali",
     provisional: "5 tadan kam javob \u2014 ball hali o'zgarishi mumkin",
     solvedShort: 'yechgan',
     title: "Natijalar",
@@ -74,11 +77,13 @@ const TR: Record<string, Record<string, string>> = {
   },
   ru: {
     back: "Назад",
-    scoreHint: 'Балл динамический: чем больше учеников решили вопрос, тем он дешевле; редко решаемый вопрос стоит дорого. Всего за вариант — 100 баллов. С каждой новой попыткой баллы пересчитываются.',
+    scoreHint: 'Каждый вопрос получает гарантированный базовый балл (закрытый 1,10 · открытый 1,60), а остаток распределяется по сложности: чем больше учеников решили вопрос, тем он дешевле; редко решаемый стоит дорого. Всего за вариант — 100 баллов. С каждой новой попыткой баллы пересчитываются.',
     rawCorrect: 'верно',
     ball: 'балл',
     legacyRow: 'не сохранено по вопросам',
     paperTotal: 'Всего за вариант',
+    marksSplit: "База + надбавка за сложность",
+    topicTotal: "Текущая сумма баллов темы",
     provisional: 'меньше 5 ответов — балл ещё может измениться',
     solvedShort: 'решили',
     title: "Результаты",
@@ -99,11 +104,13 @@ const TR: Record<string, Record<string, string>> = {
   },
   en: {
     back: "Back",
-    scoreHint: 'Marks are dynamic: the more of the class that solved a question, the less it is worth; a question few solve is worth the most. The paper totals 100. Every new sitting reprices it.',
+    scoreHint: 'Every question carries a guaranteed base (closed 1.10 · typed 1.60); the rest of the paper is shared out by difficulty — the more of the class that solved a question, the less it adds; a question few solve adds the most. The paper totals 100. Every new sitting reprices it.',
     rawCorrect: 'correct',
     ball: 'marks',
     legacyRow: 'not saved per question',
     paperTotal: 'Paper total',
+    marksSplit: "Base + difficulty bonus",
+    topicTotal: "What this topic currently adds up to",
     provisional: 'fewer than 5 answers — the mark is still moving',
     solvedShort: 'solved',
     title: "Results",
@@ -164,20 +171,60 @@ export default function MilliyResultsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  /** The paper, positions stamped on — one parse, shared by everything below. */
+  const hydrated = useMemo(() => (quiz ? hydrateMilliyQuiz(quiz.questions) : []), [quiz]);
+  const slots = useMemo(() => paperSlots(hydrated), [hydrated]);
+
   /**
-   * The paper's slots, the cohort's per-slot counts, and the marks in force right
-   * now. ⚠️ Derived on every render from the sittings that exist — so a
-   * question's ball MOVES when another student sits the paper. That is the
-   * feature, and the page says so on screen.
+   * The cohort's per-slot counts and the marks in force right now — the SAME
+   * `paperMarks` the maths paper runs (`B = Y + σ`: a guaranteed base by test
+   * type plus a share of the difficulty budget). ⚠️ Derived on every render from
+   * the sittings that exist, so a question's ball MOVES when another student sits
+   * the paper. That is the feature, and the page says so on screen.
    */
-  const marks = useMemo(() => {
-    if (!quiz) return [];
-    const slots = paperSlots(hydrateMilliyQuiz(quiz.questions));
-    return paperMarks(slots, cohortStats(results), evenPrinted(slots.length));
-  }, [quiz, results]);
+  const marks = useMemo(
+    () => paperMarks(slots, cohortStats(results), evenPrinted(slots.length)),
+    [slots, results],
+  );
 
   const total = useMemo(() => paperTotal(marks), [marks]);
-  const markByKey = useMemo(() => new Map(marks.map((m) => [m.key, m])), [marks]);
+
+  /** The two halves of `B = Y + σ` as this paper splits them — summed, never
+   *  assumed: a subject paper's mix of closed and typed items is the teacher's,
+   *  so its base total is not the maths paper's 55.10. */
+  const baseTotal = useMemo(
+    () => Math.round(marks.reduce((sum, m) => sum + m.base, 0) * 100) / 100,
+    [marks],
+  );
+  const bonusTotal = Math.round((total - baseTotal) * 100) / 100;
+
+  /**
+   * The marks grouped by TOPIC, with what each topic currently adds up to.
+   *
+   * ⚠️ These papers have no blueprint, so `sectionId` is the question's own topic
+   * slug ([lib/MilliyQuiz.ts](../../../../../../lib/MilliyQuiz.ts) `slotMeta`) —
+   * which makes `SlotMark.sectionTotal` a per-topic total here and the grid read
+   * exactly like the maths one, where it is per blueprint row. The total is
+   * REPORTED, never reserved: the paper is priced as a whole.
+   */
+  const markGroups = useMemo(() => {
+    const label = new Map<string, string>();
+    for (const q of hydrated) {
+      if (!label.has(q.sectionId)) label.set(q.sectionId, q.sectionLabel?.[L] || "");
+    }
+    const order: string[] = [];
+    const by = new Map<string, typeof marks>();
+    for (const m of marks) {
+      if (!by.has(m.sectionId)) { by.set(m.sectionId, []); order.push(m.sectionId); }
+      by.get(m.sectionId)!.push(m);
+    }
+    return order.map((id) => ({
+      id,
+      label: label.get(id) || id || "—",
+      marks: by.get(id)!,
+      total: by.get(id)![0].sectionTotal,
+    }));
+  }, [hydrated, marks, L]);
 
   /** Each student's dynamic score. `null` for a sitting saved without `items`. */
   const scores = useMemo(() => {
@@ -209,35 +256,20 @@ export default function MilliyResultsPage() {
     };
   }, [results, scores]);
 
+  /** Which topic each slot belongs to, for the tooltips outside the grid. */
+  const topicByKey = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const g of markGroups) for (const m of g.marks) out.set(m.key, g.label);
+    return out;
+  }, [markGroups]);
+
   /**
-   * One row per numbered question: its topic, its ball, and the class solve rate.
-   *
    * ⚠️ Sittings with no `items` map are EXCLUDED from the denominator (inside
    * `cohortStats`) rather than counted as wrong — an older client wrote no
    * outcomes, and treating "unknown" as "wrong" would make every question look
    * harder than it is and would inflate its ball.
    */
-  const slotStats = useMemo(() => {
-    if (!quiz) return [];
-    return hydrateMilliyQuiz(quiz.questions).flatMap((q) => {
-      const keys = examSlotKeys(q);
-      return keys.map((key, i) => {
-        const mark = markByKey.get(key);
-        return {
-          key,
-          slot: q.slotNumber + i,
-          topic: q.topic || "",
-          typed: q.testType === "O",
-          seen: mark?.seen ?? 0,
-          correct: mark?.correct ?? 0,
-          ball: mark?.ball ?? 0,
-          provisional: mark?.provisional ?? true,
-        };
-      });
-    });
-  }, [quiz, markByKey]);
-
-  const measured = slotStats.some((s) => s.seen > 0);
+  const measured = marks.some((m) => m.seen > 0);
 
   /** Class totals per topic slug, summed over every sitting that recorded them. */
   const topicTotals = useMemo(() => {
@@ -339,16 +371,18 @@ export default function MilliyResultsPage() {
                             <>
                               {/* The ball this student TOOK on every question — 0
                                   where they got it wrong. This grid adds up to the
-                                  headline by construction. */}
-                              <ul className="flex flex-wrap gap-1.5">
-                                {slotStats.map((sl) => {
-                                  const got = r.items?.[sl.key];
+                                  headline by construction. Same 12-up density as
+                                  the class grid below and as the maths page. */}
+                              <ul className="grid grid-cols-6 gap-1 sm:grid-cols-9 lg:grid-cols-12">
+                                {marks.map((m) => {
+                                  const got = r.items?.[m.key];
+                                  const topic = topicByKey.get(m.key);
                                   return (
                                     <li
-                                      key={sl.key}
-                                      title={`${t.question} ${sl.slot}${sl.topic ? ` · ${sl.topic}` : ""} · ${sl.ball.toFixed(2)}`}
+                                      key={m.key}
+                                      title={`${t.question} ${m.number}${topic ? ` · ${topic}` : ""} · ${m.ball.toFixed(2)}`}
                                       className={cn(
-                                        "flex min-w-[52px] flex-col items-center rounded-m3-xs px-1.5 py-1",
+                                        "rounded-m3-xs px-0.5 py-1 text-center",
                                         got === undefined
                                           ? "bg-surface-container text-on-surface-variant"
                                           : got
@@ -356,9 +390,11 @@ export default function MilliyResultsPage() {
                                             : "bg-error-container text-on-error-container",
                                       )}
                                     >
-                                      <span className="text-[10px] font-black tabular-nums opacity-70">{sl.slot}</span>
-                                      <span className="text-[11px] font-black tabular-nums">
-                                        {got ? sl.ball.toFixed(2) : "0"}
+                                      <span className="block text-[8.5px] font-bold leading-none tabular-nums opacity-70">
+                                        {m.number}
+                                      </span>
+                                      <span className="s-num block text-[12px] font-black leading-tight tabular-nums">
+                                        {got ? m.ball.toFixed(2) : "0"}
                                       </span>
                                     </li>
                                   );
@@ -391,8 +427,15 @@ export default function MilliyResultsPage() {
               </Card>
             )}
 
-            {/* ── per-question: the ball, and why it is that ball ──────── */}
-            {measured && (
+            {/* ── per-question: the ball, and why it is that ball ──────────
+                ⚠️ The SAME surface as the maths results page (docs/RASCH_QUIZ.md):
+                grouped by topic with what that topic currently adds up to, then a
+                dense grid — number, ball, solve rate — up to 12 a row so a whole
+                paper is one glance. It is deliberately not a list: "which
+                questions did the class miss" is a shape read across the paper.
+                A subject paper has no printed protocol, so there is no struck /
+                underlined "before" here; everything else is identical. */}
+            {measured && markGroups.length > 0 && (
               <Card className="p-4">
                 <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
                   <h2 className="text-[14px] font-bold text-on-surface">{t.perQuestion}</h2>
@@ -400,42 +443,78 @@ export default function MilliyResultsPage() {
                     {t.paperTotal}: {total.toFixed(2)}/{PAPER_TOTAL}
                   </span>
                 </div>
-                <p className="mb-3 text-[11px] font-medium leading-relaxed text-on-surface-variant">{t.perQuestionHint}</p>
-                <ul className="flex flex-col gap-1.5">
-                  {slotStats.map((sl) => {
-                    const rate = sl.seen > 0 ? (sl.correct / sl.seen) * 100 : null;
-                    return (
-                      <li key={sl.key} className="flex items-center gap-3 text-[12px] font-medium">
-                        <span className="grid h-6 w-6 flex-none place-items-center rounded-m3-xs bg-surface-container text-[11px] font-black text-on-surface-variant">
-                          {sl.slot}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-on-surface-variant">
-                          {sl.topic || "—"}
-                          <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide">
-                            {sl.typed ? t.openLabel : t.closedLabel}
-                          </span>
-                        </span>
-                        <span className="flex-none text-[11px] font-medium tabular-nums text-on-surface-variant">
-                          {rate === null ? "—" : `${pct(rate)} ${t.solved}`}
-                        </span>
-                        {/* The ball. A dashed edge means it is live but still
-                            moving — fewer than 5 answers behind it. */}
-                        <span
-                          title={sl.provisional ? t.provisional : undefined}
-                          className={cn(
-                            "s-num flex-none rounded-m3-xs px-2 py-1 text-[12px] font-black tabular-nums",
-                            sl.provisional && "border border-dashed border-outline",
-                            sl.ball >= 4 ? "bg-error-container text-on-error-container"
-                              : sl.ball >= 2.5 ? "bg-warning-container text-on-warning-container"
-                              : "bg-success-container text-on-success-container",
-                          )}
-                        >
-                          {sl.ball.toFixed(2)}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <p className="mb-2 text-[11px] font-medium leading-relaxed text-on-surface-variant">{t.perQuestionHint}</p>
+                {/* What the formula came to on THIS paper. ⚠️ Not the maths
+                    paper's 55.10 + 44.90 — the base total follows the teacher's
+                    own mix of closed and typed items. */}
+                <p className="s-num mb-3 text-[11px] font-black tabular-nums text-on-surface-variant">
+                  {t.marksSplit}: {baseTotal.toFixed(2)} + {bonusTotal.toFixed(2)} = {total.toFixed(2)}
+                </p>
+
+                <div className="flex flex-col gap-2.5">
+                  {markGroups.map((g) => (
+                    <div key={g.id}>
+                      <div className="mb-1 flex items-baseline justify-between gap-3">
+                        <p className="min-w-0 truncate text-[11.5px] font-bold text-on-surface">{g.label}</p>
+                        {/* Reported, not reserved — the paper is priced whole. */}
+                        <p className="shrink-0 text-[11.5px] font-black text-primary" title={t.topicTotal}>
+                          {g.total.toFixed(2)}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-6 gap-1 sm:grid-cols-9 lg:grid-cols-12">
+                        {g.marks.map((m) => {
+                          const rate = m.p === null ? null : Math.round(m.p * 100);
+                          return (
+                            <div
+                              key={m.key}
+                              /* Everything the cell has no room for: the mark's
+                                 split, how it is answered, the evidence, and the
+                                 "still moving" warning. */
+                              title={[
+                                `${m.number} · ${m.ball.toFixed(2)} = ${m.base.toFixed(2)} + ${(m.ball - m.base).toFixed(2)}`,
+                                m.testType === "O" ? t.openLabel : t.closedLabel,
+                                rate === null ? "—" : `${rate}% ${t.solvedShort} · ${m.correct}/${m.seen}`,
+                                m.provisional ? t.provisional : null,
+                              ].filter(Boolean).join(" · ")}
+                              className={cn(
+                                "rounded-m3-xs border px-0.5 py-1 text-center",
+                                // ⚠️ Coloured by the SOLVE RATE, not by the ball:
+                                // `B = Y + σ` shares one budget over the whole
+                                // paper, so how big a ball is depends on how long
+                                // the paper is and a fixed 4.0/2.5 threshold said
+                                // nothing. The solve rate is the finding; the ball
+                                // is its consequence. Same bands as the maths page.
+                                rate === null
+                                  ? "border-outline-variant bg-surface-container"
+                                  : rate < 34
+                                    ? "border-error bg-error-container"
+                                    : rate < 67
+                                      ? "border-outline bg-surface-container-high"
+                                      : "border-success bg-success-container",
+                                m.provisional && "border-dashed",
+                              )}
+                            >
+                              <span className="block text-[8.5px] font-bold leading-none tabular-nums opacity-60">
+                                {m.number}
+                              </span>
+                              <span className="s-num block text-[12.5px] font-black leading-tight tabular-nums">
+                                {m.ball.toFixed(2)}
+                              </span>
+                              <span className="block text-[8.5px] font-bold leading-none tabular-nums opacity-70">
+                                {rate === null ? "—" : `${rate}%`}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {marks.some((m) => m.provisional) && (
+                  <p className="mt-3 text-[11px] font-medium text-on-surface-variant">{t.provisional}</p>
+                )}
               </Card>
             )}
           </>

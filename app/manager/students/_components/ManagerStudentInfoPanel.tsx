@@ -18,11 +18,14 @@ import {
   X, Loader2, User, Phone, MapPin, AtSign, Calendar, Info, Layers,
   Flame, Star, Briefcase, Camera, Trash2, Pencil, KeyRound, Copy,
   Eye, EyeOff, RefreshCw, Check, ChevronDown, Mail, Clock,
-  ArrowRight, GraduationCap, UserMinus, Wallet,
+  ArrowRight, GraduationCap, UserMinus, Wallet, QrCode,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import PhotoCropperModal from "@/app/manager/_components/PhotoCropperModal";
 import StudentFinanceSection from "@/app/manager/finance/_components/StudentFinanceSection";
+import ParentQrDialog from "@/app/manager/parents/_components/ParentQrDialog";
+import { fetchParentLinks } from "@/services/parentLinkService";
+import type { ParentLink } from "@/types/Parent";
 import { managerApiFetch } from "@/lib/managerApi";
 import { getContactOf } from "@/lib/directory";
 import { generateFriendlyPassword } from "@/lib/teacherProvision";
@@ -104,6 +107,12 @@ const TRANSLATIONS = {
     noScheduleSet: "Dars jadvali kiritilmagan",
     goToGroup: "Guruhga o'tish",
     financeSection: "Moliya",
+    parentSection: "Ota-ona kirishi",
+    parentDesc: "Ota-ona QR ni skanerlab, faqat shu farzandining natijalarini ko'radi. Ro'yxatdan o'tish shart emas.",
+    parentNew: "QR yaratish",
+    parentActive: "faol havola",
+    parentNone: "Havola berilmagan",
+    parentAll: "Barcha havolalar",
     personalSection: "Shaxsiy Ma'lumotlar",
     username: "Username",
     email: "Email",
@@ -168,6 +177,12 @@ const TRANSLATIONS = {
     noScheduleSet: "No schedule set",
     goToGroup: "Go to group",
     financeSection: "Finance",
+    parentSection: "Parent access",
+    parentDesc: "A parent scans the QR and sees only this child's results. No signup needed.",
+    parentNew: "Create QR",
+    parentActive: "active link",
+    parentNone: "No link issued",
+    parentAll: "All links",
     personalSection: "Personal Details",
     username: "Username",
     email: "Email",
@@ -232,6 +247,12 @@ const TRANSLATIONS = {
     noScheduleSet: "Расписание не задано",
     goToGroup: "Перейти в группу",
     financeSection: "Финансы",
+    parentSection: "Родительский доступ",
+    parentDesc: "Родитель сканирует QR и видит результаты только этого ребёнка. Регистрация не нужна.",
+    parentNew: "Создать QR",
+    parentActive: "активная ссылка",
+    parentNone: "Ссылка не выдана",
+    parentAll: "Все ссылки",
     personalSection: "Личные данные",
     username: "Username",
     email: "Email",
@@ -350,6 +371,36 @@ export default function ManagerStudentInfoPanel({
   // Remove-from-center
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  // Parent QR access (docs/PARENTS.md). ⚠️ Fetched through the API — the
+  // `parent_links` collection is denied to every client, because its document id
+  // IS the parent's credential.
+  const [parentLinks, setParentLinks] = useState<ParentLink[]>([]);
+  const [issueParent, setIssueParent] = useState(false);
+  const [showParentLink, setShowParentLink] = useState<ParentLink | null>(null);
+
+  useEffect(() => {
+    if (!centerId) return;
+    let alive = true;
+    fetchParentLinks(studentUid)
+      .then((links) => { if (alive) setParentLinks(links); })
+      .catch(() => {/* a missing parent list must never block the profile */});
+    return () => { alive = false; };
+  }, [studentUid, centerId]);
+
+  // ⚠️ A newly ACTIVE link revokes this child's others — mirrored locally,
+  // because the server revoked them in the same batch (docs/PARENTS.md).
+  const onParentChanged = (link: ParentLink) => {
+    setParentLinks((prev) => [
+      link,
+      ...prev
+        .filter((l) => l.token !== link.token)
+        .map((l) => (link.status === "active" && l.status === "active"
+          ? { ...l, status: "revoked" as const, revokedAt: Date.now() }
+          : l)),
+    ]);
+    setShowParentLink((prev) => (prev && prev.token === link.token ? link : prev));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -849,6 +900,53 @@ export default function ManagerStudentInfoPanel({
                     </div>
                   )}
 
+                  {/* Parent access — the QR a parent scans (docs/PARENTS.md) */}
+                  {centerId && (
+                    <div className="bg-surface-container-lowest p-5 sm:p-6 rounded-m3-xl shadow-elev-1 border border-outline-variant">
+                      <h3 className="text-[12px] font-black text-primary uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                        <QrCode size={14}/> {t.parentSection}
+                      </h3>
+                      <p className="text-[12.5px] leading-relaxed text-on-surface-variant">{t.parentDesc}</p>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {parentLinks.length === 0 ? (
+                          <span className="text-[12.5px] font-semibold text-on-surface-variant">{t.parentNone}</span>
+                        ) : (
+                          parentLinks.map((link) => (
+                            <button
+                              key={link.token}
+                              type="button"
+                              onClick={() => setShowParentLink(link)}
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-bold transition-colors ${
+                                link.status === "active"
+                                  ? "border-outline-variant bg-surface-container text-on-surface hover:bg-state-hover"
+                                  : "border-outline-variant text-on-surface-variant line-through hover:bg-state-hover"
+                              }`}
+                            >
+                              <QrCode size={13} />
+                              {link.label || t.parentActive}
+                            </button>
+                          ))
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setIssueParent(true)}
+                          className="m3-interactive inline-flex items-center gap-1.5 rounded-full bg-primary py-1.5 pl-3 pr-4 text-[12px] font-bold text-on-primary"
+                        >
+                          <QrCode size={13} /> {t.parentNew}
+                        </button>
+
+                        <Link
+                          href="/manager/parents"
+                          className="inline-flex items-center gap-1 text-[12px] font-bold text-primary hover:underline"
+                        >
+                          {t.parentAll} <ArrowRight size={13} />
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Personal info */}
                   <div className="bg-surface-container-lowest p-5 sm:p-6 rounded-m3-xl shadow-elev-1 border border-outline-variant space-y-5">
                     <h3 className="text-[12px] font-black text-primary uppercase tracking-widest mb-4 flex items-center gap-1.5">
@@ -907,6 +1005,21 @@ export default function ManagerStudentInfoPanel({
           )}
         </div>
       </div>
+
+      {/* Parent QR — issue a new one, or open an existing one to print/revoke */}
+      <ParentQrDialog
+        open={issueParent}
+        onClose={() => setIssueParent(false)}
+        student={{ id: studentUid, name: profile?.displayName || fallbackName || "" }}
+        hasActive={parentLinks.some((l) => l.status === "active")}
+        onChanged={onParentChanged}
+      />
+      <ParentQrDialog
+        open={!!showParentLink}
+        onClose={() => setShowParentLink(null)}
+        link={showParentLink}
+        onChanged={onParentChanged}
+      />
 
       {/* Hidden file input for the manager-set photo */}
       <input type="file" accept="image/jpeg, image/png, image/webp" ref={fileInputRef} className="hidden"

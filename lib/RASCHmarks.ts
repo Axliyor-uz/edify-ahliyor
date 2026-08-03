@@ -3,38 +3,52 @@
 // DYNAMIC MARKS — what each question on a paper is worth, priced from how the
 // cohort actually answered it.
 //
-// A question's ball is an ABSOLUTE function of one number — the share of the
-// cohort that solved it — on a continuous 1.3 … 6.0 scale:
+// A question's ball is a GUARANTEED BASE plus a share of the paper's
+// difficulty budget:
 //
-//     difficulty d = 1 − p̂                    (p̂ = shrunk share correct)
-//     ball        = 1.3 + 4.7 · d²
+//     Bᵢ = Yᵢ + σᵢ
 //
-// so 100 % solved → 1.30, 50 % → 2.48, 20 % → 4.31, 0 % → 6.00, and every value
-// in between is reachable. The square is the point: it is flat where questions
-// are easy (90 % and 80 % differ by 0.14) and steep where they are hard (20 %
-// and 10 % differ by 0.80), which is where a mark scheme should discriminate.
+//     Yᵢ  = BASE_BALL[testType]        1.1 · Y-1   1.3 · Y-2   1.6 · O
+//     p̂ᵢ  = (correct + 1.5)/(seen + 3)              shrunk share correct
+//     dᵢ  = 1 − p̂ᵢ                                   difficulty
+//     wᵢ  = dᵢ²                                      difficulty weight
+//     σᵢ  = (PAPER_TOTAL − ΣY) · wᵢ / Σw             the bonus
 //
-// The student's score is then `Σ(balls earned) / Σ(balls) × 100` — see
-// `normalizedScore`. ⚠️ That is what makes ten hard answers beat ten easy ones,
-// the thing a flat "x correct out of 45" cannot express.
+// On the DTM maths paper — 32 Y-1, 3 Y-2, 10 O — the bases come to
+// 32(1.1) + 3(1.3) + 10(1.6) = **55.1**, so the difficulty budget shared out
+// across the 45 questions is exactly **44.9**, and the paper sums to 100 by
+// construction. The student's score is then the balls they earned, out of that
+// 100 (`normalizedScore`).
 //
-// ── two earlier designs, and why they went ──────────────────────────────────
-// Both dated 2026-07-29, both replaced the same day:
-//   1. **A per-SECTION budget.** Each blueprint row kept its printed total (3.5
-//      across 2 questions, 20.6 across 11) and its questions permuted the balls
-//      inside it. That capped a question at its own row's dearest printed value,
-//      so the hardest question on the paper could be worth less than an easy one
-//      in a richer row.
-//   2. **Whole-paper allocation normalised to exactly 100.** Balls were priced
-//      against each other and rescaled so the 45 summed to 100. Better, but the
-//      ball was still RELATIVE — it depended on what else was on the paper — and
-//      the rescaling collapsed onto a handful of values in practice.
-// The ball is now absolute: the same solve rate is the same ball on every paper,
-// and two papers' marks mean the same thing. The 45 no longer sum to 100 — the
-// SCORE is normalised instead, which is the number a student is judged on.
+// Two things the formula buys, and they are the whole design:
+//   1. **Every question is worth something.** A question the whole class solved
+//      still carries its base, so an easy paper does not collapse to nothing.
+//   2. **Difficulty is paid out of a FIXED budget.** The 44.9 goes where the
+//      cohort struggled, in proportion to d² — flat at the easy end (90 % and
+//      80 % solved barely differ), steep at the hard end (20 % and 10 % differ a
+//      lot), which is where a mark scheme should discriminate.
 //
-// Until the paper has evidence it is marked with the protocol's PRINTED values,
-// so an unsat paper is still the official table verbatim.
+// ⚠️ **The bonus is RELATIVE and that is deliberate here.** σᵢ depends on the
+// other 44 questions through Σw: the same question takes a bigger slice of the
+// same 44.9 on a paper where everything else was easy. The BASE is what is
+// absolute. That is the trade that keeps the paper at exactly 100 with no
+// scaling pass — see the history below.
+//
+// ── three earlier designs, and why they went ────────────────────────────────
+//   1. **A per-SECTION budget** (2026-07-29). Each blueprint row kept its
+//      printed total and its questions permuted the balls inside it, so the
+//      hardest question on the paper could be worth less than an easy one in a
+//      richer row.
+//   2. **Whole-paper allocation renormalised to exactly 100** (2026-07-29).
+//      Balls were priced against each other and rescaled; the rescaling
+//      collapsed them onto a handful of values.
+//   3. **An absolute 1.3 … 6.0 curve, capped at 100** (2026-07-29 → 2026-08-01).
+//      `ball = 1.3 + 4.7·d²`, priced per question and then scaled down by one
+//      factor whenever the 45 would pass 100. Comparable across papers in
+//      principle — but the cap bound on nearly every real paper, so the
+//      "absolute" ball was scaled in practice anyway, and a displayed ball could
+//      then sit below its own documented floor. `BALL_MIN`, `BALL_MAX`,
+//      `BALL_SPAN`, `ballFor` and `capBalls` went with it.
 //
 // Pure: no Firestore, no React. Contract + traps: docs/RASCH_QUIZ.md.
 
@@ -42,47 +56,45 @@ import { sectionBalls } from './Examblueprint';
 import { examSlotKeys } from './ExamTeacher';
 import type { ExamQuestion, TestType } from '@/types/Exam';
 
-/**
- * What a paper is worth at most, and what a score is out of.
- *
- * ⚠️ **A CAP, not a target** (`capBalls`). The curve below prices each question
- * on its own, so an ordinary paper — one the class solves about half of — adds
- * up to more than 100; when it does, every ball is scaled down by the same
- * factor until the total is exactly 100. A paper that comes in UNDER 100 is left
- * alone: scaling an easy paper *up* would inflate a question nobody found hard.
- */
+/** What a paper is worth, exactly — and what a score is out of. */
 export const PAPER_TOTAL = 100;
 
 /**
- * The band the curve prices into, BEFORE the 100-point cap.
+ * The GUARANTEED base of one question, by test type — the `Yᵢ` of `Bᵢ = Yᵢ + σᵢ`.
  *
- * `BALL_MIN` is the protocol's own cheapest printed value, so the floor is not
- * an invention; `BALL_MAX` is what a question nobody solved is worth. Both ends
- * are reached: they are the values of the curve at d = 0 and d = 1, not clamps.
+ * It is what the question is worth before the cohort has said anything, and no
+ * amount of "everybody solved it" takes it away. The ladder follows how much a
+ * question ASKS of a student, which is exactly what the three types encode: an
+ * open item (`O`) must be produced rather than picked, a `Y-2` needs adaptation,
+ * a `Y-1` is a closed item with one right answer.
  *
- * ⚠️ **A ball on screen can sit BELOW `BALL_MIN`.** `capBalls` scales the whole
- * paper down when it would otherwise pass 100, and the band cannot survive that:
- * 45 questions at the 2.22 average the cap implies is a solve rate of ~56 %, so
- * any harder paper is scaled. The ORDER and the RATIOS are what the cap
- * preserves — the hardest question stays the dearest, and stays the same
- * multiple of the easiest — which is what the mark is actually read for.
+ * ⚠️ **These are floors, not the printed DTM values** (1.3 / 2.2 / 3.2, still
+ * shown struck through as `SlotMark.printedBall`). They are deliberately lower:
+ * the gap between the bases and 100 IS the difficulty budget, and a bigger floor
+ * would leave less of the paper for the cohort to price.
  */
-export const BALL_MIN = 1.3;
-export const BALL_MAX = 6;
-
-/** The band's width — how much a question's ball can travel. */
-export const BALL_SPAN = BALL_MAX - BALL_MIN;
+export const BASE_BALL: Record<TestType, number> = { 'Y-1': 1.1, 'Y-2': 1.3, O: 1.6 };
 
 /**
- * The exponent on difficulty in `ballFor`.
+ * The share of the paper the bases may occupy, used ONLY to rescue a degenerate
+ * paper (see `baseBalls`).
+ *
+ * `0.551` is not a knob — it is the DTM 45-slot paper's own split, 55.1 of base
+ * to 44.9 of difficulty. A paper long enough that its bases alone would reach
+ * 100 is pulled back to that same balance rather than to an invented one.
+ */
+export const BASE_SHARE = 0.551;
+
+/**
+ * The exponent on difficulty in the weight `wᵢ = dᵢ^BALL_CURVE`.
  *
  * `2` (a square) is deliberately convex, not linear: on a linear ramp a question
- * solved by 90 % and one solved by 80 % differ by 0.47, which is noise dressed
- * as a judgement, while 20 % and 10 % differ by the same 0.47 — the one place
- * the distinction is real. Squaring compresses the easy end (0.14 between 90 %
- * and 80 %) and stretches the hard end (0.80 between 20 % and 10 %).
+ * solved by 90 % and one solved by 80 % pull the same amount of budget apart as
+ * 20 % and 10 % do — noise dressed as a judgement at one end, a real distinction
+ * at the other. Squaring compresses the easy end and stretches the hard end, so
+ * the budget flows to the questions that actually separated the class.
  *
- * ⚠️ It is a display curve, not the statistics. Ability is estimated by the 3PL
+ * ⚠️ It is a marking curve, not the statistics. Ability is estimated by the 3PL
  * EAP model in [lib/RASCHtheta.ts](RASCHtheta.ts) and is untouched by this file
  * — see docs/RASCH_QUIZ.md on why the two must not be conflated.
  */
@@ -93,16 +105,9 @@ export const BALL_CURVE = 2;
  *
  * ⚠️ **It is a label, not a switch.** A question is priced from the moment one
  * student has answered it — the ball on screen is always the current one, and
- * `provisional` only tells the teacher how much to lean on it.
- *
- * It used to freeze the whole paper on the protocol's printed table until every
- * slot cleared this, which is why a paper sat 4 times showed nothing but 1.3 and
- * 2.2. That gate belonged to the old design, where balls were priced against
- * each other inside a fixed budget and mixing measured with unmeasured items
- * really would have corrupted the comparison. Balls are **absolute** now
- * (`ballFor`), so an item with two responses simply gets the ball two responses
- * justify — and the shrunk `p̂` is what keeps that honest, doing the job the
- * gate was doing, continuously and per question rather than all-or-nothing.
+ * `provisional` only tells the teacher how much to lean on it. The shrunk `p̂`
+ * (`PRIOR_WEIGHT`) is what keeps a thin item honest, continuously and per
+ * question rather than all-or-nothing.
  */
 export const MIN_RESPONSES = 5;
 
@@ -110,14 +115,16 @@ export const MIN_RESPONSES = 5;
  * Shrinkage toward `PRIOR_P`, in "imaginary responses".
  *
  * Two questions at 1/6 and 0/6 are barely distinguishable, and shrinking both
- * toward 0.5 keeps a single lucky answer from taking a section's whole budget.
+ * toward 0.5 keeps a single lucky answer from taking a large slice of the
+ * difficulty budget. It is also what prices a question NOBODY has answered yet:
+ * p̂ = 0.5, so it draws the neutral weight (0.25) and an unsat paper spreads its
+ * budget evenly instead of guessing.
  */
 export const PRIOR_WEIGHT = 3;
 export const PRIOR_P = 0.5;
 
-/** Balls carry TWO decimals. One decimal collapses the easy half of the curve
- *  onto a handful of values (1.3, 1.3, 1.4, 1.5…), which is the discreteness
- *  this design exists to remove. */
+/** Balls carry TWO decimals. One decimal collapses the bonuses onto a handful of
+ *  values, which is the discreteness this design exists to remove. */
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /** How one slot went, across everybody who has sat the paper. */
@@ -138,17 +145,18 @@ export interface SlotMark {
   correct: number;
   /** Raw proportion correct, or `null` when nobody has answered it yet. */
   p: number | null;
-  /** The ball this question is worth, to one decimal. In [BALL_MIN, BALL_MAX]. */
+  /** The guaranteed base for this question's test type — the `Yᵢ`. */
+  base: number;
+  /** What this question is worth: `base` + its share of the difficulty budget. */
   ball: number;
   /** What the protocol prints in this position, before any repricing. */
   printedBall: number;
   /**
    * What this question's section adds up to under the marks in force.
    *
-   * ⚠️ **Reported, not reserved.** Before 2026-07-29 it was a fixed per-section
-   * budget the questions inside it split; now the paper is priced as a whole and
-   * a section's total MOVES — a row full of questions the class found hard is
-   * worth more than the protocol prints it, and that is the point.
+   * ⚠️ **Reported, not reserved.** The paper is priced as a whole and a section's
+   * total MOVES — a row full of questions the class found hard is worth more than
+   * the protocol prints it, and that is the point.
    */
   sectionTotal: number;
   /** Fewer than `MIN_RESPONSES` answers — the ball is live but still moving. */
@@ -201,28 +209,25 @@ export function shrunkP(stat: ItemStat): number {
 }
 
 /**
- * Solve rate → what this question is worth.
+ * A question's claim on the difficulty budget — `w = (1 − p̂)^BALL_CURVE`.
  *
- *     ball = BALL_MIN + BALL_SPAN · (1 − p̂)^BALL_CURVE
- *
- * ⚠️ **Absolute, not relative.** It depends on this question's own solve rate
- * and on nothing else on the paper, so the same 30 %-solved question is 3.60 on
- * every paper it appears on — which is what makes two papers' marks comparable
- * and what a rescaled-to-100 allocation could never give.
- *
- * ⚠️ **The ends of the band are asymptotes in practice**, because `p̂` is
- * SHRUNK: a question 20 of 20 students solved reads p̂ = 0.93, not 1.00, so it
- * prices at 1.32 rather than 1.30, and 0 of 20 gives 5.41 rather than 6.00. That
- * is deliberate — the alternative is one lucky answer moving a mark by half a
- * point — and the gap closes as the cohort grows (0 of 50 → 5.74).
+ * ⚠️ **A weight, not a mark.** It is meaningless on its own; what a question is
+ * worth is `base + budget · w/Σw`, which is why nothing outside `paperMarks`
+ * should price anything from it. A slot nobody has answered gets the prior
+ * (p̂ = 0.5 → w = 0.25), so it neither gains nor loses against a measured item
+ * that landed at the same solve rate.
  *
  *     solved  100%   90%   80%   70%   60%   50%   40%   30%   20%   10%    0%
- *     ball    1.30  1.35  1.49  1.72  2.05  2.48  2.99  3.60  4.31  5.11  6.00
+ *     w       0.00  0.01  0.04  0.09  0.16  0.25  0.36  0.49  0.64  0.81  1.00
+ *
+ * ⚠️ **The ends are asymptotes in practice, because `p̂` is SHRUNK**: 20 of 20
+ * solved reads p̂ = 0.93 and weighs 0.005, not 0; 0 of 20 weighs 0.88, not 1.
+ * That is deliberate — one lucky answer must not move a mark — and the gap
+ * closes as the cohort grows.
  */
-export function ballFor(stat: ItemStat | undefined): number {
-  if (!stat || stat.seen === 0) return BALL_MIN + BALL_SPAN * 0.5 ** BALL_CURVE;
-  const d = 1 - shrunkP(stat);
-  return round2(BALL_MIN + BALL_SPAN * d ** BALL_CURVE);
+export function difficultyWeight(stat: ItemStat | undefined): number {
+  const p = stat && stat.seen > 0 ? shrunkP(stat) : PRIOR_P;
+  return (1 - p) ** BALL_CURVE;
 }
 
 /**
@@ -246,29 +251,22 @@ function roundHundredths(values: number[], total: number): number[] {
 }
 
 /**
- * **The 100-point ceiling.** A paper worth more than `PAPER_TOTAL` has every
- * ball scaled down by the same factor until it is worth exactly that.
+ * Each slot's guaranteed base, and what is therefore left to price difficulty
+ * with.
  *
- * ⚠️ Needed because the curve is ABSOLUTE: it prices each question from its own
- * solve rate and never looks at the paper, so nothing stops 45 hard questions
- * adding to 200. A mark scheme that says "out of 100" has to be out of 100 —
- * the screenshot that started this read `65.56/112.20`, which is not a mark
- * anybody can act on.
- *
- * ⚠️ **One factor for the whole paper, never a clamp per question.** Trimming
- * only the dearest questions would change which question is worth more than
- * which; a single factor leaves every ratio — and therefore the entire ordering
- * — exactly as the cohort earned it. The floor of `BALL_MIN` is what yields, and
- * it is documented as yielding.
- *
- * ⚠️ **Under 100 is left ALONE.** Scaling an easy paper up to 100 would make a
- * question everyone solved worth more than its difficulty says, purely because
- * the rest of the paper was easy too — the exact relativity this design removed.
+ * A DTM-shaped paper (32/3/10) gets `BASE_BALL` verbatim — 55.1 of base, 44.9 of
+ * budget. ⚠️ **A long paper is the one case that has to yield**: 100 questions
+ * would carry 110 of base and leave the difficulty budget negative, so once the
+ * bases reach `BASE_SHARE` of the paper they are scaled down by ONE factor until
+ * they occupy exactly that share. One factor, never a per-type clamp — the
+ * 1.1 : 1.3 : 1.6 ladder between the types is the thing being preserved.
  */
-export function capBalls(raw: number[], cap = PAPER_TOTAL): number[] {
-  const total = raw.reduce((a, b) => a + b, 0);
-  if (total <= cap || total <= 0) return raw.map(round2);
-  return roundHundredths(raw.map((v) => (v / total) * cap), cap);
+export function baseBalls(slots: PaperSlot[], cap = PAPER_TOTAL): { bases: number[]; budget: number } {
+  const bases = slots.map((slot) => BASE_BALL[slot.testType] ?? BASE_BALL['Y-1']);
+  const total = bases.reduce((a, b) => a + b, 0);
+  const room = cap * BASE_SHARE;
+  if (total <= room || total <= 0) return { bases, budget: cap - total };
+  return { bases: bases.map((v) => (v / total) * room), budget: cap - room };
 }
 
 /**
@@ -278,9 +276,8 @@ export function capBalls(raw: number[], cap = PAPER_TOTAL): number[] {
  * ⚠️ This is what the Milliy sertifikat SUBJECT papers (biology…) use: the DTM
  * maths blueprint is the only place per-position printed balls exist, and
  * inventing per-section values for a subject whose blueprint this repo does not
- * have would be worse than an honest flat split. It only ever shows BEFORE a
- * question has been answered by anybody — from the first sitting on, the cohort
- * curve takes over, which is the entire point of the dynamic marks.
+ * have would be worse than an honest flat split. It is the "before" shown beside
+ * a moved mark, nothing more — it has never been what a question is marked at.
  *
  * See docs/MILLIY_QUIZ.md.
  */
@@ -293,8 +290,8 @@ export function evenPrinted(count: number, total = PAPER_TOTAL): number[] {
  * What each position PRINTS in the DTM maths protocol, in paper order.
  *
  * Per section, because that is the only place the printed values exist — a row's
- * `balls` are its own multiset. It is the provisional mark and the "before" the
- * results page strikes through, nothing more.
+ * `balls` are its own multiset. It is the "before" the results page strikes
+ * through, nothing more.
  */
 function printedBalls(slots: PaperSlot[]): number[] {
   const bySection = new Map<string, number>();
@@ -310,18 +307,19 @@ function printedBalls(slots: PaperSlot[]): number[] {
 }
 
 /**
- * The whole paper, marked against its cohort.
+ * The whole paper, marked against its cohort — `Bᵢ = Yᵢ + σᵢ`, summing to
+ * exactly `PAPER_TOTAL`.
  *
  * Nothing here is stored. The marks are derived on every render from the
  * sittings that exist right now, which means **a question's ball moves when a
  * classmate sits the paper**. That is the feature, and the results page says so
  * on screen.
  *
- * ⚠️ **Subject-agnostic since 2026-07-30.** Everything below the `printed`
- * argument is cohort arithmetic — solve rate in, ball out — with no blueprint,
- * no calibrated difficulty and no taxonomy in it, which is exactly why the same
- * marking now serves the Milliy sertifikat subject papers (docs/MILLIY_QUIZ.md).
- * `printed` is the ONLY maths-specific part, so it is injectable: pass
+ * ⚠️ **Subject-agnostic.** Everything below the `printed` argument is base +
+ * cohort arithmetic — test type and solve rate in, ball out — with no blueprint,
+ * no calibrated difficulty and no taxonomy in it, which is why the same marking
+ * serves the Milliy sertifikat subject papers (docs/MILLIY_QUIZ.md). `printed` is
+ * the ONLY maths-specific part, so it is injectable: pass
  * `evenPrinted(slots.length)` for a paper with no printed protocol. It defaults
  * to the DTM table so the maths caller is unchanged.
  *
@@ -335,17 +333,23 @@ export function paperMarks(
   printed: number[] = printedBalls(slots),
 ): SlotMark[] {
   const rows = slots.map((slot, i) => ({ slot, stat: stats.get(slot.key), printedBall: printed[i] ?? 0 }));
+  if (rows.length === 0) return [];
 
-  // Every question carries its CURRENT ball, priced per question from whatever
-  // evidence that question has. Only a slot nobody has answered at all falls
-  // back to the protocol's printed value — there is nothing to compute from.
-  // Then the whole paper is capped at 100 (`capBalls`), which is what makes the
-  // per-question grid add up to the score in the header.
-  const balls = capBalls(
-    rows.map((row) => ((row.stat?.seen ?? 0) > 0 ? ballFor(row.stat) : row.printedBall)),
+  // The floor every question keeps, and what is left of the 100 to price
+  // difficulty with.
+  const { bases, budget } = baseBalls(slots);
+
+  // The difficulty budget, shared in proportion to d². Σw is only ever 0 in the
+  // impossible case of a perfectly-solved shrunk cohort; splitting evenly there
+  // keeps the paper at 100 instead of dropping the budget on the floor.
+  const weights = rows.map((row) => difficultyWeight(row.stat));
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+  const balls = roundHundredths(
+    bases.map((base, i) => base + budget * (weightSum > 0 ? weights[i] / weightSum : 1 / rows.length)),
+    PAPER_TOTAL,
   );
 
-  // Reported per section AFTER the split, never reserved before it.
+  // Reported per section AFTER the pricing, never reserved before it.
   const sectionTotals = new Map<string, number>();
   rows.forEach((row, i) => {
     const id = row.slot.sectionId;
@@ -362,6 +366,7 @@ export function paperMarks(
       seen,
       correct: row.stat?.correct ?? 0,
       p: seen > 0 ? row.stat!.correct / seen : null,
+      base: round2(bases[i]),
       ball: balls[i],
       printedBall: row.printedBall,
       sectionTotal: round2(sectionTotals.get(row.slot.sectionId) ?? 0),
@@ -375,10 +380,10 @@ export function paperMarks(
 /**
  * Every ball on the paper added up — what a perfect sitting would earn.
  *
- * **At most `PAPER_TOTAL`** (`capBalls`), and exactly it on any paper the class
- * did not find easy. ⚠️ It can still come in UNDER 100: a paper everybody solves
- * is worth 45 × 1.30 = 58.5, and is deliberately left there rather than inflated
- * to 100. So this is summed, not assumed.
+ * **`PAPER_TOTAL` exactly** on any paper with slots: the bases and the budget are
+ * defined to add to it and `roundHundredths` keeps that exact. It is still summed
+ * rather than assumed, because it is what the per-question grid on screen adds up
+ * to and the two must agree by construction, not by comment.
  */
 export function paperTotal(marks: SlotMark[]): number {
   return round2(marks.reduce((sum, m) => sum + m.ball, 0));
@@ -400,14 +405,15 @@ export function scoreFor(marks: SlotMark[], items: Record<string, number> | unde
 /**
  * **The student's score, out of 100** — `Σ(balls earned) / Σ(balls) × 100`.
  *
- * ⚠️ This is where difficulty is actually rewarded, and it is the whole reason
- * the balls are absolute. Two students who each answered 10 of 45 do NOT score
- * the same: on a paper priced 1.30…6.00, the ten hardest are worth ~50 raw balls
- * and the ten easiest ~14, so the same "10 correct" comes out around 45 vs 13.
- * A flat count of right answers cannot say that, and it is the single most
- * misleading number a maths dashboard can show.
+ * Since the paper sums to exactly `PAPER_TOTAL`, this is the earned balls
+ * themselves to one decimal; the division is kept so the number can never drift
+ * from the grid it is read beside.
  *
- * Normalising also puts every paper back on one scale, whatever its raw total.
+ * ⚠️ This is where difficulty is rewarded. Two students who each answered 10 of
+ * 45 do NOT score the same: the ten the class found hardest carry most of the
+ * 44.9 difficulty budget on top of their bases, while ten everybody solved carry
+ * little more than their base. A flat count of right answers cannot say that, and
+ * it is the single most misleading number a maths dashboard can show.
  */
 export function normalizedScore(
   marks: SlotMark[],

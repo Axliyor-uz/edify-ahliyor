@@ -10,7 +10,7 @@
 > and [RASCH_SKILLS.md](RASCH_SKILLS.md); the question schema is in
 > [QUESTIONS.md](QUESTIONS.md).
 
-**Last verified:** 2026-07-31 (the question-builder round trip is closed — `?back=`/`?add=`); 2026-07-30: moved to `app/teacher/milliy-sertifikat/math`; full-screen exam lockdown; Milliy sertifikat hub is a second entry point to this same builder; dynamic per-question marks 2026-07-29.
+**Last verified:** 2026-08-01 (the marking formula is now **base + difficulty bonus**, `B = Y + σ`); 2026-07-31: the question-builder round trip is closed — `?back=`/`?add=`; 2026-07-30: moved to `app/teacher/milliy-sertifikat/math`; full-screen exam lockdown; Milliy sertifikat hub is a second entry point to this same builder; dynamic per-question marks 2026-07-29.
 
 ## Purpose & scope
 
@@ -64,7 +64,7 @@ invariants below before you do. The non-maths subjects have their own subsystem:
 | `app/teacher/milliy-sertifikat/math/_components/draft.ts` | The localStorage stash that survives leaving to write a question. |
 | [app/teacher/create/_components/returnTo.ts](../app/teacher/create/_components/returnTo.ts) | The `?back=` / `?add=` contract — how a builder sends a teacher to write a question **and gets them back with it**. Shared with the subject papers. |
 | `app/teacher/milliy-sertifikat/math/results/[quizId]/page.tsx` | Who sat it; per-dimension 0–5 levels, per class **and per student**. |
-| [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **Dynamic marks** — cohort solve rate → an absolute 1.30–6.00 ball per question, and the student's score normalised to 100. Pure. ⚠️ **Shared with every Milliy sertifikat subject** since 2026-07-30 ([MILLIY_QUIZ.md](MILLIY_QUIZ.md)); the only maths-specific part is the `printed` fallback, which is now an argument to `paperMarks`. |
+| [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **Dynamic marks** — a guaranteed base per test type plus a share of the paper's difficulty budget, `B = Y + σ`, summing to exactly 100. Pure. ⚠️ **Shared with every Milliy sertifikat subject** since 2026-07-30 ([MILLIY_QUIZ.md](MILLIY_QUIZ.md)); the only maths-specific part is the `printed` display value, which is an argument to `paperMarks`. |
 | [lib/RASCHband.ts](../lib/RASCHband.ts) | Band → colour/name, kit-agnostic. ⚠️ Read by BOTH UI kits — keep it free of component imports. |
 | `app/(student)/raschmodel/quiz/page.tsx` | Code entry → intro → sitting → results, plus the student's own **sat-papers list** (`listMyQuizResults`). |
 | `app/(student)/raschmodel/_components/ExamRunner.tsx` | **The paper**, shared with the mock exam. |
@@ -271,83 +271,89 @@ gives a bank item `Y-1`/`Y-2` by difficulty and reserves `O` for typed teacher
 items — including an open **ko'p savolli** block, judged by `isClosedQuestion`
 (see the invariant below). A block always renders as a block card (`examMode`
 returns `'block'` before it ever looks at the test type), so its `O` changes only
-the row, quota and ball budget it is filed under, never how it is answered.
+the row and quota it is filed under and **what it is worth**, never how it is
+answered. ⚠️ Since 2026-08-01 the test type IS money: it picks the question's
+guaranteed base (`BASE_BALL` — 1.1 / 1.3 / 1.6), so a mis-typed item is no longer
+only a quota error.
 
-### Dynamic marks — an absolute 1.30–6.00 ball per question (2026-07-29)
+### 🟢 Dynamic marks — base + difficulty bonus, `B = Y + σ` (2026-08-01)
 
-A question's ball is a function of ONE number — the share of the cohort that
-solved it — on a continuous scale:
+Every question keeps a **guaranteed base** for its test type, and whatever is
+left of the paper's 100 is a **difficulty budget** shared out by how the cohort
+answered:
 
 ```
-difficulty d = 1 − p̂                    p̂ = (correct + 1.5)/(seen + 3), shrunk
-ball         = BALL_MIN + BALL_SPAN · d^BALL_CURVE
-             = 1.3 + 4.7 · d²                                  → 1.30 … 6.00
+Yᵢ = BASE_BALL[testType]          1.1 · Y-1     1.3 · Y-2     1.6 · O
+p̂ᵢ = (correct + 1.5)/(seen + 3)   shrunk share correct
+dᵢ = 1 − p̂ᵢ                       difficulty
+wᵢ = dᵢ^BALL_CURVE = dᵢ²          difficulty weight
+σᵢ = (100 − ΣY) · wᵢ/Σw           the bonus
+Bᵢ = Yᵢ + σᵢ
 ```
+
+On the DTM shape the blueprint enforces — **32 Y-1, 3 Y-2, 10 O** — the bases
+come to `32(1.1) + 3(1.3) + 10(1.6)` = **55.1**, so the difficulty budget is
+exactly **44.9** and the paper sums to **100 by construction**, with no scaling
+pass anywhere.
 
 | solved | 100 % | 90 % | 80 % | 70 % | 60 % | 50 % | 40 % | 30 % | 20 % | 10 % | 0 % |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| **ball** | 1.30 | 1.35 | 1.49 | 1.72 | 2.05 | 2.48 | 2.99 | 3.60 | 4.31 | 5.11 | 6.00 |
+| **weight `w`** | 0.00 | 0.01 | 0.04 | 0.09 | 0.16 | 0.25 | 0.36 | 0.49 | 0.64 | 0.81 | 1.00 |
 
-- **The ball is priced ABSOLUTELY, then capped.** The curve depends on this
-  question's own solve rate and on nothing else, so a 30 %-solved question starts
-  at 3.60 wherever it appears. ⚠️ The raw prices would run from 58.5 (everything
-  solved by everyone) to 270 (nothing solved by anyone), so **`capBalls` scales
-  the whole paper down by ONE factor whenever it would pass `PAPER_TOTAL` 100** —
-  and a paper is out of 100 exactly, as a mark scheme has to be.
-  - ⚠️ **One factor, never a per-question clamp.** Trimming only the dearest
-    questions would change which question is worth more than which; a single
-    factor leaves every ratio, and therefore the whole ordering, as the cohort
-    earned it.
-  - ⚠️ **A displayed ball can then sit BELOW `BALL_MIN`.** The cap implies a mean
-    of 100/45 ≈ 2.22, which is a ~56 % solve rate, so any harder paper is scaled
-    and the 1.30 floor yields. Measured on a full 0–100 % spread: the range
-    becomes **1.05 … 4.31**, still 21 distinct values across 45 questions.
-  - ⚠️ **Under 100 is left ALONE.** A paper everyone solved is worth 45 × 1.30 =
-    58.5 and stays there. Scaling it *up* would make a question nobody found hard
-    worth more purely because the rest of the paper was easy too — the exact
-    relativity this design removed.
-- **The curve is convex on purpose** (`BALL_CURVE = 2`). Linear would put 0.47
-  between 90 % and 80 % — noise dressed as a judgement — and the same 0.47
-  between 20 % and 10 %, the one place the distinction is real. Squaring gives
-  0.14 at the easy end and 0.80 at the hard end.
-- **Two decimals**, not one. At one decimal the easy half of the curve collapses
-  onto 1.3 / 1.3 / 1.4 / 1.5, which is the discreteness this design exists to
-  remove. Measured: 20 sittings produce **21 distinct balls** across the 21
-  possible solve counts — a genuinely continuous ladder
-  (1.32 1.36 1.41 1.48 1.57 1.68 1.80 1.94 2.10 2.28 2.48 2.69 2.92 3.17 3.43
-  3.72 4.02 4.34 4.68 5.03 5.41).
-- ⚠️ **The band's ends are asymptotes in practice, because `p̂` is SHRUNK.** 20 of
-  20 solved reads p̂ = 0.93 and prices at 1.32, not 1.30; 0 of 20 gives 5.41, not
-  6.00. That is the point — one lucky answer must not move a mark half a point —
-  and the gap closes as the cohort grows (0 of 50 → 5.74). The raw table above is
-  the limit, not the first sitting.
-- ⚠️ **Every question always shows its CURRENT ball**, priced per question from
-  whatever evidence that question has. `MIN_RESPONSES = 5` is now only a **label**
-  (`SlotMark.provisional`, per slot): under it the card gets a dashed edge and a
-  "the ball is live but still moving" tooltip, and nothing more. Only a slot
-  **nobody** has answered falls back to its printed value — there is nothing to
-  compute from.
-  It used to be a gate that froze the WHOLE paper on the protocol's printed table
-  until every slot cleared it, which is why a paper sat 4 times showed nothing but
-  1.3 and 2.2. That gate belonged to the per-section design, where balls were
-  priced against each other inside a fixed budget and mixing measured with
-  unmeasured items really would have corrupted the comparison. Balls are absolute
-  now, and the shrunk `p̂` does the gate's job continuously and per question:
-  4 sittings already read 1/4 → 3.24, 2/4 → 2.48, 3/4 → 1.90.
+- **The base is what a question is worth for being asked at all**, and the ladder
+  is the protocol's own three types: an `O` must be *produced* (1.6), a `Y-2`
+  needs adaptation (1.3), a `Y-1` is picked from four options (1.1). A question
+  the whole class solved still earns its base — an easy paper does not collapse
+  to nothing.
+  ⚠️ **These are NOT the printed DTM values** (1.3 / 2.2 / 3.2, which sum to 100
+  on their own). They are deliberately lower, because the gap between them and
+  100 *is* the difficulty budget. The printed value is still carried
+  (`SlotMark.printedBall`) — a mark that moved off it gets a dotted underline and
+  the tooltip names it.
+- **The bonus is convex in difficulty** (`BALL_CURVE = 2`). Linear would move the
+  same budget between 90 %- and 80 %-solved as between 20 % and 10 % — noise
+  dressed as a judgement at one end, a real distinction at the other. Squaring
+  sends the 44.9 to the questions that actually separated the class. Measured on
+  a 45-question paper sat by 100 students with a full 0–99 % spread: balls run
+  **1.38 … 4.00**, and the section headers still add to exactly 100.00.
+- ⚠️ **The bonus is RELATIVE; only the base is absolute.** σᵢ divides by Σw, so
+  the same 30 %-solved question is worth more on a paper where everything else
+  was easy (it takes a bigger slice of the same 44.9). That is the price of a
+  paper that is exactly 100 without a cap — and the previous design, which chased
+  an absolute ball, ended up scaled on nearly every real paper anyway (below).
+- ⚠️ **A slot nobody has answered is priced, not skipped**: `p̂ = 0.5` from the
+  prior alone → `w = 0.25`, the neutral weight. So an **unsat paper** reads
+  Y-1 **2.10**, Y-2 **2.30**, O **2.60** — an even split of the budget on top of
+  the bases — and still totals 100. It no longer falls back to the printed table.
+- ⚠️ **The ends are asymptotes, because `p̂` is SHRUNK.** 20 of 20 solved reads
+  p̂ = 0.93 and weighs 0.005, not 0; 0 of 20 weighs 0.88, not 1. One lucky answer
+  must not move a mark, and the gap closes as the cohort grows.
+- **Two decimals**, not one — the bonuses are continuous and one decimal collapses
+  them onto a handful of values.
+- ⚠️ **Every question always shows its CURRENT ball.** `MIN_RESPONSES = 5` is only
+  a **label** (`SlotMark.provisional`, per slot): under it the card gets a dashed
+  edge and a "still moving" tooltip, and nothing more.
+- ⚠️ **A long paper is the one case where the base yields** (`baseBalls`). 100
+  typed questions would carry 110 of base and leave the budget negative, so once
+  the bases reach `BASE_SHARE` (0.551 — the DTM paper's own 55.1/44.9 split) they
+  are scaled down by ONE factor to exactly that share. One factor, never a
+  per-type clamp: the 1.1 : 1.3 : 1.6 ladder is the thing being preserved. A
+  45-slot paper never reaches it.
 - `SlotMark.sectionTotal` is **reported after the fact**, never reserved before
-  it: what that blueprint row happened to come to under the balls in force. The
-  results page shows it per row and labels it as such.
+  it: what that blueprint row happened to come to under the marks in force. The
+  results page shows it per row and labels it as such, and prints the paper's own
+  split (`55.10 + 44.90 = 100.00`) under the section header.
 
 #### The score — `Σ(balls earned) / Σ(balls) × 100`
 
 `normalizedScore` is **the** number a student is judged on, and it is where
-difficulty is actually rewarded. Measured on a 45-question paper sat 20 times
-with a full 0–100 % spread (`paperTotal` = 125.54):
+difficulty is rewarded. Measured on a 45-question paper sat by 100 students with
+a full 0–99 % spread (`paperTotal` = 100.00):
 
-| student | answered | raw balls | score |
-|---|---|---|---|
-| A | the **10 easiest** | 14.28 | **11.4** / 100 |
-| B | the **10 hardest** | 46.96 | **37.4** / 100 |
+| student | answered | balls earned = score |
+|---|---|---|
+| A | the **10 easiest** | **15.08** / 100 |
+| B | the **10 hardest** | **34.59** / 100 |
 
 ⚠️ **A flat "10 of 45 correct" scores both the same**, and that is the single most
 misleading number a maths dashboard can show.
@@ -355,30 +361,29 @@ misleading number a maths dashboard can show.
 ⚠️ **The headline is the BALLS** — `58.43/100.00` on the student's row and on the
 average tile alike. `scoreFor` (the sum of the balls of the questions they got
 right) is what the per-question grid adds up to, so the two agree by
-construction. Leading with a percentage alone put two different numbers for one
-quantity on one card — `58.4/100` at the top, `65.56/112.20` in the grid four
-lines below — and read as a miscalculation even though both were right. With the
-cap in place `paperTotal` IS 100 on any paper that is not easy, so the percentage
-is then redundant and the page prints it only when the total actually came in
-under 100.
+construction. Since `paperTotal` IS 100 by construction, the percentage is the
+same number again and the page **no longer prints it** anywhere; `normalizedScore`
+remains the value the subject page ranks and averages on.
 
-#### Two earlier designs, and why they went
+#### Three earlier designs, and why they went
 
-Both shipped and were replaced the same day, so the reasoning is worth keeping:
-
-1. **A per-SECTION budget.** Each blueprint row kept its printed total (3.5
-   across 2 questions, 20.6 across 11) and its questions only permuted the balls
-   inside it. That capped a question at its own row's dearest printed value, so
-   the hardest question on the paper could be worth less than an easy one in a
-   richer row, and the mark said more about which section a question sat in than
-   about the question.
-2. **Whole-paper allocation renormalised to exactly 100.** Balls were priced
-   against each other (`e^(0.35·logit)`) and rescaled by a water-filling solve so
-   the 45 summed to 100. Better — but the ball was still RELATIVE, it moved when
-   an unrelated question on the same paper moved, and the rescaling pulled the
-   values back onto a handful of near-duplicates.
-
-The lesson both times: **normalise the SCORE, not the balls.**
+1. **A per-SECTION budget** (2026-07-29). Each blueprint row kept its printed
+   total (3.5 across 2 questions, 20.6 across 11) and its questions only permuted
+   the balls inside it. That capped a question at its own row's dearest printed
+   value, so the hardest question on the paper could be worth less than an easy
+   one in a richer row.
+2. **Whole-paper allocation renormalised to exactly 100** (2026-07-29). Balls were
+   priced against each other (`e^(0.35·logit)`) and rescaled by a water-filling
+   solve. The rescaling pulled the values back onto a handful of near-duplicates.
+3. **An absolute 1.30–6.00 curve, capped at 100** (2026-07-29 → 2026-08-01).
+   `ball = 1.3 + 4.7·d²` per question, then `capBalls` scaled the whole paper down
+   by one factor whenever the 45 would pass 100. The ball was comparable across
+   papers *in principle* — but the cap bound on any paper the class did not find
+   easy, so it was scaled in practice anyway, and a displayed ball could then sit
+   **below its own documented 1.30 floor**, which a mark scheme may not do. It
+   also gave a question everybody solved almost nothing. `BALL_MIN`, `BALL_MAX`,
+   `BALL_SPAN`, `ballFor` and `capBalls` were removed with it; `difficultyWeight`
+   is what replaced `ballFor`.
 
 #### What this deliberately does NOT touch
 
@@ -388,7 +393,7 @@ The lesson both times: **normalise the SCORE, not the balls.**
 one), a guessing floor of 0.25 on multiple choice and 0.05 on open items, and an
 N(0, 1.2) prior. The ball is a **display weight**; feeding it into the ability
 estimate as well would count the same evidence twice. Keeping the statistical
-layer (Rasch) and the presentation layer (1.30–6.00) separate is the design.
+layer (Rasch) and the marking layer (`B = Y + σ`) separate is the design.
 
 #### Confidence shrinkage — ranking a student's strongest/weakest topic
 
@@ -433,9 +438,17 @@ statistics rather than counted as wrong, and their own dynamic score reads "—"
 
 The results page renders it grouped **by section, with what that section
 currently adds up to in the header** (a flat grid of 45 is unreadable) — a
-reported total, not a budget, since the paper is priced as a whole. Each question
-shows its printed value struck through when it moved, and each student's expanded
-row lists the ball they took on every question. The card also carries the protocol's own
+reported total, not a budget, since the paper is priced as a whole.
+
+⚠️ **Inside a section it is a DENSE grid, up to 12 per row** (2026-08-01), three
+tiny lines per cell: number, ball, solve rate. "Which questions did the class
+miss" is a shape read across the whole paper, and the earlier six-wide cards
+pushed the later sections below the fold. Everything the cell no longer prints —
+the `base + bonus` split, the protocol's printed value, the raw `correct/seen`,
+the provisional warning — is in the **tooltip**, and a mark that moved off its
+printed value carries a **dotted underline** instead of a struck-through second
+number. Each student's expanded row lists the ball they took on every question at
+the same density. The card also carries the protocol's own
 definitions: **Y-1** a closed item with one correct answer, **Y-2** a closed
 matching item, **O** an open item with a short answer.
 
@@ -462,7 +475,7 @@ the box — title, **right / wrong counts**, score, 0–5 level, date, newest fi
   reads as data loss. A retake REPLACES its row, matching what the deterministic
   document id already does.
 - ⚠️ **The score shown is `percent`, NOT the teacher's dynamic ball.** A ball is a
-  property of the whole COHORT — `ballFor` needs every sitting of the paper — and
+  property of the whole COHORT — `paperMarks` needs every sitting of the paper — and
   a student may not read their classmates' rows, correctly, and the rules enforce
   it. A ball computed from the student's own sitting alone would be a different
   number wearing the teacher's label. The 0–5 level beside it is the cohort-free
@@ -749,8 +762,8 @@ bigger limit.
   chapters), and `checkQuizAdd` answers `noSlot`. The two fallbacks are
   deliberately asymmetric: a closed item that wanted `Y-2` just becomes the `Y-1`
   it always was, but filing an open item in a Y row would put a typed question in
-  a closed slot, count it against a closed quota and price it in a closed row's
-  ball budget. The picker shows those rows greyed with "no slot" rather than
+  a closed slot, count it against a closed quota and pay it a closed item's base
+  (1.1 instead of 1.6). The picker shows those rows greyed with "no slot" rather than
   letting the click bounce off a toast.
   ⚠️ The publish gate can therefore block a paper saved BEFORE this rule (45
   slots, wrong shares). That is intended: the fix is to rebalance it, and the
@@ -871,20 +884,25 @@ As a **student**, in another account:
 
 Back as the **teacher**:
 
-9. **Matematika** → **Natijalar**. **After the FIRST sitting** every
-    question must already carry a live ball to two decimals with its printed
-    value struck through beside it, each card dashed and colour-coded by its
-    solve rate. Sit the paper on five more accounts, failing one algebra question
-    on all of them and passing another on all of them: the failed one climbs
-    toward the dearest end and the passed one falls toward the cheapest, the
-    dashed edges clear as each slot passes 5 answers, few balls repeat, and every
-    student's score is recomputed. ⚠️ **Add the section headers up: they must
-    come to exactly 100.00** on any paper the class did not find easy — that is
-    `capBalls`, and it is why a ball can read below 1.30. Only an easy paper
-    (everything solved by nearly everyone) is allowed to total less. Check the
-    scoring too: a student who solved only hard questions must score above one
-    who solved the same NUMBER of easy ones (expand both and compare their
-    per-question grids). Expand a student:
+9. **Matematika** → **Natijalar**. **Before anybody has sat it** the split line
+    under the marks card must read `55.10 + 44.90 = 100.00` and every Y-1 must
+    read 2.10, every Y-2 2.30, every O 2.60 — the bases plus an even share of the
+    budget. ⚠️ **All 45 questions must be readable without scrolling the card**
+    — up to 12 cells a row, each three tiny lines (number, ball, solve rate).
+    **After the FIRST sitting** every question must carry a live ball to two
+    decimals, dashed while under 5 answers, colour-coded by its solve rate, with a
+    **dotted underline** wherever the mark moved off the protocol's printed value;
+    hover one and the tooltip must name the `base + bonus` split, the printed
+    value and `correct/seen`. Sit the paper on five more accounts, failing one algebra
+    question on all of them and passing another on all of them: the failed one
+    climbs and the passed one falls back toward its base, the dashed edges clear
+    as each slot passes 5 answers, few balls repeat, and every student's score is
+    recomputed. ⚠️ **Add the section headers up: they must come to exactly
+    100.00 — always**, easy paper or hard, since `B = Y + σ` prices to 100 by
+    construction with no cap. ⚠️ **No ball may ever read below its base** (1.10 /
+    1.30 / 1.60). Check the scoring too: a student who solved only hard questions
+    must score above one who solved the same NUMBER of easy ones (expand both and
+    compare their per-question grids). Expand a student:
     their ball on every question is listed, 0 where they got it wrong.
     Then check the rest: Every number is a 0–5 level: the
    average tile, the class section list, and each student's headline. **Tap a
