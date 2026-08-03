@@ -25,7 +25,7 @@ import { ManagerLanguageProvider, useManagerLanguage, LANGUAGE_OPTIONS, FlagSvg 
 import {
   LayoutDashboard, GraduationCap, Layers, Users, Wallet, LogOut, Menu, X,
   BookOpen, CalendarCheck, UserCheck, DoorOpen, CalendarRange, Building2,
-  UserIcon, PanelLeft, MoreVertical, MoreHorizontal, Sun, Moon, Monitor,
+  UserIcon, PanelLeft, MoreVertical, MoreHorizontal, Sun, Moon, Monitor, QrCode,
 } from "lucide-react";
 
 // ============================================================================
@@ -34,7 +34,7 @@ import {
 // ============================================================================
 const LAYOUT_TRANSLATIONS = {
   uz: {
-    nav: { dashboard: "Boshqaruv paneli", dashboardShort: "Asosiy", groups: "Guruhlar", students: "O'quvchilar", teachers: "O'qituvchilar", teachersShort: "Ustozlar", attendance: "Davomat", staffAttendance: "Xodimlar davomati", staffAttendanceShort: "Xodimlar", timetable: "Dars jadvali", timetableShort: "Jadval", rooms: "Xonalar", finance: "To'lovlar" },
+    nav: { dashboard: "Boshqaruv paneli", dashboardShort: "Asosiy", groups: "Guruhlar", students: "O'quvchilar", parents: "Ota-onalar", teachers: "O'qituvchilar", teachersShort: "Ustozlar", attendance: "Davomat", staffAttendance: "Xodimlar davomati", staffAttendanceShort: "Xodimlar", timetable: "Dars jadvali", timetableShort: "Jadval", rooms: "Xonalar", finance: "To'lovlar" },
     bar: { home: "Asosiy", groups: "Guruhlar", attendance: "Davomat", finance: "To'lovlar", menu: "Menyu" },
     theme: { label: "Mavzu", light: "Yorug'", system: "Tizim", dark: "Tun" },
     language: "Til", profile: "Profilim", manager: "Menejer", more: "Yana",
@@ -42,7 +42,7 @@ const LAYOUT_TRANSLATIONS = {
     logout: { title: "Tizimdan chiqish", desc: "Rostdan ham hisobingizdan chiqmoqchimisiz?", confirm: "Chiqish", cancel: "Bekor qilish", error: "Tizimdan chiqishda xatolik yuz berdi" },
   },
   en: {
-    nav: { dashboard: "Dashboard", dashboardShort: "Home", groups: "Groups", students: "Students", teachers: "Teachers", teachersShort: "Teachers", attendance: "Attendance", staffAttendance: "Staff attendance", staffAttendanceShort: "Staff", timetable: "Timetable", timetableShort: "Schedule", rooms: "Rooms", finance: "Payments" },
+    nav: { dashboard: "Dashboard", dashboardShort: "Home", groups: "Groups", students: "Students", parents: "Parents", teachers: "Teachers", teachersShort: "Teachers", attendance: "Attendance", staffAttendance: "Staff attendance", staffAttendanceShort: "Staff", timetable: "Timetable", timetableShort: "Schedule", rooms: "Rooms", finance: "Payments" },
     bar: { home: "Home", groups: "Groups", attendance: "Attendance", finance: "Payments", menu: "Menu" },
     theme: { label: "Theme", light: "Light", system: "System", dark: "Dark" },
     language: "Language", profile: "My profile", manager: "Manager", more: "More",
@@ -50,7 +50,7 @@ const LAYOUT_TRANSLATIONS = {
     logout: { title: "Sign out", desc: "Are you sure you want to sign out of your account?", confirm: "Sign out", cancel: "Cancel", error: "Something went wrong while signing out" },
   },
   ru: {
-    nav: { dashboard: "Панель управления", dashboardShort: "Главная", groups: "Группы", students: "Ученики", teachers: "Учителя", teachersShort: "Учителя", attendance: "Посещаемость", staffAttendance: "Посещаемость сотрудников", staffAttendanceShort: "Сотрудники", timetable: "Расписание", timetableShort: "Расписание", rooms: "Кабинеты", finance: "Платежи" },
+    nav: { dashboard: "Панель управления", dashboardShort: "Главная", groups: "Группы", students: "Ученики", parents: "Родители", teachers: "Учителя", teachersShort: "Учителя", attendance: "Посещаемость", staffAttendance: "Посещаемость сотрудников", staffAttendanceShort: "Сотрудники", timetable: "Расписание", timetableShort: "Расписание", rooms: "Кабинеты", finance: "Платежи" },
     bar: { home: "Главная", groups: "Группы", attendance: "Посещения", finance: "Платежи", menu: "Меню" },
     theme: { label: "Тема", light: "День", system: "Система", dark: "Ночь" },
     language: "Язык", profile: "Мой профиль", manager: "Менеджер", more: "Ещё",
@@ -72,6 +72,9 @@ const NAV_DEFS: NavDef[] = [
   { key: "dashboard", shortKey: "dashboardShort", href: "/manager/dashboard", icon: LayoutDashboard },
   { key: "groups", href: "/manager/groups", icon: Layers, groupStart: true },
   { key: "students", href: "/manager/students", icon: Users },
+  // Parent QR access (docs/PARENTS.md) — a sibling of Students on purpose: it is
+  // the same roster seen from the family's side, not a separate subsystem.
+  { key: "parents", href: "/manager/parents", icon: QrCode },
   { key: "teachers", shortKey: "teachersShort", href: "/manager/teachers", icon: GraduationCap },
   { key: "attendance", href: "/manager/attendance", icon: CalendarCheck, groupStart: true },
   { key: "staffAttendance", shortKey: "staffAttendanceShort", href: "/manager/staff-attendance", icon: UserCheck },

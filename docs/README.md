@@ -24,6 +24,7 @@ This directory is the **source of truth** for how Edify works. The workflow cont
 | AI generation routes, credit/limit systems, `lib/ai/*`, `/api/analyze`, TTS | [AI.md](AI.md) |
 | Manager app `app/manager/*` core — center lifecycle/approval, groups, teachers, student enrollment, walk-in check-in | [MANAGER.md](MANAGER.md) |
 | Attendance (student + staff), `center_attendance`, `AttendanceGrid`, `checkInService` | [ATTENDANCE.md](ATTENDANCE.md) |
+| **Parent access by QR** — `parent_links`, `app/p/*` (the account-free parent page), `app/manager/parents/*`, `/api/parent/{token}`, `/api/manager/parent-links/*`, `lib/server/parentReport.ts` | [PARENTS.md](PARENTS.md) |
 | Rooms, timetable, schedule conflicts, `roomService` | [ROOMS.md](ROOMS.md) |
 | Finance — charges/payments/payroll/expenses, `/api/manager/finance/*`, `financeOps`, `billingEngine` | [FINANCE.md](FINANCE.md) + [FINANCE_DATABASE.md](FINANCE_DATABASE.md) |
 | Admin panel `app/admin/*`, `/api/admin/*`, super-admin claim, god-mode writes | [ADMIN.md](ADMIN.md) |
