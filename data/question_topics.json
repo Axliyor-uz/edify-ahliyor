@@ -2083,6 +2083,818 @@
           ]
         }
       ]
+    },
+    {
+      "id": "fizika",
+      "name": "Fizika",
+      "topics": [
+        {
+          "id": "mexanika",
+          "name": "I. Mexanika",
+          "subtopics": [
+            {
+              "id": "kinematika-moddiy-nuqta-va-sanoq-sistemasi",
+              "name": "Kinematika — Moddiy nuqta va sanoq sistemasi"
+            },
+            {
+              "id": "kinematika-tekis-togri-chiziqli-harakat",
+              "name": "Kinematika — Tekis to'g'ri chiziqli harakat"
+            },
+            {
+              "id": "kinematika-tekis-ozgaruvchan-harakat",
+              "name": "Kinematika — Tekis o'zgaruvchan harakat"
+            },
+            {
+              "id": "kinematika-erkin-tushish-va-tik-otilgan-jism",
+              "name": "Kinematika — Erkin tushish va tik otilgan jism"
+            },
+            {
+              "id": "kinematika-gorizontal-va-burchak-ostida-otilgan-jism",
+              "name": "Kinematika — Gorizontal va burchak ostida otilgan jism"
+            },
+            {
+              "id": "kinematika-aylanma-harakat-chiziqli-va-burchak-tezlik",
+              "name": "Kinematika — Aylanma harakat (chiziqli va burchak tezlik)"
+            },
+            {
+              "id": "kinematika-harakatlarning-nisbiyligi",
+              "name": "Kinematika — Harakatlarning nisbiyligi"
+            },
+            {
+              "id": "dinamika-nyutonning-birinchi-qonuni",
+              "name": "Dinamika — Nyutonning birinchi qonuni"
+            },
+            {
+              "id": "dinamika-nyutonning-ikkinchi-qonuni",
+              "name": "Dinamika — Nyutonning ikkinchi qonuni"
+            },
+            {
+              "id": "dinamika-nyutonning-uchinchi-qonuni",
+              "name": "Dinamika — Nyutonning uchinchi qonuni"
+            },
+            {
+              "id": "dinamika-butun-olam-tortishish-qonuni",
+              "name": "Dinamika — Butun olam tortishish qonuni"
+            },
+            {
+              "id": "dinamika-ogirlik-kuchi-va-vaznsizlik",
+              "name": "Dinamika — Og'irlik kuchi va vaznsizlik"
+            },
+            {
+              "id": "dinamika-elastiklik-kuchi-guk-qonuni",
+              "name": "Dinamika — Elastiklik kuchi (Guk qonuni)"
+            },
+            {
+              "id": "dinamika-ishqalanish-kuchi",
+              "name": "Dinamika — Ishqalanish kuchi"
+            },
+            {
+              "id": "dinamika-suniy-yoldoshlar-va-kosmik-tezliklar",
+              "name": "Dinamika — Sun'iy yo'ldoshlar va kosmik tezliklar"
+            },
+            {
+              "id": "saqlanish-qonunlari-impuls-va-impulsning-saqlanish-qonuni",
+              "name": "Saqlanish qonunlari — Impuls va impulsning saqlanish qonuni"
+            },
+            {
+              "id": "saqlanish-qonunlari-mexanik-ish-va-quvvat",
+              "name": "Saqlanish qonunlari — Mexanik ish va quvvat"
+            },
+            {
+              "id": "saqlanish-qonunlari-kinetik-energiya",
+              "name": "Saqlanish qonunlari — Kinetik energiya"
+            },
+            {
+              "id": "saqlanish-qonunlari-potensial-energiya",
+              "name": "Saqlanish qonunlari — Potensial energiya"
+            },
+            {
+              "id": "saqlanish-qonunlari-mexanik-energiyaning-saqlanish-qonuni",
+              "name": "Saqlanish qonunlari — Mexanik energiyaning saqlanish qonuni"
+            },
+            {
+              "id": "saqlanish-qonunlari-toqnashuvlar-elastik-va-noelastik",
+              "name": "Saqlanish qonunlari — To'qnashuvlar (elastik va noelastik)"
+            },
+            {
+              "id": "saqlanish-qonunlari-foydali-ish-koeffitsienti",
+              "name": "Saqlanish qonunlari — Foydali ish koeffitsienti"
+            },
+            {
+              "id": "statika-va-gidrostatika-kuch-momenti-va-richag",
+              "name": "Statika va gidrostatika — Kuch momenti va richag"
+            },
+            {
+              "id": "statika-va-gidrostatika-jismlar-muvozanati",
+              "name": "Statika va gidrostatika — Jismlar muvozanati"
+            },
+            {
+              "id": "statika-va-gidrostatika-bosim-va-paskal-qonuni",
+              "name": "Statika va gidrostatika — Bosim va Paskal qonuni"
+            },
+            {
+              "id": "statika-va-gidrostatika-arximed-kuchi-va-suzish-sharti",
+              "name": "Statika va gidrostatika — Arximed kuchi va suzish sharti"
+            },
+            {
+              "id": "statika-va-gidrostatika-suyuqlik-oqimi-bernulli-tenglamasi",
+              "name": "Statika va gidrostatika — Suyuqlik oqimi (Bernulli tenglamasi)"
+            },
+            {
+              "id": "tebranish-va-tolqinlar-garmonik-tebranishlar",
+              "name": "Tebranish va to'lqinlar — Garmonik tebranishlar"
+            },
+            {
+              "id": "tebranish-va-tolqinlar-matematik-mayatnik",
+              "name": "Tebranish va to'lqinlar — Matematik mayatnik"
+            },
+            {
+              "id": "tebranish-va-tolqinlar-prujinali-mayatnik",
+              "name": "Tebranish va to'lqinlar — Prujinali mayatnik"
+            },
+            {
+              "id": "tebranish-va-tolqinlar-mexanik-tolqinlar",
+              "name": "Tebranish va to'lqinlar — Mexanik to'lqinlar"
+            },
+            {
+              "id": "tebranish-va-tolqinlar-tovush-va-uning-xossalari",
+              "name": "Tebranish va to'lqinlar — Tovush va uning xossalari"
+            }
+          ]
+        },
+        {
+          "id": "molekulyar-fizika-va-termodinamika",
+          "name": "II. Molekulyar fizika va termodinamika",
+          "subtopics": [
+            {
+              "id": "molekulyar-kinetika-modda-miqdori-va-avogadro-soni",
+              "name": "Molekulyar kinetika — Modda miqdori va Avogadro soni"
+            },
+            {
+              "id": "molekulyar-kinetika-molekulyar-kinetik-nazariyaning-asosiy-tenglamasi",
+              "name": "Molekulyar kinetika — Molekulyar kinetik nazariyaning asosiy tenglamasi"
+            },
+            {
+              "id": "molekulyar-kinetika-ideal-gaz-holat-tenglamasi",
+              "name": "Molekulyar kinetika — Ideal gaz holat tenglamasi"
+            },
+            {
+              "id": "molekulyar-kinetika-izojarayonlar",
+              "name": "Molekulyar kinetika — Izojarayonlar"
+            },
+            {
+              "id": "molekulyar-kinetika-gaz-qonunlarining-grafiklari",
+              "name": "Molekulyar kinetika — Gaz qonunlarining grafiklari"
+            },
+            {
+              "id": "molekulyar-kinetika-molekulalarning-tezligi-va-harorat",
+              "name": "Molekulyar kinetika — Molekulalarning tezligi va harorat"
+            },
+            {
+              "id": "termodinamika-ichki-energiya",
+              "name": "Termodinamika — Ichki energiya"
+            },
+            {
+              "id": "termodinamika-gazning-bajargan-ishi",
+              "name": "Termodinamika — Gazning bajargan ishi"
+            },
+            {
+              "id": "termodinamika-termodinamikaning-birinchi-qonuni",
+              "name": "Termodinamika — Termodinamikaning birinchi qonuni"
+            },
+            {
+              "id": "termodinamika-issiqlik-miqdori-va-solishtirma-issiqlik-sigimi",
+              "name": "Termodinamika — Issiqlik miqdori va solishtirma issiqlik sig'imi"
+            },
+            {
+              "id": "termodinamika-issiqlik-mashinalari-va-ularning-fik-i",
+              "name": "Termodinamika — Issiqlik mashinalari va ularning FIK i"
+            },
+            {
+              "id": "termodinamika-termodinamikaning-ikkinchi-qonuni",
+              "name": "Termodinamika — Termodinamikaning ikkinchi qonuni"
+            },
+            {
+              "id": "agregat-holatlar-buglanish-va-kondensatsiya",
+              "name": "Agregat holatlar — Bug'lanish va kondensatsiya"
+            },
+            {
+              "id": "agregat-holatlar-havoning-namligi",
+              "name": "Agregat holatlar — Havoning namligi"
+            },
+            {
+              "id": "agregat-holatlar-suyuqlik-sirt-taranglik-kuchi",
+              "name": "Agregat holatlar — Suyuqlik sirt taranglik kuchi"
+            },
+            {
+              "id": "agregat-holatlar-kapillyarlik-va-hollash",
+              "name": "Agregat holatlar — Kapillyarlik va ho'llash"
+            },
+            {
+              "id": "agregat-holatlar-erish-va-kristallanish",
+              "name": "Agregat holatlar — Erish va kristallanish"
+            },
+            {
+              "id": "agregat-holatlar-jismlarning-issiqlikdan-kengayishi",
+              "name": "Agregat holatlar — Jismlarning issiqlikdan kengayishi"
+            }
+          ]
+        },
+        {
+          "id": "elektr-va-magnetizm",
+          "name": "III. Elektr va magnetizm",
+          "subtopics": [
+            {
+              "id": "elektrostatika-elektr-zaryadi-va-kulon-qonuni",
+              "name": "Elektrostatika — Elektr zaryadi va Kulon qonuni"
+            },
+            {
+              "id": "elektrostatika-elektr-maydon-kuchlanganligi",
+              "name": "Elektrostatika — Elektr maydon kuchlanganligi"
+            },
+            {
+              "id": "elektrostatika-potensial-va-kuchlanish",
+              "name": "Elektrostatika — Potensial va kuchlanish"
+            },
+            {
+              "id": "elektrostatika-kondensatorlar-va-sigim",
+              "name": "Elektrostatika — Kondensatorlar va sig'im"
+            },
+            {
+              "id": "elektrostatika-kondensatorlarni-ulash",
+              "name": "Elektrostatika — Kondensatorlarni ulash"
+            },
+            {
+              "id": "elektrostatika-elektr-maydon-energiyasi",
+              "name": "Elektrostatika — Elektr maydon energiyasi"
+            },
+            {
+              "id": "ozgarmas-tok-tok-kuchi-va-qarshilik",
+              "name": "O'zgarmas tok — Tok kuchi va qarshilik"
+            },
+            {
+              "id": "ozgarmas-tok-zanjir-qismi-uchun-om-qonuni",
+              "name": "O'zgarmas tok — Zanjir qismi uchun Om qonuni"
+            },
+            {
+              "id": "ozgarmas-tok-tola-zanjir-uchun-om-qonuni",
+              "name": "O'zgarmas tok — To'la zanjir uchun Om qonuni"
+            },
+            {
+              "id": "ozgarmas-tok-otkazgichlarni-ketma-ket-va-parallel-ulash",
+              "name": "O'zgarmas tok — O'tkazgichlarni ketma ket va parallel ulash"
+            },
+            {
+              "id": "ozgarmas-tok-tok-ishi-va-quvvati-joul-va-lens-qonuni",
+              "name": "O'zgarmas tok — Tok ishi va quvvati (Joul va Lens qonuni)"
+            },
+            {
+              "id": "ozgarmas-tok-elektr-otkazuvchanlik-turlari",
+              "name": "O'zgarmas tok — Elektr o'tkazuvchanlik turlari"
+            },
+            {
+              "id": "ozgarmas-tok-elektroliz-qonunlari",
+              "name": "O'zgarmas tok — Elektroliz qonunlari"
+            },
+            {
+              "id": "magnit-maydon-magnit-induksiya-va-amper-kuchi",
+              "name": "Magnit maydon — Magnit induksiya va Amper kuchi"
+            },
+            {
+              "id": "magnit-maydon-lorens-kuchi",
+              "name": "Magnit maydon — Lorens kuchi"
+            },
+            {
+              "id": "magnit-maydon-magnit-oqimi",
+              "name": "Magnit maydon — Magnit oqimi"
+            },
+            {
+              "id": "magnit-maydon-elektromagnit-induksiya-hodisasi",
+              "name": "Magnit maydon — Elektromagnit induksiya hodisasi"
+            },
+            {
+              "id": "magnit-maydon-oz-ozidan-induksiya-va-induktivlik",
+              "name": "Magnit maydon — O'z o'zidan induksiya va induktivlik"
+            },
+            {
+              "id": "ozgaruvchan-tok-ozgaruvchan-tok-generatori",
+              "name": "O'zgaruvchan tok — O'zgaruvchan tok generatori"
+            },
+            {
+              "id": "ozgaruvchan-tok-tebranish-konturi-va-tomson-formulasi",
+              "name": "O'zgaruvchan tok — Tebranish konturi va Tomson formulasi"
+            },
+            {
+              "id": "ozgaruvchan-tok-transformator",
+              "name": "O'zgaruvchan tok — Transformator"
+            },
+            {
+              "id": "ozgaruvchan-tok-elektromagnit-tolqinlar",
+              "name": "O'zgaruvchan tok — Elektromagnit to'lqinlar"
+            }
+          ]
+        },
+        {
+          "id": "optika-va-nisbiylik-nazariyasi",
+          "name": "IV. Optika va nisbiylik nazariyasi",
+          "subtopics": [
+            {
+              "id": "geometrik-optika-yoruglikning-qaytish-qonuni",
+              "name": "Geometrik optika — Yorug'likning qaytish qonuni"
+            },
+            {
+              "id": "geometrik-optika-yoruglikning-sinish-qonuni",
+              "name": "Geometrik optika — Yorug'likning sinish qonuni"
+            },
+            {
+              "id": "geometrik-optika-tola-ichki-qaytish",
+              "name": "Geometrik optika — To'la ichki qaytish"
+            },
+            {
+              "id": "geometrik-optika-linzalar-va-linza-formulasi",
+              "name": "Geometrik optika — Linzalar va linza formulasi"
+            },
+            {
+              "id": "geometrik-optika-kozgular-va-tasvir-yasash",
+              "name": "Geometrik optika — Ko'zgular va tasvir yasash"
+            },
+            {
+              "id": "geometrik-optika-optik-asboblar",
+              "name": "Geometrik optika — Optik asboblar"
+            },
+            {
+              "id": "tolqin-optikasi-yoruglik-interferensiyasi",
+              "name": "To'lqin optikasi — Yorug'lik interferensiyasi"
+            },
+            {
+              "id": "tolqin-optikasi-yoruglik-difraksiyasi-va-difraksion-panjara",
+              "name": "To'lqin optikasi — Yorug'lik difraksiyasi va difraksion panjara"
+            },
+            {
+              "id": "tolqin-optikasi-dispersiya-va-spektr",
+              "name": "To'lqin optikasi — Dispersiya va spektr"
+            },
+            {
+              "id": "tolqin-optikasi-yoruglikning-qutblanishi",
+              "name": "To'lqin optikasi — Yorug'likning qutblanishi"
+            },
+            {
+              "id": "nisbiylik-nazariyasi-maxsus-nisbiylik-nazariyasi-postulatlari",
+              "name": "Nisbiylik nazariyasi — Maxsus nisbiylik nazariyasi postulatlari"
+            },
+            {
+              "id": "nisbiylik-nazariyasi-massa-va-energiyaning-boglanishi",
+              "name": "Nisbiylik nazariyasi — Massa va energiyaning bog'lanishi"
+            }
+          ]
+        },
+        {
+          "id": "kvant-va-yadro-fizikasi",
+          "name": "V. Kvant va yadro fizikasi",
+          "subtopics": [
+            {
+              "id": "kvant-fizikasi-fotoeffekt-va-eynshteyn-tenglamasi",
+              "name": "Kvant fizikasi — Fotoeffekt va Eynshteyn tenglamasi"
+            },
+            {
+              "id": "kvant-fizikasi-foton-energiyasi-va-impulsi",
+              "name": "Kvant fizikasi — Foton energiyasi va impulsi"
+            },
+            {
+              "id": "kvant-fizikasi-yoruglik-bosimi",
+              "name": "Kvant fizikasi — Yorug'lik bosimi"
+            },
+            {
+              "id": "kvant-fizikasi-yoruglikning-kvant-xossalari",
+              "name": "Kvant fizikasi — Yorug'likning kvant xossalari"
+            },
+            {
+              "id": "atom-fizikasi-rezerford-tajribasi-va-atom-modeli",
+              "name": "Atom fizikasi — Rezerford tajribasi va atom modeli"
+            },
+            {
+              "id": "atom-fizikasi-bor-postulatlari",
+              "name": "Atom fizikasi — Bor postulatlari"
+            },
+            {
+              "id": "atom-fizikasi-atom-spektrlari",
+              "name": "Atom fizikasi — Atom spektrlari"
+            },
+            {
+              "id": "atom-fizikasi-lazerlar",
+              "name": "Atom fizikasi — Lazerlar"
+            },
+            {
+              "id": "yadro-fizikasi-atom-yadrosining-tuzilishi",
+              "name": "Yadro fizikasi — Atom yadrosining tuzilishi"
+            },
+            {
+              "id": "yadro-fizikasi-massa-defekti-va-boglanish-energiyasi",
+              "name": "Yadro fizikasi — Massa defekti va bog'lanish energiyasi"
+            },
+            {
+              "id": "yadro-fizikasi-radioaktivlik-turlari",
+              "name": "Yadro fizikasi — Radioaktivlik turlari"
+            },
+            {
+              "id": "yadro-fizikasi-radioaktiv-yemirilish-qonuni",
+              "name": "Yadro fizikasi — Radioaktiv yemirilish qonuni"
+            },
+            {
+              "id": "yadro-fizikasi-yadro-reaksiyalari-va-yadro-energetikasi",
+              "name": "Yadro fizikasi — Yadro reaksiyalari va yadro energetikasi"
+            },
+            {
+              "id": "yadro-fizikasi-elementar-zarralar",
+              "name": "Yadro fizikasi — Elementar zarralar"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ona-tili",
+      "name": "Ona tili",
+      "topics": [
+        {
+          "id": "fonetika-va-grafika",
+          "name": "I. Fonetika va grafika",
+          "subtopics": [
+            {
+              "id": "nutq-tovushlari-unli-tovushlar-tasnifi",
+              "name": "Nutq tovushlari — Unli tovushlar tasnifi"
+            },
+            {
+              "id": "nutq-tovushlari-undosh-tovushlar-tasnifi",
+              "name": "Nutq tovushlari — Undosh tovushlar tasnifi"
+            },
+            {
+              "id": "nutq-tovushlari-tovush-va-harf-munosabati",
+              "name": "Nutq tovushlari — Tovush va harf munosabati"
+            },
+            {
+              "id": "nutq-tovushlari-bogin-va-bogin-kochirish",
+              "name": "Nutq tovushlari — Bo'g'in va bo'g'in ko'chirish"
+            },
+            {
+              "id": "nutq-tovushlari-urgu-soz-va-mantiq-urgusi",
+              "name": "Nutq tovushlari — Urg'u (so'z va mantiq urg'usi)"
+            },
+            {
+              "id": "nutq-tovushlari-tovush-ozgarishlari-tushishi-orttirilishi",
+              "name": "Nutq tovushlari — Tovush o'zgarishlari (tushishi, orttirilishi)"
+            },
+            {
+              "id": "nutq-tovushlari-alifbo-va-yozuv-tarixi",
+              "name": "Nutq tovushlari — Alifbo va yozuv tarixi"
+            },
+            {
+              "id": "orfoepiya-adabiy-talaffuz-meyorlari",
+              "name": "Orfoepiya — Adabiy talaffuz me'yorlari"
+            },
+            {
+              "id": "orfoepiya-talaffuzda-uchraydigan-xatolar",
+              "name": "Orfoepiya — Talaffuzda uchraydigan xatolar"
+            }
+          ]
+        },
+        {
+          "id": "leksikologiya",
+          "name": "II. Leksikologiya",
+          "subtopics": [
+            {
+              "id": "soz-manosi-sozning-oz-va-kochma-manosi",
+              "name": "So'z ma'nosi — So'zning o'z va ko'chma ma'nosi"
+            },
+            {
+              "id": "soz-manosi-kochim-turlari-metafora-metonimiya-sinekdoxa",
+              "name": "So'z ma'nosi — Ko'chim turlari (metafora, metonimiya, sinekdoxa)"
+            },
+            {
+              "id": "soz-manosi-kop-manoli-sozlar",
+              "name": "So'z ma'nosi — Ko'p ma'noli so'zlar"
+            },
+            {
+              "id": "mano-munosabatlari-sinonimlar",
+              "name": "Ma'no munosabatlari — Sinonimlar"
+            },
+            {
+              "id": "mano-munosabatlari-antonimlar",
+              "name": "Ma'no munosabatlari — Antonimlar"
+            },
+            {
+              "id": "mano-munosabatlari-omonimlar",
+              "name": "Ma'no munosabatlari — Omonimlar"
+            },
+            {
+              "id": "mano-munosabatlari-paronimlar",
+              "name": "Ma'no munosabatlari — Paronimlar"
+            },
+            {
+              "id": "lugat-boyligi-umumistemol-sozlar",
+              "name": "Lug'at boyligi — Umumiste'mol so'zlar"
+            },
+            {
+              "id": "lugat-boyligi-sheva-sozlari-dialektizmlar",
+              "name": "Lug'at boyligi — Sheva so'zlari (dialektizmlar)"
+            },
+            {
+              "id": "lugat-boyligi-atamalar-terminlar",
+              "name": "Lug'at boyligi — Atamalar (terminlar)"
+            },
+            {
+              "id": "lugat-boyligi-eskirgan-sozlar-arxaizm-va-istorizm",
+              "name": "Lug'at boyligi — Eskirgan so'zlar (arxaizm va istorizm)"
+            },
+            {
+              "id": "lugat-boyligi-yangi-sozlar-neologizmlar",
+              "name": "Lug'at boyligi — Yangi so'zlar (neologizmlar)"
+            },
+            {
+              "id": "lugat-boyligi-ozlashma-sozlar",
+              "name": "Lug'at boyligi — O'zlashma so'zlar"
+            },
+            {
+              "id": "frazeologiya-frazeologik-birikmalar",
+              "name": "Frazeologiya — Frazeologik birikmalar"
+            },
+            {
+              "id": "frazeologiya-maqol-va-matallar",
+              "name": "Frazeologiya — Maqol va matallar"
+            },
+            {
+              "id": "frazeologiya-hikmatli-sozlar",
+              "name": "Frazeologiya — Hikmatli so'zlar"
+            },
+            {
+              "id": "lugatlar-izohli-lugat",
+              "name": "Lug'atlar — Izohli lug'at"
+            },
+            {
+              "id": "lugatlar-imlo-lugati",
+              "name": "Lug'atlar — Imlo lug'ati"
+            },
+            {
+              "id": "lugatlar-lugatning-boshqa-turlari",
+              "name": "Lug'atlar — Lug'atning boshqa turlari"
+            }
+          ]
+        },
+        {
+          "id": "soz-tarkibi-va-soz-yasalishi",
+          "name": "III. So'z tarkibi va so'z yasalishi",
+          "subtopics": [
+            {
+              "id": "soz-tarkibi-ozak-va-negiz",
+              "name": "So'z tarkibi — O'zak va negiz"
+            },
+            {
+              "id": "soz-tarkibi-soz-yasovchi-qoshimchalar",
+              "name": "So'z tarkibi — So'z yasovchi qo'shimchalar"
+            },
+            {
+              "id": "soz-tarkibi-shakl-yasovchi-qoshimchalar",
+              "name": "So'z tarkibi — Shakl yasovchi qo'shimchalar"
+            },
+            {
+              "id": "soz-tarkibi-lugaviy-shakl-yasovchilar",
+              "name": "So'z tarkibi — Lug'aviy shakl yasovchilar"
+            },
+            {
+              "id": "soz-yasalishi-qoshimcha-qoshish-usuli",
+              "name": "So'z yasalishi — Qo'shimcha qo'shish usuli"
+            },
+            {
+              "id": "soz-yasalishi-qoshma-sozlar",
+              "name": "So'z yasalishi — Qo'shma so'zlar"
+            },
+            {
+              "id": "soz-yasalishi-juft-va-takroriy-sozlar",
+              "name": "So'z yasalishi — Juft va takroriy so'zlar"
+            },
+            {
+              "id": "soz-yasalishi-qisqartma-sozlar",
+              "name": "So'z yasalishi — Qisqartma so'zlar"
+            }
+          ]
+        },
+        {
+          "id": "morfologiya",
+          "name": "IV. Morfologiya",
+          "subtopics": [
+            {
+              "id": "mustaqil-soz-turkumlari-ot-va-uning-kategoriyalari",
+              "name": "Mustaqil so'z turkumlari — Ot va uning kategoriyalari"
+            },
+            {
+              "id": "mustaqil-soz-turkumlari-sifat-va-daraja-shakllari",
+              "name": "Mustaqil so'z turkumlari — Sifat va daraja shakllari"
+            },
+            {
+              "id": "mustaqil-soz-turkumlari-son-va-uning-turlari",
+              "name": "Mustaqil so'z turkumlari — Son va uning turlari"
+            },
+            {
+              "id": "mustaqil-soz-turkumlari-olmosh-turlari",
+              "name": "Mustaqil so'z turkumlari — Olmosh turlari"
+            },
+            {
+              "id": "mustaqil-soz-turkumlari-ravish-turlari",
+              "name": "Mustaqil so'z turkumlari — Ravish turlari"
+            },
+            {
+              "id": "mustaqil-soz-turkumlari-taqlid-sozlar",
+              "name": "Mustaqil so'z turkumlari — Taqlid so'zlar"
+            },
+            {
+              "id": "fel-va-uning-shakllari-fel-nisbatlari",
+              "name": "Fe'l va uning shakllari — Fe'l nisbatlari"
+            },
+            {
+              "id": "fel-va-uning-shakllari-fel-mayllari",
+              "name": "Fe'l va uning shakllari — Fe'l mayllari"
+            },
+            {
+              "id": "fel-va-uning-shakllari-fel-zamonlari",
+              "name": "Fe'l va uning shakllari — Fe'l zamonlari"
+            },
+            {
+              "id": "fel-va-uning-shakllari-sifatdosh",
+              "name": "Fe'l va uning shakllari — Sifatdosh"
+            },
+            {
+              "id": "fel-va-uning-shakllari-ravishdosh",
+              "name": "Fe'l va uning shakllari — Ravishdosh"
+            },
+            {
+              "id": "fel-va-uning-shakllari-harakat-nomi",
+              "name": "Fe'l va uning shakllari — Harakat nomi"
+            },
+            {
+              "id": "yordamchi-soz-turkumlari-komakchi",
+              "name": "Yordamchi so'z turkumlari — Ko'makchi"
+            },
+            {
+              "id": "yordamchi-soz-turkumlari-boglovchi",
+              "name": "Yordamchi so'z turkumlari — Bog'lovchi"
+            },
+            {
+              "id": "yordamchi-soz-turkumlari-yuklama",
+              "name": "Yordamchi so'z turkumlari — Yuklama"
+            },
+            {
+              "id": "yordamchi-soz-turkumlari-undov-va-modal-sozlar",
+              "name": "Yordamchi so'z turkumlari — Undov va modal so'zlar"
+            }
+          ]
+        },
+        {
+          "id": "sintaksis",
+          "name": "V. Sintaksis",
+          "subtopics": [
+            {
+              "id": "soz-birikmasi-boshqaruv-aloqasi",
+              "name": "So'z birikmasi — Boshqaruv aloqasi"
+            },
+            {
+              "id": "soz-birikmasi-bitishuv-aloqasi",
+              "name": "So'z birikmasi — Bitishuv aloqasi"
+            },
+            {
+              "id": "soz-birikmasi-moslashuv-aloqasi",
+              "name": "So'z birikmasi — Moslashuv aloqasi"
+            },
+            {
+              "id": "gap-bolaklari-ega-va-kesim",
+              "name": "Gap bo'laklari — Ega va kesim"
+            },
+            {
+              "id": "gap-bolaklari-toldiruvchi",
+              "name": "Gap bo'laklari — To'ldiruvchi"
+            },
+            {
+              "id": "gap-bolaklari-aniqlovchi",
+              "name": "Gap bo'laklari — Aniqlovchi"
+            },
+            {
+              "id": "gap-bolaklari-hol",
+              "name": "Gap bo'laklari — Hol"
+            },
+            {
+              "id": "gap-bolaklari-uyushiq-bolaklar",
+              "name": "Gap bo'laklari — Uyushiq bo'laklar"
+            },
+            {
+              "id": "gap-bolaklari-ajratilgan-bolaklar",
+              "name": "Gap bo'laklari — Ajratilgan bo'laklar"
+            },
+            {
+              "id": "gap-bolaklari-undalma-va-kirish-sozlar",
+              "name": "Gap bo'laklari — Undalma va kirish so'zlar"
+            },
+            {
+              "id": "gap-turlari-sodda-gap-turlari",
+              "name": "Gap turlari — Sodda gap turlari"
+            },
+            {
+              "id": "gap-turlari-bir-bosh-bolakli-gaplar",
+              "name": "Gap turlari — Bir bosh bo'lakli gaplar"
+            },
+            {
+              "id": "gap-turlari-boglangan-qoshma-gap",
+              "name": "Gap turlari — Bog'langan qo'shma gap"
+            },
+            {
+              "id": "gap-turlari-ergashgan-qoshma-gap",
+              "name": "Gap turlari — Ergashgan qo'shma gap"
+            },
+            {
+              "id": "gap-turlari-boglovchisiz-qoshma-gap",
+              "name": "Gap turlari — Bog'lovchisiz qo'shma gap"
+            },
+            {
+              "id": "gap-turlari-kochirma-va-ozlashtirma-gap",
+              "name": "Gap turlari — Ko'chirma va o'zlashtirma gap"
+            }
+          ]
+        },
+        {
+          "id": "imlo-va-tinish-belgilari",
+          "name": "VI. Imlo va tinish belgilari",
+          "subtopics": [
+            {
+              "id": "orfografiya-unli-va-undosh-harflar-imlosi",
+              "name": "Orfografiya — Unli va undosh harflar imlosi"
+            },
+            {
+              "id": "orfografiya-qoshib-va-ajratib-yozish",
+              "name": "Orfografiya — Qo'shib va ajratib yozish"
+            },
+            {
+              "id": "orfografiya-bosh-harflar-imlosi",
+              "name": "Orfografiya — Bosh harflar imlosi"
+            },
+            {
+              "id": "orfografiya-qoshimchalar-imlosi",
+              "name": "Orfografiya — Qo'shimchalar imlosi"
+            },
+            {
+              "id": "punktuatsiya-nuqta-soroq-va-undov-belgisi",
+              "name": "Punktuatsiya — Nuqta, so'roq va undov belgisi"
+            },
+            {
+              "id": "punktuatsiya-vergul",
+              "name": "Punktuatsiya — Vergul"
+            },
+            {
+              "id": "punktuatsiya-ikki-nuqta-va-tire",
+              "name": "Punktuatsiya — Ikki nuqta va tire"
+            },
+            {
+              "id": "punktuatsiya-qoshtirnoq-va-qavs",
+              "name": "Punktuatsiya — Qo'shtirnoq va qavs"
+            }
+          ]
+        },
+        {
+          "id": "uslubiyat-va-nutq-madaniyati",
+          "name": "VII. Uslubiyat va nutq madaniyati",
+          "subtopics": [
+            {
+              "id": "nutq-uslublari-sozlashuv-uslubi",
+              "name": "Nutq uslublari — So'zlashuv uslubi"
+            },
+            {
+              "id": "nutq-uslublari-badiiy-uslub",
+              "name": "Nutq uslublari — Badiiy uslub"
+            },
+            {
+              "id": "nutq-uslublari-ilmiy-uslub",
+              "name": "Nutq uslublari — Ilmiy uslub"
+            },
+            {
+              "id": "nutq-uslublari-rasmiy-uslub-idoraviy",
+              "name": "Nutq uslublari — Rasmiy uslub (idoraviy)"
+            },
+            {
+              "id": "nutq-uslublari-publitsistik-uslub",
+              "name": "Nutq uslublari — Publitsistik uslub"
+            },
+            {
+              "id": "nutq-madaniyati-nutqning-togriligi-va-aniqligi",
+              "name": "Nutq madaniyati — Nutqning to'g'riligi va aniqligi"
+            },
+            {
+              "id": "nutq-madaniyati-matn-va-uning-turlari",
+              "name": "Nutq madaniyati — Matn va uning turlari"
+            },
+            {
+              "id": "nutq-madaniyati-til-birliklari-meyori",
+              "name": "Nutq madaniyati — Til birliklari me'yori"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

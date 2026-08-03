@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Atom, BadgeCheck, FlaskConical, Languages, Sigma } from 'lucide-react';
+import { ArrowRight, Atom, BadgeCheck, BookText, FlaskConical, Languages, Sigma } from 'lucide-react';
 
 import { useStudentLanguage } from '../layout';
 import { MILLIY_SUBJECTS, studentSubjectHref, subjectName } from '@/lib/MilliyQuiz';
@@ -69,7 +69,8 @@ const LOOK: Record<string, { icon: typeof Sigma; tone: string }> = {
   biologiya: { icon: FlaskConical, tone: 'bg-secondary-container text-on-secondary-container' },
   kimyo: { icon: FlaskConical, tone: 'bg-tertiary-container text-on-tertiary-container' },
   fizika: { icon: Atom, tone: 'bg-primary-container text-on-primary-container' },
-  ingliz: { icon: Languages, tone: 'bg-secondary-container text-on-secondary-container' },
+  'ona-tili': { icon: BookText, tone: 'bg-secondary-container text-on-secondary-container' },
+  ingliz: { icon: Languages, tone: 'bg-tertiary-container text-on-tertiary-container' },
 };
 
 export default function MilliySertifikatHubPage() {

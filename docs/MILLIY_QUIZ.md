@@ -1,4 +1,4 @@
-# MILLIY_QUIZ — Milliy sertifikat SUBJECT papers (biology + chemistry, then physics / English)
+# MILLIY_QUIZ — Milliy sertifikat SUBJECT papers (biology, chemistry, physics, ona tili; English next)
 
 > **Agent workflow:** read this BEFORE touching `app/teacher/milliy-sertifikat/*`,
 > `app/(student)/milliy-sertifikat/`, `lib/MilliyQuiz.ts`,
@@ -9,7 +9,7 @@
 > subsystem — see below). Update this doc in the same change whenever you alter
 > behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-08-01 (the shared marking formula is now **base + difficulty bonus**, `B = Y + σ`); 2026-07-31: the question-builder round trip is closed — `?back=`/`?add=`/`?subject=`; 2026-07-30: subsystem introduced; biology **and chemistry** live, each with a sample paper; the SAME dynamic marking as maths; full-screen exam lockdown.
+**Last verified:** 2026-08-03 (**fizika and ona-tili went live**, each a registry flip + a taxonomy + a sample paper — no new component, route, service, rule or index); 2026-08-01: the shared marking formula is now **base + difficulty bonus**, `B = Y + σ`; 2026-07-31: the question-builder round trip is closed — `?back=`/`?add=`/`?subject=`; 2026-07-30: subsystem introduced; biology **and chemistry** live, each with a sample paper; the SAME dynamic marking as maths; full-screen exam lockdown.
 
 ## Purpose & scope
 
@@ -92,6 +92,8 @@ label. Same rule the maths paper follows.
 | [lib/MilliyDefaultPaper.ts](../lib/MilliyDefaultPaper.ts) | The **sample paper** — validates `data/<subject>-default-paper.json` and turns it into `MilliyQuizItem`s. Pure; no Firestore. `SAMPLE_FILES` is the registry of which subjects ship one. |
 | [data/biology-default-paper.json](../data/biology-default-paper.json) | **The biology sample paper's content — the only file to edit to change it.** 31 questions. |
 | [data/chemistry-default-paper.json](../data/chemistry-default-paper.json) | **The chemistry sample paper's content.** 40 questions — the DTM part-1 distribution, see below. |
+| [data/physics-default-paper.json](../data/physics-default-paper.json) | **The physics sample paper's content.** 35 questions (30 closed / 5 typed-numeric), 100 min — this file's own length, not a protocol. |
+| [data/ona-tili-default-paper.json](../data/ona-tili-default-paper.json) | **The ona tili sample paper's content.** 30 questions (26 closed / 4 typed-TEXT), 90 min. ⚠️ Its typed answers are apostrophe-free by rule — see below. |
 | [lib/RASCHmarks.ts](../lib/RASCHmarks.ts) | **The dynamic marks, shared with maths.** A guaranteed base per test type + a share of the difficulty budget from the cohort solve rate (`B = Y + σ`), summing to 100; `evenPrinted` is the no-protocol "before" value. Pure. |
 | `app/teacher/milliy-sertifikat/[subject]/page.tsx` | One subject's papers: code, status, edit, results, delete. |
 | `app/teacher/milliy-sertifikat/[subject]/build/page.tsx` | The builder (`?id=` to edit). |
@@ -104,7 +106,9 @@ label. Same rule the maths paper follows.
 | [lib/announcements.ts](../lib/announcements.ts) | Where each subject is **announced** on the dashboard (maths / biology / chemistry entries). ⚠️ A new subject going live wants an entry here too — and ⚠️ **no question count for a generic subject**, whose length is the teacher's. See [STUDENT.md](STUDENT.md). |
 | `app/(student)/milliy-sertifikat/[subject]/page.tsx` | One subject for the student: code box, sitting, result, its sat papers. |
 | [scripts/addBiologyTopics.mjs](../scripts/addBiologyTopics.mjs) | How the biology taxonomy was appended to `data/question_topics.json`. |
-| [scripts/addChemistryTopics.mjs](../scripts/addChemistryTopics.mjs) | The same for chemistry — **the pattern for physics / English.** Idempotent; re-running replaces its own subject entry. |
+| [scripts/addChemistryTopics.mjs](../scripts/addChemistryTopics.mjs) | The same for chemistry — **the pattern every later subject copies.** Idempotent; re-running replaces its own subject entry. |
+| [scripts/addPhysicsTopics.mjs](../scripts/addPhysicsTopics.mjs) | The same for physics — `fizika`, **5 topics, 98 subtopics**. |
+| [scripts/addNativeLanguageTopics.mjs](../scripts/addNativeLanguageTopics.mjs) | The same for ona tili — `ona-tili`, **7 topics, 84 subtopics**. ⚠️ Language only, no literature — see below. |
 
 ## Flows
 
@@ -138,8 +142,9 @@ with a `kind`:
 
 - **`rasch`** — maths. `href` points at `/teacher/milliy-sertifikat/math`; this subsystem
   never stores a maths paper.
-- **`generic`** — served here (biology and chemistry today). Needs a
-  `taxonomySlug` pointing at a subject in `data/question_topics.json`.
+- **`generic`** — served here (biology, chemistry, **fizika** and **ona-tili**
+  today). Needs a `taxonomySlug` pointing at a subject in
+  `data/question_topics.json`.
 - **`soon`** — announced, `href: null`. The teacher hub renders the card inert
   (muted, no pointer, out of the tab order) and the student hub tags it *soon*.
 
@@ -148,17 +153,24 @@ that list. ⚠️ **`genericSubject(segment)` refuses `math` as well as an unkno
 segment** — `/teacher/milliy-sertifikat/math` must never open a second, empty
 maths builder pointed at the wrong collection.
 
-**To add physics / English** (chemistry is done — it is the worked example):
-append its taxonomy to `data/question_topics.json` (copy
+**To add English** (chemistry, physics and ona tili are done — three worked
+examples): append its taxonomy to `data/question_topics.json` (copy
 `scripts/addChemistryTopics.mjs` — the ids are persisted into `teacher_questions`
 docs, so a typo is a topic path that can never be matched again), then flip its
 registry entry from `soon` to `generic` with the right `taxonomySlug` and `href`,
 and optionally add `data/<subject>-default-paper.json` + one line in
-`SAMPLE_FILES`. **That is the whole change** — chemistry needed no new component,
-route, service, rule or index. (Then tell students: one entry in
-[lib/announcements.ts](../lib/announcements.ts), which is the dashboard's hero —
-[STUDENT.md](STUDENT.md).) ⚠️ **Do not point a new subject at the Rasch
-flow**: its quota rules, difficulty bands and ability model are maths-specific.
+`SAMPLE_FILES`. **That is the whole change** — chemistry, physics and ona tili
+each needed no new component, route, service, rule or index. (Then tell students:
+one entry in [lib/announcements.ts](../lib/announcements.ts), which is the
+dashboard's hero — [STUDENT.md](STUDENT.md); and give the subject an icon in the
+two hubs' `LOOK` maps, which is presentation only and falls back to a generic
+badge.) ⚠️ **Do not point a new subject at the Rasch flow**: its quota rules,
+difficulty bands and ability model are maths-specific.
+
+⚠️ **A registry `id` may contain a hyphen** (`ona-tili`) — it is the route segment
+AND the stored `subject` field AND, by convention here, the `taxonomySlug`. Keep
+the three identical: they are matched by string in `genericSubject(segment)`,
+`SAMPLE_FILES` and every `where('subject','==',…)` query.
 
 ### Biology's taxonomy (2026-07-30)
 
@@ -212,6 +224,61 @@ subtopics**, written by
   `ii-`… and would sort by numeral. The ids came out clean: `umumiy-kimyo`,
   `anorganik-kimyo`, `organik-kimyo`, `kimyoviy-tahlil`.
 
+### Physics' taxonomy (2026-08-03)
+
+`data/question_topics.json` gained a fifth subject, `fizika` — **5 topics, 98
+subtopics**, written by
+[scripts/addPhysicsTopics.mjs](../scripts/addPhysicsTopics.mjs).
+
+- The topics are the five classical branches: `mexanika`,
+  `molekulyar-fizika-va-termodinamika`, `elektr-va-magnetizm`,
+  `optika-va-nisbiylik-nazariyasi`, `kvant-va-yadro-fizikasi`. Roman numerals in
+  the NAMES (`I. Mexanika`), stripped from the ids exactly as chemistry does.
+- The intermediate groups (*Kinematika*, *Dinamika*, *Saqlanish qonunlari*,
+  *Statika va gidrostatika*, *Elektrostatika*, *Geometrik optika*, *Yadro
+  fizikasi*, …) are folded into the SUBTOPIC NAME as the same `"Group — Leaf"`
+  prefix biology and chemistry use — `dinamika-elastiklik-kuchi-guk-qonuni`,
+  `tolqin-optikasi-dispersiya-va-spektr`.
+- ⚠️ **Do not promote those groups to topics.** Twenty topics would make the
+  results page name a class's weakest area as *Statika va gidrostatika* rather
+  than *Mexanika* — finer than a 35-question paper can measure, since with one or
+  two questions per group the per-topic counts stop meaning anything.
+- ⚠️ Same leaf rule as chemistry: **no dash inside a leaf**, or the fold reads as
+  two separators. That is why the Joule–Lenz law is written *Tok ishi va quvvati
+  (Joul va Lens qonuni)*.
+- ⚠️ **35 / 100 is this repo's default, not a national spec.** There is no
+  physics `EXAM_BLUEPRINT` and no published protocol encoded anywhere here, so
+  `MILLIY_SUBJECTS.fizika` simply matches its sample paper, and the teacher
+  changes the target if they want another length. Do not present it as a DTM
+  count on any surface.
+
+### Ona tili's taxonomy (2026-08-03)
+
+`data/question_topics.json` gained a sixth subject, `ona-tili` — **7 topics, 84
+subtopics**, written by
+[scripts/addNativeLanguageTopics.mjs](../scripts/addNativeLanguageTopics.mjs):
+`fonetika-va-grafika`, `leksikologiya`, `soz-tarkibi-va-soz-yasalishi`,
+`morfologiya`, `sintaksis`, `imlo-va-tinish-belgilari`,
+`uslubiyat-va-nutq-madaniyati`.
+
+- ⚠️ **This is ONA TILI, not "ona tili va adabiyot" — there is deliberately no
+  literature topic.** Literature is examined on its own texts and authors; a
+  question about a novel filed under *Sintaksis* (or under an invented *Adabiyot*
+  topic here) would put a whole second subject inside this one's per-topic
+  report. If literature is ever added it gets its own taxonomy and its own
+  registry entry, exactly as biology and chemistry are two subjects.
+- ⚠️ **It is the first subject whose id carries a hyphen** (`ona-tili`), and the
+  route segment, the stored `subject` value and the taxonomy slug are all that
+  same string.
+- ⚠️ **A TYPED answer here must not contain an apostrophe.** Text grading
+  (`textMatch` in [lib/ExamTeacher.ts](../lib/ExamTeacher.ts)) collapses
+  whitespace and case but **not** apostrophes, and Uzbek is written with at least
+  three of them in the wild (`'`, `‘`, `ʻ`). `ko'makchi` as an answer would mark a
+  correct student wrong on their keyboard's choice of glyph. Every typed entry in
+  the sample paper is apostrophe-free by construction (`yuklama`, `atama`,
+  `atov gap`); a new one either follows that rule or lists every spelling in
+  `acceptedAnswers`.
+
 ### ⚠️ Chemistry is 40 questions / 100 minutes, NOT the programme's 43 / 180
 
 The DTM chemistry paper is **two parts**, and only the first can be
@@ -249,8 +316,10 @@ exists for the same reason the maths one does — "write 30 questions before you
 publish anything" is a wall in front of the first paper anyone tries to make.
 
 - **The content is DATA**: `data/<subject>-default-paper.json` —
-  [biology](../data/biology-default-paper.json) and
-  [chemistry](../data/chemistry-default-paper.json) today. That file is the only
+  [biology](../data/biology-default-paper.json),
+  [chemistry](../data/chemistry-default-paper.json),
+  [physics](../data/physics-default-paper.json) and
+  [ona tili](../data/ona-tili-default-paper.json) today. That file is the only
   place to edit questions; its `_readme` key carries the per-entry field docs. A
   developer changes it in a reviewable diff.
 - **[lib/MilliyDefaultPaper.ts](../lib/MilliyDefaultPaper.ts) owns every rule.**
@@ -296,9 +365,24 @@ digits** (`H2SO4`, `Fe(OH)3`, `C2H5OH`), not LaTeX subscripts — these strings 
 through the same `LatexRenderer` as every other question, so a stray `$` or `_`
 would be read as math.
 
-⚠️ **Both papers are authored Uzbek-only**: a bare string fills ru and en with the
-same text, so a student who picked Russian sees Uzbek rather than a blank. Add
-`{uz, ru, en}` objects per entry as translations are made.
+**Physics' paper is 35 questions** — 30 closed, 5 typed — 12 · 6 · 8 · 5 · 4
+across the five branches, in 100 minutes. ⚠️ Like chemistry, **every typed entry
+sets `numeric: true`**: all five are calculations, and numeric grading normalizes
+`0,2` / `0.2` / spacing so a right answer is not marked wrong for formatting.
+⚠️ Formulas are authored as **plain text** (`E = mc²`, `6,6·10⁻³⁴`, `pV = (m/M)RT`)
+— never LaTeX, since these strings run through the same `LatexRenderer` and a
+stray `$`, `_` or `^` would be read as math.
+
+**Ona tili's paper is 30 questions** — 26 closed, 4 typed — across all seven
+sections, in 90 minutes. ⚠️ Its typed entries are **text, not numeric** (the
+opposite default from the two sciences: the answers are words), and every one of
+them is **apostrophe-free** for the grading reason in the taxonomy section above.
+
+⚠️ **All four papers are authored Uzbek-only**: a bare string fills ru and en with
+the same text, so a student who picked Russian sees Uzbek rather than a blank. Add
+`{uz, ru, en}` objects per entry as translations are made. ⚠️ For **ona tili**
+most entries cannot be translated at all — they ask about Uzbek words, so a
+ru/en variant would have to be a different question, not a translation.
 
 ### Building — one document, no refs
 
@@ -508,7 +592,7 @@ withheld here.
 
 ```
 milliy_quizzes/{ms_…}
-  id, subject: 'biologiya' | 'kimyo' | 'fizika' | 'ingliz',
+  id, subject: 'biologiya' | 'kimyo' | 'fizika' | 'ona-tili' | 'ingliz',
   title, description, teacherId, teacherName,
   accessCode: "482913",            ← 6 digits, STRING (never parsed to a number)
   questions: MilliyQuizItem[],     ← embedded snapshots
@@ -595,8 +679,12 @@ if it ever needs paging, the fix is a summary mirror, not a bigger limit.
   limitation, inherited.
 - **Code uniqueness is a check, not a constraint** (above) — and it now spans two
   collections, so the race window is the union of both.
-- **Physics and English are registry entries only.** No taxonomy, no questions, no
-  builder — the cards are inert on purpose. Chemistry left this list on 2026-07-30.
+- **English is a registry entry only.** No taxonomy, no questions, no builder —
+  the card is inert on purpose. Chemistry left this list on 2026-07-30, physics
+  and ona tili on 2026-08-03.
+- **Physics and ona tili have no encoded protocol.** Their 35/100 and 30/90
+  defaults are this repo's, matching their sample papers; only maths has a
+  blueprint. Nothing may present those numbers as a national spec.
 - **Chemistry stops at question 40.** The programme's #41–43 extended written work
   needs human, per-step marking that does not exist anywhere in this repo (above).
 - **No AI generation path.** Biology and chemistry questions are written by hand
@@ -627,9 +715,9 @@ Then `npm run dev`, as a **teacher**:
    `Metallmaslar — VIIA guruh (galogenlar)`. Write one chemistry question.
 2. `/teacher/create` must have **no Rasch card** any more. Nav → **Milliy
    sertifikat**: Matematika is *Tayyor* and opens `/teacher/milliy-sertifikat/math`
-   (the moved builder — check the old `/teacher/create/rasch` 404s). Biologiya and
-   **Kimyo** are *Tayyor*; Fizika / Ingliz tili are *Tez kunda* and must be
-   unclickable and un-tabbable.
+   (the moved builder — check the old `/teacher/create/rasch` 404s). Biologiya,
+   **Kimyo**, **Fizika** and **Ona tili** are *Tayyor*; only Ingliz tili is *Tez
+   kunda* and it must be unclickable and un-tabbable.
 3. Biologiya → **Yangi variant**. The builder opens with **zero** network
    activity (watch the network tab). Press **Namunaviy variant**: one JS chunk is
    fetched — **no Firestore read** — the paper fills to **31/31**, the length target
@@ -660,11 +748,24 @@ Then `npm run dev`, as a **teacher**:
    variant**: the paper fills to **40/40** from its OWN chunk (the network tab shows
    one JS file, and it must NOT be the biology one), and **Yuklash** must return
    only your *chemistry* question — not the biology or maths ones. Publish it too.
+6a. **Fizika** (2026-08-03). `/teacher/create/question` → **Fan** offers
+   *Fizika*, with exactly **five** Mavzu options (`I. Mexanika` …
+   `V. Kvant va yadro fizikasi`) whose subtopics read `Dinamika — Ishqalanish
+   kuchi`, `Geometrik optika — Linzalar va linza formulasi`. Then the hub →
+   Fizika → **Yangi variant** opens with **Savollar soni 35** / **Davomiyligi
+   100** pre-filled; **Namunaviy variant** fills it to **35/35** from its own
+   chunk. Publish it.
+6b. **Ona tili** (2026-08-03). **Fan** offers *Ona tili* with **seven** Mavzu
+   options (`I. Fonetika va grafika` … `VII. Uslubiyat va nutq madaniyati`) — and
+   ⚠️ **no literature topic**, which is deliberate. **Yangi variant** opens at
+   **30 / 90**, **Namunaviy variant** fills it to **30/30**, and the URL segment is
+   the hyphenated `/teacher/milliy-sertifikat/ona-tili`. Publish it.
 
 As a **student**, in another account:
 
-7. Nav → **Milliy sertifikat**. The hub lists Matematika, Biologiya and **Kimyo**
-   as open, Fizika / Ingliz tili as *soon*. Type the biology code → the intro names
+7. Nav → **Milliy sertifikat**. The hub lists Matematika, Biologiya, **Kimyo**,
+   **Fizika** and **Ona tili** as open and only Ingliz tili as *soon* — and so does
+   the dashboard's `MilliyCard` chip row. Type the biology code → the intro names
    the paper, its teacher and its length. Watch the network tab: **at most two
    document reads**.
 8. Start it. The runner must be pixel-identical to `/raschmodel/exam` — same
@@ -678,6 +779,16 @@ As a **student**, in another account:
     `numeric: true` + `squashNumeric`), and for `2-metilbutan`, `2 metilbutan` must
     be accepted (that is its `acceptedAnswers`). A right answer rejected on
     formatting is the failure mode this checks for.
+10a. **Sit the physics paper** and check the same thing on its five typed items:
+    `0,2` and `0.2` must both be accepted for the kVt·soat question, and `146 ta`
+    for the neutron count. ⚠️ Then check the RENDERING: `E = mc²`, `pV = (m/M)RT`
+    and `6,6·10⁻³⁴` must read as plain text — a formula showing as raw LaTeX or
+    swallowing a character means an entry picked up a `$`, `_` or `^`.
+10b. **Sit the ona tili paper.** Its typed items are graded as TEXT, so
+    `Atov gap`, `atov gap` and `atov gaplar` must all be accepted while `atov`
+    alone is only accepted because it is listed. ⚠️ The check that matters: type
+    the answers with a **different apostrophe glyph** anywhere in the paper — no
+    typed answer may contain one, so nothing can be marked wrong for it.
 11. **Now type a MATHS paper's code into the same box.** It must jump to
     `/raschmodel/quiz` with the code already filled in and the paper found — not an
     empty code box. ⚠️ Repeat while a biology paper is unfinished: the maths link

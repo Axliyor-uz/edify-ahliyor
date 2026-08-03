@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
-  ArrowRight, Atom, BadgeCheck, FlaskConical, Info, KeyRound, Languages, Sigma,
+  ArrowRight, Atom, BadgeCheck, BookText, FlaskConical, Info, KeyRound, Languages, Sigma,
 } from "lucide-react";
 
 import { useTeacherLanguage } from "@/app/teacher/layout";
@@ -81,7 +81,8 @@ const LOOK: Record<string, { icon: typeof Sigma; tone: Tone }> = {
   biologiya: { icon: FlaskConical, tone: "secondary" },
   kimyo: { icon: FlaskConical, tone: "tertiary" },
   fizika: { icon: Atom, tone: "primary" },
-  ingliz: { icon: Languages, tone: "secondary" },
+  "ona-tili": { icon: BookText, tone: "secondary" },
+  ingliz: { icon: Languages, tone: "tertiary" },
 };
 
 export default function MilliySertifikatHubPage() {

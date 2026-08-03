@@ -281,6 +281,8 @@ function buildItem(args: {
 const SAMPLE_FILES: Record<string, () => Promise<unknown>> = {
   biologiya: () => import('@/data/biology-default-paper.json'),
   kimyo: () => import('@/data/chemistry-default-paper.json'),
+  fizika: () => import('@/data/physics-default-paper.json'),
+  'ona-tili': () => import('@/data/ona-tili-default-paper.json'),
 };
 
 /** Does this subject have a sample paper? Drives whether the button is rendered. */
