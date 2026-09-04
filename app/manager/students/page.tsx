@@ -9,8 +9,9 @@ import { getUserProfile } from "@/services/userService";
 import { fetchCenterSessions } from "@/services/attendanceService";
 import { useCenterClasses } from "@/hooks/useCenterClasses";
 import { getTodayKey, parseDateKey } from "@/lib/dateUtils";
-import { Users, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight, Plus, UserPlus, Search, X, ArrowRight } from "lucide-react";
+import { Users, Loader2, Clock, CalendarCheck, CalendarX2, ChevronRight, Plus, UserPlus, Search, X, ArrowRight, ScanFace } from "lucide-react";
 import { Button } from "@/components/manager-ui";
+import FaceTerminalStatus from "@/components/attendance/FaceTerminalStatus";
 import ManagerStudentInfoPanel from "./_components/ManagerStudentInfoPanel";
 import CreateStudentModal from "./_components/CreateStudentModal";
 import AddExistingStudentModal from "./_components/AddExistingStudentModal";
@@ -408,6 +409,13 @@ export default function ManagerStudentsPage() {
           <span className="hidden sm:block capitalize text-[13px] font-medium text-on-surface-variant">
             {t.todayLine(t.weekdayFull[todayWeekday], new Date().getDate())}
           </span>
+          <FaceTerminalStatus />
+          <Link
+            href="/manager/face-config"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-full text-[11px] font-bold text-on-surface-variant hover:bg-state-hover hover:text-primary transition-colors"
+          >
+            <ScanFace size={13} /> Face ID
+          </Link>
           <Button onClick={() => setIsChooserOpen(true)} icon={<Plus size={18} strokeWidth={2.5} />}>
             {t.addStudent}
           </Button>

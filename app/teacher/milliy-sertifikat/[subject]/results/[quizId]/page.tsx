@@ -66,7 +66,6 @@ const TR: Record<string, Record<string, string>> = {
     sat: "Ishlagan", average: "O'rtacha", best: "Eng yaxshi",
     students: "O'quvchilar",
     perQuestion: "Savollar bo'yicha",
-    perQuestionHint: "Har bir savolni sinfning qanchasi to'g'ri ishlagani. Foiz past bo'lsa — savol qiyin yoki mavzu o'zlashtirilmagan.",
     solved: "to'g'ri ishlagan",
     noItemData: "Bu sitting savol darajasida saqlanmagan — eski natija.",
     question: "savol",
@@ -93,7 +92,6 @@ const TR: Record<string, Record<string, string>> = {
     sat: "Прошли", average: "Средний", best: "Лучший",
     students: "Ученики",
     perQuestion: "По вопросам",
-    perQuestionHint: "Какая доля класса решила каждый вопрос верно. Низкий процент — вопрос сложный или тема не усвоена.",
     solved: "решили верно",
     noItemData: "Эта попытка не сохранена по вопросам — старый результат.",
     question: "вопрос",
@@ -120,7 +118,6 @@ const TR: Record<string, Record<string, string>> = {
     sat: "Sat it", average: "Average", best: "Best",
     students: "Students",
     perQuestion: "Per question",
-    perQuestionHint: "The share of the class that got each question right. A low percentage means a hard question, or a topic that has not landed.",
     solved: "solved it",
     noItemData: "This sitting was not saved per question — an older result.",
     question: "question",
@@ -443,7 +440,6 @@ export default function MilliyResultsPage() {
                     {t.paperTotal}: {total.toFixed(2)}/{PAPER_TOTAL}
                   </span>
                 </div>
-                <p className="mb-2 text-[11px] font-medium leading-relaxed text-on-surface-variant">{t.perQuestionHint}</p>
                 {/* What the formula came to on THIS paper. ⚠️ Not the maths
                     paper's 55.10 + 44.90 — the base total follows the teacher's
                     own mix of closed and typed items. */}
@@ -486,12 +482,12 @@ export default function MilliyResultsPage() {
                                 // nothing. The solve rate is the finding; the ball
                                 // is its consequence. Same bands as the maths page.
                                 rate === null
-                                  ? "border-outline-variant bg-surface-container"
+                                  ? "border-outline-variant bg-surface-container text-on-surface-variant"
                                   : rate < 34
-                                    ? "border-error bg-error-container"
+                                    ? "border-error bg-error-container text-on-error-container"
                                     : rate < 67
-                                      ? "border-outline bg-surface-container-high"
-                                      : "border-success bg-success-container",
+                                      ? "border-outline bg-surface-container-high text-on-surface"
+                                      : "border-success bg-success-container text-on-success-container",
                                 m.provisional && "border-dashed",
                               )}
                             >

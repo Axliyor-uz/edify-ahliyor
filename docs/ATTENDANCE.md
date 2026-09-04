@@ -2,7 +2,8 @@
 
 > **Agent workflow:** read this BEFORE touching anything attendance-related; update it in the same change whenever you alter behavior described here. It captures the data model, the non-obvious rules, and the traps that have already caused bugs. Trust this doc + the code over any older notes. Index: [README.md](README.md).
 
-**Last verified:** 2026-07-12 (commit `7c31a96`) — checked against code; accurate.
+**Last verified:** 2026-09-04 (uncommitted working tree on top of `7c31a96`) — added the Hikvision face
+terminal (§2.4, §3, §7 Phase 4); rest of the doc re-checked against code and still accurate.
 
 The attendance system covers **student attendance** (per class, per lesson) and **staff/teacher
 attendance** (per teacher, per day) for learning centers. It was rebuilt in phases to be
@@ -53,12 +54,17 @@ and staff attendance.
 | `app/manager/groups/[classId]/_components/ScheduleTab.tsx` | **Schedule + room editor** (moved here from attendance). Group detail's "Jadval & xona" tab. Writes `classes/{id}.schedule` directly. |
 | `app/manager/staff-attendance/page.tsx` | Staff attendance page (resolves centerId, feeds teachers into `StaffAttendanceGrid`). |
 | `app/manager/dashboard/page.tsx` | Real analytics dashboard (today rate, monthly rate, chronic absentees, per-group bars, today's lessons). |
-| `app/manager/students/page.tsx` | **Consumer** of today's `records` — reads `.status` (tolerant of legacy string). |
-| `firestore.rules` | Security rules (flat file, no numbered sections; attendance blocks are near the bottom, after `center_teachers`). |
+| `app/manager/students/page.tsx` | **Consumer** of today's `records` — reads `.status` (tolerant of legacy string); also shows the `FaceTerminalStatus` badge + Face ID config link. |
+| `firestore.rules` | Security rules (flat file, no numbered sections; attendance blocks are near the bottom, after `center_teachers`; face terminal block is at the very end). |
 | `firestore.indexes.json` | Composite indexes for attendance range queries. |
-| `firebase.json` | Wires `firestore.rules` + `firestore.indexes.json`. |
+| `firebase.json` | Wires `firestore.rules` + `firestore.indexes.json` + (now) `functions`. |
 | `scripts/deleteLegacyAttendance.mjs` | One-off clean-slate deletion of `center_attendance` (dry-run by default). |
 | `services/notificationService.ts` | `sendNotification(...)`; `NotificationType` includes `'attendance'` (not yet used — notifications deferred). |
+| `functions/hikvision.js`, `functions/index.js` | 🟢 **Cloud Functions** (Admin SDK, callable + scheduled/webhook) bridging Hikvision HikCentral Connect: `hikSaveConfig`, `hikStatus`, `hikTest`, `hikEnrollFace`, `hikDevices` (callable) + `hikPollAttendance`/`hikWebhook` (write `face_events`). AK/SK secrets live server-side only, in `_private/hik`. |
+| `services/hikvisionService.ts` | Thin `httpsCallable` wrappers around the functions above — the ONLY way the client ever talks to Hikvision config/devices. |
+| `services/faceEventService.ts` | `listenFaceEvents(centerId)` (live query on `face_events`), `processFaceEvent`/`processAllFaceEvents` (turns an event into a `center_staff_attendance` write, or a `checkInStudent({..., method:'face'})` call for student events), `markFaceEventsProcessed`. |
+| `components/attendance/FaceTerminalStatus.tsx` | Live online/offline badge (polls `hikDevices` every 60s). Shown on **Staff attendance**, **Attendance** (groups tab), and **Students**. |
+| `app/manager/face-config/page.tsx` | Manager settings page: AK/SK form, connection test, and face enrollment for both staff and students (tabbed roster picker over `useCenterClasses` + `buildCenterRoster`). |
 
 ---
 
@@ -111,10 +117,43 @@ Type defined in `types/attendance.ts` (`AttendanceSummaryDoc`) and rules exist, 
 The dashboard currently queries `center_attendance` directly. Only build the rollup if those queries get
 slow at scale (then write it on save, or via a Cloud Function — note `functions/` source isn't in the repo).
 
-### `face_enrollments/{uid}` — face recognition (PHASE 4, NOT BUILT)
-Type + rules defined; no code writes/reads it yet. Shape (`FaceEnrollmentDoc`): `{ uid, centerId, role,
-descriptor: number[], photoPath?, active, version, enrolledBy, enrolledAt }`. Engine (on-device vs cloud)
-deliberately undecided.
+### `face_enrollments/{uid}` — SUPERSEDED, still not built
+The originally-planned on-device/pluggable-matcher path. Type + rules still defined (`FaceEnrollmentDoc`:
+`{ uid, centerId, role, descriptor: number[], photoPath?, active, version, enrolledBy, enrolledAt }`) but
+**Phase 4 shipped via the Hikvision terminal instead (below), not this collection.** Don't build against
+`face_enrollments` without a deliberate decision to revive it.
+
+### 2.4 Face terminal (Hikvision) — PHASE 4, BUILT
+A physical Hikvision face-recognition terminal (HikCentral Connect API) replaces manual check-in for
+enrolled staff/students. Cloud Functions (`functions/hikvision.js`) own all Hikvision API calls — the
+client never talks to Hikvision directly, only to these functions and to `face_events`.
+
+**`face_events/{id}`** — one doc per raw terminal scan, written by `hikPollAttendance`/`hikWebhook`:
+```ts
+{
+  id, centerId,
+  staffUid: string,          // the enrolled user's uid (staff OR student — field name is legacy)
+  staffName: string,
+  role: string,              // "teacher" | "student" | ...
+  at: string,                // 'YYYY-MM-DDTHH:mm:ss', Asia/Tashkent local (NOT UTC — see rule #3)
+  kind: "checkin" | "checkout",
+  source: string,
+  processed: boolean,        // flipped true once the manager-panel listener processes it
+}
+```
+`app/manager/layout.tsx` runs a global `listenFaceEvents(centerId)` listener (active on every manager
+page, per `FaceEventDoc` in `types/attendance.ts`) that processes unprocessed events into the **existing**
+collections — no new attendance record shape:
+- **staff** (`role !== 'student'`) → `center_staff_attendance/{staffUid}_{date}`, same shape as manual
+  entries but `method: 'face'`, `markedBy: 'system:face'`.
+- **student** → `checkInStudent({ ..., method: 'face', markedBy: 'system:face' })` per scheduled class
+  today (reuses the walk-in check-in engine verbatim, per Phase 3.5's design intent).
+
+**`_private/{configId}`** (doc id `hik`) — the Hikvision AK/SK secrets + poll/subscribe state. **Never
+readable or writable by any client** — Cloud Functions (Admin SDK) only.
+
+**`att_day/{dayId}`** — per-staff-per-day in/out scan-state tracker used internally by
+`hikPollAttendance` to dedupe rapid re-scans. **Never readable or writable by any client.**
 
 ### `classes/{id}.schedule` — the lesson calendar source
 `{ dayOfWeek: 0-6, startTime: "HH:MM", endTime: "HH:MM" }[]`. Student lesson dates are **derived** from this
@@ -140,6 +179,9 @@ Attendance blocks live near the bottom of `firestore.rules` (after `center_teach
 | `center_staff_attendance` | `get`: staff-self / manager. **`list`: `isAuth()`** | create/update/delete: center manager only |
 | `center_attendance_summary` | `isAuth()` | class teacher or center manager |
 | `face_enrollments` | self / center manager / center teacher | center manager or center teacher |
+| `face_events` | `get`: manager / teacher-of-center / null. **`list`: `isAuth()`** | create/delete: `false` (Cloud Functions only); update (mark processed): center manager only |
+| `_private` | `false` | `false` — Cloud Functions (Admin SDK) only |
+| `att_day` | `false` | `false` — Cloud Functions (Admin SDK) only |
 
 **Why `list: if isAuth()`** — see rule #2 above. It's consistent with this app's existing posture
 (`users` and `classes` are already `read: if isAuth()`). If you ever need strict scoped list, denormalize
@@ -155,8 +197,11 @@ Admin env vars (`FIREBASE_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY`) are in `.env.loc
 ```bash
 npx firebase-tools login                                             # once
 npx firebase-tools deploy --only firestore:rules,firestore:indexes  # deploy rules + indexes
+npx firebase-tools deploy --only functions                          # deploy the Hikvision bridge (functions/)
 ```
-- ⚠️ **Always use `--only`.** `firebase.json` contains a `functions` deploy block but there is **no `functions/` directory in the repo** — a bare `firebase deploy` fails at the functions predeploy step.
+- ⚠️ **Still always use `--only`.** `functions/` now exists (Hikvision bridge, added 2026-09-04) — this
+  supersedes the older "no `functions/` dir" trap in `CLAUDE.md`/this doc's history. A bare `firebase
+  deploy` will attempt a functions deploy too; keep deploys scoped and explicit regardless.
 - Deploying **rules** replaces the whole file (which contains the full ruleset — nothing lost).
 - Deploying **indexes** is additive (never deletes existing/auto indexes). Indexes take minutes to
   build — watch Console → Firestore → Indexes until **Enabled** before testing range queries.
@@ -207,7 +252,8 @@ Run the dev server and exercise the flow (per `CLAUDE.md`):
 | 2 — analytics (`attendanceService`, % + timeline drawer, real manager dashboard) | ✅ Done |
 | 3 — staff attendance (grid + page + nav + query-safe rules) | ✅ Done |
 | 3.5 — walk-in / front-desk check-in (student-centric marking, `checkInService`) | ✅ Done — the manual precursor to the face kiosk; already exercises the face-ready `method` field. No new rules/indexes (manager already has `create`/`update` on `center_attendance`). |
-| 4 — face recognition kiosk (enrollment, kiosk, secure API, pluggable matcher) | ⏳ Not started — `face_enrollments` shape + rules ready, engine TBD. Will reuse `checkInStudent({ ..., method: "face", confidence })` verbatim. |
+| 4 — face recognition (originally: on-device kiosk + `face_enrollments`) | ⏳ Still not started — superseded by the Hikvision terminal below before it was built. |
+| 4′ — Hikvision face terminal (§2.4): Cloud Functions bridge, `face_events`, manager enrollment UI, live status badge, staff + student check-in | ✅ Done (2026-09-04) |
 
 **Deferred by choice:** absence notifications (would use the existing `parents` collection + `sendNotification`
 with type `'attendance'`); monthly summary rollup docs.

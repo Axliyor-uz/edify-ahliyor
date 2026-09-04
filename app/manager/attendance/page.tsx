@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Users, Clock, Loader2, CalendarCheck, CalendarX2, ArrowRight, GraduationCap, LayoutGrid, UserCheck } from "lucide-react";
+import { Users, Clock, Loader2, CalendarCheck, CalendarX2, ArrowRight, GraduationCap, LayoutGrid, UserCheck, ScanFace } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
 import { useCenterClasses, ClassData } from "@/hooks/useCenterClasses";
 import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
+import FaceTerminalStatus from "@/components/attendance/FaceTerminalStatus";
 import WalkInCheckIn from "./_components/WalkInCheckIn";
 
 type Schedule = { dayOfWeek: number; startTime: string; endTime: string }[];
@@ -32,6 +33,7 @@ const TRANSLATIONS = {
     lessonsPerWeek: "dars/hafta",
     todayTime: (a: string, b: string) => `Bugun ${a}–${b}`,
     noSchedule: "Jadval yo'q",
+    faceConfig: "Face ID",
   },
   en: {
     dayShort: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"], // index = getDay()
@@ -51,6 +53,7 @@ const TRANSLATIONS = {
     lessonsPerWeek: "lessons/week",
     todayTime: (a: string, b: string) => `Today ${a}–${b}`,
     noSchedule: "No schedule",
+    faceConfig: "Face ID",
   },
   ru: {
     dayShort: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"], // index = getDay()
@@ -70,6 +73,7 @@ const TRANSLATIONS = {
     lessonsPerWeek: "занятий/нед.",
     todayTime: (a: string, b: string) => `Сегодня ${a}–${b}`,
     noSchedule: "Нет расписания",
+    faceConfig: "Face ID",
   },
 };
 type PageT = typeof TRANSLATIONS.uz;
@@ -134,6 +138,17 @@ export default function AttendancePage() {
         </div>
         {!isLoading && classes.length > 0 && tab === "groups" && (
           <div className="flex items-center gap-2">
+            {/* Face terminal status badge */}
+            <FaceTerminalStatus />
+
+            {/* Face ID config link */}
+            <Link
+              href="/manager/face-config"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-full text-[11px] font-bold text-on-surface-variant hover:bg-state-hover hover:text-primary transition-colors"
+            >
+              <ScanFace size={13} /> {t.faceConfig}
+            </Link>
+
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-full text-[12px] font-semibold text-on-surface-variant">
               <CalendarCheck size={14} className="text-on-surface-variant" /> {t.groupCount(classes.length)}
             </span>
