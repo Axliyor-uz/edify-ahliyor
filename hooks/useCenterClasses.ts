@@ -31,6 +31,7 @@ export interface CenterTeacher {
   teacherId: string;
   teacherName: string;
   teacherEmail: string;
+  teacherPhoto?: string | null;
   addedAt: any;
 }
 
