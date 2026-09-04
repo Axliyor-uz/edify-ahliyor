@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, deleteDoc, serverTimestamp, Timestamp } from "firebase/firestore";
-import { Save, Loader2, Check, Clock, X, Plus, ChevronLeft, ChevronRight, Plane, Sun, MessageSquare, Trash2, UserCheck } from "lucide-react";
+import { Save, Loader2, Check, Clock, X, Plus, ChevronLeft, ChevronRight, Plane, Sun, MessageSquare, Trash2, UserCheck, ScanFace } from "lucide-react";
 import toast from "react-hot-toast";
 import type { StaffAttendanceStatus } from "@/types/attendance";
 import { formatDateKey, getTodayKey } from "@/lib/dateUtils";
@@ -22,6 +22,7 @@ interface StaffRecordLocal {
   checkIn?: string;
   checkOut?: string;
   note?: string;
+  method?: "manual" | "face";
 }
 
 const AUTOSAVE_MS = 1000;
@@ -85,7 +86,7 @@ export default function StaffAttendanceGrid({ centerId, managerId, staff, loadin
         const sess: Record<string, Record<string, StaffRecordLocal>> = {};
         const created: Record<string, Timestamp> = {};
         rows.forEach((r) => {
-          (sess[r.staffUid] ||= {})[r.date] = { status: r.status, checkIn: r.checkIn, checkOut: r.checkOut, note: r.note };
+          (sess[r.staffUid] ||= {})[r.date] = { status: r.status, checkIn: r.checkIn, checkOut: r.checkOut, note: r.note, method: (r as { method?: string }).method === "face" ? "face" : "manual" };
         });
         setSessions(sess);
         setCreatedAtByDoc(created);
@@ -280,7 +281,8 @@ export default function StaffAttendanceGrid({ centerId, managerId, staff, loadin
                             <button type="button" onClick={(e) => handleCellClick(e, s.uid, d)} title={`${STATUS[rec.status].label}${rec.checkIn ? ` · ${rec.checkIn}${rec.checkOut ? `–${rec.checkOut}` : ""}` : ""}${rec.note ? ` · ${rec.note}` : ""}`}
                               className={`relative w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-all active:scale-90 ${STATUS[rec.status].solid}`}>
                               {(() => { const I = STATUS[rec.status].Icon; return <I size={15} strokeWidth={2.75} />; })()}
-                              {(rec.checkIn || rec.note) && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white border border-slate-300" />}
+                              {rec.method === "face" && <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-white border border-slate-200 flex items-center justify-center" title="Face ID"><ScanFace size={8} className="text-indigo-500" /></span>}
+                              {rec.method !== "face" && (rec.checkIn || rec.note) && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white border border-slate-300" />}
                             </button>
                           ) : (
                             <button type="button" onClick={(e) => handleCellClick(e, s.uid, d)} title="Bosing — 'Keldi'"
