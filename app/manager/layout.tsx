@@ -19,6 +19,7 @@ import { resolveSideStyle } from "@/components/manager-ui/shellStyles";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserProfile } from "@/services/userService";
+import { listenFaceEvents, processAllFaceEvents } from "@/services/faceEventService";
 import ApprovalGate, { type CenterApprovalStatus } from "./_components/ApprovalGate";
 import { ManagerLanguageProvider, useManagerLanguage, LANGUAGE_OPTIONS, FlagSvg } from "./_components/ManagerLanguage";
 
@@ -149,6 +150,7 @@ function ManagerShell({ children }: { children: React.ReactNode }) {
   const [userName, setUserName] = useState("");
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [centerName, setCenterName] = useState("Markaz");
+  const [centerId, setCenterId] = useState<string | null>(null);
   // Approval gate: writes are blocked by Firestore rules until the center is
   // 'active'; this drives the matching UX. Unknown/missing status → 'pending'.
   const [centerStatus, setCenterStatus] = useState<CenterApprovalStatus>("pending");
@@ -213,6 +215,7 @@ function ManagerShell({ children }: { children: React.ReactNode }) {
               setUserName(profile.displayName || "");
               setUserPhoto(profile.photoURL || null);
               if (profile.centerId) {
+                setCenterId(profile.centerId);
                 try {
                   const snap = await getDoc(doc(db, "centers", profile.centerId));
                   if (snap.exists()) {
@@ -240,6 +243,15 @@ function ManagerShell({ children }: { children: React.ReactNode }) {
     }
     checkRole();
   }, [user, loading, router]);
+
+  // Global face event processor: processes both staff and student check-ins
+  // silently in the background as long as the manager panel is open.
+  useEffect(() => {
+    if (!centerId || !user) return;
+    return listenFaceEvents(centerId, (events) => {
+      if (events.length > 0) processAllFaceEvents(events, centerId, user.uid);
+    });
+  }, [centerId, user]);
 
   // Keep the avatar/name in sync — e.g. right after the manager uploads a
   // photo on /manager/profile — without needing a full reload.

@@ -10,7 +10,7 @@ import { getQuiz, listQuizResults } from "@/services/teacherRaschQuizService";
 import { hydrateQuiz } from "@/lib/RASCHquiz";
 import { EXAM_BLUEPRINT } from "@/lib/Examblueprint";
 import {
-  BASE_BALL, MIN_RESPONSES, PAPER_TOTAL,
+  MIN_RESPONSES, PAPER_TOTAL,
   cohortStats, paperMarks, paperSlots, paperTotal, scoreFor,
 } from "@/lib/RASCHmarks";
 import { RASCH_TOPICS, type TopicKey } from "@/lib/RASCHtopics";
@@ -77,7 +77,6 @@ const TR: Record<string, Record<string, string>> = {
     expand: "Bo'limlar bo'yicha",
     min: "daq",
     marksTitle: "Savollar bahosi — sinf natijasiga qarab",
-    marksHint: `Har bir savol kafolatlangan asosiy ball oladi — Y-1 ${BASE_BALL["Y-1"].toFixed(2).replace(".", ",")}, Y-2 ${BASE_BALL["Y-2"].toFixed(2).replace(".", ",")}, O ${BASE_BALL.O.toFixed(2).replace(".", ",")}. Variantning ${PAPER_TOTAL} balidan qolgani qiyinlikka bo'lib beriladi: savolni sinfning qancha kami yechgan bo'lsa, uning ulushi shuncha katta (qiyinlik kvadrati nisbatida). Variant har doim aniq ${PAPER_TOTAL} ball.`,
     marksSplit: "Asosiy ball + qiyinlik ulushi",
     printed: "protokol bali",
     dynamicScoreHint: "To'g'ri yechilgan savollar ballarining yig'indisi — pastdagi savollar jadvali bilan bir xil. Variant jami 100 ball, shuning uchun bu ballning o'zi baho.",
@@ -124,7 +123,6 @@ const TR: Record<string, Record<string, string>> = {
     expand: "По разделам",
     min: "мин",
     marksTitle: "Цена вопросов — по результатам класса",
-    marksHint: `Каждый вопрос получает гарантированный базовый балл — Y-1 ${BASE_BALL["Y-1"].toFixed(2).replace(".", ",")}, Y-2 ${BASE_BALL["Y-2"].toFixed(2).replace(".", ",")}, O ${BASE_BALL.O.toFixed(2).replace(".", ",")}. Остаток от ${PAPER_TOTAL} баллов варианта распределяется по сложности: чем меньше доля решивших вопрос, тем больше его надбавка (пропорционально квадрату сложности). Вариант всегда стоит ровно ${PAPER_TOTAL} баллов.`,
     marksSplit: "База + надбавка за сложность",
     printed: "балл протокола",
     dynamicScoreHint: "Сумма баллов верно решённых вопросов — те же числа, что в таблице вопросов ниже. Вариант стоит 100 баллов, поэтому эта сумма и есть оценка.",
@@ -171,7 +169,6 @@ const TR: Record<string, Record<string, string>> = {
     expand: "By section",
     min: "min",
     marksTitle: "What each question is worth — from how the class answered",
-    marksHint: `Every question carries a guaranteed base — Y-1 ${BASE_BALL["Y-1"].toFixed(2)}, Y-2 ${BASE_BALL["Y-2"].toFixed(2)}, O ${BASE_BALL.O.toFixed(2)}. Whatever is left of the paper's ${PAPER_TOTAL} is shared out by difficulty: the smaller the share of the class that solved a question, the bigger its bonus (in proportion to the square of its difficulty). The paper always totals exactly ${PAPER_TOTAL}.`,
     marksSplit: "Base + difficulty bonus",
     printed: "printed",
     dynamicScoreHint: "The balls of the questions they got right, added up — the same numbers as the question grid below. The paper totals 100, so that sum IS the score.",
@@ -449,7 +446,6 @@ export default function RaschQuizResultsPage({
             {markSections.length > 0 && (
               <Card className="p-4">
                 <h2 className="mb-1 text-[14px] font-bold text-on-surface">{t.marksTitle}</h2>
-                <p className="mb-2 text-[11px] font-normal leading-relaxed text-on-surface-variant">{t.marksHint}</p>
                 {/* What the formula came to on THIS paper — the guaranteed bases
                     and the difficulty budget they left, adding to the 100. */}
                 <p className="s-num mb-3 text-[11px] font-black tabular-nums text-on-surface-variant">
@@ -503,12 +499,12 @@ export default function RaschQuizResultsPage({
                                 // an early cohort still reads as a heat map
                                 // instead of a wall of grey.
                                 pct === null
-                                  ? "border-outline-variant bg-surface-container"
+                                  ? "border-outline-variant bg-surface-container text-on-surface-variant"
                                   : pct < 34
-                                    ? "border-error bg-error-container"
+                                    ? "border-error bg-error-container text-on-error-container"
                                     : pct < 67
-                                      ? "border-outline bg-surface-container-high"
-                                      : "border-success bg-success-container",
+                                      ? "border-outline bg-surface-container-high text-on-surface"
+                                      : "border-success bg-success-container text-on-success-container",
                                 m.provisional && "border-dashed",
                               )}
                             >

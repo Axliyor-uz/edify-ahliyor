@@ -1034,5 +1034,41 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // ── Face Terminal (Hikvision) ────────────────────────────────────────────
+
+    // 🔒 Private config: AK/SK secrets for Hikvision API.
+    // ONLY Cloud Functions (Admin SDK) should ever read/write this.
+    // Client reads are DENIED so keys never leak to the browser.
+    match /_private/{configId} {
+      allow read, write: if false;
+    }
+
+    // 🟢 Face events: written by Cloud Functions (hikPollAttendance),
+    // read by center managers to process into staff attendance.
+    match /face_events/{eventId} {
+      // GET (single doc): strict per-document check (cheap — 1 get()).
+      allow get: if isAuth() && (
+        resource == null ||
+        isCenterManager(resource.data.centerId) ||
+        isTeacherOfCenter(resource.data.centerId)
+      );
+      // LIST (query by centerId + processed==false, listenFaceEvents): a
+      // per-doc get() here exceeds Firestore's access limit once enough
+      // events match and throws "insufficient permissions" — authorize the
+      // query to any signed-in user instead, same pattern as
+      // center_attendance / center_staff_attendance (rule #2 in ATTENDANCE.md).
+      allow list: if isAuth();
+      // Only managers can mark events as processed (update processed=true).
+      allow update: if isAuth() && isCenterManager(resource.data.centerId);
+      // Cloud Functions (Admin SDK) create events — clients may NOT create/delete.
+      allow create, delete: if false;
+    }
+
+    // 🟢 Scan state tracker: tracks in/out state per staff per day.
+    // Written/read ONLY by Cloud Functions (Admin SDK) — never by clients.
+    match /att_day/{dayId} {
+      allow read, write: if false;
+    }
+
   }
 }

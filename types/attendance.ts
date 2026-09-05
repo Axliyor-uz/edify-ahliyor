@@ -100,3 +100,18 @@ export interface AttendanceSummaryDoc {
   totals: { present: number; late: number; absent: number; excused: number };
   updatedAt: Timestamp;
 }
+
+/** Face terminal event — `face_events/{id}`. Written by Cloud Functions (hikPollAttendance). */
+export interface FaceEventDoc {
+  id: string;
+  centerId: string;
+  staffUid: string;
+  staffName: string;
+  role: string;
+  /** Local ISO time: 'YYYY-MM-DDTHH:mm:ss' (Asia/Tashkent). */
+  at: string;
+  kind: "checkin" | "checkout";
+  source: string;
+  /** Set to true after the client processes it into center_staff_attendance. */
+  processed: boolean;
+}
