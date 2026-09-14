@@ -13,9 +13,9 @@ import type { ScheduleEntry } from "@/types/attendance";
 import { useManagerLanguage } from "@/app/manager/_components/ManagerLanguage";
 
 import ManagerRosterTab from "./_components/ManagerRosterTab";
-import ManagerOversightTab from "./_components/ManagerOversightTab";
+import ManagerOversightTab from "../../_shared/ManagerOversightTab";
 import ManagerSettingsTab from "./_components/ManagerSettingsTab";
-import ScheduleTab from "./_components/ScheduleTab";
+import ScheduleTab from "../../_shared/ScheduleTab";
 import IeltsOverviewTab from "./_components/IeltsOverviewTab";
 
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -81,6 +81,8 @@ export interface ClassDocument {
   centerId?: string;
   /** Linked ielts_groups doc id — present only on center IELTS groups (2026-07-29). */
   ieltsGroupId?: string;
+  /** Back-link to a school_classes doc when this class is a subject slot of a School Class. */
+  schoolClassId?: string;
 }
 
 type TabKey = "roster" | "schedule" | "oversight" | "settings" | "ielts";
@@ -132,6 +134,13 @@ export default function GroupDetailPage() {
       // centerId — a linked teacher's personal groups are not the center's.
       if (data.centerId !== profile.centerId) {
         throw new Error(t.noAccess);
+      }
+
+      // Already attached to a School Class as a subject — this flat-group
+      // view is stale (bookmarked link). Send them to the subject sub-page.
+      if (data.schoolClassId) {
+        router.replace(`/manager/groups/${data.schoolClassId}/subjects/${classId}`);
+        return;
       }
 
       setClassData(data);

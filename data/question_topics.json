@@ -2895,6 +2895,112 @@
           ]
         }
       ]
+    },
+    {
+      "id": "sat-matematika",
+      "name": "SAT Matematika",
+      "topics": [
+        {
+          "id": "algebra",
+          "name": "Algebra",
+          "subtopics": [
+            {
+              "id": "linear-equations-in-one-variable",
+              "name": "Linear equations in one variable"
+            },
+            {
+              "id": "linear-functions",
+              "name": "Linear functions"
+            },
+            {
+              "id": "linear-equations-in-two-variables",
+              "name": "Linear equations in two variables"
+            },
+            {
+              "id": "systems-of-two-linear-equations-in-two-variables",
+              "name": "Systems of two linear equations in two variables"
+            },
+            {
+              "id": "linear-inequalities-in-one-or-two-variables",
+              "name": "Linear inequalities in one or two variables"
+            }
+          ]
+        },
+        {
+          "id": "advanced-math",
+          "name": "Advanced Math",
+          "subtopics": [
+            {
+              "id": "nonlinear-functions",
+              "name": "Nonlinear functions"
+            },
+            {
+              "id": "nonlinear-equations-in-one-variable-and-systems-of-equations-in-two-variables",
+              "name": "Nonlinear equations in one variable and systems of equations in two variables"
+            },
+            {
+              "id": "equivalent-expressions",
+              "name": "Equivalent expressions"
+            }
+          ]
+        },
+        {
+          "id": "problem-solving-and-data-analysis",
+          "name": "Problem-Solving and Data Analysis",
+          "subtopics": [
+            {
+              "id": "ratios-rates-proportional-relationships-and-units",
+              "name": "Ratios, rates, proportional relationships, and units"
+            },
+            {
+              "id": "percentages",
+              "name": "Percentages"
+            },
+            {
+              "id": "one-variable-data-distributions-and-measures-of-center-and-spread",
+              "name": "One-variable data: distributions and measures of center and spread"
+            },
+            {
+              "id": "two-variable-data-models-and-scatterplots",
+              "name": "Two-variable data: models and scatterplots"
+            },
+            {
+              "id": "probability-and-conditional-probability",
+              "name": "Probability and conditional probability"
+            },
+            {
+              "id": "inference-from-sample-statistics-and-margin-of-error",
+              "name": "Inference from sample statistics and margin of error"
+            },
+            {
+              "id": "evaluating-statistical-claims-observational-studies-and-experiments",
+              "name": "Evaluating statistical claims: observational studies and experiments"
+            }
+          ]
+        },
+        {
+          "id": "geometry-and-trigonometry",
+          "name": "Geometry and Trigonometry",
+          "subtopics": [
+            {
+              "id": "area-and-volume",
+              "name": "Area and volume"
+            },
+            {
+              "id": "lines-angles-and-triangles",
+              "name": "Lines, angles, and triangles"
+            },
+            {
+              "id": "right-triangles-and-trigonometry",
+              "name": "Right triangles and trigonometry"
+            },
+            {
+              "id": "circles",
+              "name": "Circles"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

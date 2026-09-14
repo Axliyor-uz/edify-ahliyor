@@ -32,7 +32,7 @@
 // runs per render so a card left open overnight still ages correctly.
 
 import {
-  Atom, BadgeCheck, BookText, FlaskConical, Sigma, Sparkles,
+  Atom, BadgeCheck, BookText, FlaskConical, Sigma, Sparkles, Target,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -76,6 +76,31 @@ export const say = (text: Sayable, lang: Lang): string =>
 // ⚠️ Order IS the display order. Newest first.
 
 export const ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: 'sat-math-2026',
+    icon: Target,
+    badge: { uz: 'Yangi', ru: 'Новое', en: 'New' },
+    title: {
+      uz: 'SAT Matematika',
+      ru: 'SAT Математика',
+      en: 'SAT Math',
+    },
+    // ⚠️ No question count here — a SAT test's length is the teacher's own
+    // (each module built by hand), same reasoning MILLIY_SUBJECTS follows for
+    // every non-maths subject.
+    body: {
+      uz: "Haqiqiy raqamli SAT'ga o'xshash 2 modulli adaptiv test: Modul 1 natijangizga qarab Modul 2 qiyinroq yoki osonroq bo'ladi. O'qituvchi kodi bilan kiring.",
+      ru: 'Двухмодульный адаптивный тест, как настоящий цифровой SAT: по результату Модуля 1 Модуль 2 будет труднее или легче. Войдите по коду учителя.',
+      en: "A two-module adaptive test, just like the real digital SAT: your Module 1 result decides whether Module 2 is harder or easier. Enter your teacher's code.",
+    },
+    ctas: [
+      {
+        label: { uz: 'Kod bilan kirish', ru: 'Войти по коду', en: 'Enter a code' },
+        href: '/sat/math',
+        variant: 'filled',
+      },
+    ],
+  },
   {
     id: 'mms-math-2026',
     icon: Sigma,
