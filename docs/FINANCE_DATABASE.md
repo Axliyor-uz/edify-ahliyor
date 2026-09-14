@@ -123,6 +123,11 @@ why clicking "Yaratish" twice can never create the same charge twice.
 
 ## 3. Action map — what changes when you click things in Moliya
 
+### Page header (every tab)
+| Action | Writes |
+|---|---|
+| **Excelga eksport** | Nothing — 👁 read-only. Opens a picker (Hisob-kitob / To'lovlar / Qarzdorlar / Oyliklar / Xarajatlar, all checked by default); only checked sections become sheets. Four reuse data already loaded on the page for the browsed month (`charges`, `monthPayments`, `expenses`) — `debtors` uses the all-time `openCharges` snapshot (same as Qarzdorlar tab, not month-scoped) — `payroll` is the one fresh read, a `calculatePayrollApi` call, only made when that box is checked. Bundled into one `.xlsx` client-side, then shares (Web Share, files) or downloads it |
+
 ### Sozlamalar tab
 | Action | Writes |
 |---|---|
@@ -140,9 +145,10 @@ why clicking "Yaratish" twice can never create the same charge twice.
 ### To'lovlar tab
 | Action | Writes |
 |---|---|
-| **To'lov qabul qilish** | ➊ creates a `center_payments` doc ➋ updates covered `center_charges` (`paidAmount`, `pending→partial→paid`) ➌ increases `center_student_finance.balance` (creates the profile if it's the student's first money event). One transaction |
+| **To'lov qabul qilish → O'quvchi** | ➊ creates a `center_payments` doc ➋ updates covered `center_charges` (`paidAmount`, `pending→partial→paid`) ➌ increases `center_student_finance.balance` (creates the profile if it's the student's first money event). One transaction |
 | **↩ To'lovni bekor qilish** | ➊ that `center_payments` doc (`status: cancelled`) ➋ reverses the touched `center_charges` ➌ decreases `balance`. One transaction |
 | Refund (Qaytarim in the modal) | creates `center_payments` with `type: 'refund'` (no allocations) + decreases `balance` |
+| **To'lov qabul qilish → O'qituvchi → To'lash** | **Not a new write path** — same writes as Oyliklar's Tasdiqlash+To'landi below: `center_payouts/{teacherUid}_{thisMonth}` (approve if not already) then `status: 'paid'` + a linked `center_expenses` (`category: 'salary'`) doc. Always the current calendar month, regardless of the page's browsed billing month |
 
 ### Qarzdorlar tab
 | Action | Writes |

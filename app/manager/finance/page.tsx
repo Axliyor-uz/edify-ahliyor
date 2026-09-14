@@ -30,6 +30,9 @@ import PayrollTab from "./_components/PayrollTab";
 import ExpensesTab from "./_components/ExpensesTab";
 import SettingsTab from "./_components/SettingsTab";
 import RecordPaymentModal from "./_components/RecordPaymentModal";
+import RecordTeacherPayoutModal from "./_components/RecordTeacherPayoutModal";
+import PaymentKindSheet from "./_components/PaymentKindSheet";
+import ExportFinanceButton from "./_components/ExportFinanceButton";
 import StartGuide from "./_components/StartGuide";
 import StudentInfoDialog from "./_components/StudentInfoDialog";
 import { monthLabelOf, shiftMonthKey } from "./_components/financeFormat";
@@ -127,7 +130,7 @@ export default function ManagerFinancePage() {
   const t = TRANSLATIONS[lang];
   const [centerId, setCenterId] = useState<string | null>(null);
   const [settings, setSettings] = useState<FinanceSettings | null>(null);
-  const { classes, refetch: refetchClasses } = useCenterClasses(centerId);
+  const { classes, teachers, refetch: refetchClasses } = useCenterClasses(centerId);
 
   const todayKey = useMemo(() => getTodayKey(), []);
   const [monthKey, setMonthKey] = useState(() => monthKeyOf(getTodayKey()));
@@ -142,7 +145,9 @@ export default function ManagerFinancePage() {
   const [bannerToken, setBannerToken] = useState(0);
   const [loadingData, setLoadingData] = useState(true);
   const [attendanceRates, setAttendanceRates] = useState<Record<string, number | null> | null>(null);
-  const [payModal, setPayModal] = useState<{ open: boolean; uid?: string }>({ open: false });
+  const [payModal, setPayModal] = useState<{ open: boolean; uid?: string; kind?: "student" | "teacher" }>({
+    open: false,
+  });
   const [infoStudent, setInfoStudent] = useState<{ uid: string; name: string } | null>(null);
 
   useEffect(() => {
@@ -251,9 +256,18 @@ export default function ManagerFinancePage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-on-surface tracking-tight">{t.title}</h1>
-        <p className="text-sm text-on-surface-variant mt-0.5">{t.subtitle}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-on-surface tracking-tight">{t.title}</h1>
+          <p className="text-sm text-on-surface-variant mt-0.5">{t.subtitle}</p>
+        </div>
+        <ExportFinanceButton
+          charges={charges}
+          payments={monthPayments}
+          openCharges={openCharges}
+          expenses={expenses}
+          monthKey={monthKey}
+        />
       </div>
 
       {!loadingData && !guideSteps.allDone && (
@@ -333,7 +347,7 @@ export default function ManagerFinancePage() {
           attendanceRates={attendanceRates}
           todayKey={todayKey}
           classes={classes}
-          onRecordPayment={(uid) => setPayModal({ open: true, uid })}
+          onRecordPayment={(uid) => setPayModal({ open: true, uid, kind: "student" })}
           onShowStudent={(uid, name) => setInfoStudent({ uid, name })}
         />
       ) : tab === "charges" ? (
@@ -382,11 +396,30 @@ export default function ManagerFinancePage() {
         <Plus size={26} strokeWidth={2.5} />
       </button>
 
-      {payModal.open && (
+      {payModal.open && !payModal.kind && (
+        <PaymentKindSheet
+          onPick={(kind) => setPayModal((m) => ({ ...m, kind }))}
+          onClose={() => setPayModal({ open: false })}
+        />
+      )}
+
+      {payModal.open && payModal.kind === "student" && (
         <RecordPaymentModal
           centerId={centerId}
           classes={classes}
           preselectUid={payModal.uid || null}
+          onClose={() => setPayModal({ open: false })}
+          onDone={() => {
+            setPayModal({ open: false });
+            reload();
+          }}
+        />
+      )}
+
+      {payModal.open && payModal.kind === "teacher" && (
+        <RecordTeacherPayoutModal
+          teachers={teachers}
+          monthKey={monthKeyOf(todayKey)}
           onClose={() => setPayModal({ open: false })}
           onDone={() => {
             setPayModal({ open: false });
@@ -405,7 +438,7 @@ export default function ManagerFinancePage() {
           onClose={() => setInfoStudent(null)}
           onRecordPayment={(uid) => {
             setInfoStudent(null);
-            setPayModal({ open: true, uid });
+            setPayModal({ open: true, uid, kind: "student" });
           }}
         />
       )}

@@ -482,6 +482,13 @@ service cloud.firestore {
       return v is number && v >= 0 && v <= 100;
     }
 
+    // SAT Math scaled score is an APPROXIMATION (lib/SATscore.ts), not College
+    // Board's real equated score — the range check is the same 200-800 shape
+    // regardless.
+    function isScaledScore(v) {
+      return v is number && v >= 200 && v <= 800;
+    }
+
     match /RASCH_levels/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid)
@@ -629,6 +636,60 @@ service cloud.firestore {
                     && request.resource.data.quizId == resource.data.quizId
                     && request.resource.data.teacherId == resource.data.teacherId
                     && isPercent(request.resource.data.percent);
+      allow delete: if false;
+    }
+
+    // --- 12d. SAT MATH (adaptive, docs/SAT_QUIZ.md) ---
+    //
+    // A teacher-built, adaptive SAT Math test: Module 1 (fixed) + two Module 2
+    // pools (Easier / Harder), opened by a private 6-digit code. Structurally
+    // the SAME contract as 12b/12c — a teacher owns the test, a student owns
+    // their own sitting — but its own collections and its OWN code namespace:
+    // SAT is a separate program with its own code-entry screen (`/sat`), so
+    // (unlike the Milliy sertifikat subjects, which share one code box across
+    // two collections) there is nothing to cross-check here.
+    //
+    // ⚠️ SAME KNOWN TRAP as `teacher_rasch_quizzes`/`milliy_quizzes`: the test
+    // EMBEDS its questions and therefore their correct answers, and the
+    // student's lookup is a QUERY on `accessCode`, so the read rule cannot
+    // require the code to be matched. A signed-in student who enumerates this
+    // collection can read the key without ever entering a code. **The 6-digit
+    // code is a convenience for sharing, NOT a security boundary** — do not
+    // present it as one, and do not use these tests for anything that must be
+    // invigilated until the questions move behind an Admin-SDK route.
+    match /sat_math_tests/{testId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isAuth() && resource.data.teacherId == request.auth.uid;
+    }
+
+    // One sitting: `sat_math_results/{testId}_{uid}`.
+    //
+    // The student writes their own row (a retake overwrites it — the id is
+    // deterministic); the teacher reads every row of their own tests. `read`
+    // covers `list` too, and both list queries filter on the field the rule
+    // proves ownership from (`teacherId ==` for the teacher, `studentId ==`
+    // for the student) — without that clause Firestore answers
+    // permission-denied rather than returning everyone's rows. Nobody may
+    // delete: a result the student produced is not the teacher's to erase, and
+    // the student cannot quietly withdraw one.
+    match /sat_math_results/{resultId} {
+      allow read: if isAuth() && (
+        resource.data.studentId == request.auth.uid ||
+        resource.data.teacherId == request.auth.uid
+      );
+      allow create: if isAuth()
+                    && request.resource.data.studentId == request.auth.uid
+                    && request.resource.data.total is int
+                    && isScaledScore(request.resource.data.scaledScore);
+      // A retake replaces the row, but it stays the SAME student's row and
+      // stays attached to the SAME test — neither may be rewritten.
+      allow update: if isAuth()
+                    && resource.data.studentId == request.auth.uid
+                    && request.resource.data.studentId == resource.data.studentId
+                    && request.resource.data.testId == resource.data.testId
+                    && request.resource.data.teacherId == resource.data.teacherId
+                    && isScaledScore(request.resource.data.scaledScore);
       allow delete: if false;
     }
 
@@ -956,6 +1017,22 @@ service cloud.firestore {
         isActiveCenterManager(request.resource.data.centerId) &&
         linkId == request.resource.data.centerId + '_' + request.resource.data.studentId;
       allow update, delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
+    }
+
+    // 🟢 SCHOOL CLASSES (grade + subjects, docs/MANAGER.md). A grade-level
+    // container ("5-A") a manager creates to group several `classes` docs
+    // (subjects) under one shared roster. Doc id `${centerId}_${grade}_${section}`
+    // gives free uniqueness — same idiom as center_students above. centerId/
+    // grade/section are immutable after create (no rename — delete-and-recreate).
+    match /school_classes/{schoolClassId} {
+      allow read: if isAuth(); // matches classes' own read rule
+      allow create: if isAuth() &&
+        isActiveCenterManager(request.resource.data.centerId) &&
+        schoolClassId == request.resource.data.centerId + '_' + request.resource.data.grade + '_' + request.resource.data.section;
+      allow update: if isAuth() &&
+        isActiveCenterManager(resource.data.centerId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['centerId', 'grade', 'section']);
+      allow delete: if isAuth() && isActiveCenterManager(resource.data.centerId);
     }
 
     // 🟢 Manager-created STUDENT accounts: the manager-visible password.

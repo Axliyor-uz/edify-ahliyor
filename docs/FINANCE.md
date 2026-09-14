@@ -285,7 +285,8 @@ Deploy: `firebase deploy --only firestore:rules,firestore:indexes`.
 | `lib/server/financeOps.ts` | Server-side transactions: generation, payment+allocation, cancellations. **The future Payme/Click webhook calls these same functions.** |
 | `services/financeService.ts` | Client reads (charges by period, debtors, payments feed, student history, settings) + typed wrappers around the API routes |
 | `app/manager/finance/page.tsx` | Stat header + **6 tabs**: To'lovlar · Qarzdorlar · Hisob-kitob · Oyliklar · Xarajatlar · Sozlamalar |
-| `app/manager/finance/_components/` | `FinanceStats`, `GenerateChargesBanner`, `ChargesTab`, `PaymentsTab`, `RecordPaymentModal`, `DebtorsTab`, `SettingsTab`, `StudentFinanceSection`, `PayrollTab`, `ExpensesTab`, `GroupPricesSection`, `StartGuide`, `MonthNav`, `StudentInfoDialog`, `ReasonDialog`, `financeFormat.ts` |
+| `app/manager/finance/_components/` | `FinanceStats`, `GenerateChargesBanner`, `ChargesTab`, `PaymentsTab`, `RecordPaymentModal`, `PaymentKindSheet`, `RecordTeacherPayoutModal`, `ExportFinanceButton`, `DebtorsTab`, `SettingsTab`, `StudentFinanceSection`, `PayrollTab`, `ExpensesTab`, `GroupPricesSection`, `StartGuide`, `MonthNav`, `StudentInfoDialog`, `ReasonDialog`, `financeFormat.ts` |
+| `lib/finance/exportExcel.ts` | Pure `.xlsx` workbook builder (SheetJS `xlsx` package) — no Firestore |
 | `app/manager/students/_components/ManagerStudentInfoPanel.tsx` | Embed `StudentFinanceSection` (balance, history, discount, freeze) |
 | `app/manager/groups/[classId]/_components/ManagerSettingsTab.tsx` | Add `monthlyFee` field |
 | `app/manager/groups/[classId]/_components/ManagerAddStudentModal.tsx` | Best-effort enrollment-date stamp via `/finance/student` after add |
@@ -358,6 +359,58 @@ tab of the teacher center hub (`app/teacher/center/_components/SalaryTab.tsx`).
   "not yet approved" until the manager approves it. Don't "helpfully" add a live estimate.
 - The `percent.baseAmount` inside a payout's breakdown IS shown — it is the revenue of that teacher's
   own groups and they cannot verify a % salary without it.
+
+### 9.2 Pay a teacher from the Payments entry point (2026-09-05)
+
+"To'lov qabul qilish" (the FAB, and the button on the To'lovlar/PaymentsTab and StartGuide) now opens
+a `PaymentKindSheet` chooser first: **O'quvchi** (unchanged — opens `RecordPaymentModal`) or
+**O'qituvchi** (`RecordTeacherPayoutModal`). Debtor-row and student-panel "To'lov" buttons already know
+they mean a student and skip the chooser.
+
+`RecordTeacherPayoutModal` is **not** a new money path — it is a shortcut into the existing §9 payroll
+cycle, always scoped to the **current calendar month** (never the page's browsed billing month):
+search a teacher → live `calculatePayrollApi` breakdown for this month (same numbers the Oyliklar tab
+shows, `perLesson` already only counts held/makeup lessons so a teacher who misses lessons is
+automatically paid for fewer of them — no separate "penalty" concept was added) → optional signed
+bonus/penalty (only while nothing is approved yet this month; note required if non-zero, same rule as
+`ApprovePayoutModal`) → **Pay**, gated by the same `ConfirmDialog` immutability warning as the
+Oyliklar tab's "To'landi". Submitting calls `savePayoutApi` (only if not yet approved) then
+`markPayoutPaidApi` — the exact same two server functions §9's Approve+To'landi buttons call, so it
+writes the same `center_payouts`/`center_expenses` docs and inherits every existing guarantee
+(server-recomputed amounts, paid payouts immutable, zero-sum payouts legitimate). If the teacher's
+payout is already `paid` for the month, the modal only shows the paid amount/date — no double-pay.
+
+No schema, API route, or `financeOps.ts` change was needed for this — it's UI-only, reusing
+`calculatePayrollApi`/`savePayoutApi`/`markPayoutPaidApi` from `services/financeService.ts` verbatim.
+
+### 9.3 Excel export (2026-09-05, revised same day — now a picker)
+
+`ExportFinanceButton` sits in the Moliya page header (visible on every tab, next to the title). Clicking
+it opens a picker, not an immediate export — a checklist of **five money-cycle sections**
+(`FinanceExportSection` in `lib/finance/exportExcel.ts`: `charges`, `payments`, `debtors`, `payroll`,
+`expenses`), all checked by default, "Hammasi" toggles all. Only the checked sections become sheets in
+the `.xlsx` — the manager can export just one (e.g. only Oyliklar) or the full picture.
+
+All sections but `debtors` are scoped to the **currently browsed month** (`page.tsx`'s `monthKey` — the
+same month Hisob-kitob/To'lovlar/Xarajatlar/Oyliklar are already showing, navigated via their own
+`MonthNav`), reusing data the page already has in state (`charges`, `monthPayments`, `expenses`) — no
+extra reads for those. `debtors` is deliberately **not** month-scoped: it's `openCharges`, the same
+all-time pending/partial snapshot the Qarzdorlar tab shows (a debtor from three months ago still owes
+money today, so bucketing it into "this month" would misrepresent it) — the sheet is a current-state
+snapshot layered onto an otherwise month-scoped report, and is labeled as such. `payroll` is the one
+section requiring a fresh read: `calculatePayrollApi(monthKey)` is only called when that box is checked.
+Every sheet keeps a raw, sortable `status`/`type` column (including cancelled charges/payments/expenses)
+rather than only totals — this is meant as an audit trail, not just a summary. Entirely read-only: builds
+the workbook client-side via `lib/finance/exportExcel.ts` (SheetJS `xlsx` package — a new dependency, no
+server component), never writes anything.
+
+Delivery: `navigator.canShare({ files })` (Web Share Level 2, most mobile browsers over HTTPS) shares
+the actual file through the OS share sheet — Telegram shows up there like any other installed app,
+same mechanism `ParentQrDialog.tsx` already uses for link sharing, just extended to a real file instead
+of a URL. Everywhere else (desktop, unsupported browsers) it falls back to a plain blob download.
+There is no Telegram-bot integration — no bot token, no chat id, no server upload step — deliberately,
+to avoid new secrets/infra for what the OS share sheet already does on the devices managers actually
+carry to send a report to a colleague.
 
 ## 10. Later phases (context for reviewers)
 
