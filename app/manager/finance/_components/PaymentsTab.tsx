@@ -9,7 +9,7 @@ import { formatUZS } from "@/lib/finance/money";
 import { getTodayKey } from "@/lib/dateUtils";
 import { Button, EmptyState, StatusChip } from "@/components/manager-ui";
 import { useManagerLanguage, type LangType } from "@/app/manager/_components/ManagerLanguage";
-import { dayLabelOf, PAYMENT_METHOD_T } from "./financeFormat";
+import { dayLabelOf, formatMethodSplit } from "./financeFormat";
 import ReasonDialog from "./ReasonDialog";
 import SearchInput from "../../_components/SearchInput";
 
@@ -176,7 +176,7 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
                           {p.studentName}
                         </p>
                         <p className="text-[12.5px] text-on-surface-variant mt-0.5 truncate">
-                          {PAYMENT_METHOD_T[lang][p.method] || p.method}
+                          {formatMethodSplit(p, lang)}
                           {isRefund && ` · ${t.refundTag}`}
                           {p.note && ` · ${p.note}`}
                         </p>
