@@ -3,7 +3,6 @@
 ## 1. Overview
 The Edify XP System is designed to reward **mastery**, **consistency (streaks)**, and **learning**. It uses a "Write-Fan-Out" architecture to ensure leaderboards are updated instantly, while maintaining a robust "Source of Truth" in the user's profile for real-time sidebar updates.
 
----
 
 ## 2. XP Scoring Logic
 
