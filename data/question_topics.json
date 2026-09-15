@@ -3001,6 +3001,52 @@
           ]
         }
       ]
+    },
+    {
+      "id": "sat-ingliz-tili",
+      "name": "SAT Ingliz tili (Reading & Writing)",
+      "topics": [
+        {
+          "id": "information-and-ideas",
+          "name": "Information and Ideas",
+          "subtopics": [
+            {
+              "id": "information-and-ideas",
+              "name": "Information and Ideas"
+            }
+          ]
+        },
+        {
+          "id": "craft-and-structure",
+          "name": "Craft and Structure",
+          "subtopics": [
+            {
+              "id": "craft-and-structure",
+              "name": "Craft and Structure"
+            }
+          ]
+        },
+        {
+          "id": "expression-of-ideas",
+          "name": "Expression of Ideas",
+          "subtopics": [
+            {
+              "id": "expression-of-ideas",
+              "name": "Expression of Ideas"
+            }
+          ]
+        },
+        {
+          "id": "standard-english-conventions",
+          "name": "Standard English Conventions",
+          "subtopics": [
+            {
+              "id": "standard-english-conventions",
+              "name": "Standard English Conventions"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

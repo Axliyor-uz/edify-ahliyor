@@ -5,7 +5,7 @@
 > **Quick reference:** [FINANCE_DATABASE.md](FINANCE_DATABASE.md) maps every collection and,
 > per UI action, exactly which documents change — read that first for "where does my data go".
 
-**Last verified:** 2026-09-14 (payments/expenses gained an optional multi-method split — §4.2a; previously 2026-07-12, commit `7c31a96`). Tuition core (Phase 1) and payroll & expenses (Phase 3) are **built — this is a current-state reference**; §10 lists what remains future. (Formerly `FINANCE_PLAN.md`.)
+**Last verified:** 2026-09-15 (the buxgalter/director back-office got read access + an accountant write path — §5.1, [OFFICE.md](OFFICE.md); previously 2026-09-14, the multi-method split §4.2a). Tuition core (Phase 1) and payroll & expenses (Phase 3) are **built — this is a current-state reference**; §10 lists what remains future. (Formerly `FINANCE_PLAN.md`.)
 
 ## 0. Locked product decisions
 
@@ -246,6 +246,25 @@ all); the split UI only appears once the manager opts in.
 | `/api/manager/finance/student` | `{ studentId, patch }` | discount, overrides, freeze/unfreeze, enrollmentDates fixes |
 | `/api/manager/finance/group-fees` | bulk `classes.monthlyFee` update | `updateGroupFees` in `financeOps.ts`; ownership check via server-side `resolveCenterClasses` (deliberately not client rules); used by Sozlamalar "Guruh narxlari" (`GroupPricesSection.tsx`) |
 
+### 5.1 Office staff on these routes (2026-09-15)
+
+Five of the routes above also accept a **buxgalter** or a **director** ([OFFICE.md](OFFICE.md)), via a
+new `options.office` argument on the `financePostHandler` factory:
+
+| Route | `office` | Who |
+|---|---|---|
+| `/payments`, `/payments/cancel`, `/expenses`, `/expenses/cancel` | `'accountant'` | manager **or** buxgalter |
+| `/payroll/calculate` | `'any'` | manager **or** any office role (it writes nothing) |
+| everything else | *(omitted)* | manager only — unchanged |
+
+`resolveFinanceCaller` tries `requireActiveCenterManager` first and only falls through to
+`requireCenterOffice` on a **403** (authenticated but not this center's manager); a 401 propagates.
+⚠️ `uid` in the op context is the REAL caller, so an accountant's payments carry **their** uid in
+`receivedBy`/`createdBy` — the audit trail names who typed it. Cancel is included deliberately:
+money is append-only, so cancel + re-enter IS the correction path (§4.3), and an accountant who may
+record must be able to reverse their own typo. `write: if false` on the collections is untouched —
+the route is the only write path, exactly as iron rule #4 requires.
+
 Guard: the PRE-EXISTING `lib/server/verifyCenterManager.ts` (`requireActiveCenterManager`,
 throws `ManagerApiError` with user-facing Uzbek messages) — verifies the bearer ID token,
 requires `users/{uid}.role == 'manager'` + a `centerId`, and the center's `status == 'active'`
@@ -281,6 +300,11 @@ match /center_payments/{paymentId} {
   allow write: if false;
 }
 ```
+
+🟢 **2026-09-15**: every `read`/`get`/`list` above also admits `|| isCenterOffice(<centerId>)` — the
+center's director and buxgalter ([OFFICE.md](OFFICE.md)). That helper looks up the CONSTANT path
+`center_staff/$(request.auth.uid)`, so it adds a fixed couple of document accesses per query and the
+limit argument below still holds. **`write: if false` was NOT touched on any collection.**
 
 Unlike attendance, finance list rules must **not** relax to `isAuth()` — payments are the most
 sensitive data in the app. The `list` rules above stay within the document-access limit because the

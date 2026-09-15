@@ -133,6 +133,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             const profile = await getUserProfile(user.uid);
             if (profile?.role === 'manager') router.push('/manager/dashboard');
             else if (profile?.role === 'teacher') router.push('/teacher/dashboard');
+            // Office staff (docs/OFFICE.md) — without this they'd fall through
+            // to the student dashboard, which has no data for them.
+            else if (profile?.role === 'director' || profile?.role === 'accountant') router.push('/office');
             else setIsAuthorized(true);
           } catch (error) {
             console.error(error);

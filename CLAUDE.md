@@ -28,6 +28,7 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | **Parent access by QR** — `parent_links`, `app/p/*`, `app/manager/parents/*`, `/api/parent/*`, `/api/manager/parent-links/*` | [docs/PARENTS.md](docs/PARENTS.md) |
 | Rooms / timetable / schedule conflicts | [docs/ROOMS.md](docs/ROOMS.md) |
 | Finance (charges, payments, payroll, expenses) | [docs/FINANCE.md](docs/FINANCE.md) + [docs/FINANCE_DATABASE.md](docs/FINANCE_DATABASE.md) |
+| **Director / buxgalter back-office** — `center_staff`, `app/office/*`, `isCenterOffice`, `requireCenterOffice`, `/api/admin/centers/[id]/staff` | [docs/OFFICE.md](docs/OFFICE.md) |
 | `app/admin/*`, `/api/admin/*`, god-mode | [docs/ADMIN.md](docs/ADMIN.md) |
 | IELTS | [docs/IELTS.md](docs/IELTS.md) |
 | **Teacher design system** — [design.teacher.config.ts](design.teacher.config.ts) switchboard, `components/ui/*`, M3 tokens, restyling `app/teacher/*` | [docs/UI_KIT.md](docs/UI_KIT.md) |

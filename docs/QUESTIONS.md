@@ -38,6 +38,22 @@ Firestore cannot filter across two different document shapes, and an OR-query ov
 
 ⚠️ Consequence: `where("difficulty", "==", "easy")` is **wrong** — it silently returns zero v1 docs. Filter `difficultyId == DIFFICULTY_ID_BY_NAME.easy` instead.
 
+### `creatorId: ''` — the "no owner" / platform-content sentinel
+
+`teacher_questions` rules are `allow read: if isAuth()` for every signed-in
+user (not scoped to the creator) — the `creatorId ==` filter above is a
+CLIENT-side convention for "browse my own bank," not a rules-enforced
+restriction. That gap is what lets a bank hold **platform-owned** content
+visible to every teacher: write documents with `creatorId: ''` (the same "no
+owner" sentinel `scripts/createSatSampleTest.ts` uses for
+`sat_math_tests.teacherId`) via an Admin-SDK script, and any picker that
+queries `creatorId == ''` instead of the signed-in uid sees them — no rules
+change needed. First used by
+[scripts/importSATEnglishQuestions.ts](../scripts/importSATEnglishQuestions.ts)
+(1,406 SAT English questions, docs/SAT_QUIZ.md) picked from a "Platform bank"
+tab in `app/teacher/sat/english/_components/SatEnglishBankPicker.tsx`
+alongside each teacher's own bank.
+
 ## Enums (types/question.ts)
 
 - **type** (19): `mcq`, `multiple_select`, `true_false`, `open`, `numeric`, `fill_blank`, `matching`, `ordering`, `drag_drop`, `hotspot`, `matrix`, `essay`, `coding`, `proof`, `graph`, `equation_builder`, `interactive`, plus the two BLOCK types `multi_part` and `shared_options` (see below). ⚠️ Only `IMPLEMENTED_QUESTION_TYPES` (`mcq`, `multiple_select`, `true_false`, `open`, `numeric`, `multi_part`, `shared_options`) can actually be authored, rendered and auto-graded today — the rest are declared so the schema is stable, not because the UI supports them.

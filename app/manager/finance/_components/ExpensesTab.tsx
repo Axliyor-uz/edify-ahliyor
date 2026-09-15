@@ -37,6 +37,9 @@ interface Props {
   monthLabel: string;
   onShiftMonth: (delta: number) => void;
   onChanged: () => void;
+  /** 🟢 Office panel (docs/OFFICE.md): a DIRECTOR reads expenses but may not
+   *  add or cancel one. Defaults to true — manager + accountant unchanged. */
+  canRecord?: boolean;
 }
 
 // Keys are the stored category values — never translated.
@@ -148,7 +151,7 @@ const CATEGORY_META: Record<string, { Icon: LucideIcon; avatar: string }> = {
 const categoryMeta = (c: string) => CATEGORY_META[c] || CATEGORY_META.boshqa;
 
 /** Month's expenses: per-category totals, add, cancel. Salary rows come from payroll and are protected. */
-export default function ExpensesTab({ expenses, categories, monthLabel, onShiftMonth, onChanged }: Props) {
+export default function ExpensesTab({ expenses, categories, monthLabel, onShiftMonth, onChanged, canRecord = true }: Props) {
   const { lang } = useManagerLanguage();
   const t = TRANSLATIONS[lang];
   const [showAdd, setShowAdd] = useState(false);
@@ -175,9 +178,11 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <MonthNav label={monthLabel} onShift={onShiftMonth} />
-        <Button icon={<Plus />} onClick={() => setShowAdd(true)}>
-          {t.addExpense}
-        </Button>
+        {canRecord && (
+          <Button icon={<Plus />} onClick={() => setShowAdd(true)}>
+            {t.addExpense}
+          </Button>
+        )}
       </div>
 
       {expenses.length > 5 && (
@@ -246,7 +251,7 @@ export default function ExpensesTab({ expenses, categories, monthLabel, onShiftM
                 >
                   −{formatUZS(e.amount)}
                 </p>
-                {!cancelled && !e.payoutId && (
+                {!cancelled && !e.payoutId && canRecord && (
                   <button
                     onClick={() => setCancelTarget(e)}
                     title={t.cancelExpenseTitle}

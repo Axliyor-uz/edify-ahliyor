@@ -4,7 +4,7 @@
 >
 > Subsystem docs: attendance → [ATTENDANCE.md](ATTENDANCE.md) · rooms/timetable → [ROOMS.md](ROOMS.md) · finance → [FINANCE.md](FINANCE.md) + [FINANCE_DATABASE.md](FINANCE_DATABASE.md) · **parent QR access → [PARENTS.md](PARENTS.md)**.
 
-**Last verified:** 2026-07-15.
+**Last verified:** 2026-09-15 (office staff — [OFFICE.md](OFFICE.md); previously 2026-07-15).
 
 ## Purpose & scope
 
@@ -113,6 +113,20 @@ The manager can provision a full teacher account (`CreateTeacherModal.tsx` → `
 - **Info dialog** (`ManagerStudentInfoPanel`): mobile-first M3 dialog (bottom sheet on phones) — identity + XP/streak chips, credentials card (center-created only), edit mode, groups with schedule chips, finance (`StudentFinanceSection`), **parent QR access**, photo management, and **remove-from-center** (deletes the link + `arrayRemove` from every center group; the account itself survives).
 - Rules: the `studentIds`-only self-diff branch lets a user add/remove ONLY their own uid — and on center groups (`centerId != ''`) additions are blocked entirely (2026-07-19), so manager adds ride the manager branch, never the self-join one.
 - Today's status comes from one `fetchCenterSessions(centerId, today, today)` list query (per-doc `get` would be denied for stale-centerId docs — deliberate).
+
+## Office staff — director & buxgalter (2026-09-15)
+
+A center can also have **director** and **buxgalter** (accountant) accounts with their own panel at
+`/office` — full visibility of payments, expenses, debtors, and the teaching staff with their
+attendance and salaries; the buxgalter can additionally record payments/expenses. Full contract:
+[OFFICE.md](OFFICE.md).
+
+⚠️ **The manager cannot create, edit or delete these accounts** — only a super admin can
+(`/admin/centers/{id}` → Office staff). A director outranks the manager, so letting the manager mint
+one would let them appoint their own oversight; `center_staff` is `write: if false` for every client.
+The manager CAN read their center's `center_staff` links (`centerId ==` filtered) to see who has
+back-office access — `fetchCenterOfficeStaff()` in `services/officeService.ts` — though no manager
+page renders that list yet.
 
 ## Walk-in check-in (`services/checkInService.ts`)
 

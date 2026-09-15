@@ -15,5 +15,6 @@ export const POST = financePostHandler('/api/manager/finance/expenses', ({ uid, 
     note: body.note,
     method: body.method,
     methodSplit: body.methodSplit,
-  })
+  }),
+  { office: 'accountant' }
 );
