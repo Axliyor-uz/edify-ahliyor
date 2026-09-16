@@ -10,7 +10,14 @@
 > (the questions these tests embed). Update this doc in the same change
 > whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-09-15 (**SAT English (Reading & Writing) shipped** —
+**Last verified:** 2026-09-16 (**the `sat-matematika` subtopics were replaced
+with the centre's own book structure, and teachers can now bulk-import a SAT
+question dataset from JSON at `/teacher/sat/import`** — §The taxonomy, §Teacher
+dataset import; earlier the same day: **scoring moved from a straight line to a
+real published conversion CURVE reporting a score BAND, and the score report
+gained the blank-vs-wrong distinction** — §Scoring, §Reporting; previously
+2026-09-15:
+**SAT English (Reading & Writing) shipped** —
 own collections, a platform-owned 1,406-question bank, `SatRunner` reused
 as-is for both subjects; `SatRunner` also switched to English-only chrome + a
 draggable two-pane split with images/plots in the workspace column + an A-/A+
@@ -79,11 +86,15 @@ three callers already depending on it).
 |---|---|
 | [types/SatQuiz.ts](../types/SatQuiz.ts) | Document shapes: `SatQuizItem`, `SatMathTest`, `SatMathResult`, and the runner's own `SatExamSnapshot`. |
 | [lib/SatMathQuiz.ts](../lib/SatMathQuiz.ts) | Pure layer — `SAT_MATH_DOMAINS` (the 4 domains), `SAT_SECTIONS` (the section registry, Math live / R&W soon), picked-question → `SatQuizItem`, the add check, the routing rule, grading (`isSatItemCorrect`). No Firestore. |
-| [lib/SATscore.ts](../lib/SATscore.ts) | The 200–800 **approximate** scaled score. Pure. |
+| [lib/SATscore.ts](../lib/SATscore.ts) | The 200–800 **approximate** scaled score: `SAT_RAW_SCORE_TABLE` (the published Practice Test 11 conversion curve), `estimateScoreBand`, `estimateScaledScore`, `formatScoreBand`. Pure. ⚠️ Read its length-trap note before touching. |
 | [lib/SatDefaultPaper.ts](../lib/SatDefaultPaper.ts) | The **sample test** — validates `data/sat-math-default-paper.json` and turns it into `SatQuizItem`s for all three modules. Pure; no Firestore. |
 | [data/sat-math-default-paper.json](../data/sat-math-default-paper.json) | **The sample test's content — the only file to edit to change it.** 22 real questions per module (66 total, the real digital SAT's own module length), Algebra + Advanced Math domains, 17 with a graph image. |
 | [lib/SatSession.ts](../lib/SatSession.ts) | The browser-side sitting store — own localStorage key `sat:math:v1`. |
 | [services/satMathQuizService.ts](../services/satMathQuizService.ts) | Every read and write, plus `reserveSatCode`/`findSatTestByCode`. Nothing else touches the two collections. |
+| [app/(student)/sat/_components/SatScoreSummary.tsx](../app/(student)/sat/_components/SatScoreSummary.tsx) | The score-report banner — band, disclaimer, raw/%, route badge, right/wrong/blank tally, per-module split. **Shared by both student subject pages.** |
+| [lib/SatQuestionImport.ts](../lib/SatQuestionImport.ts) | **Pure** parse/validate for the teacher JSON importer + `SAT_IMPORT_EXAMPLE` (the one true format). No Firestore. |
+| [app/teacher/sat/import/page.tsx](../app/teacher/sat/import/page.tsx) | The import page — subject picker, the printed topic → section tree, the format block, the per-row report, the batched write. |
+| [scripts/setSATMathSubtopics.mjs](../scripts/setSATMathSubtopics.mjs) | Replaced the `sat-matematika` subtopics with the centre's own book sections (2026-09-16). ⚠️ Supersedes the subtopic half of `addSATMathTopics.mjs` — don't re-run that one. |
 | [scripts/addSATMathTopics.mjs](../scripts/addSATMathTopics.mjs) | How the `sat-matematika` taxonomy (4 official College Board Math domains) was appended to `data/question_topics.json`. |
 | `app/teacher/sat/page.tsx` | The teacher's section hub — `SAT_SECTIONS` cards, Math live. |
 | `app/teacher/sat/math/page.tsx` | The teacher's test list: code, status, edit, results, delete. |
@@ -110,9 +121,31 @@ three callers already depending on it).
 
 `data/question_topics.json` gained a subject, `sat-matematika`, with the 4
 official College Board digital SAT Math domains as topics (Algebra, Advanced
-Math, Problem-Solving and Data Analysis, Geometry and Trigonometry), each with
-the official published content-category subtopics. This is factual,
-non-copyrightable test-specification vocabulary — not excerpted questions.
+Math, Problem-Solving and Data Analysis, Geometry and Trigonometry). This is
+factual, non-copyrightable test-specification vocabulary — not excerpted
+questions.
+
+🟢 **2026-09-16 — the SUBTOPICS under those 4 topics were replaced** with the
+learning centre's own SAT Math book structure (chapter → section), 25 sections
+in total, by [scripts/setSATMathSubtopics.mjs](../scripts/setSATMathSubtopics.mjs).
+`scripts/addSATMathTopics.mjs` (which seeded College Board's own content
+categories) is kept for history — **do not re-run it**, it would put the old
+categories back.
+
+⚠️ **The 4 topic ids AND names were deliberately left alone.** Each is a
+`SatMathDomain` in `types/SatQuiz.ts`, is mirrored by `SAT_MATH_DOMAINS` in
+`lib/SatMathQuiz.ts`, is snapshotted onto every `SatQuizItem.domain`, and is a
+KEY inside `SatMathResult.domains` on every sitting ever submitted. Renaming or
+re-slugging one silently orphans finished results and breaks the typed union.
+The supplied chapter titles map 1:1 onto the four, so only the section level
+moved.
+
+⚠️ **17 old subtopic ids are now orphans.** A question already filed under, say,
+`linear-equations-in-one-variable` keeps that id — `normalizeQuestion` reads the
+stored NAME, so it still displays and grades fine, but it matches no taxonomy
+row, so a subtopic filter won't find it. Only `linear-functions` and `circles`
+survive the swap by coincidence. Nothing is migrated, per docs/QUESTIONS.md
+("never touch a legacy doc"). The script prints both lists when it runs.
 
 ⚠️ **This is why `/teacher/create/question` needed ZERO new code** to author
 SAT Math questions — it already reads `SUBJECTS` off `data/question_topics.json`,
@@ -267,6 +300,82 @@ re-key a test somebody already answered.
 module arrays; the builder shows the size against `SAT_MAX_BYTES` (900 KB) and
 `saveSatMathTest` refuses to write past it.
 
+### Teacher dataset import — `/teacher/sat/import` (2026-09-16)
+
+A teacher uploads a **JSON file** of SAT questions; every row is validated and
+written to `teacher_questions` as ordinary v1 documents, through the SAME
+adapter hand-authored questions use (`toQuestionV1`), so they render, filter
+and grade identically to anything else in the bank.
+
+| File | Role |
+|---|---|
+| [lib/SatQuestionImport.ts](../lib/SatQuestionImport.ts) | **Pure** parse + validate + the documented example. No Firestore, no React. |
+| [app/teacher/sat/import/page.tsx](../app/teacher/sat/import/page.tsx) | The page: subject picker, the taxonomy tree, the format block, the report, the commit. |
+
+**The file format** (`SAT_IMPORT_EXAMPLE` in the pure module is the single
+source of truth — the UI prints that same constant, so the docs, the screen and
+the validator cannot describe three different shapes):
+
+```json
+[
+  { "question": "…", "type": "mcq", "topic": "algebra", "subtopic": "linear-equations",
+    "difficulty": "easy", "choices": { "A": "…", "B": "…" }, "answer": "B", "explanation": "…" },
+  { "question": "…", "type": "numeric", "topic": "problem-solving-and-data-analysis",
+    "subtopic": "unit-conversion", "answer": "16.25", "acceptedAnswers": ["65/4"] }
+]
+```
+
+A top-level array, or `{"questions": [...]}`. `choices` may also be a plain
+array (→ A, B, C, D). `difficulty` defaults to `medium`. Math accepts
+`mcq`+`numeric`, English `mcq` only (`allowedTypesFor`). Cap: `MAX_IMPORT_ROWS`
+(500) per upload, which is also Firestore's batch cap.
+
+⚠️ **Every row is validated against the taxonomy before ANY write.**
+`toQuestionV1` THROWS `InvalidTopicError` on an unknown subject/topic/subtopic
+triple (docs/QUESTIONS.md), so an unvalidated row would blow up mid-import with
+earlier rows already committed. Rejecting up front is what makes the report
+trustworthy. Rejections name the offending value (`unknown "subtopic": "…"
+under topic "…"`) — a 400-row file is only fixable if the report says which id
+was wrong. Exact-content duplicates **within one file** are dropped and counted.
+
+⚠️ **This is why the page prints the whole topic → section tree beside the file
+picker**: `topic`/`subtopic` are the taxonomy's own ids, they are persisted into
+the document, and nobody can guess `research-organizing-margin-of-error-outliers`.
+
+**Status**: rows are written with `creationMethod: 'exam_import'`, whose default
+status is **`review`** — deliberately NOT overridden to `published` the way the
+curated platform import was (that content was vetted; a teacher's upload is not).
+`review` questions are still pickable — no picker filters on status.
+
+#### ⚠️ Ownership vs visibility — do not conflate these
+
+| | `creatorId` | Who can edit/delete | Written by |
+|---|---|---|---|
+| A teacher's import | **the uploader's uid** | the uploader | the client, `/teacher/sat/import` |
+| The platform pool | `''` (`SAT_PLATFORM_CREATOR_ID`) | nobody in-app | an Admin-SDK script only |
+
+The `teacher_questions` create rule is
+`request.resource.data.creatorId == request.auth.uid`, so a client **cannot**
+write into the anonymous platform pool — and shouldn't: that pool is curated.
+
+"Share" is therefore a **visibility flag, not an ownership change**: ticking it
+adds the flat `sharedBank: true` field (`types/question.ts`). The uploader keeps
+`creatorId`, so they alone can edit or delete it, and the picker shows their
+`creatorName` as attribution — a bad upload is traceable and removable by its
+owner, which an anonymous global write would not be.
+
+Read back by `fetchSharedQuestionsPage(subjectSlug, …)` —
+`sharedBank == true && subject.id == … orderBy createdAt desc`, on its own
+composite index. It cannot ride the `creatorId + subject.id + createdAt` one:
+the query is deliberately NOT creator-scoped.
+
+**In the pickers**: SAT Math's `SatBankPicker` gained a **bank axis**
+(`My bank` / `Shared`) above its existing PROVENANCE chips (all/AI/me — a
+different axis; the chips hide in Shared, since adding a `creationMethod in […]`
+leg would need yet another index). SAT English's picker gained `Shared` as a
+third source beside `Platform bank` and `Me`. Shared rows carry the uploader's
+name.
+
 ### The access code — its OWN namespace PER SUBJECT
 
 Six **digits**, a string everywhere. `reserveSatCode` checks only
@@ -379,6 +488,24 @@ rule every exam-shaped result in this repo follows. Stored alongside the score:
   unlike `examSlotKeys` elsewhere in the repo.
 - **`domains`** — raw `{correct, total}` per SAT Math domain, summed across
   both modules. A domain neither module touched is ABSENT, never `{0,0}`.
+- **`scoreBand`** (2026-09-16) — `{lower, upper}`, the estimated scaled-score
+  range this sitting falls in. See §Scoring.
+- **`omitted`** (2026-09-16) — ids the student left BLANK. ⚠️ `items` cannot
+  express this: it stores `0` for a blank exactly as for a wrong answer, and
+  "left 6 empty" is different coaching from "got 6 wrong". A blank still scores
+  0 — this changes REPORTING only, never the grade.
+
+⚠️ Both new fields are **optional and additive-only**. A sitting from before
+2026-09-16 has neither, and every reader must degrade rather than invent:
+no `scoreBand` → show the single `scaledScore`; no `omitted` → **hide the
+right/wrong/blank tally entirely**, never render it as "0 unanswered".
+
+🟢 **2026-09-16 — submit also banks the student's mistakes.** Each SAT page's
+`onSubmit` calls `recordMistakes(satMistakes(...))` with the served items, the
+outcome map and `omitted`, so every wrong or blank question lands in the
+student's private practice bucket. Fire-and-forget, after the result write —
+see [MISTAKES.md](MISTAKES.md). `omitted` is what lets that bucket distinguish
+a skipped question from a misunderstood one.
 
 ⚠️ **Unlike the mock exam / Milliy sertifikat papers, a mostly-unanswered
 sitting is still saved** (not treated as "abandoned"). SAT here has no ability
@@ -386,20 +513,53 @@ model to protect from a distorting zero — a raw, low score is just informative
 context for the teacher, the same way a real proctor would record whatever a
 student actually did.
 
-### Scoring — `lib/SATscore.ts`, an explicit approximation
+### Scoring — `lib/SATscore.ts`, an explicit approximation on a real curve
 
-`estimateScaledScore(route, correct, total)`: linear from 200 to a
-route-dependent ceiling — **800 if routed harder, ~590 if routed easier**
-(being routed to the easier module is itself evidence of a lower reachable
-ceiling, mirroring the real test's own shape), rounded to the nearest 10.
+🟢 **2026-09-16 — the straight line was replaced by a published conversion
+curve.** `SAT_RAW_SCORE_TABLE` is the raw-score conversion table shipped with
+digital SAT **Practice Test 11** (adapted from
+[github.com/yudopr11/sat-simulation](https://github.com/yudopr11/sat-simulation)):
+55 rows, raw `0…54` → a scaled **band** `[lower, upper]`. The curve matters
+because the real mapping is nowhere near linear — steep at both ends, much
+flatter through the middle — so the old line overpaid mid-range students
+(50% used to read 500; it now reads 440–480) and underpaid strong ones.
 
-⚠️ **This is NOT College Board's proprietary IRT-equated score.** No public
-equating table exists to reproduce, so this is a transparent, documented
-substitute — the same honesty pattern `MILLIY_SUBJECTS.fizika`/`.ona-tili`
+Three functions:
+
+| Function | Returns |
+|---|---|
+| `estimateScoreBand(route, correct, total)` | `{lower, upper}` — the band |
+| `estimateScaledScore(route, correct, total)` | the band's MIDPOINT, rounded to 10 — the single number persisted on `scaledScore` |
+| `formatScoreBand(band)` | `"640–700"`, or `"590"` when the band collapsed |
+
+⚠️ **THE LENGTH TRAP.** That table is indexed by the raw score of a
+**54-question** section, but our tests are teacher-built and can be ANY length.
+The table is therefore **never indexed with a raw count directly** —
+`bandForFraction` maps `correct / total` onto the table's own `0…54` domain
+first (then blends the two neighbouring rows, so a short paper doesn't jump in
+visible steps). Index a 12/12 sitting as raw `12` and you read off `[330, 370]`,
+reporting a perfect paper as a failing score. Verified: a given percentage
+yields the same band at 54, 44, 22 and 12 questions, and the curve is monotonic.
+
+The **route ceiling is unchanged** and applied ON TOP of the curve: a student
+routed to the easier Module 2 has both ends clamped to **590**, so a perfect
+easier-route paper reports a single `590` rather than a band — the cap is hard,
+and a band would promise a ceiling that route cannot reach.
+
+⚠️ **SCORES FROM BEFORE 2026-09-16 ARE NOT COMPARABLE TO SCORES AFTER IT.**
+`scaledScore` is persisted at submit, so a sitting graded under the old line
+keeps its old number and a teacher's average mixes the two models. Nothing
+re-scores old sittings — both models were always labeled an approximation, and
+silently rewriting a student's past score would be worse. If the mixed average
+ever matters, write a one-off backfill rather than special-casing the UI.
+
+⚠️ **This is STILL NOT College Board's proprietary IRT-equated score.** The
+per-form equating is not public; what is public is this one released form's
+conversion table, so this remains a transparent, documented substitute — the same honesty pattern `MILLIY_SUBJECTS.fizika`/`.ona-tili`
 already use for their un-encoded, this-repo's-own defaults
-(docs/MILLIY_QUIZ.md). Never present `scaledScore` as an official SAT score
-anywhere in the UI; both the results page and the student's own screen show it
-next to the raw correct/total and a one-line disclaimer.
+(docs/MILLIY_QUIZ.md). Never present `scaledScore` or `scoreBand` as an
+official SAT score anywhere in the UI; both the results page and the student's
+own screen show it next to the raw correct/total and a one-line disclaimer.
 
 ⚠️ **Scoring is per-student, not cohort-relative.** SAT deliberately does NOT
 use `lib/RASCHmarks.ts` (`B = Y + σ`) — that formula re-prices a question by
@@ -409,12 +569,21 @@ student's score here never moves because of how classmates did.
 
 ### Reporting
 
-The teacher's results page (`app/teacher/sat/math/results/[testId]/page.tsx`):
-sat/average/best scaled-score tiles, a per-domain bar list (weakest first,
-aggregated raw counts across every sitting), a dense per-question solve-rate
-grid (plain percentage, colour-banded — NOT a cohort-priced ball, unlike the
-Milliy sertifikat results pages), and a per-student expandable row (Module 1
-score, route badge, Module 2 score, total, scaled score).
+The teacher's results page (`app/teacher/sat/math/results/[testId]/page.tsx`
+and its English twin): sat/average/best scaled-score tiles, a per-domain bar
+list (weakest first, aggregated raw counts across every sitting), a dense
+per-question solve-rate grid (plain percentage, colour-banded — NOT a
+cohort-priced ball, unlike the Milliy sertifikat results pages), and a
+per-student expandable row (Module 1 score, route badge, Module 2 score, total,
+**score band**, and a **wrong-vs-blank breakdown** when the sitting has
+`omitted`).
+
+The student's own just-submitted screen is
+[`SatScoreSummary`](../app/(student)/sat/_components/SatScoreSummary.tsx) —
+**one component shared by `/sat/math` and `/sat/english`**, which previously
+duplicated the identical block (a second copy is how the two drift). It shows
+the band, the disclaimer, raw correct/total + %, the route badge, the
+right/wrong/blank tally, and the per-module split.
 
 The student's own past-sittings list (under the code box) expands into
 `SatReview` — a green/red grid per module, tap a cell to open the question in a
@@ -443,8 +612,11 @@ sat_math_results/{testId}_{uid}
   module1Correct, module1Total, route: 'easier' | 'harder',
   module2Correct, module2Total, correct, total,
   scaledScore,                       ← 200-800 APPROXIMATION, never official
+                                        (midpoint of scoreBand since 2026-09-16)
+  scoreBand?: {lower, upper},        ← 2026-09-16, additive; absent on older sittings
   durationSec, submittedAt: <epoch ms>, examLang,
   items?: Record<questionId, 0|1>,   ← outcomes only, plain question-id keys
+  omitted?: questionId[],            ← 2026-09-16, additive; blanks (still scored 0)
   domains?: Record<domainSlug, {correct, total}>
 
 sat_english_tests/{sate_…}          ← SAME shape as sat_math_tests, own collection

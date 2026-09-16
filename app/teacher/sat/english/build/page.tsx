@@ -75,6 +75,7 @@ const TR: Record<string, Record<string, string>> = {
     newSingle: "Yangi savol yaratish",
     newSingleHint: "Variantli (4 ta javob) savol.",
     source: "Manba", srcPlatform: "Platforma bazasi", srcMine: "O'zim",
+    srcShared: "Ulashilgan", by: "·",
     load: "Yuklash", loadMore: "Yana 10 ta", none: "Savol topilmadi",
     reads: "ta hujjat o'qildi",
     add: "Qo'shish", added: "Qo'shilgan", imageOnly: "Rasmli savol", full: "To'ldi",
@@ -128,6 +129,7 @@ const TR: Record<string, Record<string, string>> = {
     newSingle: "Создать новый вопрос",
     newSingleHint: "С вариантами (4 ответа).",
     source: "Источник", srcPlatform: "Платформенная база", srcMine: "Я сам",
+    srcShared: "Общие", by: "·",
     load: "Загрузить", loadMore: "Ещё 10", none: "Вопросы не найдены",
     reads: "документов прочитано",
     add: "Добавить", added: "Добавлен", imageOnly: "Вопрос с картинкой", full: "Заполнено",
@@ -181,6 +183,7 @@ const TR: Record<string, Record<string, string>> = {
     newSingle: "Create a new question",
     newSingleHint: "Multiple choice (4 options).",
     source: "Source", srcPlatform: "Platform bank", srcMine: "Me",
+    srcShared: "Shared", by: "·",
     load: "Load", loadMore: "10 more", none: "No questions found",
     reads: "documents read",
     add: "Add", added: "Added", imageOnly: "Image question", full: "Full",
@@ -465,6 +468,7 @@ function BuilderInner() {
 
   const pickerStrings: SatEnglishPickerStrings = {
     source: t.source, srcPlatform: t.srcPlatform, srcMine: t.srcMine,
+    srcShared: t.srcShared, by: t.by,
     load: t.load, loadMore: t.loadMore, none: t.none, reads: t.reads,
     add: t.add, added: t.added, imageOnly: t.imageOnly, full: t.full,
   };

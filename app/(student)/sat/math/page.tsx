@@ -6,7 +6,10 @@ import { AlertTriangle, ChevronDown, KeyRound, Play, TrendingUp } from "lucide-r
 import { useAuth } from "@/lib/AuthContext";
 import { requestExamFullscreen } from "@/hooks/useExamLockdown";
 import { ACCESS_CODE_LENGTH, isValidAccessCode, sanitizeAccessCode } from "@/lib/RASCHquiz";
-import { shuffleSatItems } from "@/lib/SatMathQuiz";
+import { SAT_MATH_TAXONOMY_SLUG, shuffleSatItems } from "@/lib/SatMathQuiz";
+import { formatScoreBand } from "@/lib/SATscore";
+import { satMistakes } from "@/lib/mistakes";
+import { recordMistakes } from "@/services/mistakeService";
 import {
   clearSatSnapshot, getSatSnapshot, getServerSatSnapshot, saveSatSnapshot, subscribeSatSnapshot,
 } from "@/lib/SatSession";
@@ -15,6 +18,7 @@ import {
 } from "@/services/satMathQuizService";
 import SatRunner from "../_components/SatRunner";
 import SatReview from "../_components/SatReview";
+import SatScoreSummary from "../_components/SatScoreSummary";
 import { Banner, Button, Card, EmptyState, Page, cn } from "@/components/student-ui";
 import type { SatExamSnapshot, SatMathResult, SatMathTest, SatQuizItem } from "@/types/SatQuiz";
 
@@ -218,13 +222,33 @@ export default function SatMathPage() {
         onChange={commit}
         onSave={saveSatMathResult}
         onSubmit={(result, finished) => {
+          const served = finished.route === "harder" ? finished.module2Harder : finished.module2Easier;
           setSubmittedView({
             result,
             module1: finished.module1,
-            module2: finished.route === "harder" ? finished.module2Harder : finished.module2Easier,
+            module2: served,
             showAnswers: finished.showAnswers,
           });
           commit(null);
+          // My Mistakes (docs/MISTAKES.md) — fire-and-forget ON PURPOSE: the
+          // result is already saved by this point, and a failure to bank the
+          // mistakes must never cost the student their score.
+          if (uid) {
+            recordMistakes(
+              uid,
+              satMistakes({
+                source: "sat-math",
+                testId: result.testId,
+                testTitle: result.testTitle,
+                examLang: result.examLang,
+                items: [...finished.module1, ...served],
+                outcomes: result.items ?? {},
+                omitted: result.omitted,
+                subjectId: SAT_MATH_TAXONOMY_SLUG,
+                subjectName: "SAT Matematika",
+              }),
+            ).catch((e) => console.error("recordMistakes failed:", e));
+          }
         }}
       />
     );
@@ -239,20 +263,7 @@ export default function SatMathPage() {
         {submittedView && (
           <Card variant="filled" className="flex flex-col gap-4 p-5 text-center">
             <h2 className="text-[16px] font-black text-on-surface">{t.result}</h2>
-            <div>
-              <div className="text-[44px] font-black leading-none text-primary">{submittedView.result.scaledScore}</div>
-              <p className="mt-1 text-[11px] font-bold text-on-surface-variant">{t.scaledScore}</p>
-              <p className="mt-2 text-[11px] font-medium text-on-surface-variant">{t.scaledHint}</p>
-            </div>
-            <div className="flex items-center justify-center gap-4 text-[13px] font-bold text-on-surface">
-              <span>{submittedView.result.correct}{t.of}{submittedView.result.total} {t.correct}</span>
-              <span className={cn(
-                "rounded-m3-xs px-2 py-0.5 text-[11px] font-bold uppercase",
-                submittedView.result.route === "harder" ? "bg-success-container text-on-success-container" : "bg-warning-container text-on-warning-container",
-              )}>
-                {t.route}: {submittedView.result.route === "harder" ? t.routeHarder : t.routeEasier}
-              </span>
-            </div>
+            <SatScoreSummary result={submittedView.result} />
             <SatReview
               module1={submittedView.module1}
               module2={submittedView.module2}
@@ -316,7 +327,10 @@ export default function SatMathPage() {
                           className="flex w-full items-center gap-3 p-3 text-left"
                         >
                           <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-on-surface">{r.testTitle}</span>
-                          <span className="flex-none text-[14px] font-black text-primary">{r.scaledScore}</span>
+                          {/* The BAND when the sitting has one, else the legacy single number. */}
+                          <span className="flex-none text-[14px] font-black text-primary">
+                            {r.scoreBand ? formatScoreBand(r.scoreBand) : r.scaledScore}
+                          </span>
                           <ChevronDown size={14} className={cn("flex-none text-on-surface-variant transition-transform", open && "rotate-180")} />
                         </button>
                         {open && (

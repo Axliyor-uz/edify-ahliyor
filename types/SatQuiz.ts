@@ -175,8 +175,33 @@ export interface SatMathResult {
    * (`lib/SATscore.ts::estimateScaledScore`), NOT College Board's proprietary
    * IRT-equated score. Never present this as an official/equated result —
    * see docs/SAT_QUIZ.md.
+   *
+   * ⚠️ Since 2026-09-16 this is the MIDPOINT of `scoreBand` (a published
+   * conversion curve). Sittings submitted before that date hold a number from
+   * the older straight-line model and are NOT comparable — see lib/SATscore.ts.
    */
   scaledScore: number;
+
+  /**
+   * The estimated scaled-score RANGE this sitting falls in, e.g.
+   * `{lower: 640, upper: 700}` — how College Board itself reports a
+   * practice-test estimate. ⚠️ Optional and additive-only (2026-09-16): a
+   * sitting from before this existed has none, and readers must fall back to
+   * showing `scaledScore` alone rather than inventing a band around it.
+   */
+  scoreBand?: { lower: number; upper: number };
+
+  /**
+   * Ids of questions the student left BLANK — the score report's third state,
+   * beside right and wrong. `items` alone cannot express this: it stores `0`
+   * for a blank exactly as it does for a wrong answer, and "you left 6 empty"
+   * is different coaching from "you got 6 wrong".
+   *
+   * ⚠️ Optional and additive-only (2026-09-16); absent on older sittings, which
+   * must render as "unknown", never as "zero blanks". A blank still scores 0 —
+   * this changes reporting only, never the grade.
+   */
+  omitted?: string[];
 
   durationSec: number;
   /** Epoch ms — matches every other exam-side timestamp (docs/DATA_MODEL.md). */

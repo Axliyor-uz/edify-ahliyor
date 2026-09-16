@@ -5,7 +5,7 @@ import type { QueryDocumentSnapshot } from "firebase/firestore";
 import { Check, Plus, Search } from "lucide-react";
 
 import LatexRenderer from "@/components/LatexRenderer";
-import { fetchMyQuestionsPage } from "@/services/questionBankService";
+import { fetchMyQuestionsPage, fetchSharedQuestionsPage } from "@/services/questionBankService";
 import { SAT_PLATFORM_CREATOR_ID, SAT_RW_TAXONOMY_SLUG, isSatEnglishAuthorableType, satQuizItem } from "@/lib/SatMathQuiz";
 import { Button, cn } from "@/components/ui";
 import type { NormalizedQuestion } from "@/types/question";
@@ -32,12 +32,21 @@ import type { Lang } from "@/types/Math";
 
 const PAGE = 10;
 
-type Source = "platform" | "mine";
+/**
+ * Three pools, all `teacher_questions` narrowed to `sat-ingliz-tili`:
+ *   platform — the donated bank, `creatorId: ''`, owned by nobody (Admin SDK)
+ *   shared   — what other teachers published via /teacher/sat/import
+ *              (`sharedBank == true`), still owned by and attributed to them
+ *   mine     — this teacher's own
+ * ⚠️ `shared` and `platform` are NOT the same thing; see docs/SAT_QUIZ.md.
+ */
+type Source = "platform" | "shared" | "mine";
 
 export interface SatEnglishPickerStrings {
   source: string; srcPlatform: string; srcMine: string;
   load: string; loadMore: string; none: string; reads: string;
   add: string; added: string; imageOnly: string; full: string;
+  srcShared: string; by: string;
 }
 
 export default function SatEnglishBankPicker({
@@ -71,7 +80,9 @@ export default function SatEnglishBankPicker({
       // non-mcq question was filed under this subject by mistake.
       const maxPages = 3;
       for (let i = 0; i < maxPages; i++) {
-        const page = await fetchMyQuestionsPage(creatorId, PAGE, next, undefined, SAT_RW_TAXONOMY_SLUG);
+        const page = source === "shared"
+          ? await fetchSharedQuestionsPage(SAT_RW_TAXONOMY_SLUG, PAGE, next)
+          : await fetchMyQuestionsPage(creatorId, PAGE, next, undefined, SAT_RW_TAXONOMY_SLUG);
         read += page.questions.length;
         found.push(...page.questions.filter(isSatEnglishAuthorableType));
         if (page.cursor) next = page.cursor;
@@ -115,9 +126,9 @@ export default function SatEnglishBankPicker({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{t.source}</span>
-        {(["platform", "mine"] as Source[]).map((s) => (
+        {(["platform", "shared", "mine"] as Source[]).map((s) => (
           <button key={s} onClick={() => reset(() => setSource(s))} className={chip(source === s)}>
-            {s === "platform" ? t.srcPlatform : t.srcMine}
+            {s === "platform" ? t.srcPlatform : s === "shared" ? t.srcShared : t.srcMine}
           </button>
         ))}
 
@@ -151,6 +162,11 @@ export default function SatEnglishBankPicker({
                   </div>
                   <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
                     <span className="normal-case tracking-normal">{q.topic}</span>
+                    {/* Attribution — a shared question stays owned by, and named
+                        after, the teacher who uploaded it. */}
+                    {source === "shared" && q.creatorName && (
+                      <span className="normal-case tracking-normal opacity-70">{t.by} {q.creatorName}</span>
+                    )}
                   </p>
                 </div>
 

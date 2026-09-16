@@ -1188,6 +1188,34 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // 🟢 MY MISTAKES (docs/MISTAKES.md, 2026-09-16) — the student's own bucket
+    // of questions they got wrong or left blank, kept so they can practise.
+    // Doc id is `${studentId}_${slotKey}`.
+    //
+    // ⚠️ Entirely PRIVATE to the student: nobody else reads it, not even their
+    // teacher or the centre manager. It is a study aid, not an assessment
+    // record — the teacher already has the authoritative per-question outcomes
+    // in `teacher_rasch_results` / `milliy_quiz_results` / the SAT results.
+    // Exposing a student's private revision list would change what it is for.
+    //
+    // The id is NOT trusted as the owner check (a uid is not separable from a
+    // slotKey by string surgery — question ids contain underscores too), so
+    // both branches compare the `studentId` FIELD instead.
+    match /student_mistakes/{mistakeId} {
+      allow get: if isAuth() && (resource == null || resource.data.studentId == request.auth.uid);
+      // LIST: every query filters `studentId ==` (the service has no other
+      // read path), so this is provable without a get().
+      allow list: if isAuth() && resource.data.studentId == request.auth.uid;
+
+      allow create: if isAuth()
+                    && request.resource.data.studentId == request.auth.uid
+                    && mistakeId == request.resource.data.id;
+      allow update: if isAuth()
+                    && resource.data.studentId == request.auth.uid
+                    && request.resource.data.studentId == request.auth.uid;
+      allow delete: if isAuth() && resource.data.studentId == request.auth.uid;
+    }
+
     // 🟢 NEW — System Config (Syllabus, etc.)
     // Anyone can read, only super admins can write.
     match /system_config/{document=**} {

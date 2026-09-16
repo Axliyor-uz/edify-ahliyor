@@ -10,7 +10,7 @@ import LatexRenderer from "@/components/LatexRenderer";
 import { Button, Dialog, IconButton, cn } from "@/components/student-ui";
 import { useExamLockdown } from "@/hooks/useExamLockdown";
 import { isSatItemCorrect } from "@/lib/SatMathQuiz";
-import { estimateScaledScore } from "@/lib/SATscore";
+import { estimateScaledScore, estimateScoreBand } from "@/lib/SATscore";
 import SatCalculator from "./SatCalculator";
 import SatReferenceSheet from "./SatReferenceSheet";
 import type { SatDomain, SatExamSnapshot, SatMathResult, SatQuizItem } from "@/types/SatQuiz";
@@ -207,19 +207,30 @@ export default function SatRunner({ uid, studentName, subjectName, snapshot, onC
       const module2Correct = pool.filter((q) => isSatItemCorrect(q, snapshot.module2Answers[q.id])).length;
       const correct = module1Correct + module2Correct;
       const total = snapshot.module1.length + pool.length;
-      const scaledScore = estimateScaledScore(snapshot.route ?? "easier", correct, total);
+      const route = snapshot.route ?? "easier";
+      const scaledScore = estimateScaledScore(route, correct, total);
+      const scoreBand = estimateScoreBand(route, correct, total);
 
       const itemOutcomes: Record<string, number> = {};
+      const omitted: string[] = [];
       const domains: Partial<Record<SatDomain, { correct: number; total: number }>> = {};
+      // A BLANK still scores 0 — `omitted` only records which zeros were blanks,
+      // so the score report can say "left empty" instead of "got it wrong".
+      // Same emptiness test `isSatItemCorrect` uses, so the two can never disagree.
+      const isBlank = (v: string | undefined) => !(v ?? "").trim();
       for (const q of snapshot.module1) {
-        const ok = isSatItemCorrect(q, snapshot.module1Answers[q.id]) ? 1 : 0;
+        const given = snapshot.module1Answers[q.id];
+        const ok = isSatItemCorrect(q, given) ? 1 : 0;
         itemOutcomes[q.id] = ok;
+        if (!ok && isBlank(given)) omitted.push(q.id);
         const d = domains[q.domain] ?? { correct: 0, total: 0 };
         domains[q.domain] = { correct: d.correct + ok, total: d.total + 1 };
       }
       for (const q of pool) {
-        const ok = isSatItemCorrect(q, snapshot.module2Answers[q.id]) ? 1 : 0;
+        const given = snapshot.module2Answers[q.id];
+        const ok = isSatItemCorrect(q, given) ? 1 : 0;
         itemOutcomes[q.id] = ok;
+        if (!ok && isBlank(given)) omitted.push(q.id);
         const d = domains[q.domain] ?? { correct: 0, total: 0 };
         domains[q.domain] = { correct: d.correct + ok, total: d.total + 1 };
       }
@@ -232,16 +243,18 @@ export default function SatRunner({ uid, studentName, subjectName, snapshot, onC
         studentName,
         module1Correct,
         module1Total: snapshot.module1.length,
-        route: snapshot.route ?? "easier",
+        route,
         module2Correct,
         module2Total: pool.length,
         correct,
         total,
         scaledScore,
+        scoreBand,
         durationSec: Math.max(0, Math.round((Date.now() - snapshot.startedAt) / 1000)),
         submittedAt: Date.now(),
         examLang: snapshot.examLang,
         items: itemOutcomes,
+        omitted,
         domains,
       };
 
