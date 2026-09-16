@@ -21,5 +21,8 @@ export const POST = financePostHandler('/api/manager/finance/payments', ({ uid, 
       paidAt: body.paidAt,
       note: body.note,
     },
-  })
+  }),
+  // 🟢 The buxgalter records payments too (docs/OFFICE.md). `uid` above is the
+  // real caller, so `receivedBy` names the accountant, not the manager.
+  { office: 'accountant' }
 );

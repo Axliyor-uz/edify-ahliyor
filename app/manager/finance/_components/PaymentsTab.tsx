@@ -17,6 +17,10 @@ interface Props {
   payments: Payment[];
   onOpenModal: () => void;
   onChanged: () => void;
+  /** 🟢 Office panel (docs/OFFICE.md): a DIRECTOR reads this feed but may not
+   *  record or cancel anything. Defaults to true, so the manager page and the
+   *  accountant both keep the original behavior untouched. */
+  canRecord?: boolean;
 }
 
 const T_UZ = {
@@ -79,7 +83,7 @@ const TRANSLATIONS: Record<LangType, typeof T_UZ> = {
 };
 
 /** Recent payments feed (grouped by day, MD3 list items) + entry point for recording a new one. */
-export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props) {
+export default function PaymentsTab({ payments, onOpenModal, onChanged, canRecord = true }: Props) {
   const { lang } = useManagerLanguage();
   const t = TRANSLATIONS[lang];
   const [cancelTarget, setCancelTarget] = useState<Payment | null>(null);
@@ -120,9 +124,11 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
             {payments.length > 0 ? t.recentOps(payments.length) : t.opsHistory}
           </p>
         )}
-        <Button icon={<Plus />} onClick={onOpenModal}>
-          {t.recordPayment}
-        </Button>
+        {canRecord && (
+          <Button icon={<Plus />} onClick={onOpenModal}>
+            {t.recordPayment}
+          </Button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -194,7 +200,7 @@ export default function PaymentsTab({ payments, onOpenModal, onChanged }: Props)
                         {isRefund ? "−" : "+"}
                         {formatUZS(p.amount)}
                       </p>
-                      {!cancelled && (
+                      {!cancelled && canRecord && (
                         <button
                           onClick={() => setCancelTarget(p)}
                           title={t.cancelPaymentTitle}

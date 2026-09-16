@@ -21,6 +21,7 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | **Teacher-built Rasch papers = the Milliy sertifikat maths paper** — `teacher_rasch_quizzes`, the 6-digit code, `/raschmodel/quiz`, the shared exam runner, `app/teacher/milliy-sertifikat/math/` | [docs/RASCH_QUIZ.md](docs/RASCH_QUIZ.md) |
 | **Milliy sertifikat SUBJECT papers** (biology…) — `milliy_quizzes`, `app/teacher/milliy-sertifikat/*`, `app/(student)/milliy-sertifikat/*`, `MILLIY_SUBJECTS`, sample papers | [docs/MILLIY_QUIZ.md](docs/MILLIY_QUIZ.md) |
 | **Dynamic marking** — `lib/RASCHmarks.ts`: guaranteed base per test type + a share of the difficulty budget from the cohort solve rate (`B = Y + σ`, always 100). Shared by every subject | [docs/MILLIY_QUIZ.md](docs/MILLIY_QUIZ.md) |
+| **My Mistakes** — `student_mistakes`, `app/(student)/mistakes/*`, `lib/mistakes.ts`, the capture hook in ANY runner's submit | [docs/MISTAKES.md](docs/MISTAKES.md) |
 | `app/teacher/*` — test creation, classes, grading, analytics, subscription | [docs/TEACHER.md](docs/TEACHER.md) |
 | AI routes, credit limits, `lib/ai/*`, `/api/analyze`, TTS | [docs/AI.md](docs/AI.md) |
 | `app/manager/*` core — approval gate, groups, teachers, enrollment, walk-in | [docs/MANAGER.md](docs/MANAGER.md) |
@@ -28,6 +29,7 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | **Parent access by QR** — `parent_links`, `app/p/*`, `app/manager/parents/*`, `/api/parent/*`, `/api/manager/parent-links/*` | [docs/PARENTS.md](docs/PARENTS.md) |
 | Rooms / timetable / schedule conflicts | [docs/ROOMS.md](docs/ROOMS.md) |
 | Finance (charges, payments, payroll, expenses) | [docs/FINANCE.md](docs/FINANCE.md) + [docs/FINANCE_DATABASE.md](docs/FINANCE_DATABASE.md) |
+| **Director / buxgalter back-office** — `center_staff`, `app/office/*`, `isCenterOffice`, `requireCenterOffice`, `/api/admin/centers/[id]/staff` | [docs/OFFICE.md](docs/OFFICE.md) |
 | `app/admin/*`, `/api/admin/*`, god-mode | [docs/ADMIN.md](docs/ADMIN.md) |
 | IELTS | [docs/IELTS.md](docs/IELTS.md) |
 | **Teacher design system** — [design.teacher.config.ts](design.teacher.config.ts) switchboard, `components/ui/*`, M3 tokens, restyling `app/teacher/*` | [docs/UI_KIT.md](docs/UI_KIT.md) |
