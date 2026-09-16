@@ -6,6 +6,8 @@ The Edify XP System is designed to reward **mastery**, **consistency (streaks)**
 
 ## 2. XP Scoring Logic
 
+
+
 ### A. Base Question Scores
 Every correct answer awards XP based on the question's difficulty level.
 
