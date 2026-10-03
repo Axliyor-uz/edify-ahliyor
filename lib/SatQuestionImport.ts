@@ -60,31 +60,66 @@ export interface SatImportReport {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
 
-/** Accepts `choices` as `{A:"…"}` or as a plain array `["…","…"]` (→ A,B,C,D). */
+const readLocalizedText = (v: unknown): string => {
+  if (typeof v === 'string') return v.trim();
+  if (v && typeof v === 'object') {
+    const obj = v as Record<string, unknown>;
+    return str(obj.en) || str(obj.uz) || str(obj.ru) || str(obj.uk) || '';
+  }
+  return '';
+};
+
+const readQuestionText = (v: unknown): string => {
+  if (typeof v === 'string') return v.trim();
+  if (v && typeof v === 'object') {
+    const obj = v as Record<string, unknown>;
+    return readLocalizedText(obj.en ?? obj.uz ?? obj.ru ?? obj.uk) || '';
+  }
+  return '';
+};
+
+/** Accepts `options` as `{A:{en:"…"}}` or as a plain array `["…","…"]` (→ A,B,C,D). */
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
-function readChoices(v: unknown): Record<string, string> | null {
+function readOptions(v: unknown): Record<string, { uz?: string; ru?: string; en: string }> | null {
   if (Array.isArray(v)) {
     if (v.length > LETTERS.length) return null;
-    const out: Record<string, string> = {};
-    v.forEach((text, i) => { out[LETTERS[i]] = str(text); });
+    const out: Record<string, { uz?: string; ru?: string; en: string }> = {};
+    v.forEach((text, i) => {
+      out[LETTERS[i]] = { en: readLocalizedText(text) || str(text) };
+    });
     return out;
   }
   if (v && typeof v === 'object') {
-    const out: Record<string, string> = {};
-    for (const [k, text] of Object.entries(v as Record<string, unknown>)) {
-      out[k.trim().toUpperCase()] = str(text);
+    const out: Record<string, { uz?: string; ru?: string; en: string }> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      const letter = k.trim().toUpperCase();
+      const text = typeof val === 'string'
+        ? str(val)
+        : val && typeof val === 'object'
+          ? readLocalizedText((val as Record<string, unknown>).en ?? (val as Record<string, unknown>).uz ?? (val as Record<string, unknown>).ru ?? (val as Record<string, unknown>).uk)
+          : '';
+      if (!text) continue;
+      out[letter] = {
+        uz: str((val as Record<string, unknown>)?.uz) || undefined,
+        ru: str((val as Record<string, unknown>)?.ru) || undefined,
+        en: text,
+      };
     }
-    return out;
+    return Object.keys(out).length > 0 ? out : null;
   }
   return null;
 }
 
 /** Exact-content key, so re-uploading the same file twice in a row is visible. */
-const contentKey = (row: RawRow) => JSON.stringify([
-  str(row.question),
-  str(row.answer).toLowerCase(),
-  Object.entries(readChoices(row.choices) ?? {}).sort(),
-]);
+const contentKey = (row: RawRow) => {
+  const questionText = readQuestionText(row.question) || str(row.question);
+  const options = readOptions(row.options ?? row.choices) ?? {};
+  return JSON.stringify([
+    questionText,
+    str(row.answer).toLowerCase(),
+    Object.entries(options).sort(),
+  ]);
+};
 
 /**
  * Validate ONE row. Returns the built source object, or a human reason string.
@@ -95,7 +130,7 @@ function buildRow(row: RawRow, subject: SatImportSubject): { source: Record<stri
   const subjectNode = findSubject(subject);
   if (!subjectNode) return `unknown subject "${subject}"`;
 
-  const question = str(row.question);
+  const question = readQuestionText(row.question) || str(row.question);
   if (question.length < 3) return 'missing "question"';
 
   const rawType = (str(row.type) || 'mcq').toLowerCase();
@@ -122,22 +157,15 @@ function buildRow(row: RawRow, subject: SatImportSubject): { source: Record<stri
   const answer = str(row.answer);
   if (!answer) return 'missing "answer"';
 
-  const options: Record<string, { uz: string; ru: string; en: string }> = {};
-  let correctValue = answer;
+  const optionsSource = row.options ?? row.choices;
+  const options = readOptions(optionsSource);
+  if (!options) return 'missing "options" (object {"A": {...}} or array)';
+  const keys = Object.keys(options);
+  if (keys.length < 2) return `"options" needs at least 2 entries, got ${keys.length}`;
+  if (keys.some((k) => !options[k]?.en)) return '"options" has an empty entry';
 
-  if (type === 'mcq') {
-    const choices = readChoices(row.choices);
-    if (!choices) return 'missing "choices" (object {"A":…} or array)';
-    const keys = Object.keys(choices);
-    if (keys.length < 2) return `"choices" needs at least 2 entries, got ${keys.length}`;
-    if (keys.some((k) => !choices[k])) return '"choices" has an empty entry';
-    const letter = answer.toUpperCase();
-    if (!(letter in choices)) return `"answer": "${answer}" is not one of its own choices (${keys.join(', ')})`;
-    // Content is English — SAT is an English-language exam, and the runner reads
-    // `.en` for these subjects (docs/SAT_QUIZ.md, the English-only chrome change).
-    for (const [k, text] of Object.entries(choices)) options[k] = { uz: '', ru: '', en: text };
-    correctValue = letter;
-  }
+  const letter = answer.toUpperCase();
+  if (!(letter in options)) return `"answer": "${answer}" is not one of its own options (${keys.join(', ')})`;
 
   const acceptedAnswers = Array.isArray(row.acceptedAnswers)
     ? row.acceptedAnswers.map((a) => str(a)).filter(Boolean)
@@ -146,14 +174,26 @@ function buildRow(row: RawRow, subject: SatImportSubject): { source: Record<stri
     return '"acceptedAnswers" only applies to a "numeric" question';
   }
 
+  const questionObj = typeof row.question === 'object' && row.question !== null
+    ? (row.question as Record<string, unknown>)
+    : { en: question };
+
+  const explanationObj = typeof row.explanation === 'object' && row.explanation !== null
+    ? (row.explanation as Record<string, unknown>)
+    : { en: str(row.explanation) };
+
   const source = {
-    question: { uz: '', ru: '', en: question },
+    question: {
+      uz: readLocalizedText(questionObj.uz) || '',
+      ru: readLocalizedText(questionObj.ru) || '',
+      en: readLocalizedText(questionObj.en) || question,
+    },
     imageUrl: str(row.imageUrl) || null,
     imageStoragePath: null,
 
     type,
     options,
-    correctAnswer: { value: correctValue, acceptedAnswers, caseSensitive: false },
+    correctAnswer: { value: letter, acceptedAnswers, caseSensitive: false },
 
     subject: { id: subject, name: subjectNode.name },
     topic: { id: topic.id, name: topic.name },
@@ -163,9 +203,13 @@ function buildRow(row: RawRow, subject: SatImportSubject): { source: Record<stri
     difficulty: { id: difficultyId, name: difficulty },
     difficultyId,
 
-    explanation: { uz: '', ru: '', en: str(row.explanation) },
+    explanation: {
+      uz: readLocalizedText(explanationObj.uz) || '',
+      ru: readLocalizedText(explanationObj.ru) || '',
+      en: readLocalizedText(explanationObj.en) || '',
+    },
     hint: '',
-    tags: [],
+    tags: Array.isArray(row.tags) ? row.tags.map((t) => str(t)).filter(Boolean) : [],
     curriculum: [],
     language: ['en'],
   };
@@ -243,22 +287,54 @@ export function parseSatImport(text: string, subject: SatImportSubject): SatImpo
  *  the validator above can never describe three different formats. */
 export const SAT_IMPORT_EXAMPLE = `[
   {
-    "question": "If 3x + 5 = 20, what is the value of x?",
-    "type": "mcq",
+    "id": "sat_q001",
+    "topicName": "Expressions",
+    "tags": [
+      "algebra",
+      "ratios",
+      "proportions",
+      "word problems"
+    ],
+    "chapter": "Algebra",
+    "chapterId": "01",
     "topic": "algebra",
     "subtopic": "linear-equations",
-    "difficulty": "easy",
-    "choices": { "A": "3", "B": "5", "C": "7", "D": "15" },
+    "question": {
+      "en": "If 3x + 5 = 20, what is the value of x?"
+    },
+    "options": {
+      "A": { "en": "3" },
+      "B": { "en": "5" },
+      "C": { "en": "7" },
+      "D": { "en": "15" }
+    },
     "answer": "B",
-    "explanation": "3x = 15, so x = 5."
+    "difficulty": "easy",
+    "explanation": {
+      "en": "3x = 15, so x = 5."
+    }
   },
   {
-    "question": "What is the value of 65/4 as a decimal?",
-    "type": "numeric",
+    "id": "sat_q002",
+    "topicName": "Unit Conversion",
+    "tags": ["conversion", "decimals"],
+    "chapter": "Data Analysis",
+    "chapterId": "02",
     "topic": "problem-solving-and-data-analysis",
     "subtopic": "unit-conversion",
+    "question": {
+      "en": "What is the value of 65/4 as a decimal?"
+    },
+    "options": {
+      "A": { "en": "14.25" },
+      "B": { "en": "16.25" },
+      "C": { "en": "18.5" },
+      "D": { "en": "20" }
+    },
+    "answer": "B",
     "difficulty": "medium",
-    "answer": "16.25",
-    "acceptedAnswers": ["65/4"]
+    "explanation": {
+      "en": "65 ÷ 4 = 16.25"
+    }
   }
 ]`;
