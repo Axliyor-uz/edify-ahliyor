@@ -1,0 +1,27 @@
+[
+  {
+    "question": "Your question text here in English",
+    "type": "mcq",
+    "topic": "algebra",
+    "subtopic": "linear-equations",
+    "difficulty": "easy",
+    "choices": {
+      "A": "Option A text",
+      "B": "Option B text",
+      "C": "Option C text",
+      "D": "Option D text"
+    },
+    "answer": "B",
+    "explanation": "Explain why the answer is correct."
+  },
+  {
+    "question": "Your question text here for numeric answer",
+    "type": "numeric",
+    "topic": "problem-solving-and-data-analysis",
+    "subtopic": "unit-conversion",
+    "difficulty": "medium",
+    "answer": "16.25",
+    "acceptedAnswers": ["16.25", "65/4"],
+    "explanation": "Explain the solution."
+  }
+]
