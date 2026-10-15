@@ -23,24 +23,27 @@
  * (`research-organizing-margin-of-error-outliers`).
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, ArrowLeft, Check, CircleAlert, Copy, FileJson, Info, Upload,
+  AlertTriangle, ArrowLeft, Check, ChevronDown, CircleAlert, Copy,
+  FileJson, Info, Pencil, Upload, X,
 } from "lucide-react";
-import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import { useAuth } from "@/lib/AuthContext";
 import { db } from "@/lib/firebase";
 import { toQuestionV1 } from "@/lib/questionSchema";
-import { findSubject } from "@/lib/questionTopics";
+import { findSubject, findTopic, findSubtopic } from "@/lib/questionTopics";
 import { SAT_MATH_TAXONOMY_SLUG, SAT_RW_TAXONOMY_SLUG } from "@/lib/SatMathQuiz";
 import {
   MAX_IMPORT_ROWS, SAT_IMPORT_EXAMPLE, parseSatImport,
-  type SatImportReport, type SatImportSubject,
+  allowedTypesFor,
+  type SatImportReport, type SatImportOk, type SatImportError, type SatImportSubject,
 } from "@/lib/SatQuestionImport";
 import { Banner, Button, Card, IconButton, PageHeader, Switch, cn } from "@/components/ui";
+import { DIFFICULTY_LEVELS, type DifficultyName } from "@/types/question";
 import type { QuestionV1 } from "@/types/question";
 
 /** Firestore's own hard cap on one batch. */
@@ -63,6 +66,7 @@ const TR = {
     invalid: "xato",
     dupes: "takror (o'tkazib yuborildi)",
     errorsTitle: "Qabul qilinmagan qatorlar",
+    errorsFix: "Quyidagi qatorlarda xato bor — to'g'rilang va import qiling.",
     row: "qator",
     preview: "Ko'rib chiqish",
     share: "Boshqa o'qituvchilarga ham ko'rinsin",
@@ -74,6 +78,14 @@ const TR = {
     nothing: "Qo'shiladigan savol yo'q.",
     back: "Orqaga",
     reviewNote: "Import qilingan savollar «review» holatida saqlanadi — bazangizda ko'rinadi va testga qo'shsa bo'ladi.",
+    fixAnswer: "Javob",
+    fixTopic: "Mavzu",
+    fixSubtopic: "Bo'lim",
+    fixDifficulty: "Daraja",
+    fixApply: "Tasdiqlash",
+    promoted: "To'g'rilandi ✓",
+    selectPlaceholder: "— tanlang —",
+    noTopicFirst: "Avval mavzu tanlang",
   },
   ru: {
     title: "Импорт вопросов SAT",
@@ -91,6 +103,7 @@ const TR = {
     invalid: "с ошибкой",
     dupes: "дубликаты (пропущены)",
     errorsTitle: "Непринятые строки",
+    errorsFix: "В следующих строках ошибки — исправьте и импортируйте.",
     row: "строка",
     preview: "Предпросмотр",
     share: "Показывать другим учителям",
@@ -102,6 +115,14 @@ const TR = {
     nothing: "Нет вопросов для добавления.",
     back: "Назад",
     reviewNote: "Импортированные вопросы сохраняются со статусом «review» — они видны в вашей базе и их можно добавить в тест.",
+    fixAnswer: "Ответ",
+    fixTopic: "Тема",
+    fixSubtopic: "Раздел",
+    fixDifficulty: "Сложность",
+    fixApply: "Применить",
+    promoted: "Исправлено ✓",
+    selectPlaceholder: "— выберите —",
+    noTopicFirst: "Сначала выберите тему",
   },
   en: {
     title: "SAT question import",
@@ -119,6 +140,7 @@ const TR = {
     invalid: "rejected",
     dupes: "duplicates (skipped)",
     errorsTitle: "Rejected rows",
+    errorsFix: "The rows below have errors — fix them and import.",
     row: "row",
     preview: "Preview",
     share: "Show to other teachers too",
@@ -130,8 +152,326 @@ const TR = {
     nothing: "Nothing to add.",
     back: "Back",
     reviewNote: "Imported questions are saved with status \"review\" — they show in your bank and can be added to a test.",
+    fixAnswer: "Answer",
+    fixTopic: "Topic",
+    fixSubtopic: "Subtopic",
+    fixDifficulty: "Difficulty",
+    fixApply: "Apply fix",
+    promoted: "Fixed ✓",
+    selectPlaceholder: "— select —",
+    noTopicFirst: "Select a topic first",
   },
 } as const;
+
+// ─── error-kind classifier ────────────────────────────────────────────────────
+
+type ErrorKind =
+  | "missing_answer"
+  | "wrong_answer"
+  | "missing_choices"
+  | "unknown_topic"
+  | "unknown_subtopic"
+  | "unknown_difficulty"
+  | "other";
+
+function classifyError(reason: string): ErrorKind {
+  if (reason.includes('missing "answer"')) return "missing_answer";
+  if (reason.includes('"answer":') && reason.includes("not one of")) return "wrong_answer";
+  if (reason.includes('"choices"')) return "missing_choices";
+  if (reason.includes('unknown "topic"')) return "unknown_topic";
+  if (reason.includes('unknown "subtopic"')) return "unknown_subtopic";
+  if (reason.includes('unknown "difficulty"')) return "unknown_difficulty";
+  return "other";
+}
+
+// ─── FixableRow component ─────────────────────────────────────────────────────
+
+type TrLabels = typeof TR[keyof typeof TR];
+
+interface FixableRowProps {
+  error: SatImportError;
+  subject: SatImportSubject;
+  labels: TrLabels;
+  onFixed: (idx: number, ok: SatImportOk) => void;
+  onDismiss: (idx: number) => void;
+}
+
+function FixableRow({ error, subject, labels: t, onFixed, onDismiss }: FixableRowProps) {
+  const kind = classifyError(error.reason);
+  const subjectNode = findSubject(subject);
+  const allowedTypes = allowedTypesFor(subject);
+  const raw = error.raw;
+
+  // Seed from the original raw row so valid fields are pre-populated.
+  const rawTopicId = typeof raw.topic === "string" ? raw.topic : "";
+  const rawSubtopicId = typeof raw.subtopic === "string" ? raw.subtopic : "";
+  const rawDifficulty = typeof raw.difficulty === "string" ? raw.difficulty.toLowerCase() : "medium";
+  const rawAnswer = typeof raw.answer === "string" ? raw.answer : "";
+  const rawType = (typeof raw.type === "string" ? raw.type.toLowerCase() : allowedTypes[0]) as "mcq" | "numeric";
+
+  const [topic, setTopic] = useState(rawTopicId);
+  const [subtopic, setSubtopic] = useState(rawSubtopicId);
+  const [difficulty, setDifficulty] = useState<DifficultyName>(
+    DIFFICULTY_LEVELS.includes(rawDifficulty as DifficultyName) ? (rawDifficulty as DifficultyName) : "medium",
+  );
+  const [answer, setAnswer] = useState(rawAnswer);
+  const [validationErr, setValidationErr] = useState("");
+  const [promoted, setPromoted] = useState(false);
+
+  const topics = subjectNode?.topics ?? [];
+  const subtopics = useMemo(
+    () => topics.find((tp) => tp.id === topic)?.subtopics ?? [],
+    [topics, topic],
+  );
+
+  const apply = () => {
+    setValidationErr("");
+
+    const effectiveAnswer = answer.trim() || rawAnswer;
+
+    if (kind === "unknown_topic" || kind === "unknown_subtopic") {
+      if (!topic) { setValidationErr(t.fixTopic + " tanlang"); return; }
+      if (!subtopic) { setValidationErr(t.fixSubtopic + " tanlang"); return; }
+    }
+
+    if (kind === "missing_answer" || kind === "wrong_answer") {
+      if (!effectiveAnswer) { setValidationErr(t.fixAnswer + " kiriting"); return; }
+    }
+
+    const resolvedSubjectNode = findSubject(subject);
+    const resolvedTopic = findTopic(subject, topic);
+    const resolvedSubtopic = findSubtopic(subject, topic, subtopic);
+
+    if (!resolvedSubjectNode) { setValidationErr("Subject not found"); return; }
+    if (!resolvedTopic) { setValidationErr(`Unknown topic: "${topic}"`); return; }
+    if (!resolvedSubtopic) { setValidationErr(`Unknown subtopic: "${subtopic}"`); return; }
+
+    // Rebuild choices from the original raw row (MCQ only)
+    const effectiveType = allowedTypes.includes(rawType) ? rawType : allowedTypes[0];
+    const options: Record<string, { uz: string; ru: string; en: string }> = {};
+    if (effectiveType === "mcq" && raw.choices) {
+      if (Array.isArray(raw.choices)) {
+        ["A", "B", "C", "D", "E", "F"].slice(0, (raw.choices as unknown[]).length).forEach((letter, i) => {
+          options[letter] = { uz: "", ru: "", en: String((raw.choices as unknown[])[i] ?? "") };
+        });
+      } else if (typeof raw.choices === "object") {
+        for (const [k, v] of Object.entries(raw.choices as Record<string, unknown>)) {
+          options[k.toUpperCase()] = { uz: "", ru: "", en: String(v ?? "") };
+        }
+      }
+    }
+
+    const correctValue = effectiveType === "mcq" ? effectiveAnswer.toUpperCase() : effectiveAnswer;
+    const diffId = DIFFICULTY_LEVELS.indexOf(difficulty) + 1;
+
+    const questionText = typeof raw.question === "string" ? raw.question : `Row ${error.index + 1} (corrected)`;
+    const flat = questionText.replace(/\s+/g, " ");
+    const preview = flat.length > 120 ? `${flat.slice(0, 120)}…` : flat;
+
+    const ok: SatImportOk = {
+      index: error.index,
+      preview,
+      type: effectiveType,
+      topicName: resolvedTopic.name,
+      subtopicName: resolvedSubtopic.name,
+      difficulty,
+      source: {
+        question: { uz: "", ru: "", en: questionText },
+        imageUrl: typeof raw.imageUrl === "string" ? raw.imageUrl : null,
+        imageStoragePath: null,
+        type: effectiveType,
+        options,
+        correctAnswer: {
+          value: correctValue,
+          acceptedAnswers: Array.isArray(raw.acceptedAnswers)
+            ? (raw.acceptedAnswers as unknown[]).map(String).filter(Boolean)
+            : [],
+          caseSensitive: false,
+        },
+        subject: { id: subject, name: resolvedSubjectNode.name },
+        topic: { id: resolvedTopic.id, name: resolvedTopic.name },
+        subtopic: { id: resolvedSubtopic.id, name: resolvedSubtopic.name },
+        chapter: { id: "", name: "" },
+        difficulty: { id: diffId, name: difficulty },
+        difficultyId: diffId,
+        explanation: {
+          uz: "", ru: "",
+          en: typeof raw.explanation === "string" ? raw.explanation : "",
+        },
+        hint: "",
+        tags: [],
+        curriculum: [],
+        language: ["en"],
+      },
+    };
+
+    setPromoted(true);
+    setTimeout(() => onFixed(error.index, ok), 700);
+  };
+
+  if (promoted) {
+    return (
+      <li className="flex items-center gap-2 rounded-m3-md border border-success/30 bg-success-container/20 px-3 py-2.5 text-[12px] font-bold text-on-success-container">
+        <Check size={13} className="flex-none text-success" />
+        {t.row} {error.index + 1}: {t.promoted}
+      </li>
+    );
+  }
+
+  const isFixable = kind !== "other";
+
+  return (
+    <li className="overflow-hidden rounded-m3-md border border-error/25 bg-surface-container">
+      {/* ── row header ── */}
+      <div className="flex items-start justify-between gap-2 border-b border-error/15 bg-error-container/20 px-3 py-2.5">
+        <div className="flex items-start gap-1.5">
+          <CircleAlert size={13} className="mt-0.5 flex-none text-error" />
+          <div>
+            <span className="text-[12px] font-black text-on-surface">{t.row} {error.index + 1}</span>
+            <p className="mt-0.5 font-mono text-[10.5px] font-medium text-error">{error.reason}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => onDismiss(error.index)}
+          title="Dismiss"
+          className="flex-none rounded-full p-0.5 text-on-surface-variant/50 transition hover:bg-error/10 hover:text-error"
+        >
+          <X size={13} />
+        </button>
+      </div>
+
+      {/* ── editable fields ── */}
+      {isFixable && (
+        <div className="flex flex-wrap items-end gap-3 px-3 py-2.5">
+
+          {/* topic + subtopic */}
+          {(kind === "unknown_topic" || kind === "unknown_subtopic") && (
+            <>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                  {t.fixTopic}
+                </label>
+                <div className="relative">
+                  <select
+                    value={topic}
+                    onChange={(e) => { setTopic(e.target.value); setSubtopic(""); setValidationErr(""); }}
+                    className={cn(
+                      "appearance-none rounded-m3-sm border py-1.5 pl-2.5 pr-7 text-[12px] font-medium",
+                      "bg-surface-container-highest text-on-surface outline-none",
+                      "focus:border-primary focus:ring-1 focus:ring-primary/25 transition",
+                      !topic ? "border-error/70" : "border-outline-variant",
+                    )}
+                  >
+                    <option value="">{t.selectPlaceholder}</option>
+                    {topics.map((tp) => (
+                      <option key={tp.id} value={tp.id}>{tp.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+                </div>
+                {topic && (
+                  <span className="font-mono text-[9.5px] text-on-surface-variant/60">{topic}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                  {t.fixSubtopic}
+                </label>
+                <div className="relative">
+                  <select
+                    value={subtopic}
+                    onChange={(e) => { setSubtopic(e.target.value); setValidationErr(""); }}
+                    disabled={!topic}
+                    className={cn(
+                      "appearance-none rounded-m3-sm border py-1.5 pl-2.5 pr-7 text-[12px] font-medium",
+                      "bg-surface-container-highest text-on-surface outline-none",
+                      "focus:border-primary focus:ring-1 focus:ring-primary/25 transition",
+                      "disabled:opacity-40",
+                      !subtopic && topic ? "border-error/70" : "border-outline-variant",
+                    )}
+                  >
+                    <option value="">{!topic ? t.noTopicFirst : t.selectPlaceholder}</option>
+                    {subtopics.map((st) => (
+                      <option key={st.id} value={st.id}>{st.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+                </div>
+                {subtopic && (
+                  <span className="font-mono text-[9.5px] text-on-surface-variant/60">{subtopic}</span>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* difficulty */}
+          {kind === "unknown_difficulty" && (
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                {t.fixDifficulty}
+              </label>
+              <div className="relative">
+                <select
+                  value={difficulty}
+                  onChange={(e) => { setDifficulty(e.target.value as DifficultyName); setValidationErr(""); }}
+                  className={cn(
+                    "appearance-none rounded-m3-sm border border-error/70 py-1.5 pl-2.5 pr-7 text-[12px] font-medium",
+                    "bg-surface-container-highest text-on-surface outline-none",
+                    "focus:border-primary focus:ring-1 focus:ring-primary/25 transition",
+                  )}
+                >
+                  {DIFFICULTY_LEVELS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              </div>
+            </div>
+          )}
+
+          {/* answer */}
+          {(kind === "missing_answer" || kind === "wrong_answer") && (
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                {t.fixAnswer}
+              </label>
+              <input
+                type="text"
+                value={answer}
+                onChange={(e) => { setAnswer(e.target.value); setValidationErr(""); }}
+                placeholder={allowedTypes.includes("mcq") ? "A / B / C / D" : "16.25"}
+                className={cn(
+                  "w-28 rounded-m3-sm border px-2.5 py-1.5 text-[12px] font-medium",
+                  "bg-surface-container-highest text-on-surface outline-none",
+                  "focus:border-primary focus:ring-1 focus:ring-primary/25 transition",
+                  !answer.trim() ? "border-error/70" : "border-outline-variant",
+                )}
+              />
+            </div>
+          )}
+
+          {validationErr && (
+            <p className="w-full text-[11px] font-bold text-error">{validationErr}</p>
+          )}
+
+          <button
+            onClick={apply}
+            className={cn(
+              "flex items-center gap-1.5 self-end rounded-m3-sm bg-primary px-3 py-1.5",
+              "text-[11.5px] font-bold text-on-primary transition-all hover:opacity-90 active:scale-[0.97]",
+            )}
+          >
+            <Pencil size={11} />
+            {t.fixApply}
+          </button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+// ─── main page ────────────────────────────────────────────────────────────────
 
 export default function SatImportPage() {
   const router = useRouter();
@@ -142,6 +482,10 @@ export default function SatImportPage() {
   const [subject, setSubject] = useState<SatImportSubject>(SAT_MATH_TAXONOMY_SLUG);
   const [fileName, setFileName] = useState("");
   const [report, setReport] = useState<SatImportReport | null>(null);
+  /** Extra ok rows promoted from the error-fix flow */
+  const [fixedRows, setFixedRows] = useState<SatImportOk[]>([]);
+  /** Indices that were either fixed or dismissed — hidden from the error list */
+  const [dismissedErrors, setDismissedErrors] = useState<Set<number>>(new Set());
   const [share, setShare] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<number | null>(null);
@@ -156,6 +500,8 @@ export default function SatImportPage() {
     setFileName("");
     setSaved(null);
     setError("");
+    setFixedRows([]);
+    setDismissedErrors(new Set());
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -163,17 +509,38 @@ export default function SatImportPage() {
     if (!file) return;
     setSaved(null);
     setError("");
+    setFixedRows([]);
+    setDismissedErrors(new Set());
     setFileName(file.name);
     setReport(parseSatImport(await file.text(), subject));
   };
 
+  const handleFixed = useCallback((idx: number, ok: SatImportOk) => {
+    setFixedRows((prev) => [...prev.filter((r) => r.index !== idx), ok]);
+    setDismissedErrors((prev) => new Set([...prev, idx]));
+  }, []);
+
+  const handleDismiss = useCallback((idx: number) => {
+    setDismissedErrors((prev) => new Set([...prev, idx]));
+  }, []);
+
+  const visibleErrors = useMemo(
+    () => (report?.errors ?? []).filter((e) => !dismissedErrors.has(e.index)),
+    [report, dismissedErrors],
+  );
+
+  const allOkRows = useMemo(
+    () => [...(report?.ok ?? []), ...fixedRows].sort((a, b) => a.index - b.index),
+    [report, fixedRows],
+  );
+
   const runImport = async () => {
-    if (!user || !report || report.ok.length === 0) return;
+    if (!user || allOkRows.length === 0) return;
     setSaving(true);
     setError("");
     try {
       const creatorName = user.displayName || "";
-      const rows = report.ok;
+      const rows = allOkRows;
 
       // Chunked at Firestore's own 500-write batch cap. Each chunk commits on
       // its own: a later chunk failing leaves the earlier ones written, which
@@ -183,7 +550,7 @@ export default function SatImportPage() {
       for (let start = 0; start < rows.length; start += BATCH_LIMIT) {
         const batch = writeBatch(db);
         for (const row of rows.slice(start, start + BATCH_LIMIT)) {
-          const ref = doc(db, "teacher_questions");
+          const ref = doc(collection(db, "teacher_questions"));
           const id = `tq_${ref.id}`;
           const payload: QuestionV1 = toQuestionV1(row.source, {
             id,
@@ -207,6 +574,8 @@ export default function SatImportPage() {
       setSaved(written);
       setReport(null);
       setFileName("");
+      setFixedRows([]);
+      setDismissedErrors(new Set());
       if (fileRef.current) fileRef.current.value = "";
     } catch (e) {
       console.error("SAT import failed:", e);
@@ -314,13 +683,14 @@ export default function SatImportPage() {
 
         {report && !report.fatal && (
           <>
+            {/* ── summary badges ── */}
             <div className="flex flex-wrap gap-2 text-[11.5px] font-bold">
               <span className="rounded-m3-xs bg-success-container px-2.5 py-1 text-on-success-container">
-                {report.ok.length} {t.valid}
+                {allOkRows.length} {t.valid}
               </span>
-              {report.errors.length > 0 && (
+              {visibleErrors.length > 0 && (
                 <span className="rounded-m3-xs bg-error-container px-2.5 py-1 text-on-error-container">
-                  {report.errors.length} {t.invalid}
+                  {visibleErrors.length} {t.invalid}
                 </span>
               )}
               {report.duplicates > 0 && (
@@ -330,28 +700,39 @@ export default function SatImportPage() {
               )}
             </div>
 
-            {report.errors.length > 0 && (
-              <div className="rounded-m3-md border border-error/40 bg-error-container/30 p-3">
-                <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-black text-on-surface">
-                  <CircleAlert size={14} className="text-error" /> {t.errorsTitle}
-                </p>
-                <ul className="flex max-h-56 flex-col gap-1 overflow-y-auto">
-                  {report.errors.map((e) => (
-                    <li key={e.index} className="text-[11.5px] font-medium text-on-surface-variant">
-                      <span className="font-bold text-on-surface">{t.row} {e.index + 1}:</span> {e.reason}
-                    </li>
+            {/* ── editable rejected rows ── */}
+            {visibleErrors.length > 0 && (
+              <div className="rounded-m3-md border border-error/30 bg-error-container/10 p-3">
+                <div className="mb-2.5 flex items-start gap-1.5">
+                  <CircleAlert size={14} className="mt-0.5 flex-none text-error" />
+                  <div>
+                    <p className="text-[12px] font-black text-on-surface">{t.errorsTitle}</p>
+                    <p className="text-[11px] font-medium text-on-surface-variant">{t.errorsFix}</p>
+                  </div>
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {visibleErrors.map((e) => (
+                    <FixableRow
+                      key={e.index}
+                      error={e}
+                      subject={subject}
+                      labels={t}
+                      onFixed={handleFixed}
+                      onDismiss={handleDismiss}
+                    />
                   ))}
                 </ul>
               </div>
             )}
 
-            {report.ok.length > 0 && (
+            {/* ── ok preview ── */}
+            {allOkRows.length > 0 && (
               <div className="rounded-m3-md border border-outline-variant">
                 <p className="border-b border-outline-variant px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
                   {t.preview}
                 </p>
                 <ul className="flex max-h-72 flex-col divide-y divide-outline-variant overflow-y-auto">
-                  {report.ok.slice(0, 50).map((r) => (
+                  {allOkRows.slice(0, 50).map((r) => (
                     <li key={r.index} className="px-3 py-2">
                       <p className="text-[12px] font-medium text-on-surface">{r.preview}</p>
                       <p className="mt-0.5 text-[10.5px] font-bold uppercase tracking-wide text-on-surface-variant">
@@ -367,7 +748,7 @@ export default function SatImportPage() {
       </Card>
 
       {/* ── share + commit ──────────────────────────────────────────────── */}
-      {report && !report.fatal && report.ok.length > 0 && (
+      {report && !report.fatal && allOkRows.length > 0 && (
         <Card className="flex flex-col gap-3 p-4">
           <label className="flex items-start gap-3">
             <Switch checked={share} onChange={(e) => setShare(e.target.checked)} />
@@ -384,7 +765,7 @@ export default function SatImportPage() {
           {error && <Banner tone="error" title={error} />}
 
           <Button icon={<Upload />} loading={saving} onClick={runImport}>
-            {saving ? t.importing : t.importBtn(report.ok.length)}
+            {saving ? t.importing : t.importBtn(allOkRows.length)}
           </Button>
         </Card>
       )}
