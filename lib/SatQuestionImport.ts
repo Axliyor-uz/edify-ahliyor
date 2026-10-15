@@ -46,6 +46,8 @@ export interface SatImportOk {
 export interface SatImportError {
   index: number;
   reason: string;
+  /** The original raw row object — lets the fix UI seed valid fields. */
+  raw: Record<string, unknown>;
 }
 
 export interface SatImportReport {
@@ -266,7 +268,7 @@ export function parseSatImport(text: string, subject: SatImportSubject): SatImpo
 
   rows.forEach((raw, index) => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-      errors.push({ index, reason: 'not a JSON object' });
+      errors.push({ index, reason: 'not a JSON object', raw: {} });
       return;
     }
     const row = raw as RawRow;
@@ -276,7 +278,7 @@ export function parseSatImport(text: string, subject: SatImportSubject): SatImpo
     seen.add(key);
 
     const built = buildRow(row, subject);
-    if (typeof built === 'string') { errors.push({ index, reason: built }); return; }
+    if (typeof built === 'string') { errors.push({ index, reason: built, raw: row }); return; }
     ok.push({ index, source: built.source, ...built.meta });
   });
 
