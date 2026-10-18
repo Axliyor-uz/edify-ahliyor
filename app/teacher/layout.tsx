@@ -24,7 +24,7 @@ import {
   LayoutDashboard, Users, FilePlus, FolderOpen, Library,
   Sparkles, Settings, LogOut, Menu, X, Bell,
   Zap, BookOpen, UserIcon, CreditCard, PanelLeft, MoreVertical,
-  MoreHorizontal, Sun, Moon, Monitor, Globe, BadgeCheck, Building2, GraduationCap,
+  MoreHorizontal, Plus, Sun, Moon, Monitor, Globe, BadgeCheck, Building2, GraduationCap, Gamepad2,
 } from 'lucide-react';
 import { useTeacherCenter } from '@/hooks/useTeacherCenter';
 
@@ -54,32 +54,35 @@ const LANG_STORAGE_KEY = 'edify-teacher-lang';
 const LAYOUT_TRANSLATIONS = {
   uz: {
     brandSubtitle: "O'QITUVCHI PORTALI",
-    menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", notifications: "Bildirishnomalar", subscription: "Obuna", profile: "Profil", ielts: "IELTS Moduli", milliy: "Milliy sertifikat", sat: "SAT", center: "Markazim" },
+    menu: { overview: "Boshqaruv", library: "Mening kutubxonam", classes: "Sinflar", onlineLibrary: "Onlayn Kitoblar", analytics: "Tahlillar", notifications: "Bildirishnomalar", subscription: "Obuna", profile: "Profil", ielts: "IELTS Moduli", milliy: "Milliy sertifikat", sat: "SAT", center: "Markazim", games: "O'yinlar" },
     menuShort: { library: "Kutubxonam", onlineLibrary: "Kitoblar", notifications: "Xabarlar", milliy: "Milliy", sat: "SAT" },
     bottom: { home: "Boshqaruv", create: "Yaratish", classes: "Sinflar", library: "Kutubxona", menu: "Menyu" },
-    create: "Yangi Test", signOut: "Chiqish", settings: "Sozlamalar", more: "Yana",
+    soon: "Tez kunda", create: "Yangi Test", signOut: "Chiqish", settings: "Sozlamalar", more: "Yana",
     theme: { label: "Mavzu", light: "Yorug'", system: "Tizim", dark: "Tun" },
-    aiLimit: { title: "Oylik AI Balans", upgrade: "Kredit Olish", used: "ishlatildi", unlimited: "Cheksiz", renews: "Yangilanadi" },
+    groups: { main: "Asosiy", exams: "Imtihonlar", resources: "Resurslar" },
+    aiLimit: { short: "AI kreditlar", title: "Oylik AI Balans", upgrade: "Kredit Olish", used: "ishlatildi", unlimited: "Cheksiz", renews: "Yangilanadi" },
     logoutConfirm: { title: "Tizimdan chiqish", desc: "Haqiqatan ham hisobingizdan chiqmoqchimisiz?", cancel: "Bekor qilish", confirm: "Chiqish" }
   },
   en: {
     brandSubtitle: "INSTRUCTOR PORTAL",
-    menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", notifications: "Notifications", subscription: "Subscription", profile: "Profile", ielts: "IELTS Module", milliy: "Milliy sertifikat", sat: "SAT", center: "My Center" },
+    menu: { overview: "Dashboard", library: "Library", classes: "Classes", onlineLibrary: "Online Books", analytics: "Analytics", notifications: "Notifications", subscription: "Subscription", profile: "Profile", ielts: "IELTS Module", milliy: "Milliy sertifikat", sat: "SAT", center: "My Center", games: "Games" },
     menuShort: { library: "Library", onlineLibrary: "Books", notifications: "Alerts", milliy: "Milliy", sat: "SAT" },
     bottom: { home: "Home", create: "Create", classes: "Classes", library: "Library", menu: "Menu" },
-    create: "New Test", signOut: "Sign Out", settings: "Settings", more: "More",
+    soon: "Soon", create: "New Test", signOut: "Sign Out", settings: "Settings", more: "More",
     theme: { label: "Theme", light: "Light", system: "System", dark: "Dark" },
-    aiLimit: { title: "Monthly AI Balance", upgrade: "Buy Credits", used: "used", unlimited: "Unlimited", renews: "Renews" },
+    groups: { main: "Main", exams: "Exams", resources: "Resources" },
+    aiLimit: { short: "AI credits", title: "Monthly AI Balance", upgrade: "Buy Credits", used: "used", unlimited: "Unlimited", renews: "Renews" },
     logoutConfirm: { title: "Sign Out", desc: "Are you sure you want to sign out of your account?", cancel: "Cancel", confirm: "Sign Out" }
   },
   ru: {
     brandSubtitle: "ПОРТАЛ УЧИТЕЛЯ",
-    menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", notifications: "Уведомления", subscription: "Подписка", profile: "Профиль", ielts: "Модуль IELTS", milliy: "Milliy sertifikat", sat: "SAT", center: "Мой центр" },
+    menu: { overview: "Обзор", library: "Библиотека", classes: "Классы", onlineLibrary: "Онлайн Книги", analytics: "Аналитика", notifications: "Уведомления", subscription: "Подписка", profile: "Профиль", ielts: "Модуль IELTS", milliy: "Milliy sertifikat", sat: "SAT", center: "Мой центр", games: "Игры" },
     menuShort: { library: "Библиотека", onlineLibrary: "Книги", notifications: "Инбокс", milliy: "Milliy", sat: "SAT" },
     bottom: { home: "Обзор", create: "Создать", classes: "Классы", library: "Книги", menu: "Меню" },
-    create: "Новый Тест", signOut: "Выйти", settings: "Настройки", more: "Ещё",
+    soon: "Скоро", create: "Новый Тест", signOut: "Выйти", settings: "Настройки", more: "Ещё",
     theme: { label: "Тема", light: "День", system: "Система", dark: "Ночь" },
-    aiLimit: { title: "Месячный баланс ИИ", upgrade: "Купить кредиты", used: "использовано", unlimited: "Безлимит", renews: "Обновится" },
+    groups: { main: "Главное", exams: "Экзамены", resources: "Ресурсы" },
+    aiLimit: { short: "ИИ кредиты", title: "Месячный баланс ИИ", upgrade: "Купить кредиты", used: "использовано", unlimited: "Безлимит", renews: "Обновится" },
     logoutConfirm: { title: "Выход", desc: "Вы уверены, что хотите выйти из аккаунта?", cancel: "Отмена", confirm: "Выйти" }
   }
 };
@@ -179,6 +182,8 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isAiMenuOpen, setIsAiMenuOpen] = useState(false);
+  // A dead photoURL (expired Google avatar, deleted file) falls back to initials.
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   const [lang, setLangState] = useState<LangType>('uz');
@@ -288,7 +293,7 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const navItems: { name: string; href: string; icon: typeof LayoutDashboard; isAI?: boolean; tourId?: string; short?: string }[] = [
+  const navItems: { name: string; href: string; icon: typeof LayoutDashboard; isAI?: boolean; soon?: boolean; tourId?: string; short?: string }[] = [
     { name: t.menu.overview, href: '/teacher/dashboard', icon: LayoutDashboard },
     { name: t.create, href: '/teacher/create', icon: FilePlus, isAI: true },
     { name: t.menu.classes, href: '/teacher/classes', icon: Users, tourId: 'tour-sidebar-classes' },
@@ -307,6 +312,10 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
     { name: t.menu.library, href: '/teacher/library', icon: FolderOpen, short: t.menuShort.library },
     { name: t.menu.onlineLibrary, href: '/teacher/online-books', icon: Library, tourId: 'tour-sidebar-online-books', short: t.menuShort.onlineLibrary },
     { name: t.menu.analytics, href: '/teacher/analytics', icon: Sparkles, isAI: true },
+    // Classroom games (docs/GAMES.md). Kept late in the list: the topbar
+    // shell inlines navItems.slice(0, 5), so an early insert would push an
+    // existing destination behind "More".
+    { name: t.menu.games, href: '/teacher/games', icon: Gamepad2 },
     { name: t.menu.notifications, href: '/teacher/notifications', icon: Bell, short: t.menuShort.notifications },
     // { name: t.menu.subscription, href: '/teacher/subscription', icon: CreditCard }, // deliberately hidden — reachable via AI-balance widget
     { name: t.settings, href: '/teacher/settings', icon: Settings },
@@ -316,6 +325,16 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
   // Toolbar shell shows every destination on its own nav row instead.
   const topbarPrimary = navItems.slice(0, 5);
   const topbarOverflow = navItems.slice(5);
+
+  // Side shells render the nav grouped, with "New test" promoted to a CTA
+  // button and Settings left to the profile menu. Top shells keep the flat
+  // navItems list above (their own overflow logic depends on its order).
+  const navByHref = (href: string) => navItems.find((i) => i.href === href);
+  const sideGroups = [
+    { label: t.groups.main, items: ['/teacher/dashboard', '/teacher/classes', '/teacher/center', '/teacher/games', '/teacher/analytics', '/teacher/notifications'] },
+    { label: t.groups.exams, items: ['/teacher/milliy-sertifikat', '/teacher/sat', '/teacher/ielts'] },
+    { label: t.groups.resources, items: ['/teacher/library', '/teacher/online-books'] },
+  ].map((g) => ({ label: g.label, items: g.items.map(navByHref).filter((i): i is (typeof navItems)[number] => !!i) }));
 
   const isActive = (href: string) => pathname === href || (href !== '/teacher/dashboard' && pathname.startsWith(href));
 
@@ -403,7 +422,9 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
 
   const avatar = (size: string, text: string) => (
     <span className={cn("rounded-m3-sm bg-primary text-on-primary flex items-center justify-center font-bold overflow-hidden shrink-0 shadow-elev-1", size, text)}>
-      {user?.photoURL ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" /> : user?.displayName?.[0]}
+      {user?.photoURL && !avatarFailed
+        ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" onError={() => setAvatarFailed(true)} className="w-full h-full object-cover" />
+        : (user?.displayName?.[0] || user?.email?.[0] || '?').toUpperCase()}
     </span>
   );
 
@@ -419,7 +440,7 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
           transition={springTransition}
           className={cn(
             "absolute", STYLE.indicatorCls,
-            collapsed ? "top-1.5 inset-x-0 mx-auto w-[52px] h-[30px] rounded-full" : "inset-0 rounded-full",
+            collapsed ? "top-1.5 inset-x-0 mx-auto w-[52px] h-[30px] rounded-full" : cn("inset-0", STYLE.itemShape),
           )}
         />
       );
@@ -431,7 +452,7 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
           transition={springTransition}
           className={cn(
             "absolute left-0 w-1 rounded-r-full", STYLE.indicatorCls,
-            collapsed ? "top-[16px] h-6" : "top-[13px] h-5",
+            collapsed ? "top-[16px] h-6" : "top-[10px] h-5",
           )}
         />
       );
@@ -443,7 +464,7 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
         transition={springTransition}
         className={cn(
           "absolute w-1.5 h-1.5 rounded-full", STYLE.indicatorCls,
-          collapsed ? "left-2 top-[25px]" : "left-1.5 top-[20px]",
+          collapsed ? "left-2 top-[25px]" : "left-1.5 top-[17px]",
         )}
       />
     );
@@ -451,7 +472,7 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
 
   // --- SIDEBAR CONTENT (desktop side shells + mobile slide-out drawer) ---
   const renderSidebarContent = (collapsed: boolean, isMobile: boolean = false) => (
-    <div className={cn("flex flex-col h-full relative", SHELL === 'floating' && !isMobile ? "bg-transparent" : isMobile ? DRAWER_BG : STYLE.bg)}>
+    <div className={cn("flex flex-col w-full min-w-0 h-full relative", SHELL === 'floating' && !isMobile ? "bg-transparent" : isMobile ? DRAWER_BG : STYLE.bg)}>
 
       {/* Header: brand + rail toggle */}
       <div className={cn("flex items-center gap-2.5 px-3.5 pt-4 pb-2 shrink-0 min-h-[64px]", collapsed && "flex-col gap-2 px-0 justify-center")}>
@@ -480,40 +501,69 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
         ) : null}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-2.5 py-2 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-        {navItems.map((item) => {
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-tour={item.tourId}
-              title={collapsed ? item.name : undefined}
-              onClick={() => isMobile && setMobileMenuOpen(false)}
-              className={cn(
-                "group relative flex items-center transition-all",
-                collapsed
-                  ? "flex-col justify-center gap-[3px] h-[56px] rounded-m3-md px-1"
-                  : cn("gap-3 h-[46px] px-3.5", STYLE.itemShape, STYLE.indicator === 'bar' && "pl-4"),
-                active ? cn(STYLE.active, STYLE.activeRowBg) : STYLE.idle,
-              )}
-            >
-              {active && navIndicator(collapsed, isMobile)}
-              <item.icon size={collapsed ? 20 : 19} strokeWidth={active ? 2.4 : 2} className={cn("shrink-0 relative z-10", active && STYLE.iconActive)} />
-              <span className={cn(
-                "relative z-10 truncate",
-                collapsed ? "text-[9.5px] font-semibold max-w-full px-0.5" : "flex-1 text-[13.5px] font-medium",
-                active && "font-bold",
-              )}>
-                {collapsed ? (item.short || item.name) : item.name}
-              </span>
-              {item.isAI && !collapsed && (
-                <span className="relative z-10 bg-primary-container text-on-primary-container text-[8.5px] px-1.5 py-[2px] rounded-m3-xs uppercase font-bold tracking-wider shrink-0">AI</span>
-              )}
-            </Link>
-          );
-        })}
+      {/* Primary action: New test */}
+      <div className={cn("shrink-0 pt-1 pb-2", collapsed ? "px-2" : "px-3")}>
+        <Link
+          href="/teacher/create"
+          title={collapsed ? t.create : undefined}
+          aria-label={t.create}
+          onClick={() => isMobile && setMobileMenuOpen(false)}
+          className={cn(
+            "m3-interactive flex items-center justify-center gap-2 h-10 rounded-m3-md bg-primary text-on-primary text-[13.5px] font-semibold shadow-elev-1 hover:shadow-elev-2 transition-shadow",
+            collapsed ? "w-11 mx-auto" : "w-full",
+          )}
+        >
+          <Plus size={18} strokeWidth={2.4} className="shrink-0" />
+          {!collapsed && <span className="truncate">{t.create}</span>}
+        </Link>
+      </div>
+
+      {/* Navigation — grouped */}
+      <nav className="flex-1 px-2.5 pb-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
+        {sideGroups.map((group, gi) => (
+          <div key={group.label} className={cn(gi > 0 && (collapsed ? "mt-2 pt-2 border-t border-outline-variant" : "mt-4"))}>
+            {!collapsed && (
+              <p className={cn("px-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em]", STYLE.email)}>{group.label}</p>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    data-tour={item.tourId}
+                    title={collapsed ? item.name : undefined}
+                    onClick={() => isMobile && setMobileMenuOpen(false)}
+                    className={cn(
+                      "group relative flex items-center transition-colors",
+                      collapsed
+                        ? "flex-col justify-center gap-[3px] h-[56px] rounded-m3-md px-1"
+                        : cn("gap-3 h-10 px-3", STYLE.itemShape, STYLE.indicator === 'bar' && "pl-4"),
+                      active ? cn(STYLE.active, STYLE.activeRowBg) : STYLE.idle,
+                    )}
+                  >
+                    {active && navIndicator(collapsed, isMobile)}
+                    <item.icon size={collapsed ? 20 : 18} strokeWidth={active ? 2.3 : 1.9} className={cn("shrink-0 relative z-10", active && STYLE.iconActive)} />
+                    <span className={cn(
+                      "relative z-10 truncate",
+                      collapsed ? "text-[9.5px] font-semibold max-w-full px-0.5" : "flex-1 text-[13.5px] font-medium",
+                      active && "font-semibold",
+                    )}>
+                      {collapsed ? (item.short || item.name) : item.name}
+                    </span>
+                    {item.isAI && !collapsed && (
+                      <Sparkles size={13} aria-label="AI" className="relative z-10 shrink-0 text-primary opacity-70" />
+                    )}
+                    {item.soon && !collapsed && (
+                      <span className="relative z-10 shrink-0 rounded-full bg-surface-container-high px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-on-surface-variant">{t.soon}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer: AI meter + profile row (or the classic user card + logout) */}
@@ -552,17 +602,34 @@ function TeacherShell({ children }: { children: React.ReactNode }) {
           title={t.aiLimit.title}
           className={cn(
             "m3-interactive w-full flex items-center rounded-m3-md transition-colors",
-            collapsed ? "flex-col gap-1.5 px-1.5 py-2" : "gap-2.5 px-3 py-2.5",
+            collapsed ? "flex-col gap-1.5 px-1.5 py-2" : "px-3 py-2.5",
             aiData.isDanger ? "bg-error-container" : "bg-surface-container-low hover:bg-surface-container",
           )}
         >
-          <Zap size={15} className={cn("shrink-0", aiData.isDanger ? "text-error fill-error" : "text-warning")} />
-          <span className={cn("flex-1 h-[5px] rounded-full overflow-hidden", collapsed ? "w-full flex-none" : "min-w-[30px]", aiData.isDanger ? "bg-[color-mix(in_oklab,var(--m3-on-error-container)_15%,transparent)]" : "bg-surface-container-highest")}>
-            <i className={cn("block h-full rounded-full", aiData.isDanger ? "bg-error" : "bg-primary")} style={{ width: `${aiData.isUnlimited ? 100 : Math.min(100, aiData.usagePercentage)}%` }} />
-          </span>
-          <b className={cn("text-[10.5px] tabular-nums shrink-0", aiData.isDanger ? "text-on-error-container" : "text-on-surface-variant")}>
-            {aiData.isUnlimited ? '∞' : `${aiData.used}/${aiData.limit}`}
-          </b>
+          {collapsed ? (
+            <>
+              <Zap size={15} className={cn("shrink-0", aiData.isDanger ? "text-error fill-error" : "text-warning")} />
+              <span className={cn("w-full h-[5px] rounded-full overflow-hidden", aiData.isDanger ? "bg-[color-mix(in_oklab,var(--m3-on-error-container)_15%,transparent)]" : "bg-surface-container-highest")}>
+                <i className={cn("block h-full rounded-full", aiData.isDanger ? "bg-error" : "bg-primary")} style={{ width: `${aiData.isUnlimited ? 100 : Math.min(100, aiData.usagePercentage)}%` }} />
+              </span>
+              <b className={cn("text-[10.5px] tabular-nums shrink-0", aiData.isDanger ? "text-on-error-container" : "text-on-surface-variant")}>
+                {aiData.isUnlimited ? '∞' : `${aiData.used}/${aiData.limit}`}
+              </b>
+            </>
+          ) : (
+            <span className="flex-1 min-w-0 text-left">
+              <span className="flex items-center gap-1.5">
+                <Zap size={14} className={cn("shrink-0", aiData.isDanger ? "text-error fill-error" : "text-warning fill-warning")} />
+                <span className={cn("flex-1 truncate text-[12px] font-semibold", aiData.isDanger ? "text-on-error-container" : "text-on-surface")}>{t.aiLimit.short}</span>
+                <b className={cn("text-[11px] font-semibold tabular-nums shrink-0", aiData.isDanger ? "text-on-error-container" : "text-on-surface-variant")}>
+                  {aiData.isUnlimited ? '∞' : `${aiData.used} / ${aiData.limit}`}
+                </b>
+              </span>
+              <span className={cn("block mt-2 h-[5px] rounded-full overflow-hidden", aiData.isDanger ? "bg-[color-mix(in_oklab,var(--m3-on-error-container)_15%,transparent)]" : "bg-surface-container-highest")}>
+                <i className={cn("block h-full rounded-full", aiData.isDanger ? "bg-error" : "bg-primary")} style={{ width: `${aiData.isUnlimited ? 100 : Math.min(100, aiData.usagePercentage)}%` }} />
+              </span>
+            </span>
+          )}
         </button>
 
         {STYLE.classicFooter && !collapsed ? (

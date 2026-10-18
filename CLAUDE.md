@@ -22,6 +22,10 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | **Milliy sertifikat SUBJECT papers** (biology…) — `milliy_quizzes`, `app/teacher/milliy-sertifikat/*`, `app/(student)/milliy-sertifikat/*`, `MILLIY_SUBJECTS`, sample papers | [docs/MILLIY_QUIZ.md](docs/MILLIY_QUIZ.md) |
 | **Dynamic marking** — `lib/RASCHmarks.ts`: guaranteed base per test type + a share of the difficulty budget from the cohort solve rate (`B = Y + σ`, always 100). Shared by every subject | [docs/MILLIY_QUIZ.md](docs/MILLIY_QUIZ.md) |
 | **My Mistakes** — `student_mistakes`, `app/(student)/mistakes/*`, `lib/mistakes.ts`, the capture hook in ANY runner's submit | [docs/MISTAKES.md](docs/MISTAKES.md) |
+| **SAT** — `sat_math_*`/`sat_english_*`, `app/teacher/sat/*`, `app/(student)/sat/*`, `lib/SatMathQuiz.ts`, `lib/SATscore.ts`, `SatRunner` | [docs/SAT_QUIZ.md](docs/SAT_QUIZ.md) |
+| **Classroom games** — `app/teacher/games/*` (Arqon tortish, Savol doskasi), `services/teacherTestService.ts`, the TestCard quick-launch | [docs/GAMES.md](docs/GAMES.md) |
+| **"My Mistakes"** — `student_mistakes`, `app/(student)/mistakes/*`, `lib/mistakes.ts`, `services/mistakeService.ts` | [docs/MISTAKES.md](docs/MISTAKES.md) |
+| **Director/buxgalter back-office** — `center_staff`, `app/office/*`, `isCenterOffice()`, `requireCenterOffice()` | [docs/OFFICE.md](docs/OFFICE.md) |
 | `app/teacher/*` — test creation, classes, grading, analytics, subscription | [docs/TEACHER.md](docs/TEACHER.md) |
 | AI routes, credit limits, `lib/ai/*`, `/api/analyze`, TTS | [docs/AI.md](docs/AI.md) |
 | `app/manager/*` core — approval gate, groups, teachers, enrollment, walk-in | [docs/MANAGER.md](docs/MANAGER.md) |
@@ -36,6 +40,15 @@ This repo maintains verified per-domain docs in [docs/](docs/) so an agent can l
 | **Student design system** — [design.config.ts](design.config.ts) switchboard, `components/student-ui/*`, restyling `app/(student)/*` | [docs/STUDENT_UI.md](docs/STUDENT_UI.md) |
 | **Manager design system** — [design.manager.config.ts](design.manager.config.ts) switchboard, `components/manager-ui/*`, restyling `app/manager/*` | [docs/MANAGER_UI.md](docs/MANAGER_UI.md) |
 | Android APK distribution — `public/app/*`, `/app` download page, version.json | [docs/APP_DISTRIBUTION.md](docs/APP_DISTRIBUTION.md) |
+
+## Token discipline (read this, it saves the most)
+
+- **Read docs by section, never whole.** Several docs are 50–60 KB. First `grep -n '^## ' docs/X.md`, then `Read` with `offset`/`limit` for only the sections you need (usually *Key files*, the relevant *Flow*, and always *Invariants & traps*).
+- **Grep before Read** for code too: locate the symbol, then read only the surrounding range. Don't re-read a file you just edited.
+- **Never open whole** `data/**/*.json` (syllabus trees), `questions.json`, `firestore.indexes.json`, `package-lock.json`, or `public/` assets. Query them with `grep`/`python3 -c` / `jq` instead.
+- **Verify cheaply first:** `npx tsc --noEmit` and `npx eslint <changed files>` before a full `npm run build` or dev-server walkthrough.
+- **Subagents only when the work is genuinely parallel or a broad search**; give them the exact doc sections and files to read so they don't re-explore.
+- Keep replies short: report what changed and what was verified, not a retelling of the diff.
 
 ## Commands
 
@@ -100,16 +113,14 @@ Multi-role SaaS ("Edify") with four role trees, each with a `'use client'` role-
 - AI flows follow **check permission → generate → deduct actual count** with the monthly gatekeeper ([docs/AI.md](docs/AI.md)).
 - Student pages use module-level 60s caches — mutations must patch the cache too.
 
-## Android manager app sync (required)
+## Android app sync (required — three apps, three ledgers)
 
-A native Android port of the **manager panel** lives at `/home/matimatik/AndroidStudioProjects/EdifyManager` and mirrors this repo's manager logic 1:1. Whenever a change touches manager-facing behavior, any Firestore document shape/query, `firestore.rules`, or a `/api/manager|directory|auth` contract: **append one line to [ANDROID_IMPACT.md](ANDROID_IMPACT.md)** in the same change (date, files, one-line summary of what the Android app must mirror). The Android repo's `/sync-web` command consumes that ledger plus the git diff.
+Native Android ports under `/home/matimatik/AndroidStudioProjects/` mirror this repo 1:1. When a change touches an app's area, **any Firestore document shape/query, or `firestore.rules`**, append one line (date, files, what the app must mirror) to that app's ledger **in the same change**. Each repo's `/sync-web` consumes its ledger + the git diff.
 
-## Android student app sync (required)
+| App (repo) | Mirrors | Also triggered by API contract | Ledger |
+|---|---|---|---|
+| `EdifyManager` | `app/manager/*` | `/api/manager\|directory\|auth` | [ANDROID_IMPACT.md](ANDROID_IMPACT.md) |
+| `EdifyStudent` | `app/(student)/*`, `lib/xp\|xpDays\|questionSchema\|Exam*\|RASCH*\|Mathstructure\|social\|dateUtils`, student services, checkers | `/api/account\|student\|directory\|auth` | [ANDROID_STUDENT_IMPACT.md](ANDROID_STUDENT_IMPACT.md) |
+| `EdifyTeacher` | `app/teacher/*` (+ `app/teacher/create/**/api`), `lib/questionSchema\|questionTopics\|RASCH*\|Milliy*\|Examblueprint\|Mathstructure\|ielts\|weekSchedule\|dateUtils`, teacher services | `/api/teacher\|ielts\|auth\|account\|directory\|analyze\|tts` | [ANDROID_TEACHER_IMPACT.md](ANDROID_TEACHER_IMPACT.md) |
 
-A native Android port of the **student part** lives at `/home/matimatik/AndroidStudioProjects/EdifyStudent` and mirrors `app/(student)` logic 1:1 (all pages, `lib/xp|xpDays|questionSchema|Exam*|RASCH*|Mathstructure|social|dateUtils`, student services, checkers). Whenever a change touches student-facing behavior, any Firestore document shape/query, `firestore.rules`, or a `/api/account|student|directory|auth` contract: **append one line to [ANDROID_STUDENT_IMPACT.md](ANDROID_STUDENT_IMPACT.md)** in the same change (date, files, one-line summary of what the Android student app must mirror). That repo's `/sync-web` command consumes this ledger plus the git diff. Keep Firestore shapes additive-only — APK rollouts lag web deploys, so old Android clients keep writing the old shape.
-
-## Android teacher app sync (required)
-
-A native Android port of the **teacher panel** lives at `/home/matimatik/AndroidStudioProjects/EdifyTeacher` and mirrors `app/teacher` logic 1:1 (every route, `lib/questionSchema|questionTopics|RASCH*|Milliy*|Examblueprint|Mathstructure|ielts|weekSchedule|dateUtils`, the teacher services, and the `app/teacher/create/**/api` route handlers). Whenever a change touches teacher-facing behavior, any Firestore document shape/query, `firestore.rules`, or a `/api/teacher|ielts|auth|account|directory|analyze|tts` contract: **append one line to [ANDROID_TEACHER_IMPACT.md](ANDROID_TEACHER_IMPACT.md)** in the same change (date, files, one-line summary of what the Android teacher app must mirror). That repo's `/sync-web` command consumes this ledger plus the git diff. Keep Firestore shapes additive-only — APK rollouts lag web deploys, so old Android clients keep writing the old shape.
-
-**Three ledgers, three apps.** A change to a shared `lib/` or `services/` file usually needs a line in MORE THAN ONE ledger — e.g. `lib/RASCHmarks.ts` is read by both the student runner and the teacher results page. Write one line per affected ledger; each app's `/sync-web` prunes only its own.
+A shared `lib/`/`services/` change usually needs a line in **more than one** ledger (e.g. `lib/RASCHmarks.ts` → student runner + teacher results). Keep Firestore shapes **additive-only** — APK rollouts lag web deploys, so old clients keep writing the old shape.

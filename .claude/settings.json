@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git fetch*)",
+      "Bash(ls*)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(wc *)",
+      "Bash(npx tsc --noEmit*)",
+      "Bash(npx eslint *)",
+      "Bash(npm run lint*)",
+      "Bash(npm run test:rules*)"
+    ],
+    "deny": [
+      "Read(./.env*)",
+      "Read(./node_modules/**)",
+      "Read(./.next/**)",
+      "Read(./public/app/*.apk)",
+      "Read(./package-lock.json)",
+      "Read(./tsconfig.tsbuildinfo)",
+      "Read(./firestore-debug.log)",
+      "Read(./questions.json)",
+      "Read(./membership_details/**)",
+      "Read(./xps.md)"
+    ]
+  }
+}

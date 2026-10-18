@@ -74,7 +74,7 @@ see [STUDENT_UI.md](STUDENT_UI.md)), manager and admin trees are unaffected.
    any single usage can override with a prop (`<Card variant="glass">`).
 3. **Shell switches** are rendered by `app/teacher/layout.tsx`.
    `App_shell_navigation` has **10 desktop personalities**: 6 *side recipes*
-   (`sidebar` ⭐ — gliding pill · `classic` — grouped links, sliding left
+   (`sidebar` ⭐ — gliding soft-tinted rounded row (`bg-t-primary-soft`, primary text) · `classic` — grouped links, sliding left
    accent bar, tinted active row, user-card+logout footer · `tonal` —
    container-colored panel · `inverse` — always-contrast chrome · `gradient`
    — primary→tertiary panel · `minimal` — chromeless dot) plus 4 *containers*
@@ -157,6 +157,9 @@ npx tsx scripts/genTeacherPalettes.mjs     # tsx, not node — ESM resolution
 - `m3-switch`/`m3-checkbox`/`m3-radio`/`m3-spinner`/`m3-skeleton`/`t-dot`/
   `m3-interactive` classes live in theme.css — kit components break if that
   file isn't loaded (the teacher layout imports it).
+- ⚠️ `.m3-interactive` sets `position: relative` as unlayered CSS, so it beats
+  Tailwind's `absolute`/`fixed` on the same element. To pin an interactive
+  button to a corner, position a wrapper `div` and keep the class on the button.
 - `.custom-scrollbar` is now really styled (slim, token-colored) but ONLY under
   the stamped `data-t-palette` attribute — it stays a no-op in other role trees.
 - The layout's active-nav pills use framer `layoutId` — centering is done with

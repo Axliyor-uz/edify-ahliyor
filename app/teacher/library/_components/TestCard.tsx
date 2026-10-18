@@ -1,15 +1,16 @@
 'use client';
 
-import { Clock, ArrowRight, Layers, Calendar } from 'lucide-react';
+import Link from 'next/link';
+import { Clock, ArrowRight, Layers, Calendar, Gamepad2 } from 'lucide-react';
 import PrintLauncher from '@/app/teacher/create/_components/PrintLauncher';
 import { useTeacherLanguage } from '@/app/teacher/layout';
 import { motion } from 'framer-motion';
 
 // --- TRANSLATION DICTIONARY ---
 const CARD_TRANSLATIONS: Record<string, any> = {
-  uz: { active: "Faol", archived: "Arxiv", pin: "Kod", noLimit: "Cheksiz", min: "daq", items: "ta savol" },
-  en: { active: "Active", archived: "Archived", pin: "Pin", noLimit: "No Limit", min: "min", items: "Items" },
-  ru: { active: "Активен", archived: "Архив", pin: "Код", noLimit: "Без лимита", min: "мин", items: "вопр." }
+  uz: { play: "Arqon tortish o'yini", active: "Faol", archived: "Arxiv", pin: "Kod", noLimit: "Cheksiz", min: "daq", items: "ta savol" },
+  en: { play: "Play Tug of War", active: "Active", archived: "Archived", pin: "Pin", noLimit: "No Limit", min: "min", items: "Items" },
+  ru: { play: "Игра «Перетягивание каната»", active: "Активен", archived: "Архив", pin: "Код", noLimit: "Без лимита", min: "мин", items: "вопр." }
 };
 
 // --- M3 three-tone rotation (see docs/UI_KIT.md — no rainbow accents) ---
@@ -117,7 +118,18 @@ export default function TestCard({ test, theme, onManage }: Props) {
         </div>
 
         {/* Tooltip Wrapper */}
-        <div onClick={(e) => e.stopPropagation()} className="relative z-20">
+        <div onClick={(e) => e.stopPropagation()} className="relative z-20 flex items-center gap-2">
+           {/* Quick launch: play this test as a classroom game (docs/GAMES.md) */}
+           {isActive && (
+             <Link
+               href={`/teacher/games/tug-of-war?testId=${test.id}`}
+               title={t.play}
+               aria-label={t.play}
+               className={`p-2 bg-surface-container border border-outline-variant text-on-surface-variant rounded-m3-md transition-all shadow-elev-1 group-hover:bg-surface-container-lowest group-hover:shadow-elev-2 ${tv.printHover}`}
+             >
+               <Gamepad2 size={20} />
+             </Link>
+           )}
            <PrintLauncher
               title={test.title}
               questions={test.questions}
