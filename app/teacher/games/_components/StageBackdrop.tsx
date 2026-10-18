@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { STAGE } from '../_lib/theme';
+import { STAGE } from '../_lib/stage';
 
 /** Deterministic pseudo-random in [0,1) — keeps render pure. */
 const rnd = (i: number, k: number) => {

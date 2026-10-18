@@ -23,7 +23,7 @@ const TR = {
       tug: { title: "Arqon tortish", text: "Ikki jamoa bellashadi: har to'g'ri javob arqonni o'z tomoniga tortadi." },
       quiz: { title: "Jonli viktorina", text: "O'quvchilar telefondan qo'shilib, tez va to'g'ri javob beradi." },
       board: { title: "Savol doskasi", text: "Jamoalar navbat bilan ball va savol tanlaydi." },
-      wheel: { title: "Omad g'ildiragi", text: "G'ildirak o'quvchini tanlaydi va unga savol beradi." },
+      wheel: { title: "Omad g'ildiragi", text: "Jamoalar g'ildirakni aylantiradi va tushgan ochko uchun javob beradi." },
     },
   },
   ru: {
@@ -34,7 +34,7 @@ const TR = {
       tug: { title: "Перетягивание каната", text: "Две команды соревнуются: каждый верный ответ тянет канат к себе." },
       quiz: { title: "Живая викторина", text: "Ученики подключаются с телефона и отвечают быстро и верно." },
       board: { title: "Доска вопросов", text: "Команды по очереди выбирают баллы и вопрос." },
-      wheel: { title: "Колесо удачи", text: "Колесо выбирает ученика и задаёт ему вопрос." },
+      wheel: { title: "Колесо удачи", text: "Команды крутят колесо и отвечают за выпавшие очки." },
     },
   },
   en: {
@@ -45,7 +45,7 @@ const TR = {
       tug: { title: "Tug of War", text: "Two teams compete: every correct answer pulls the rope their way." },
       quiz: { title: "Live quiz", text: "Students join from their phones and answer fast and right." },
       board: { title: "Question board", text: "Teams take turns picking points and a question." },
-      wheel: { title: "Wheel of luck", text: "The wheel picks a student and asks them a question." },
+      wheel: { title: "Lucky wheel", text: "Teams spin the wheel and answer for the points it lands on." },
     },
   },
 };
@@ -54,7 +54,7 @@ const GAMES: { key: GameArtKey; href: string | null }[] = [
   { key: "tug", href: "/teacher/games/tug-of-war" },
   { key: "quiz", href: null },
   { key: "board", href: "/teacher/games/question-board" },
-  { key: "wheel", href: null },
+  { key: "wheel", href: "/teacher/games/lucky-wheel" },
 ];
 
 export default function TeacherGamesPage() {

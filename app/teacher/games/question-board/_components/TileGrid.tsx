@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import type { Tile } from '../_lib/engine';
-import { BOARD_TEAMS, STAGE } from '../_lib/theme';
+import { GAME_TEAMS, STAGE } from '../../_lib/stage';
 
 /** 12 → 4×3, 16 → 4×4, 20 → 5×4, 24 → 6×4; short boards use two rows. */
 export function gridShape(n: number): { cols: number; rows: number } {
@@ -40,7 +40,7 @@ export default function TileGrid({ tiles, active, disabled, onPick, morph, anima
         if (i === active) return <div key={tile.n} className={`${radius} border-2 border-dashed border-outline-variant`} />;
 
         if (tile.used) {
-          const team = BOARD_TEAMS[tile.used.team];
+          const team = GAME_TEAMS[tile.used.team];
           const won = tile.used.outcome === 'correct';
           return (
             <motion.div

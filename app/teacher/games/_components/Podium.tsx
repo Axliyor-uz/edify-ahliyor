@@ -3,11 +3,20 @@
 import { motion } from 'framer-motion';
 import { Handshake, RotateCcw, Settings2, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui';
-import Confetti from '../../_components/Confetti';
-import { ranking } from '../_lib/engine';
-import { BOARD_TEAMS, STAGE } from '../_lib/theme';
-import type { BoardText } from '../_lib/i18n';
+import Confetti from './Confetti';
+import { ranking } from '../_lib/ranking';
+import { GAME_TEAMS, STAGE } from '../_lib/stage';
 import { Score } from './TeamBar';
+
+export interface PodiumText {
+  exitGame: string;
+  over: string;
+  winner: string;
+  tie: string;
+  pts: string;
+  replay: string;
+  settings: string;
+}
 
 interface Props {
   names: string[];
@@ -16,7 +25,7 @@ interface Props {
   onReplay: () => void;
   onSettings: () => void;
   onExit: () => void;
-  t: BoardText;
+  t: PodiumText;
 }
 
 /** Bar height as a share of the tallest, by place (ties share a height). */
@@ -32,7 +41,7 @@ export default function Podium({ names, scores, animate, onReplay, onSettings, o
   const rows = ranking(scores);
   const tie = rows.length > 1 && rows[1].place === 1;
   const winner = rows[0];
-  const color = tie ? 'var(--m3-on-surface)' : BOARD_TEAMS[winner.team].solid;
+  const color = tie ? 'var(--m3-on-surface)' : GAME_TEAMS[winner.team].solid;
   const stage = ORDER.filter((i) => i < rows.length).map((i) => rows[i]);
   // Rise order: last place first, the winner(s) last.
   const riseIndex = (place: number) => rows.length - place;
@@ -112,7 +121,7 @@ export default function Podium({ names, scores, animate, onReplay, onSettings, o
       {/* Podium */}
       <div className="relative mt-[clamp(14px,3.5vh,40px)] flex items-end justify-center gap-[clamp(8px,1.4vw,22px)] border-b-[3px] border-outline-variant px-[clamp(16px,3vw,48px)]">
         {stage.map((r) => {
-          const c = BOARD_TEAMS[r.team];
+          const c = GAME_TEAMS[r.team];
           const at = BAR_START + BAR_STEP * riseIndex(r.place);
           return (
             <div key={r.team} className="flex w-[clamp(110px,15vw,220px)] min-w-0 flex-col items-center">

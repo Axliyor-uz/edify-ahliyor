@@ -5,7 +5,7 @@ import { Suspense, useCallback, useEffect, useReducer, useRef, useState } from '
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, Flag, ListChecks, Maximize, Minimize, MonitorSmartphone, Pause, Play, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, Flag, ListChecks, Maximize, Minimize, MonitorSmartphone, Pause, Volume2, VolumeX, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useAuth } from '@/lib/AuthContext';
@@ -20,14 +20,15 @@ import { useBigScreen } from '../_lib/useBigScreen';
 import TestPicker, { type PickedTest } from '../_components/TestPicker';
 import Confetti from '../_components/Confetti';
 import { initialState, reducer } from './_lib/engine';
-import { BOARD_TEAMS, STAGE } from './_lib/theme';
+import { GAME_TEAMS, STAGE } from '../_lib/stage';
 import { boardText } from './_lib/i18n';
 import BoardSettings, { tileChoices } from './_components/BoardSettings';
-import StageBackdrop from './_components/StageBackdrop';
-import TeamBar from './_components/TeamBar';
+import StageBackdrop from '../_components/StageBackdrop';
+import TeamBar from '../_components/TeamBar';
 import TileGrid from './_components/TileGrid';
-import QuestionCard from './_components/QuestionCard';
-import Podium from './_components/Podium';
+import QuestionCard from '../_components/QuestionCard';
+import Podium from '../_components/Podium';
+import { ControlButton, PauseOverlay } from '../_components/PlayControls';
 
 /**
  * Savol doskasi — Baamboozle-style question board (docs/GAMES.md).
@@ -261,7 +262,7 @@ function QuestionBoard() {
     ? state.scores.map((_, i) => (i === state.turn ? state.gained! : 0))
     : null;
   const left = state.tiles.filter((x) => !x.used).length;
-  const turnTeam = BOARD_TEAMS[state.turn];
+  const turnTeam = GAME_TEAMS[state.turn];
   const canPause = state.endsAt !== null && state.phase === 'answers';
 
   // Portal to <body>: the shell's transformed page wrapper would otherwise
@@ -323,11 +324,20 @@ function QuestionBoard() {
               {cardOpen && (
                 <QuestionCard
                   key={`q-${state.active}`}
-                  state={state}
+                  question={state.tiles[state.active!].question}
+                  turn={state.turn}
+                  nextTeam={left === 0 ? null : (state.turn + 1) % state.teamCount}
                   names={names}
+                  badge={state.tiles[state.active!].n}
+                  done={state.phase === 'result'}
+                  outcome={state.outcome}
+                  picked={state.picked}
+                  gained={state.gained}
+                  timeLimitMs={state.timeLimitMs}
+                  remainingMs={state.remainingMs}
+                  morphId={animate ? `tile-${state.tiles[state.active!].n}` : undefined}
                   onAnswer={answer}
                   onNext={next}
-                  morph={animate}
                   animate={animate}
                   t={t}
                 />
@@ -366,25 +376,11 @@ function QuestionBoard() {
           </div>
 
           {/* Pause hides the question; the clock is stopped */}
-          <AnimatePresence>
-            {state.pausedAt !== null && !confirmExit && (
-              <motion.div
-                className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-surface"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              >
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: 'resume', now: performance.now() })}
-                  aria-label={t.resume}
-                  className="flex h-[clamp(64px,10vh,96px)] w-[clamp(64px,10vh,96px)] items-center justify-center rounded-full bg-primary text-on-primary shadow-elev-2 transition-transform hover:scale-105"
-                >
-                  <Play className="ml-1 h-[42%] w-[42%]" />
-                </button>
-                <span className="font-t-display text-[clamp(24px,4vh,40px)] font-black text-on-surface">{t.paused}</span>
-                <span className="text-[clamp(13px,1.6vh,16px)] font-medium text-on-surface-variant">{t.pausedHint}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <PauseOverlay
+            open={state.pausedAt !== null && !confirmExit}
+            onResume={() => dispatch({ type: 'resume', now: performance.now() })}
+            t={t}
+          />
 
           {/* Celebrations */}
           {animate && state.phase === 'result' && state.outcome === 'correct' && (
@@ -428,16 +424,3 @@ function QuestionBoard() {
   );
 }
 
-function ControlButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      className="m3-interactive flex h-full aspect-square items-center justify-center rounded-[clamp(8px,1vh,12px)] border border-outline-variant bg-surface-container-lowest text-on-surface-variant opacity-70 shadow-elev-1 transition hover:text-on-surface hover:opacity-100"
-    >
-      {children}
-    </button>
-  );
-}

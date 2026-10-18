@@ -1,25 +1,25 @@
 /**
- * Fixed game colors of Savol doskasi — the same DELIBERATE exception to the
- * teacher kit's "tokens only" rule as tug-of-war/_lib/teams.ts (docs/GAMES.md):
- * team identity and the game-show board must look the same under every
- * palette. Tints mix with the M3 surface so dark mode still works.
+ * Fixed colors of the team games (Savol doskasi, Omad g'ildiragi) — the same
+ * DELIBERATE exception to the teacher kit's "tokens only" rule as
+ * tug-of-war/_lib/teams.ts (docs/GAMES.md): team identity and the game-show
+ * stage must look the same under every palette. Tints mix with the M3 surface so dark mode still works.
  * Defined once here — never inline these hex values elsewhere.
  */
 
-export interface BoardTeam {
+export interface GameTeam {
   solid: string;
   deep: string;
   tint: string;
 }
 
-const team = (solid: string, deep: string): BoardTeam => ({
+const team = (solid: string, deep: string): GameTeam => ({
   solid,
   deep,
   tint: `color-mix(in oklab, ${solid} 12%, var(--m3-surface-container-lowest))`,
 });
 
 /** Up to 4 teams, in turn order. */
-export const BOARD_TEAMS: BoardTeam[] = [
+export const GAME_TEAMS: GameTeam[] = [
   team('#2563eb', '#1e40af'),
   team('#dc2626', '#991b1b'),
   team('#16a34a', '#166534'),

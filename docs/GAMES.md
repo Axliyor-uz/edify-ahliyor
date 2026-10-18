@@ -2,11 +2,11 @@
 
 > **Agent workflow:** read this BEFORE touching `app/teacher/games/*`, `services/teacherTestService.ts`, or the tests-library quick-launch button; update it in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-10-17 (uncommitted, on top of `1a38224`).
+**Last verified:** 2026-10-18 (uncommitted, on top of `0bbf31c`).
 
 ## Purpose & scope
 
-`/teacher/games` is a catalogue of projector games that play questions from the teacher's **own tests** (`custom_tests`, built in `/teacher/library/tests`). Two games are live: **Arqon tortish** (tug of war) and **Savol doskasi** (Baamboozle-style question board). Live quiz and wheel of luck are "Tez kunda" cards with no code behind them.
+`/teacher/games` is a catalogue of projector games that play questions from the teacher's **own tests** (`custom_tests`, built in `/teacher/library/tests`). Three games are live: **Arqon tortish** (tug of war), **Savol doskasi** (Baamboozle-style question board) and **Omad g'ildiragi** (lucky wheel). Live quiz is a "Tez kunda" card with no code behind it.
 
 **No Firestore writes, no rules, no index.** The only read is the teacher's own `custom_tests` (same query shape as the tests library). Game results are not saved anywhere.
 
@@ -16,13 +16,19 @@
 |---|---|
 | `app/teacher/games/page.tsx` | Hub: clean cards (animated scene, name, one line, full-width button). The whole card is the link; the button is a styled span. Non-live cards show a grey "Tez kunda" button |
 | `app/teacher/games/_components/{TestPicker,Confetti}.tsx` | Shared by every game: test picker (strings via the `PickerText` shape) and the confetti burst |
+| `app/teacher/games/_components/{TeamBar,QuestionCard,Podium,StageBackdrop,TeamGameSettings,PlayControls}.tsx` | Shared by the **team games** (board + wheel), presentational, each takes its strings as a small `*Text` shape: team cards with counting scores + floating "+20"; the open question (generic props: `question`, `turn`, `nextTeam` — `null` → the button reads "Natijalar", `badge`, `morphId`…; timer ring, answers, result + one Continue); full-screen result podium; floating backdrop shapes; setup blocks `TeamSetup` / `TimerField` (− / + stepper) / `QuestionSummary`; footer `ControlButton` + `PauseOverlay` |
+| `app/teacher/games/_lib/{stage,ranking}.ts` | Team-game colors (`GAME_TEAMS` ×4, `STAGE` page wash / tile faces / correct / wrong / gold, `OPTION_COLORS`) and `ranking` (equal scores share a place) |
 | `app/teacher/games/_lib/sound.ts` | Shared Web Audio sound kit (`sfx.*`, synthesized, no files) + `useGameSound()` → `[muted, toggle]`, persisted in localStorage `edify.games.muted` |
 | `app/teacher/games/_lib/useBigScreen.ts` | Shared `(min-width:768px) and (orientation: landscape)` check for play views |
 | `app/teacher/games/question-board/page.tsx` | Savol doskasi: setup ↔ full-screen board, sounds, keyboard, pause, exit/finish guards |
-| `question-board/_lib/engine.ts` | **All board rules** as a pure reducer: tiles (10/20/30 points each, `buildPoints`), turns, timer, `ranking` |
-| `question-board/_lib/theme.ts` | Fixed board colors: 4 team colors (`BOARD_TEAMS`), `STAGE` (page wash, tile faces, correct/wrong, gold), `OPTION_COLORS` |
+| `question-board/_lib/engine.ts` | **All board rules** as a pure reducer: tiles (10/20/30 points each, `buildPoints`), turns, timer |
 | `question-board/_lib/i18n.ts` | Every board string, uz/ru/en |
-| `question-board/_components/{BoardSettings,TeamBar,TileGrid,QuestionCard,Podium,StageBackdrop}.tsx` | Settings; team cards with counting scores + a floating "+20"; tile grid (gloss, shine wave, used tiles show ✓ +points or ✗); question card (morphs out of the tile, timer ring, answers, result + Continue — no helper text); full-screen result podium; floating backdrop shapes |
+| `question-board/_components/{BoardSettings,TileGrid}.tsx` | Settings (shared blocks + board size); tile grid (gloss, shine wave, used tiles show ✓ +points or ✗). The question card morphs out of the tile (`morphId`) |
+| `app/teacher/games/lucky-wheel/page.tsx` | Omad g'ildiragi: setup ↔ full-screen wheel, landed beat → reveal timer, sounds, keyboard, pause, exit/finish guards |
+| `lucky-wheel/_lib/engine.ts` | **All wheel rules** as a pure reducer: `SEGMENTS` (12: 10–50 points, one ×2, one Bankrot), turns/rounds, multiplier, timer, `isLastTurn`, `questionsNeeded` |
+| `lucky-wheel/_lib/{theme,i18n}.ts` | Fixed wheel colors (`WHEEL`, `WEDGE_FILLS`); every wheel string, uz/ru/en |
+| `lucky-wheel/_components/Wheel.tsx` | The wheel: static rim + blinking bulbs → rotating disc (wedges, labels, pegs) → static gloss → flapping pointer → hub button (spin, then the landed value). Spin animation + drag-flick |
+| `lucky-wheel/_components/{WheelSettings,BankruptCard}.tsx` | Settings (shared blocks + rounds, `roundChoices`); the Bankrot card |
 | `app/teacher/games/_components/GameArt.tsx` | The 4 animated card scenes (tug uses the real `Puller` + `FIELD`; quiz/board/wheel use M3 tokens so palettes and dark mode work). `on=false` → still frame |
 | `app/teacher/games/_lib/questionDeck.ts` | Shared by every game: eligibility, `analyzeTest`, `buildDeck` (shuffle + option re-lettering), time estimates, `MIN_GAME_QUESTIONS = 6` |
 | `services/teacherTestService.ts` | Read-only `fetchActiveTeacherTests(uid, pageSize, cursor)` / `fetchTeacherTest(id, uid)` (returns null if not the caller's) |
@@ -73,6 +79,21 @@
 
 **Play layout:** team cards (active one raised with a team-color ring + "Navbat") → "X, katak tanlang!" pill → tile grid filling the free height (`gridShape`: 12 → 4×3, 16 → 4×4, 20 → 5×4, 24 → 6×4) → footer (controls left, tiles left center, Finish right). The question card overlays only the board area, so the team cards (and their score floats) stay visible.
 
+### Omad g'ildiragi (lucky wheel)
+
+**Setup:** same test picker, teams (2–4) and timer stepper as the board, plus **rounds** `3 · 5 · 8 · 10` (one round = one spin per team). A round count is disabled when `teams × rounds` (`questionsNeeded`) exceeds the usable questions; a short test gets one fitting count (`floor(usable / teams)`). The deck is cut to exactly that many questions.
+
+**Play (engine phases `spin → spinning → landed → answers → result → spin…`, `finished`):**
+- **Spin:** a student flicks the wheel (drag → release faster than `MIN_FLICK` 0.25°/ms; the speed sets turns/duration and the flick direction sets the spin direction), or the teacher taps the hub **Aylantir** button / presses Space or Enter. A gentle drag shows "Kuchliroq aylantiring!". The page picks `target = random segment` and dispatches `spin`; the wheel animates to it (4–8 turns, 4.2–6.2 s, ease-out) and dispatches `land`.
+- **Points** (10–50): `landed` beat (the wedge glows, the hub shows the value, "50 ochko" pill, ding) → after 1.1 s `reveal` opens the shared question card worth `value × multiplier` (badge shows it). Correct → the points + confetti; wrong / time-out → nothing, the correct answer is shown. One Continue → next team.
+- **×2:** gold beat + gold confetti → after 1.5 s the SAME team spins again with `multiplier × 2` (max ×4; the prompt shows "yana aylantiring! ×2").
+- **Bankrot:** straight to `result` with the Bankrot card: no points this turn, **earlier points are kept** (the user's choice — kinder than the TV rule), no question used, multiplier reset.
+- `next` → the next team; after the last team the round advances. After round `rounds` (or when the deck is empty) → `finished` → the shared `Podium`. "Finish game" (spin phase, with confirm) ends early.
+- Keyboard: Space/Enter = spin or continue, A–F or 1–6 = answer, P = pause (timed question only).
+- Sounds: `peg` click per peg passed (throttled 35 ms), `land`, `double`, `bankrupt`, plus correct/wrong/tick/timeout/win.
+
+**Play layout:** team cards → prompt pill ("X, g'ildirakni aylantiring!") → the wheel (square, `min(97% of the free height, 58vw)`) → footer (controls left, "2-raund / 5" + round pips center, Finish right). The question / Bankrot card overlays the wheel area only, so the team cards stay visible.
+
 ## Invariants & traps
 
 - ⚠️ **Anti-cheat is by design; don't "simplify" it.** Each question appears once per game and never on both sides. MCQ options are reshuffled and re-lettered by position (true_false keeps its order). A miss never reveals the answer. Pause covers the whole screen with an opaque layer.
@@ -86,7 +107,10 @@
 - ⚠️ **Board tile ↔ card morph** uses framer `layoutId={`tile-${n}`}`: the active tile renders as a plain empty slot (no layoutId) while the card's background holds the id; used tiles keep the id so the card shrinks back into them. Two mounted elements with the same id break the morph. Off when motion is off.
 - ⚠️ **framer springs take only 2 keyframes.** `type: 'spring'` + an array like `scale: [1, 1.05, 1]` throws at runtime ("Only two keyframes currently supported with spring") and kills the component — the board's result row once never rendered because of it. Give keyframe props their own tween: `transition={{ default: {type:'spring',…}, scale: { duration: 0.5 } }}`.
 - ⚠️ **`.m3-interactive` forces `position: relative`** (unlayered CSS in `components/ui/theme.css` beats Tailwind's `absolute`). An absolutely placed button with that class drops into normal flow — the podium's ✕ once landed on the trophy. Put the position on a wrapper `div` instead.
-- Board colors are a deliberate hard-coded exception like `teams.ts`; keep them in `question-board/_lib/theme.ts`.
+- Team-game colors are a deliberate hard-coded exception like `teams.ts`; keep them in `games/_lib/stage.ts` (wheel wedges in `lucky-wheel/_lib/theme.ts`).
+- ⚠️ **The wheel result comes from the engine, never from the drag.** `spin` carries a random `target`; the flick only chooses strength/direction and the animation solves the angle to land inside that wedge (± jitter). Don't derive the result from where the wheel physically stops — a slow, careful drag could then steer it.
+- ⚠️ **framer's `style={{ rotate }}` / `animate` writes the whole `transform`,** so a Tailwind `-translate-x-1/2` on the same element is lost (the wheel pointer and the "spin harder" chip once jumped off-center). Center with a wrapper `div`, animate the inner element.
+- ⚠️ **Shared team-game components are presentational.** Each game's engine owns its rules and maps its state to their props (`QuestionCard` knows nothing about tiles or wheels). Add rules to the engine, not to the shared card.
 - Sounds must start from a click (browser autoplay policy). Every game starts from a click, so the lazy `AudioContext` in `sound.ts` is always allowed. Never call `sfx` on mount.
 - The Games nav entry is appended late in `navItems` (topbar inlines `slice(0, 5)`). Its `soon` flag support stays in the layout for future items.
 
@@ -102,8 +126,8 @@ The user chose designer animation (Rive) for the final characters. Until a file 
 
 ## Known issues / dead code (verified 2026-10-17)
 
-- The 2 non-live hub cards (live quiz, wheel) are placeholders with no routes.
-- The TestCard quick-launch only opens Arqon tortish; the board is reached from the hub.
+- The non-live hub card (live quiz) is a placeholder with no route.
+- The TestCard quick-launch only opens Arqon tortish; the board and the wheel are reached from the hub (both accept `?testId=`).
 - Arqon tortish has no sounds yet (the board does). Results are not persisted (deliberate for v1).
 
 ## How to verify changes
@@ -116,3 +140,4 @@ The user chose designer animation (Rive) for the final characters. Until a file 
 5. Check light, dark and a second palette: blue and red stay distinct.
 6. The TestCard gamepad button opens setup with that test's summary preloaded.
 7. Board: a test with 8 usable → only one size chip (8). With 3 teams + 15 s: Start goes full screen; options open with the question; a correct answer shows "+N ochko" and the score counts up; wrong shows the right answer; the timer runs out → "Vaqt tugadi"; pause during a question hides it. The last tile → podium; Finish early → confirm → podium; ties share a place. Mute persists after reload.
+8. Wheel: 2 teams + 3 rounds. Flick the wheel hard → long spin, pointer flaps and clicks; a gentle drag → "Kuchliroq aylantiring!"; Space spins too. Points → the value pops in the hub, then the question opens worth that much. ×2 → gold beat, same team spins again for double. Bankrot → the card, scores unchanged, next team. After 3 rounds → podium (the last card's button reads "Natijalar").

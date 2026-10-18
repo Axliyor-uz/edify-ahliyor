@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { AnimatePresence, animate as animateValue, motion, useMotionValue, useTransform } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import { BOARD_TEAMS, STAGE } from '../_lib/theme';
+import { GAME_TEAMS, STAGE } from '../_lib/stage';
 
 /** Score that counts up/down to its new value. */
 export function Score({ value, animate, delay = 0.35, from }: { value: number; animate: boolean; delay?: number; from?: number }) {
@@ -32,7 +32,7 @@ export default function TeamBar({ names, scores, turn, delta, deltaKey, turnLabe
   return (
     <div className="grid shrink-0 gap-[clamp(8px,1vw,16px)]" style={{ gridTemplateColumns: `repeat(${names.length}, minmax(0, 1fr))` }}>
       {names.map((name, i) => {
-        const c = BOARD_TEAMS[i];
+        const c = GAME_TEAMS[i];
         const active = i === turn;
         const d = delta?.[i] ?? 0;
         return (

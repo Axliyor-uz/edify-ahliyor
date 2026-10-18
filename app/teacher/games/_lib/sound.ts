@@ -61,6 +61,14 @@ export const sfx = {
   correct: () => [523, 659, 784, 1047].forEach((f, i) => note(f, i * 0.08, 0.22, 'triangle', 0.12)),
   wrong: () => { note(220, 0, 0.25, 'sawtooth', 0.07, 150); note(165, 0.18, 0.35, 'sawtooth', 0.07, 110); },
   timeout: () => [440, 370, 311].forEach((f, i) => note(f, i * 0.14, 0.2, 'square', 0.05)),
+  /** Wheel pointer hitting a peg. */
+  peg: () => note(1900, 0, 0.022, 'square', 0.03),
+  /** Wheel stops on points. */
+  land: () => { note(880, 0, 0.12, 'triangle', 0.12); note(1320, 0.09, 0.3, 'triangle', 0.11); },
+  /** Wheel stops on ×2. */
+  double: () => [784, 988, 1175, 1568, 1976].forEach((f, i) => note(f, i * 0.06, 0.18, 'triangle', 0.1)),
+  /** Wheel stops on Bankrot: a sad "wah-wah". */
+  bankrupt: () => { note(330, 0, 0.3, 'sawtooth', 0.07, 260); note(260, 0.3, 0.6, 'sawtooth', 0.07, 130); },
   win: () => [523, 659, 784, 659, 784, 1047].forEach((f, i) => note(f, i * 0.12, i === 5 ? 0.6 : 0.16, 'triangle', 0.13)),
 };
 

@@ -1,12 +1,30 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Check, TimerOff, X } from 'lucide-react';
+import { ArrowRight, Check, TimerOff, Trophy, X } from 'lucide-react';
 import LatexRenderer from '@/components/LatexRenderer';
 import { cn } from '@/components/ui';
-import type { BoardState } from '../_lib/engine';
-import { BOARD_TEAMS, OPTION_COLORS, STAGE } from '../_lib/theme';
-import type { BoardText } from '../_lib/i18n';
+import type { GameQuestion } from '../_lib/questionDeck';
+import { GAME_TEAMS, OPTION_COLORS, STAGE } from '../_lib/stage';
+
+/**
+ * The open question of a team game (Savol doskasi, Omad g'ildiragi): team
+ * header + timer, question, answer buttons, then the result row with one
+ * continue button. Presentational — the game's engine owns every rule.
+ */
+
+export type CardOutcome = 'correct' | 'wrong' | 'timeout';
+
+export interface QuestionCardText {
+  turn: string;
+  correct: string;
+  wrong: string;
+  timeout: string;
+  next: string;
+  nextTurn: (name: string) => string;
+  results: string;
+  plusPoints: (n: number) => string;
+}
 
 /** Long questions get a smaller font so they still fit a projector. */
 function questionSize(text: string): string {
@@ -51,22 +69,35 @@ function TimerRing({ remainingMs, limitMs, color, animate }: { remainingMs: numb
 }
 
 interface Props {
-  state: BoardState;
+  question: GameQuestion;
+  /** Answering team. */
+  turn: number;
+  /** Team that plays after this one; null = this was the last question. */
+  nextTeam: number | null;
   names: string[];
+  /** Big header figure: the tile number, the points at stake… */
+  badge: React.ReactNode;
+  /** true once answered (or timed out). */
+  done: boolean;
+  outcome: CardOutcome | null;
+  picked: string | null;
+  gained: number | null;
+  timeLimitMs: number | null;
+  remainingMs: number | null;
+  /** Shared-layout id to morph out of (the board's tile). */
+  morphId?: string;
   onAnswer: (optionId: string) => void;
   onNext: () => void;
-  morph: boolean;
   animate: boolean;
-  t: BoardText;
+  t: QuestionCardText;
 }
 
-export default function QuestionCard({ state, names, onAnswer, onNext, morph, animate, t }: Props) {
-  const tile = state.tiles[state.active!];
-  const q = tile.question;
-  const team = BOARD_TEAMS[state.turn];
-  const nextTeam = (state.turn + 1) % state.teamCount;
-  const { phase, outcome, picked } = state;
-  const done = phase === 'result';
+export default function QuestionCard({
+  question: q, turn, nextTeam, names, badge, done, outcome, picked, gained, timeLimitMs, remainingMs,
+  morphId, onAnswer, onNext, animate, t,
+}: Props) {
+  const team = GAME_TEAMS[turn];
+  const morph = morphId !== undefined;
   const correctId = q.options.find((o) => o.id === q.source.answer)?.id ?? null;
 
   return (
@@ -78,7 +109,7 @@ export default function QuestionCard({ state, names, onAnswer, onNext, morph, an
       <div className="relative flex max-h-full w-full max-w-[min(1180px,100%)] flex-col">
         {/* Morphs out of the picked tile */}
         <motion.div
-          layoutId={morph ? `tile-${tile.n}` : undefined}
+          layoutId={morphId}
           className="absolute inset-0 rounded-[clamp(16px,1.8vw,30px)] bg-surface-container-lowest shadow-elev-3"
           transition={{ type: 'spring', stiffness: 260, damping: 28 }}
         />
@@ -92,15 +123,15 @@ export default function QuestionCard({ state, names, onAnswer, onNext, morph, an
           <div className="flex shrink-0 items-center gap-3 px-[clamp(12px,1.6vw,28px)] py-[clamp(8px,1.2vh,14px)]" style={{ background: team.solid }}>
             <div className="min-w-0 flex-1">
               <p className="text-[clamp(10px,1.3vh,13px)] font-bold uppercase tracking-[0.16em] text-white/80">{t.turn}</p>
-              <p className="truncate text-[clamp(15px,2.3vh,24px)] font-extrabold text-white">{names[state.turn]}</p>
+              <p className="truncate text-[clamp(15px,2.3vh,24px)] font-extrabold text-white">{names[turn]}</p>
             </div>
             <span className="font-t-display text-[clamp(26px,5vh,56px)] font-black leading-none text-white drop-shadow-[0_3px_0_rgba(0,0,0,0.18)]">
-              {tile.n}
+              {badge}
             </span>
             <div className="flex flex-1 justify-end">
-              {state.timeLimitMs !== null && state.remainingMs !== null && !done ? (
-                <TimerRing remainingMs={state.remainingMs} limitMs={state.timeLimitMs} color={team.solid} animate={animate} />
-              ) : state.timeLimitMs === null ? (
+              {timeLimitMs !== null && remainingMs !== null && !done ? (
+                <TimerRing remainingMs={remainingMs} limitMs={timeLimitMs} color={team.solid} animate={animate} />
+              ) : timeLimitMs === null ? (
                 <TimerOff className="h-[clamp(20px,3vh,30px)] w-[clamp(20px,3vh,30px)] text-white/70" />
               ) : null}
             </div>
@@ -187,7 +218,7 @@ export default function QuestionCard({ state, names, onAnswer, onNext, morph, an
                     >
                       {outcome === 'correct' ? t.correct : outcome === 'timeout' ? t.timeout : t.wrong}
                     </motion.p>
-                    {outcome === 'correct' && state.gained !== null && (
+                    {outcome === 'correct' && gained !== null && (
                       <motion.span
                         className="rounded-full px-[0.8em] py-[0.25em] font-t-display text-[clamp(20px,3.6vh,38px)] font-black text-white shadow-elev-2"
                         style={{ background: STAGE.correct }}
@@ -195,7 +226,7 @@ export default function QuestionCard({ state, names, onAnswer, onNext, morph, an
                         animate={{ scale: 1, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 420, damping: 14, delay: 0.35 }}
                       >
-                        {t.plusPoints(state.gained)}
+                        {t.plusPoints(gained)}
                       </motion.span>
                     )}
                   </div>
@@ -204,15 +235,24 @@ export default function QuestionCard({ state, names, onAnswer, onNext, morph, an
                     type="button"
                     onClick={onNext}
                     className="inline-flex shrink-0 items-center gap-[0.5em] rounded-full px-[1.4em] py-[0.65em] text-[clamp(14px,2vh,20px)] font-extrabold text-white shadow-elev-2"
-                    style={{ background: BOARD_TEAMS[nextTeam].solid }}
+                    style={{ background: nextTeam === null ? `linear-gradient(160deg, ${STAGE.gold}, ${STAGE.goldDeep})` : GAME_TEAMS[nextTeam].solid }}
                     whileHover={animate ? { scale: 1.04 } : undefined}
                     whileTap={animate ? { scale: 0.96 } : undefined}
                   >
-                    <span className="flex flex-col items-start leading-tight">
-                      <span>{t.next}</span>
-                      <span className="text-[0.7em] font-bold opacity-85">{t.nextTurn(names[nextTeam])}</span>
-                    </span>
-                    <ArrowRight className="h-[1.2em] w-[1.2em]" />
+                    {nextTeam === null ? (
+                      <>
+                        <Trophy className="h-[1.2em] w-[1.2em]" />
+                        <span>{t.results}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex flex-col items-start leading-tight">
+                          <span>{t.next}</span>
+                          <span className="text-[0.7em] font-bold opacity-85">{t.nextTurn(names[nextTeam])}</span>
+                        </span>
+                        <ArrowRight className="h-[1.2em] w-[1.2em]" />
+                      </>
+                    )}
                   </motion.button>
                 </motion.div>
               )}
