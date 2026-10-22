@@ -3,7 +3,9 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { checkUserPermission, deductMonthlyAiCredits } from '@/lib/ai/featureGatekeeper';
-import { dtmQuestions, freePromptQuestions, ixtisosQuestions, maktabQuestions, type GeminiPrompt } from '@/lib/ai/questionPrompts';
+import { dtmQuestions, freePromptQuestions, ixtisosQuestions, maktabQuestions, MCQ_SCHEMA, type AiPrompt } from '@/lib/ai/questionPrompts';
+import { AiError, generateJson } from '@/lib/ai/generate';
+import { fixMath } from '@/lib/ai/fixMath';
 import { findMaktabBankQuestions } from '@/lib/ai/maktabBank';
 import { EXAM_SUBJECTS, MAX_TOPIC, TRACKS, isKnownSubject, normalizeSyllabus, subjectLabel } from '@/app/teacher/games/_lib/aiSource';
 
@@ -14,7 +16,7 @@ export const dynamic = 'force-dynamic';
  * Questions for the classroom games (docs/GAMES.md → "AI bilan yaratish"),
  * made EXACTLY like the matching /teacher/create page: the same prompt
  * builders (lib/ai/questionPrompts.ts) and, for Maktab, the same local bank
- * first (lib/ai/maktabBank.ts). Games only add: a Gemini top-up when the bank
+ * first (lib/ai/maktabBank.ts). Games only add: an AI top-up when the bank
  * has fewer questions than asked, and dropping malformed questions.
  *
  * Body: { source: AiSource (_lib/aiSource.ts), difficulty: 'easy'|'medium'|'hard', count, language: 'uz'|'ru'|'en' }.
@@ -46,7 +48,7 @@ interface Plan {
   /** Ready questions (Maktab local bank), used first. */
   bank: Raw[];
   /** The create page's prompt for `n` questions. */
-  prompt: (n: number) => GeminiPrompt;
+  prompt: (n: number) => AiPrompt;
 }
 
 /** The create page's recipe for this source — or null when the source is invalid. */
@@ -95,8 +97,10 @@ async function planFor(raw: unknown, difficulty: string, language: string): Prom
   return null;
 }
 
-/** One playable question: a stem, 4 distinct options, a valid answer — or null. */
-function playable(stem: string, options: string[], answer: number, id: string, difficulty: string, language: string): GameQuestion | null {
+/** One playable question: a stem, 4 distinct options, a valid answer — or null. Bare LaTeX gets its `$…$`. */
+function playable(rawStem: string, rawOptions: string[], answer: number, id: string, difficulty: string, language: string): GameQuestion | null {
+  const stem = fixMath(rawStem);
+  const options = rawOptions.map(fixMath);
   const keys = options.map((o) => o.toLowerCase());
   if (!stem || options.length !== 4 || !keys.every(Boolean) || new Set(keys).size !== 4 || !(answer >= 0 && answer <= 3)) return null;
   return {
@@ -116,40 +120,6 @@ const bankText = (v: unknown, language: string) => {
   return text(loc[language]) || text(loc.uz);
 };
 
-/** Gemini with the create routes' request shape. Throws on failure; 'SAFETY' when the topic was refused. */
-async function askGemini(apiKey: string, { prompt, temperature }: GeminiPrompt): Promise<unknown[]> {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'ARRAY',
-          items: {
-            type: 'OBJECT',
-            properties: {
-              q: { type: 'STRING' },
-              o: { type: 'ARRAY', items: { type: 'STRING' } },
-              a: { type: 'INTEGER' },
-              e: { type: 'STRING' },
-            },
-            required: ['q', 'o', 'a', 'e'],
-          },
-        },
-      },
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || 'Gemini request failed');
-  const generated = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!generated) throw new Error(data.candidates?.[0]?.finishReason === 'SAFETY' ? 'SAFETY' : 'Empty Gemini answer');
-  const items = JSON.parse(generated);
-  return Array.isArray(items) ? items : [];
-}
-
 export async function POST(req: Request) {
   const match = (req.headers.get('authorization') || '').match(/^Bearer (.+)$/);
   if (!match) return fail('UNAUTHORIZED', 401);
@@ -159,9 +129,6 @@ export async function POST(req: Request) {
   } catch {
     return fail('UNAUTHORIZED', 401);
   }
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return fail('AI_FAILED', 500);
 
   let body: Raw;
   try {
@@ -201,12 +168,13 @@ export async function POST(req: Request) {
     if (made) questions.push(made);
   }
 
-  // 2. Gemini for the rest, with the create page's prompt.
+  // 2. The AI for the rest, with the create page's prompt (provider: lib/ai/models.ts).
   const missing = count - questions.length;
   if (missing > 0) {
     try {
-      const items = await askGemini(apiKey, plan.prompt(missing));
-      for (const it of items) {
+      const { prompt, temperature } = plan.prompt(missing);
+      const items = await generateJson<unknown[]>({ feature: 'questions', prompt, temperature, schema: MCQ_SCHEMA });
+      for (const it of Array.isArray(items) ? items : []) {
         if (questions.length >= count) break;
         const item = (it ?? {}) as Raw;
         const opts = Array.isArray(item.o) ? item.o.map(text) : [];
@@ -216,7 +184,7 @@ export async function POST(req: Request) {
     } catch (error) {
       console.error('Game AI questions error:', error);
       // Bank questions already found are still worth playing.
-      if (!questions.length) return fail(error instanceof Error && error.message === 'SAFETY' ? 'BAD_TOPIC' : 'AI_FAILED', 502);
+      if (!questions.length) return fail(error instanceof AiError && error.code === 'SAFETY' ? 'BAD_TOPIC' : 'AI_FAILED', 502);
     }
   }
 

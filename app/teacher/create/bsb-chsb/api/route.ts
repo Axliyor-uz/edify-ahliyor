@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin'; 
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper";
+import { generateJson } from "@/lib/ai/generate";
 
 export async function POST(req: Request) {
   try {
@@ -15,9 +16,6 @@ export async function POST(req: Request) {
       distribution, 
       language = "uz" 
     } = await req.json();
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "API Key missing" }, { status: 500 });
 
     const totalQuestions = distribution.reduce((acc: number, curr: any) => acc + curr.count, 0);
 
@@ -82,44 +80,30 @@ TYPE SPECIFIC RULES:
 - true_false: "a" MUST be strictly "true" or "false". "o", "m", "ru" empty.
 </instructions>`;
 
-    // 🟢 MINIFIED RESPONSE SCHEMA
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt }] }],
-        generationConfig: { 
-          temperature: 0.3, 
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                t: { type: "STRING" },
-                p: { type: "INTEGER" },
-                to: { type: "STRING" },
-                q: { type: "STRING" },
-                o: { type: "ARRAY", items: { type: "STRING" } }, // Only for MCQ
-                a: { type: "STRING" }, // Answer (index, text, or boolean string)
-                m: { type: "ARRAY", items: { type: "OBJECT", properties: { l: { type: "STRING" }, r: { type: "STRING" } }, required: ["l", "r"] } }, // Only for Matching
-                ru: { type: "STRING" }, // Only for Open Ended
-                e: { type: "STRING" }
-              },
-              required: ["t", "p", "to", "q", "o", "a", "m", "ru", "e"]
-            }
-          }
+    // 🟢 AI CALL — provider + model come from lib/ai/models.ts (minified response schema)
+    const rawAiQuestions: unknown[] = await generateJson({
+      feature: 'questions',
+      prompt: systemPrompt,
+      temperature: 0.3,
+      schema: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            t: { type: "STRING" },
+            p: { type: "INTEGER" },
+            to: { type: "STRING" },
+            q: { type: "STRING" },
+            o: { type: "ARRAY", items: { type: "STRING" } }, // Only for MCQ
+            a: { type: "STRING" }, // Answer (index, text, or boolean string)
+            m: { type: "ARRAY", items: { type: "OBJECT", properties: { l: { type: "STRING" }, r: { type: "STRING" } }, required: ["l", "r"] } }, // Only for Matching
+            ru: { type: "STRING" }, // Only for Open Ended
+            e: { type: "STRING" }
+          },
+          required: ["t", "p", "to", "q", "o", "a", "m", "ru", "e"]
         }
-      })
+      },
     });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Gemini Error");
-
-    const generatedText = data.candidates[0].content.parts[0].text;
-    
-    // 🟢 SAFE DIRECT PARSING (No jsonrepair!)
-    const rawAiQuestions = JSON.parse(generatedText);
     const letterMap = ["A", "B", "C", "D"];
 
     // 🟢 MAP MINIFIED DATA TO THE EXACT FRONTEND FORMAT

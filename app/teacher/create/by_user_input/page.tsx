@@ -6,6 +6,7 @@ import { Sparkles, ArrowLeft, X, CheckCircle2, Wand2, BookOpen, Trash2, Layers, 
 import { db } from "@/lib/firebase";
 import { collection, doc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
 import { toQuestionV1, InvalidTopicError } from "@/lib/questionSchema";
+import { aiModelFor } from "@/lib/ai/models";
 import type { TopicPath } from "@/lib/questionTopics";
 import { useAuth } from "@/lib/AuthContext";
 import toast from "react-hot-toast";
@@ -513,7 +514,7 @@ export default function AIUserInputPage() {
             creatorName: user.displayName || "Teacher",
             creationMethod: "ai_prompt",
             status: "published",
-            aiModel: "gemini-2.5-flash",
+            aiModel: aiModelFor('questions'),
             timestamp: serverTimestamp(),
           },
         );
@@ -570,7 +571,7 @@ export default function AIUserInputPage() {
           creatorName: user.displayName || "Teacher",
           creationMethod: "ai_prompt" as const,
           status: "published" as const,
-          aiModel: "gemini-2.5-flash",
+          aiModel: aiModelFor('questions'),
         };
 
         batch.set(doc(db, "teacher_questions", id), toQuestionV1(source, { ...meta, timestamp: serverTimestamp() }));

@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { checkUserPermission, deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper"; 
+import { generateJson } from "@/lib/ai/generate";
+import { cleanMcqItems, type McqItem } from "@/lib/ai/questionPrompts";
 
 export async function POST(req: Request) {
   try {
     const { userId, images, promptText, difficulty, count, language = "uz" } = await req.json();
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "GEMINI_API_KEY is missing" }, { status: 500 });
 
     if (!userId) return NextResponse.json({ error: "Foydalanuvchi tasdiqlanmadi (User ID missing)" }, { status: 401 });
 
@@ -53,60 +52,44 @@ OUTPUT SCHEMA EXPLANATION:
 "a" = Index of correct option (0, 1, 2, or 3).
 "e" = Explanation (Max 15 words).`;
 
-    const requestParts: any[] = [{ text: systemPrompt }];
+    const imageParts = images.map((imgBase64: string) => ({
+      mimeType: imgBase64.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || "image/jpeg",
+      data: imgBase64.split(',')[1],
+    }));
 
-    images.forEach((imgBase64: string) => {
-      const mimeType = imgBase64.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || "image/jpeg";
-      const base64Data = imgBase64.split(',')[1];
-      requestParts.push({ inlineData: { data: base64Data, mimeType: mimeType } });
-    });
-
-    // 🟢 GEMINI API WITH ADVANCED OBJECT RESPONSE SCHEMA
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: requestParts }],
-        generationConfig: { 
-          temperature: 0.1, 
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              error: { type: "STRING" }, // Xavfsizlik qoidasi uchun
-              items: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    q: { type: "STRING" },
-                    o: { type: "ARRAY", items: { type: "STRING" } }, // Qisqa Array
-                    a: { type: "INTEGER" }, // Javob indeksi
-                    e: { type: "STRING" }
-                  },
-                  required: ["q", "o", "a", "e"]
-                }
-              }
+    // 🟢 AI CALL — provider + model come from lib/ai/models.ts ('images': the model must read photos)
+    const parsedJSON = await generateJson<{ error?: string; items?: McqItem[] }>({
+      feature: 'images',
+      prompt: systemPrompt,
+      temperature: 0.1,
+      images: imageParts,
+      schema: {
+        type: "OBJECT",
+        properties: {
+          error: { type: "STRING" }, // Xavfsizlik qoidasi uchun
+          items: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                q: { type: "STRING" },
+                o: { type: "ARRAY", items: { type: "STRING" } }, // Qisqa Array
+                a: { type: "INTEGER" }, // Javob indeksi
+                e: { type: "STRING" }
+              },
+              required: ["q", "o", "a", "e"]
             }
           }
         }
-      })
+      },
     });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Failed to fetch from Gemini");
-
-    let generatedText = data.candidates[0].content.parts[0].text;
-    
-    // 🟢 Direct Safe Parse
-    const parsedJSON = JSON.parse(generatedText);
 
     // Rasm ta'limga oid bo'lmasa, Gatekeeper orqali to'xtatamiz
     if (parsedJSON.error === "invalid_image") {
       return NextResponse.json({ error: "invalid_image" }, { status: 400 });
     }
 
-    const rawAiQuestions = parsedJSON.items || [];
+    const rawAiQuestions = cleanMcqItems(parsedJSON.items || []);
     if (rawAiQuestions.length === 0) throw new Error("AI savol yarata olmadi.");
 
     // 🟢 MAP MINIFIED SCHEMA TO FRONTEND FORMAT

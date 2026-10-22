@@ -21,6 +21,7 @@
 //    carry. One query, one index, both shapes. Never filter on the nested
 //    `difficulty.name` / `metadata.creatorId`; they are for reading, not querying.
 
+import { aiModelFor } from "@/lib/ai/models";
 import type { Lang, LocalizedText } from "./Math";
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
@@ -131,15 +132,16 @@ export interface CreationDefaults {
   tags: string[];
 }
 
-const GEMINI = "gemini-2.5-flash";
+/** The model AI-made questions are labelled with — the one switch in lib/ai/models.ts. */
+const AI_MODEL = aiModelFor("questions");
 
 export const CREATION_METHOD_DEFAULTS: Record<CreationMethod, CreationDefaults> = {
   // AI from a free-text prompt (create/by_user_input).
-  ai_prompt: { status: "review", aiModel: GEMINI, points: 1, estimatedTime: 60, tags: ["ai", "ai_prompt"] },
+  ai_prompt: { status: "review", aiModel: AI_MODEL, points: 1, estimatedTime: 60, tags: ["ai", "ai_prompt"] },
   // AI from a topic/syllabus pick (create/ai, maktab, ixtisoslashtirilgan_maktab).
-  ai_generated: { status: "review", aiModel: GEMINI, points: 1, estimatedTime: 60, tags: ["ai"] },
+  ai_generated: { status: "review", aiModel: AI_MODEL, points: 1, estimatedTime: 60, tags: ["ai"] },
   // AI read it off a photo of an existing paper (create/by_image).
-  imported: { status: "review", aiModel: GEMINI, points: 1, estimatedTime: 60, tags: ["ai", "by_image"] },
+  imported: { status: "review", aiModel: aiModelFor("images"), points: 1, estimatedTime: 60, tags: ["ai", "by_image"] },
   exam_import: { status: "review", aiModel: "", points: 1, estimatedTime: 90, tags: ["exam_import"] },
   // Written by hand (create/question, create/custom) — trusted, goes straight out.
   teacher_created: { status: "published", aiModel: "", points: 1, estimatedTime: 60, tags: ["teacher_created"] },

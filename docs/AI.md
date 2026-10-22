@@ -6,13 +6,24 @@
 
 ## Purpose & scope
 
-Every Google Gemini-powered feature, the credit/limit systems that meter them, and the TTS route. All Gemini calls use model **`gemini-2.5-flash`** with `GEMINI_API_KEY`. Two call styles: the `@google/generative-ai` SDK (analyze route only) and raw `fetch` to `generativelanguage.googleapis.com/.../gemini-2.5-flash:generateContent` (all teacher create routes).
+Every AI-powered feature, the credit/limit systems that meter them, and the TTS route.
 
-## Gemini features
+### Provider switch (2026-10-22) — Gemini or DeepSeek, ONE file
+
+- **[lib/ai/models.ts](../lib/ai/models.ts)** is the only place a provider or model is named: `AI_PROVIDER` (`'gemini' | 'deepseek'`, switches everything), `AI_MODELS` (`gemini-3.5-flash-lite` / `deepseek-flash` as of 2026-10-22), and `AI_FEATURES` (`questions`, `images`, `analytics`, `ielts` — each follows `AI_PROVIDER`; write a provider on one line to pin that feature). `aiModelFor(feature)` is also what pages save as `metadata.aiModel` (and IELTS as `aiEstimate.model`), so labels can't drift from the model actually called. Browser-safe (no keys).
+- **[lib/ai/generate.ts](../lib/ai/generate.ts)** (server only) is the only code that calls an AI: `generateJson({feature, prompt, temperature, schema, images?})` and `generateChat({feature, system, history, message})`. Keys: `GEMINI_API_KEY` / `DEEPSEEK_API_KEY` in `.env.local` (missing → `AiError('NO_KEY')`).
+  - **Gemini:** the same REST request every route sent before (`responseSchema` enforces the JSON).
+  - **DeepSeek** (`https://api.deepseek.com/chat/completions`, Bearer key): `response_format: {type:'json_object'}` has **no schema enforcement**, so a system message carries an example + the Gemini schema and asks for `{"data": …}` (unwrapped; an array answer missing the wrapper is recovered). `thinking: {type:'disabled'}` (thinking ignores `temperature` and is slower), `max_tokens: 16000` (the 8K default can truncate a 30-question set). Images go as `image_url` data-URL parts — `deepseek-flash` reads images, `deepseek-v4-pro` does NOT (don't put it on `images`). Chat history `model` turns map to `assistant`.
+  - Errors: `AiError` codes `NO_KEY` / `SAFETY` / `EMPTY` / `TRUNCATED` / `HTTP` (the provider's message). The prompt text is passed through unchanged on both providers.
+- ⚠️ **The AI sometimes leaves math bare** (`\frac{4}{8}` with no `$…$`, mostly on short options) even though every prompt asks for `$`. LatexRenderer only renders inside delimiters, so it showed raw. [lib/ai/fixMath.ts](../lib/ai/fixMath.ts) wraps bare LaTeX (whole string if it is only math, else each math run; collapses an over-escaped `\\frac`; leaves text with `$`/`\(` alone). Applied via `cleanMcqItems` in every MCQ route (create/ai, by_user_input, by_image, maktab, ixtisos) and in the games route; bsb-chsb (mixed types) is NOT covered yet.
+- ⚠️ Never call `generativelanguage.googleapis.com` / `api.deepseek.com` or hard-code a model name anywhere else. The `@google/generative-ai` SDK is no longer used (still in package.json).
+- ⚠️ DeepSeek is wired but **not yet run against the real API** (no `DEEPSEEK_API_KEY` as of 2026-10-22; request + parsing checked against a faked reply). Before switching, add the key and re-run the question quality checks.
+
+## AI features
 
 | Feature | Route | Caller | Notes |
 |---|---|---|---|
-| Analytics mentor chat | `app/api/analyze/route.ts` | `app/teacher/analytics/page.tsx` | `action:'initial'` (3-bullet summary, student vs classroom mode) or `action:'chat'`; `systemInstruction` + `startChat({history})`; uz/ru/en |
+| Analytics mentor chat | `app/api/analyze/route.ts` | `app/teacher/analytics/page.tsx` | `action:'initial'` (3-bullet summary, student vs classroom mode) or `action:'chat'`; `generateChat` (system instruction + Gemini-shaped `history`); uz/ru/en |
 | AI DTM MCQ generator | `app/teacher/create/ai/api/route.ts` | `create/ai/page.tsx` | `responseSchema` array `{q,o[4],a,e}` temp 0.3 → mapped to `{question.uz, options.A–D, answer, explanation.uz, difficultyId}` |
 | Free-prompt MCQ | `app/teacher/create/by_user_input/api/route.ts` | same-dir page | temp 0.25 |
 | Image → MCQ (multimodal) | `app/teacher/create/by_image/api/route.tsx` | same-dir page | base64 `inlineData`; guardrail output `{error:'invalid_image', items}`; temp 0.1; **the only route that feature-gates** (`checkUserPermission(userId,'IMAGE_AI',count)`) |
@@ -66,4 +77,4 @@ Fields on `users/{uid}`: `aiDailyQuestionLimit` (fallback 50), `aiQuestionUsedTo
 
 ## How to verify changes
 
-`npm run dev`; exercise a teacher create flow and watch `users/{uid}.usage.aiQuestionsUsed` increment by the actual generated count (and NOT increment on generation failure); for analytics, watch `ai_usage/{uid}_{date}`. Requires `GEMINI_API_KEY` in `.env.local`.
+`npm run dev`; exercise a teacher create flow and watch `users/{uid}.usage.aiQuestionsUsed` increment by the actual generated count (and NOT increment on generation failure); for analytics, watch `ai_usage/{uid}_{date}`. Requires the key of the active provider in `.env.local` (`GEMINI_API_KEY` or `DEEPSEEK_API_KEY`). After switching `AI_PROVIDER`, run one flow per feature: a create page (questions), by_image (images), analytics chat, IELTS estimate — and check a saved question's `metadata.aiModel` names the new model.

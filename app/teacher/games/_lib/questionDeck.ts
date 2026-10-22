@@ -1,4 +1,5 @@
 import { normalizeQuestions, getText, isAnswerCorrect, OPTION_LETTERS } from '@/lib/questionSchema';
+import { fixMath } from '@/lib/ai/fixMath';
 import type { NormalizedQuestion } from '@/types/question';
 import type { Lang } from '@/types/Math';
 
@@ -88,13 +89,14 @@ export function buildDeck(usable: NormalizedQuestion[], lang: Lang): GameQuestio
     const ordered = q.type === 'true_false' ? q.optionList : shuffle(q.optionList);
     return {
       key: `${q.id || 'q'}-${i}`,
-      text: getText(q.question, lang),
+      // fixMath: bare LaTeX ("\frac{4}{8}" without $…$) would show raw — wrap it.
+      text: fixMath(getText(q.question, lang)),
       imageUrl: q.imageUrl,
       source: q,
       options: ordered.map((o, idx) => ({
         id: o.id,
         letter: OPTION_LETTERS[idx],
-        text: getText(o.text, lang),
+        text: fixMath(getText(o.text, lang)),
         imageUrl: o.imageUrl,
       })),
     };

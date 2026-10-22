@@ -8,7 +8,9 @@
  * Every route sends it with the same response schema: `[{q, o[4], a, e}]`.
  */
 
-export interface GeminiPrompt {
+import { fixMath } from "./fixMath";
+
+export interface AiPrompt {
   prompt: string;
   temperature: number;
 }
@@ -21,7 +23,7 @@ interface Base {
 }
 
 /** "Matn orqali" (`create/by_user_input`): any topic the teacher types. */
-export function freePromptQuestions({ promptText, difficulty, count, language }: Base & { promptText: string }): GeminiPrompt {
+export function freePromptQuestions({ promptText, difficulty, count, language }: Base & { promptText: string }): AiPrompt {
   const diffLower = difficulty.toLowerCase();
 
   const difficultyDefinitions: Record<string, string> = {
@@ -55,7 +57,7 @@ OUTPUT SCHEMA EXPLANATION:
 }
 
 /** "Smart AI Studiya" (`create/ai`, the abiturient path): DTM-standard questions for a subject + typed topic. */
-export function dtmQuestions({ subject, topic, difficulty, count, language, context }: Base & { subject: string; topic: string; context?: string }): GeminiPrompt {
+export function dtmQuestions({ subject, topic, difficulty, count, language, context }: Base & { subject: string; topic: string; context?: string }): AiPrompt {
   let subjectSpecificRule = "";
   const lowerSubject = subject.toLowerCase();
 
@@ -98,7 +100,7 @@ OUTPUT SCHEMA EXPLANATION:
 }
 
 /** Ixtisoslashtirilgan maktab (`create/ixtisoslashtirilgan_maktab`). `topic` is the CLASS ("7-sinf"), as the page sends it. */
-export function ixtisosQuestions({ topic, subject, difficulty, count, language, context }: Base & { topic: string; subject: string; context?: string }): GeminiPrompt {
+export function ixtisosQuestions({ topic, subject, difficulty, count, language, context }: Base & { topic: string; subject: string; context?: string }): AiPrompt {
   let subjectSpecificRule = "";
   const lowerSubject = subject.toLowerCase();
 
@@ -142,7 +144,7 @@ OUTPUT SCHEMA EXPLANATION:
 }
 
 /** Maktab (`create/maktab`) — the Gemini fallback after the local bank. `topic` is the CLASS ("6-sinf"), as the page sends it. */
-export function maktabQuestions({ topic, subject, difficulty, count, language, context }: Base & { topic: string; subject: string; context?: string }): GeminiPrompt {
+export function maktabQuestions({ topic, subject, difficulty, count, language, context }: Base & { topic: string; subject: string; context?: string }): AiPrompt {
   const safeSubject = subject.toLowerCase().trim();
 
   // 🟢 DINAMIK FAN QOIDALARI
@@ -209,3 +211,35 @@ OUTPUT SCHEMA EXPLANATION:
 
   return { prompt: systemPrompt, temperature: 0.25 };
 }
+
+/** One generated question: stem, 4 options, correct index, short explanation. */
+export interface McqItem {
+  q: string;
+  o: string[];
+  a: number;
+  e: string;
+}
+
+/** The response schema every MCQ generator above is sent with (create routes + games). */
+export const MCQ_SCHEMA = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: {
+      q: { type: "STRING" },
+      o: { type: "ARRAY", items: { type: "STRING" } },
+      a: { type: "INTEGER" },
+      e: { type: "STRING" },
+    },
+    required: ["q", "o", "a", "e"],
+  },
+};
+
+/** Generated questions with any math the AI left bare wrapped in `$…$` (see lib/ai/fixMath.ts). */
+export const cleanMcqItems = (items: McqItem[]): McqItem[] =>
+  (Array.isArray(items) ? items : []).map((it) => ({
+    ...it,
+    q: fixMath(it.q ?? ""),
+    o: Array.isArray(it.o) ? it.o.map((o) => fixMath(String(o ?? ""))) : it.o,
+    e: fixMath(it.e ?? ""),
+  }));

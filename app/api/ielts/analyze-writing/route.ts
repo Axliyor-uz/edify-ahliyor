@@ -6,10 +6,11 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { IeltsApiError, jsonError, requireUser } from '@/lib/server/ieltsRoute';
+import { AiError, generateJson } from '@/lib/ai/generate';
+import { aiModelFor } from '@/lib/ai/models';
 
 export const dynamic = 'force-dynamic';
 
-const MODEL = 'gemini-2.5-flash';
 const DAILY_LIMIT = Number(process.env.IELTS_AI_WRITING_DAILY_LIMIT || 5);
 
 const RESPONSE_SCHEMA = {
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     const t2 = String(attempt.writing?.task2Text || '');
     if (!t1.trim() && !t2.trim()) throw new IeltsApiError('Insho matni bo‘sh.', 400);
 
-    // Check daily limit BEFORE calling Gemini; increment only after a successful generation
+    // Check daily limit BEFORE calling the AI; increment only after a successful generation
     // (check → generate → deduct-actual, per docs/AI.md).
     const dateKey = new Date().toISOString().split('T')[0]; // UTC, System-C convention
     const usageRef = adminDb.collection('ielts_ai_usage').doc(`${uid}_${dateKey}`);
@@ -64,9 +65,6 @@ export async function POST(request: Request) {
     if ((usage.exists ? usage.data()!.count || 0 : 0) >= DAILY_LIMIT) {
       throw new IeltsApiError('Bugungi AI tahlil limiti tugadi. Ertaga qayta urinib ko‘ring.', 429, 'LIMIT_REACHED');
     }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new IeltsApiError('AI sozlanmagan.', 500);
 
     const testSnap = await adminDb.collection('ielts_writing_tests').doc(attempt.testId).get();
     const test = testSnap.exists ? testSnap.data()! : {};
@@ -88,32 +86,15 @@ export async function POST(request: Request) {
       'descriptors require.',
     ].join('\n');
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-            responseSchema: RESPONSE_SCHEMA,
-          },
-        }),
-      },
-    );
-    if (!res.ok) {
-      console.error('Gemini analyze-writing failed:', res.status, await res.text().catch(() => ''));
-      throw new IeltsApiError('AI tahlil vaqtincha ishlamayapti. Keyinroq urinib ko‘ring.', 502);
-    }
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Provider + model come from lib/ai/models.ts ('ielts').
     let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(text);
-    } catch {
-      throw new IeltsApiError('AI javobini o‘qib bo‘lmadi. Qayta urinib ko‘ring.', 502);
+      parsed = await generateJson<Record<string, unknown>>({ feature: 'ielts', prompt, temperature: 0.2, schema: RESPONSE_SCHEMA });
+    } catch (error) {
+      if (error instanceof AiError && error.code === 'NO_KEY') throw new IeltsApiError('AI sozlanmagan.', 500);
+      if (error instanceof SyntaxError) throw new IeltsApiError('AI javobini o‘qib bo‘lmadi. Qayta urinib ko‘ring.', 502);
+      console.error('AI analyze-writing failed:', error);
+      throw new IeltsApiError('AI tahlil vaqtincha ishlamayapti. Keyinroq urinib ko‘ring.', 502);
     }
 
     const criteria = {
@@ -127,7 +108,7 @@ export async function POST(request: Request) {
       band,
       criteria,
       feedback: { uz: String(fb.uz || ''), ru: String(fb.ru || ''), en: String(fb.en || '') },
-      model: MODEL,
+      model: aiModelFor('ielts'),
       createdAt: FieldValue.serverTimestamp(),
     };
 

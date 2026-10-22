@@ -1,10 +1,9 @@
 // app/api/analyze/route.ts
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { generateChat } from '@/lib/ai/generate';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 /**
  * Teacher analytics AI chat (docs/AI.md).
@@ -54,7 +53,7 @@ export async function POST(req: Request) {
 
     const systemInstruction = `You are a warm, observant mentor to a Math Teacher and you are giving advices and infos to teacher. Give actionable advice under 150 words. Use emojis. No markdown headers. ${languageInstruction} DATA CONTEXT: ${JSON.stringify(promptData)}`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction });
+    // Provider + model come from lib/ai/models.ts ('analytics').
     let aiResponseText = "";
     let initialPromptSent = "";
 
@@ -62,12 +61,9 @@ export async function POST(req: Request) {
        initialPromptSent = analysisMode === "student"
          ? "Provide a 3-bullet summary: 1. 📈 Math Momentum 2. 🌟 Bright Spots 3. 🎯 The Next Play."
          : "Provide a 3-bullet summary: 1. 📊 Classroom Pulse 2. 👑 Math Champions 3. 🚨 Radar & Action.";
-       const result = await model.generateContent(initialPromptSent);
-       aiResponseText = result.response.text();
+       aiResponseText = await generateChat({ feature: 'analytics', system: systemInstruction, message: initialPromptSent });
     } else if (action === "chat") {
-       const chat = model.startChat({ history: history || [] });
-       const result = await chat.sendMessage(message);
-       aiResponseText = result.response.text();
+       aiResponseText = await generateChat({ feature: 'analytics', system: systemInstruction, history: history || [], message });
     }
 
     // 🟢 3. RECORD THE USAGE

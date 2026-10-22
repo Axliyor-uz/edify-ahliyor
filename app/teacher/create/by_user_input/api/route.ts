@@ -1,18 +1,14 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin'; 
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper"; 
-import { freePromptQuestions } from "@/lib/ai/questionPrompts";
+import { freePromptQuestions, MCQ_SCHEMA, cleanMcqItems, type McqItem } from "@/lib/ai/questionPrompts";
+import { generateJson } from "@/lib/ai/generate";
 
 // 🟢 jsonrepair importi butunlay olib tashlandi, u endi umuman kerak emas!
 
 export async function POST(req: Request) {
   try {
     const { userId, promptText, difficulty, count, language = "uz" } = await req.json();
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY is missing in .env.local" }, { status: 500 });
-    }
 
     if (!userId) {
       return NextResponse.json({ error: "Foydalanuvchi tasdiqlanmadi (User ID missing)" }, { status: 401 });
@@ -45,40 +41,8 @@ export async function POST(req: Request) {
     // 🟢 PROMPT — shared with the classroom games (lib/ai/questionPrompts.ts)
     const { prompt: systemPrompt, temperature } = freePromptQuestions({ promptText, difficulty, count, language });
 
-    // 🟢 GEMINI API CALL WITH MINIFIED RESPONSE SCHEMA
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt }] }],
-        generationConfig: {
-          temperature,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                q: { type: "STRING" },
-                o: { type: "ARRAY", items: { type: "STRING" } }, // 🟢 Options are an Array
-                a: { type: "INTEGER" }, // 🟢 Answer is an Index
-                e: { type: "STRING" }   // 🟢 Guarantees Explanation is ONLY a string (fixes {"uz":""} bug)
-              },
-              required: ["q", "o", "a", "e"]
-            }
-          }
-        }
-      })
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Failed to fetch from Gemini");
-
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!generatedText) throw new Error("AI kutilmagan javob qaytardi. Qayta urinib ko'ring.");
-
-    // 🟢 SAFE DIRECT PARSE: AI majburiy Schema bilan qaytargani uchun hech qanday qotish yoki regex kerak emas
-    const rawAiQuestions = JSON.parse(generatedText);
+    // 🟢 AI CALL — provider + model come from lib/ai/models.ts
+    const rawAiQuestions: McqItem[] = cleanMcqItems(await generateJson({ feature: 'questions', prompt: systemPrompt, temperature, schema: MCQ_SCHEMA }));
 
     // 🟢 MAP TO STANDARD FRONTEND FORMAT
     const letterMap = ["A", "B", "C", "D"];

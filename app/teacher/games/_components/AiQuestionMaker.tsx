@@ -7,6 +7,7 @@ import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Coins, Eye, EyeOff, Libr
 import { Banner, Button, IconButton, Skeleton, Switch, cn, MOTION_ON } from '@/components/ui';
 import LatexRenderer from '@/components/LatexRenderer';
 import { getText, normalizeQuestions } from '@/lib/questionSchema';
+import { fixMath } from '@/lib/ai/fixMath';
 import { useMonthlyLimit } from '@/hooks/useMonthlyLimit';
 import {
   fetchDtmBankQuestions, generateGameQuestions, GameQuestionFailure,
@@ -251,7 +252,7 @@ function ReadyList({ set, lang, showAnswers, onShowAnswers, onRemove, t }: {
           <li key={q.id} className="group flex gap-3 rounded-m3-md border border-outline-variant bg-surface-container-lowest p-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-t-primary-soft text-[12.5px] font-extrabold tabular-nums text-primary">{i + 1}</span>
             <div className="min-w-0 flex-1">
-              <LatexRenderer latex={getText(q.question, lang)} className="block text-[14px] font-semibold leading-snug text-on-surface" />
+              <LatexRenderer latex={fixMath(getText(q.question, lang))} className="block text-[14px] font-semibold leading-snug text-on-surface" />
               {showAnswers && (
                 <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
                   {q.optionList.map((o) => {
@@ -265,7 +266,7 @@ function ReadyList({ set, lang, showAnswers, onShowAnswers, onRemove, t }: {
                         )}
                       >
                         {correct ? <Check size={14} className="shrink-0" strokeWidth={3} /> : <span className="w-3.5 shrink-0" />}
-                        <LatexRenderer latex={getText(o.text, lang)} />
+                        <LatexRenderer latex={fixMath(getText(o.text, lang))} />
                       </span>
                     );
                   })}
