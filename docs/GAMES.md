@@ -1,14 +1,14 @@
 # GAMES — classroom games built from a teacher's own tests
 
-> **Agent workflow:** read this BEFORE touching `app/teacher/games/*`, `services/teacherTestService.ts`, or the tests-library quick-launch button; update it in the same change whenever you alter behavior described here. Index: [README.md](README.md).
+> **Agent workflow:** read this BEFORE touching `app/teacher/games/*`, `services/teacherTestService.ts`, `services/gameQuestionService.ts`, `app/api/teacher/games/*`, or the tests-library quick-launch button; update it in the same change whenever you alter behavior described here. Index: [README.md](README.md).
 
-**Last verified:** 2026-10-18 (uncommitted, on top of `0bbf31c`).
+**Last verified:** 2026-10-21 (uncommitted, on top of `5d4504a`).
 
 ## Purpose & scope
 
-`/teacher/games` is a catalogue of projector games that play questions from the teacher's **own tests** (`custom_tests`, built in `/teacher/library/tests`). Three games are live: **Arqon tortish** (tug of war), **Savol doskasi** (Baamboozle-style question board) and **Omad g'ildiragi** (lucky wheel). Live quiz is a "Tez kunda" card with no code behind it.
+`/teacher/games` is a catalogue of projector games that play questions from the teacher's **own tests** (`custom_tests`, built in `/teacher/library/tests`) **or from a set made with AI right in the game's setup** ("AI bilan yaratish"). Four games are live: **Arqon tortish** (tug of war), **Savol doskasi** (Baamboozle-style question board), **Omad g'ildiragi** (lucky wheel) and **Penalti seriyasi** (penalty shootout). Live quiz is a "Tez kunda" card with no code behind it.
 
-**No Firestore writes, no rules, no index.** The only read is the teacher's own `custom_tests` (same query shape as the tests library). Game results are not saved anywhere.
+**No Firestore writes from the games, no rules, no index.** The only read is the teacher's own `custom_tests` (same query shape as the tests library). Game results are not saved anywhere. The AI route's only write is the monthly AI usage counter (`users.usage.aiQuestionsUsed`, docs/AI.md); AI sets live in the browser.
 
 ## Key files
 
@@ -16,7 +16,7 @@
 |---|---|
 | `app/teacher/games/page.tsx` | Hub: clean cards (animated scene, name, one line, full-width button). The whole card is the link; the button is a styled span. Non-live cards show a grey "Tez kunda" button |
 | `app/teacher/games/_components/{TestPicker,Confetti}.tsx` | Shared by every game: test picker (strings via the `PickerText` shape) and the confetti burst |
-| `app/teacher/games/_components/{TeamBar,QuestionCard,Podium,StageBackdrop,TeamGameSettings,PlayControls}.tsx` | Shared by the **team games** (board + wheel), presentational, each takes its strings as a small `*Text` shape: team cards with counting scores + floating "+20"; the open question (generic props: `question`, `turn`, `nextTeam` — `null` → the button reads "Natijalar", `badge`, `morphId`…; timer ring, answers, result + one Continue); full-screen result podium; floating backdrop shapes; setup blocks `TeamSetup` / `TimerField` (− / + stepper) / `QuestionSummary`; footer `ControlButton` + `PauseOverlay` |
+| `app/teacher/games/_components/{TeamBar,QuestionCard,Podium,StageBackdrop,TeamGameSettings,PlayControls}.tsx` | Shared by the **team games** (board, wheel, penalty), presentational, each takes its strings as a small `*Text` shape: team cards with counting scores + floating "+20"; the open question (generic props: `question`, `turn`, `nextTeam` — `null` → the button reads "Natijalar", `badge`, `morphId`…; timer ring, answers, result + one Continue — no button without `onNext`); full-screen result podium; floating backdrop shapes; setup blocks `TeamSetup` (no count chips without `onTeamCount`) / `TimerField` (− / + stepper) / `QuestionSummary`; footer `ControlButton` + `PauseOverlay` |
 | `app/teacher/games/_lib/{stage,ranking}.ts` | Team-game colors (`GAME_TEAMS` ×4, `STAGE` page wash / tile faces / correct / wrong / gold, `OPTION_COLORS`) and `ranking` (equal scores share a place) |
 | `app/teacher/games/_lib/sound.ts` | Shared Web Audio sound kit (`sfx.*`, synthesized, no files) + `useGameSound()` → `[muted, toggle]`, persisted in localStorage `edify.games.muted` |
 | `app/teacher/games/_lib/useBigScreen.ts` | Shared `(min-width:768px) and (orientation: landscape)` check for play views |
@@ -29,7 +29,19 @@
 | `lucky-wheel/_lib/{theme,i18n}.ts` | Fixed wheel colors (`WHEEL`, `WEDGE_FILLS`); every wheel string, uz/ru/en |
 | `lucky-wheel/_components/Wheel.tsx` | The wheel: static rim + blinking bulbs → rotating disc (wedges, labels, pegs) → static gloss → flapping pointer → hub button (spin, then the landed value). Spin animation + drag-flick |
 | `lucky-wheel/_components/{WheelSettings,BankruptCard}.tsx` | Settings (shared blocks + rounds, `roundChoices`); the Bankrot card |
-| `app/teacher/games/_components/GameArt.tsx` | The 4 animated card scenes (tug uses the real `Puller` + `FIELD`; quiz/board/wheel use M3 tokens so palettes and dark mode work). `on=false` → still frame |
+| `app/teacher/games/penalty/page.tsx` | Penalti seriyasi: setup ↔ full-screen stadium, answered beat → proceed timer, kick timer → `kicked`, sounds, keyboard, pause, exit guard |
+| `penalty/_lib/engine.ts` | **All penalty rules** as a pure reducer: 2 teams alternate, `ZONE_COUNT` 5, keeper zone passed in with the answer, sudden death, `goals`, `kicker`/`kickerOf`, `isOver`, `questionsNeeded` |
+| `penalty/_lib/{theme,i18n}.ts` | Fixed pitch colors (`PITCH`, `CROWD_NEUTRALS`); every penalty string, uz/ru/en |
+| `penalty/_components/Stadium.tsx` | The scene as one SVG (viewBox 1600×700, `overflow: visible` background layers): tiered stands + crowd, EDIFY LED board, perspective grass stripes + lines, 3D net (back/roof/side panels) + frame, keeper, ball paths per shot, kicker, vignette, 5 aim target rings. Owns the kick timeline (`KICK_MS`); exports `Ball` |
+| `penalty/_components/{Keeper,Kicker}.tsx` | The two figures: keeper (`KeeperFigure` + moves idle / sway / dive per zone / watch; dives pivot on the body center), kicker from behind (run-up, kick, cheer) |
+| `penalty/_components/{KickTally,KickBanner,PenaltySettings}.tsx` | Top bar (names, one pip per kick, score); the result banner (✓ GOL! green / ✕ GOL EMAS red + a one-line reason) + Continue; settings (shared blocks + kicks, `kickChoices`) |
+| `app/teacher/games/_components/GameArt.tsx` | The 5 animated card scenes (tug uses the real `Puller` + `FIELD`; quiz/board/wheel/penalty use M3 tokens so palettes and dark mode work). `on=false` → still frame |
+| `app/teacher/games/_components/QuestionSource.tsx` | Step 1 of every game: tabs **Mening testlarim** (`TestPicker`) / **AI bilan yaratish** (`AiQuestionMaker`). The open tab owns the selection; switching restores the other tab's pick. Both stay mounted once opened (no re-fetch, the form keeps its text). Tabs lock while AI is generating |
+| `app/teacher/games/_components/AiSourcePicker.tsx` | "Savollar nimadan tuzilsin?": 4 source cards — **O'z mavzuingiz** (topic box + examples), **Maktab uchun** / **Ixtisoslashgan maktab** (grade pills → subject pills → searchable syllabus topic list by chapter, then a summary with "O'zgartirish"), **Abiturient (DTM)** (exam subject pills + topic box). Owns `SourceForm` ↔ `AiSource` (`toSource`, `formFromSet`, `sourceTitle`) |
+| `app/teacher/games/_components/AiQuestionMaker.tsx` | The AI panel, 3 views: form (source picker, difficulty, count `10·15·20·30` with the game's suggestion marked "tavsiya", question language, credits left) → wait → ready list (✕ per question, answers hidden behind a switch) + "Yangi savollar" |
+| `app/teacher/games/_lib/aiSource.ts` | Pure, shared by the panel AND the route: `AiSource` kinds, `TRACKS` (`data/maktab` + `data/ixtisoslashtirilgan_maktab` `structure.json`), `EXAM_SUBJECTS` (same 9 as `/teacher/create/ai`), `normalizeSyllabus`, `isKnownSubject` |
+| `app/teacher/games/_lib/{aiSet,aiText}.ts` | `AiSet` + localStorage per teacher (`edify.games.aiSet.{uid}`), `aiSetToPicked` (the set as a `PickedTest`, so settings/decks work unchanged), `COUNT_OPTIONS`, `suggestCount`; the panel's strings uz/ru/en |
+| `services/gameQuestionService.ts` + `app/api/teacher/games/questions/route.ts` | `generateGameQuestions({source, difficulty, count, language})` → the route: ID-token auth, teacher role, `checkUserPermission(uid, null, count)`, then **the matching create page's recipe** (`lib/ai/questionPrompts.ts` + `lib/ai/maktabBank.ts`), server-side validation, deduct the returned count. `fetchDtmBankQuestions` reads the DTM bank (`questions1`) in the browser, free |
 | `app/teacher/games/_lib/questionDeck.ts` | Shared by every game: eligibility, `analyzeTest`, `buildDeck` (shuffle + option re-lettering), time estimates, `MIN_GAME_QUESTIONS = 6` |
 | `services/teacherTestService.ts` | Read-only `fetchActiveTeacherTests(uid, pageSize, cursor)` / `fetchTeacherTest(id, uid)` (returns null if not the caller's) |
 | `app/teacher/games/tug-of-war/page.tsx` | Setup ↔ full-screen play: game clock, keyboard, pause, exit guard, fullscreen |
@@ -46,6 +58,21 @@
 ## Flows
 
 **Eligibility** (`questionDeck.ts`): a question is playable iff `!isBlock && answerMode === 'single' && 2 ≤ optionList.length ≤ 6 && answer ∈ option ids`, i.e. mcq + true_false. Others are counted as skipped by reason: `open` (typed), `multi` (multiple_select…), `block`, `broken` (no or invalid correct answer). Grading goes through `isAnswerCorrect` (docs/QUESTIONS.md).
+
+**AI bilan yaratish** (every game's step 1, second tab):
+- Source (what the questions are built from), mirroring `/teacher/create`:
+  - **O'z mavzuingiz** — any topic (2–400 chars; Ctrl/Cmd+Enter submits).
+  - **Maktab uchun** / **Ixtisoslashgan maktab** — grade → subject → topic, from the same local syllabus as `create/maktab` and `create/ixtisoslashtirilgan_maktab` (`data/{track}/structure.json` imported; topics via `/api/syllabus`). The topic's syllabus **notes (`context`) go into the prompt**, so questions stay at that grade's level. Switching between the two school tracks resets the grade/subject/topic. The set is named "6-sinf · Matematika · Algebraik ifodalar".
+  - **Abiturient (DTM)** — exam subject (the 9 of `create/ai`) + a typed topic → the `create/ai` prompt. Named "DTM · Biologiya · …". **For Matematika only** a second choice appears, "Savollar: AI yaratadi | DTM bazasidan · bepul": bank = Bo'lim (Algebra / Geometriya, `data/syllabus.json`) → topic → ready questions from `questions1`, read in the browser exactly like `create/database` (`fetchQuestions`, 10 per page, by difficulty), **no credits**; the language choice and credit line are hidden. Nothing found → "Bazada … savol yo'q"; fewer than 6 → the usual "not enough" block.
+- Then: difficulty Oson/O'rta/Qiyin, count `10·15·20·30`, question language (defaults to the UI language — an English teacher with an Uzbek UI picks English). The suggested count follows the game's current settings until the teacher taps a number: tug `neededForMinutes(min)` (∞ → 30), board = tiles, wheel = teams × rounds, penalty = 2 × kicks + 4 (spares for sudden death); `suggestCount` rounds up to an option.
+- Credits come from the live `useMonthlyLimit`. Counts above what's left are disabled; nothing left → a warning with a link to `/teacher/subscription`.
+- Route (`/api/teacher/games/questions`): verified ID token → `users/{uid}.role === 'teacher'` → monthly limit (no feature lock) → `planFor(source)` (a syllabus source sends only grade/subject/**positions**; the route checks grade+subject against `structure.json`, reads the file itself and resolves names + notes — the browser's text is never trusted) → **the create page's recipe, 100% identical prompt** (decided 2026-10-21):
+  - own topic → `freePromptQuestions` (= `create/by_user_input`, temp 0.25)
+  - maktab → `findMaktabBankQuestions` first (= `create/maktab`), then `maktabQuestions` (temp 0.25) — games only add a **top-up**: if the bank has fewer than asked, Gemini writes the rest (create/maktab returns just the bank's few)
+  - ixtisos → `ixtisosQuestions` (temp 0.35); abiturient → `dtmQuestions` (= `create/ai`, temp 0.3, no context)
+  - the create pages send the class as `topic` and the subject folder name as `subject` — the route does the same, so the prompt text matches byte for byte. Same Gemini request (`q/o/a/e` schema; `e` is ignored).
+  → drops anything malformed (not 4 options, duplicates, bad answer) → deducts what it returns, **bank questions included** (as create/maktab does). Errors: `UNAUTHORIZED` 401, `BAD_INPUT` 400, `FORBIDDEN`/`LIMIT_REACHED` 403, `BAD_TOPIC` 422/502 (nothing usable or Gemini's SAFETY refusal), `AI_FAILED` 502. If Gemini fails after some bank questions were found, those are returned. Takes ~15–30 s.
+- Ready: the questions with a ✕ each; **answers are hidden by default** (the setup is often already on the projector) behind "Javoblarni ko'rsatish". Under 6 left → the normal "not enough" block in settings. The set is saved per teacher in localStorage and reopens in every game's AI tab, so one set can be played in all four games without new credits. "Yangi savollar" returns to the form (a link leads back to the ready set until a new one replaces it).
 
 **Setup:** pick a test (paginated 12/page, title search on loaded rows; tests with fewer than 6 usable questions are disabled), two team names (max 20 chars, empty → default), time `1·2·3·5 min | ∞`. The summary shows usable/total, skipped by reason, and an estimate of `n × 8 s / 2 teams`. If usable is below what the chosen time needs (`neededForMinutes`), a non-blocking warning appears. With fewer than 6 usable, Start is disabled.
 
@@ -94,6 +121,21 @@
 
 **Play layout:** team cards → prompt pill ("X, g'ildirakni aylantiring!") → the wheel (square, `min(97% of the free height, 58vw)`) → footer (controls left, "2-raund / 5" + round pips center, Finish right). The question / Bankrot card overlays the wheel area only, so the team cards stay visible.
 
+### Penalti seriyasi (penalty shootout)
+
+**Setup:** same test picker and timer stepper as the board; **2 fixed teams** (name fields only) and **kicks per team** `3 · 5 · 10`. A count is disabled when `2 × kicks` (`questionsNeeded`) exceeds the usable questions (3 always fits: 6 = `MIN_GAME_QUESTIONS`). The **whole** deck is passed in — sudden death uses what is left. The first kick alternates between the teams on every replay (`starter`).
+
+**Play (engine phases `question → answered → aim → kick → result → question…`, `finished`):**
+- **Question:** whistle, the shared question card (badge = kick number, timer). The team answers, the teacher taps it (or A–F / 1–6).
+- **Answered (1.2 s):** the card shows To'g'ri / Noto'g'ri / Vaqt tugadi (the correct answer is shown, like the other team games), then `proceed`.
+- **Correct → aim:** the card closes, 5 numbered zones pop up in the goal (top-left, bottom-left, center, bottom-right, top-right), the keeper sways. Tap a zone or press 1–5.
+- **Kick (1.4 s):** run-up → boot sound → the ball flies to the zone while the keeper dives to **his** zone. Same zone = **saved** (the ball ends in his gloves — at his chest for the center) → banner "GOL EMAS · Darvozabon to'pni qaytardi", otherwise **GOL!** (net ripple, crowd jumps, confetti, roar).
+- **Wrong / time-out:** no aim — the kick goes **over the bar** → "GOL EMAS · Javob noto'g'ri, shuning uchun gol yo'q", so the class sees the answer, not the keeper, cost the goal. Result words are deliberately plain (GOL! / GOL EMAS — the user rejected "Ushladi"/"Tashqariga").
+- **Result:** the banner + Continue (Space/Enter). Every kick is played (no early finish, the user's choice). After `kicks` each, a level score → **sudden death** (one kick each; decided after a pair; footer shows "Hal qiluvchi zarba!"). Deck empty → the game ends where it stands (draw if level) → `Podium` with goals.
+- Sounds: `whistle`, `kick`, `goal`, `save`, `miss` (the noise helper in `sound.ts`), plus correct/wrong/tick/timeout/win.
+
+**Play layout:** `KickTally` (team cards with kick pips, score in the middle) → the stadium (fills the free space; question card, aim pill and result banner overlay it) → footer (controls left, "3-zarba / 5" or the sudden-death chip center).
+
 ## Invariants & traps
 
 - ⚠️ **Anti-cheat is by design; don't "simplify" it.** Each question appears once per game and never on both sides. MCQ options are reshuffled and re-lettered by position (true_false keeps its order). A miss never reveals the answer. Pause covers the whole screen with an opaque layer.
@@ -104,10 +146,17 @@
 - ⚠️ **The play view is portaled to `<body>`** (`createPortal`). The shell wraps every page in a transformed `motion.div` (`pageTransition`), and `position: fixed` inside a transformed ancestor is fixed to THAT box, so the sidebar sat on top of the game and cropped the blue panel. Theme tokens live on `<html>`, so they still apply; the portal root re-adds `t-canvas font-t-body`. It needs `(min-width: 768px) and (orientation: landscape)`; otherwise it shows a "use a big screen" message.
 - ⚠️ **Rig pivots:** framer rotates SVG groups around their bounding box, so every pivot group in `Puller` holds an invisible `<Pivot>` square centered on its joint (origin 50%/50%). Don't remove it or move joints without moving the pivot. `ROPE_Y = GROUND − 65` matches the hand position at the base lean (−26°); change both together.
 - `useSearchParams` requires the page's `<Suspense>` wrapper (Next 16 build).
+- ⚠️ **The game AI route takes the uid from the verified ID token, never from the body.** The `create/*` AI routes still trust a body `userId` (docs/AI.md) — don't copy them. The limit check passes `featureKey: null` (no plan feature needed).
+- ⚠️ **Syllabus files are not uniform** (an array of categories or one bare object; chapters nested in `chapters` or sitting in the top array; chapters without a name — e.g. `maktab/2-sinf/tarbiya`, `maktab/9-sinf/geometriya`, the 1–5-sinf art/music files). `normalizeSyllabus` flattens all of them and topics are addressed by **position** (chapter i, topic j), never by the files' repeating `index`. The create pages read only `data[0]` and so miss chapters in those files — don't copy that. Panel and route must use the same normalizer, or positions drift.
+- ⚠️ **AI sets are never written to Firestore** — they live in localStorage (`aiSet.ts`, try/catch around every access; blocked storage just means the set lasts for this visit). An AI pick has a synthetic `test.id` `ai-…` — never pass it to `fetchTeacherTest` or a `?testId=` link.
 - ⚠️ **Board tile ↔ card morph** uses framer `layoutId={`tile-${n}`}`: the active tile renders as a plain empty slot (no layoutId) while the card's background holds the id; used tiles keep the id so the card shrinks back into them. Two mounted elements with the same id break the morph. Off when motion is off.
 - ⚠️ **framer springs take only 2 keyframes.** `type: 'spring'` + an array like `scale: [1, 1.05, 1]` throws at runtime ("Only two keyframes currently supported with spring") and kills the component — the board's result row once never rendered because of it. Give keyframe props their own tween: `transition={{ default: {type:'spring',…}, scale: { duration: 0.5 } }}`.
 - ⚠️ **`.m3-interactive` forces `position: relative`** (unlayered CSS in `components/ui/theme.css` beats Tailwind's `absolute`). An absolutely placed button with that class drops into normal flow — the podium's ✕ once landed on the trophy. Put the position on a wrapper `div` instead.
-- Team-game colors are a deliberate hard-coded exception like `teams.ts`; keep them in `games/_lib/stage.ts` (wheel wedges in `lucky-wheel/_lib/theme.ts`).
+- Team-game colors are a deliberate hard-coded exception like `teams.ts`; keep them in `games/_lib/stage.ts` (wheel wedges in `lucky-wheel/_lib/theme.ts`, pitch in `penalty/_lib/theme.ts`).
+- ⚠️ **The keeper's dive is drawn when the answer is given** (page → `answer{keeperZone}`), stored in the engine and only shown in the kick. The aim tap can't change it and nothing on screen hints at it. Don't move the draw to the aim or the animation.
+- ⚠️ **Keeper dives are solved against the ball's end points** (`DIVES` in `Keeper.tsx` ↔ `ZONES` / `KEEPER_AT` / `KEEPER_CHEST` in `Stadium.tsx`): a glove lands on the zone. Moving a zone, the keeper's spot/scale or the figure's arms means re-solving the dives, or saves land on the face.
+- Headless screenshots of the play view need no login: a temporary unguarded route rendering `Stadium`/`KickTally`/`KickBanner` with fixed props, captured over the Chrome DevTools protocol (`--virtual-time-budget` stalls the dev build's hydration). Delete the route afterwards.
+- ⚠️ **Keyframe arrays need one value per `times` entry.** The stadium's ball/shadow paths give every property (rotate and opacity too) the same length; a short array with a longer `times` animates wrongly. Looping moves (keeper sway / idle) put the loop on their own property only (`transition: { default: settle, x: loop }`), or the dive's "get up" would loop too.
 - ⚠️ **The wheel result comes from the engine, never from the drag.** `spin` carries a random `target`; the flick only chooses strength/direction and the animation solves the angle to land inside that wedge (± jitter). Don't derive the result from where the wheel physically stops — a slow, careful drag could then steer it.
 - ⚠️ **framer's `style={{ rotate }}` / `animate` writes the whole `transform`,** so a Tailwind `-translate-x-1/2` on the same element is lost (the wheel pointer and the "spin harder" chip once jumped off-center). Center with a wrapper `div`, animate the inner element.
 - ⚠️ **Shared team-game components are presentational.** Each game's engine owns its rules and maps its state to their props (`QuestionCard` knows nothing about tiles or wheels). Add rules to the engine, not to the shared card.
@@ -126,13 +175,15 @@ The user chose designer animation (Rive) for the final characters. Until a file 
 
 ## Known issues / dead code (verified 2026-10-17)
 
+- ⚠️ **The Maktab local banks are unreachable (verified 2026-10-21):** every `local_dbs/{subject}/{grade}.json` on `scanqr-64512.firebasestorage.app` answers **402 Payment Required** (that bucket type needs the Blaze plan). `findMaktabBankQuestions` logs the error and returns null, so create/maktab AND the games silently use Gemini for every topic. Fix the billing, not the code.
+
 - The non-live hub card (live quiz) is a placeholder with no route.
-- The TestCard quick-launch only opens Arqon tortish; the board and the wheel are reached from the hub (both accept `?testId=`).
+- The TestCard quick-launch only opens Arqon tortish; the board, the wheel and the penalty game are reached from the hub (all accept `?testId=`).
 - Arqon tortish has no sounds yet (the board does). Results are not persisted (deliberate for v1).
 
 ## How to verify changes
 
-`npx tsc --noEmit`, `npx eslint app/teacher/games`. Then `npm run dev` → `/teacher/games` → Arqon tortish:
+`npx tsc --noEmit`, `npx eslint app/teacher/games app/api/teacher/games services/gameQuestionService.ts`. Then `npm run dev` → `/teacher/games` → Arqon tortish:
 1. A test with fewer than 6 usable questions is disabled; a mixed test shows correct skipped counts.
 2. A 1-min game: correct answers pull the rope, and the score pops; a wrong one shakes and shows the 2 s lock without revealing the answer; when time runs out the result is correct (winner or draw).
 3. ∞ with a small test ends with "Savollar tugadi"; a 5-step lead wins instantly with confetti.
@@ -141,3 +192,5 @@ The user chose designer animation (Rive) for the final characters. Until a file 
 6. The TestCard gamepad button opens setup with that test's summary preloaded.
 7. Board: a test with 8 usable → only one size chip (8). With 3 teams + 15 s: Start goes full screen; options open with the question; a correct answer shows "+N ochko" and the score counts up; wrong shows the right answer; the timer runs out → "Vaqt tugadi"; pause during a question hides it. The last tile → podium; Finish early → confirm → podium; ties share a place. Mute persists after reload.
 8. Wheel: 2 teams + 3 rounds. Flick the wheel hard → long spin, pointer flaps and clicks; a gentle drag → "Kuchliroq aylantiring!"; Space spins too. Points → the value pops in the hub, then the question opens worth that much. ×2 → gold beat, same team spins again for double. Bankrot → the card, scores unchanged, next team. After 3 rounds → podium (the last card's button reads "Natijalar").
+9. Penalty: 3 kicks + 15 s. Whistle → question; correct → the card shows "To'g'ri!" then the 5 zones; tap one → run-up, ball, keeper dive → GOL! (net ripple, confetti) or GOL EMAS (same zone, ~1 in 5; the ball lands in the gloves). Wrong / time-out → GOL EMAS with no aim, ball over the bar. Pips fill per team; 2:0 after 2 each still plays the last kick. Level after 3 each → "Hal qiluvchi zarba!" until a pair decides. Play again → the other team kicks first. Reduced motion: the same flow without the flights.
+10. AI tab (any game): Maktab uchun → 6-sinf → Matematika → pick "Algebraik ifodalar" (summary + O'zgartirish) → Create → the questions follow the syllabus notes. Ixtisoslashgan maktab shows 5–7-sinf only; Abiturient needs a subject + topic. 9-sinf Geometriya lists all 5 chapters. Own topic: type one or tap an example → the suggested count changes with the game's settings (penalty 5 kicks → 15, 10 kicks → 30) → Create → wait view → ready list, answers hidden; the switch shows them with the right one green; ✕ removes one and the settings summary follows. Switch to "Mening testlarim" and back: each tab keeps its own pick. Open another game → the same set is in its AI tab. Start → the game plays the AI questions. A request without a login → 401. A teacher with no credits left → warning + "Tarifni ko'rish".

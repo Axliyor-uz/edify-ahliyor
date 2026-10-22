@@ -17,7 +17,9 @@ import type { Lang } from '@/types/Math';
 import { analyzeTest, buildDeck, isCorrectPick } from '../_lib/questionDeck';
 import { sfx, useGameSound } from '../_lib/sound';
 import { useBigScreen } from '../_lib/useBigScreen';
-import TestPicker, { type PickedTest } from '../_components/TestPicker';
+import type { PickedTest } from '../_components/TestPicker';
+import QuestionSource from '../_components/QuestionSource';
+import { suggestCount } from '../_lib/aiSet';
 import Confetti from '../_components/Confetti';
 import { initialState, reducer } from './_lib/engine';
 import { GAME_TEAMS, STAGE } from '../_lib/stage';
@@ -219,7 +221,7 @@ function QuestionBoard() {
           <Card className="flex flex-col gap-3">
             <h2 className="text-[15px] font-bold text-on-surface">{t.step1}</h2>
             {user && (
-              <TestPicker uid={user.uid} lang={L} selectedId={picked?.test.id ?? null} onSelect={setPicked} t={t} />
+              <QuestionSource uid={user.uid} lang={L} picked={picked} onPick={setPicked} suggestedCount={suggestCount(tiles)} t={t} />
             )}
           </Card>
 

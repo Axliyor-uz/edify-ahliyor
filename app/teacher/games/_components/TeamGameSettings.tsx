@@ -44,32 +44,35 @@ export interface TeamSettingsText {
   fair: string;
 }
 
+/** Team count chips + one name field per team. Without `onTeamCount` the count is fixed (no chips). */
 export function TeamSetup({ teamCount, onTeamCount, names, onName, t }: {
   teamCount: number;
-  onTeamCount: (n: number) => void;
+  onTeamCount?: (n: number) => void;
   names: string[];
   onName: (i: number, value: string) => void;
   t: TeamSettingsText;
 }) {
   return (
     <>
-      <div>
-        <p className="mb-2 text-[13px] font-bold text-on-surface">{t.teams}</p>
-        <div className="flex flex-wrap gap-2">
-          {TEAM_COUNTS.map((n) => (
-            <Chip key={n} selected={teamCount === n} onClick={() => onTeamCount(n)}>
-              <span className="flex items-center gap-1.5">
-                <span className="flex -space-x-1">
-                  {GAME_TEAMS.slice(0, n).map((c) => (
-                    <span key={c.solid} className="h-2.5 w-2.5 rounded-full ring-2 ring-surface-container-lowest" style={{ background: c.solid }} />
-                  ))}
+      {onTeamCount && (
+        <div>
+          <p className="mb-2 text-[13px] font-bold text-on-surface">{t.teams}</p>
+          <div className="flex flex-wrap gap-2">
+            {TEAM_COUNTS.map((n) => (
+              <Chip key={n} selected={teamCount === n} onClick={() => onTeamCount(n)}>
+                <span className="flex items-center gap-1.5">
+                  <span className="flex -space-x-1">
+                    {GAME_TEAMS.slice(0, n).map((c) => (
+                      <span key={c.solid} className="h-2.5 w-2.5 rounded-full ring-2 ring-surface-container-lowest" style={{ background: c.solid }} />
+                    ))}
+                  </span>
+                  {n}
                 </span>
-                {n}
-              </span>
-            </Chip>
-          ))}
+              </Chip>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <p className="mb-2 text-[13px] font-bold text-on-surface">{t.teamNames}</p>

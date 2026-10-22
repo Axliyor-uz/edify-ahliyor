@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin'; 
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper"; 
+import { freePromptQuestions } from "@/lib/ai/questionPrompts";
 
 // 🟢 jsonrepair importi butunlay olib tashlandi, u endi umuman kerak emas!
 
@@ -41,32 +42,8 @@ export async function POST(req: Request) {
     const diffLower = difficulty.toLowerCase();
     const diffVal = diffLower === "easy" ? 1 : diffLower === "hard" ? 3 : 2;
 
-    const difficultyDefinitions: Record<string, string> = {
-      "easy": "Fundamental concepts, basic definitions, and single-step recall. Clear and direct.",
-      "medium": "Intermediate level. Requires analysis, application of rules, or multi-step reasoning. Standard high-school level.",
-      "hard": "Highly complex, advanced analysis. Synthesize multiple concepts to find the answer."
-    };
-
-    const activeDifficultyInstruction = difficultyDefinitions[diffLower] || difficultyDefinitions["medium"];
-
-    // 🟢 TOKEN-SAVER PROMPT (Qisqartirilgan kalitlar va Massiv javoblar)
-    const systemPrompt = `Role: Expert Academic Examiner. Generate exactly ${count} multiple-choice questions.
-Language: ${language}. Difficulty: ${difficulty.toUpperCase()}.
-
-CRITICAL DIFFICULTY RULE: ${activeDifficultyInstruction}
-USER INSTRUCTION (Topic/Context): "${promptText}"
-
-STRICT RULES:
-1. Accuracy: Correct answer must be factually and mathematically flawless.
-2. Distractors: The 3 incorrect options must be plausible misconceptions. Randomize the correct answer index (0-3) across the set.
-3. Formatting: Wrap ALL math/variables in $ (inline) or $$ (blocks). Double-escape backslashes (e.g., \\\\frac, \\\\sqrt).
-4. EXPLANATION: Max 15 words. Explain the core logic briefly. Must be plain text.
-
-OUTPUT SCHEMA EXPLANATION:
-"q" = Question text.
-"o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words).`;
+    // 🟢 PROMPT — shared with the classroom games (lib/ai/questionPrompts.ts)
+    const { prompt: systemPrompt, temperature } = freePromptQuestions({ promptText, difficulty, count, language });
 
     // 🟢 GEMINI API CALL WITH MINIFIED RESPONSE SCHEMA
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -75,7 +52,7 @@ OUTPUT SCHEMA EXPLANATION:
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt }] }],
         generationConfig: {
-          temperature: 0.25, 
+          temperature,
           responseMimeType: "application/json",
           responseSchema: {
             type: "ARRAY",

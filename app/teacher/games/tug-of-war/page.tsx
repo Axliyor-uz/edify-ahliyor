@@ -14,12 +14,14 @@ import { Button, Card, ConfirmDialog, PageHeader, MOTION_ON } from '@/components
 import { fetchTeacherTest } from '@/services/teacherTestService';
 import type { Lang } from '@/types/Math';
 
-import { analyzeTest, buildDeck } from '../_lib/questionDeck';
+import { analyzeTest, buildDeck, neededForMinutes } from '../_lib/questionDeck';
 import { useBigScreen } from '../_lib/useBigScreen';
 import { initialState, reducer, WIN_STEPS } from './_lib/engine';
 import { FIELD, TEAM_THEME, type Team } from './_lib/teams';
 import { tugText } from './_lib/i18n';
-import TestPicker, { type PickedTest } from '../_components/TestPicker';
+import type { PickedTest } from '../_components/TestPicker';
+import QuestionSource from '../_components/QuestionSource';
+import { suggestCount } from '../_lib/aiSet';
 import GameSettings from './_components/GameSettings';
 import Scoreboard, { TimerPill, TugMeter } from './_components/Scoreboard';
 import RopeArena from './_components/RopeArena';
@@ -171,7 +173,7 @@ function TugOfWar() {
           <Card className="flex flex-col gap-3">
             <h2 className="text-[15px] font-bold text-on-surface">{t.step1}</h2>
             {user && (
-              <TestPicker uid={user.uid} lang={L} selectedId={picked?.test.id ?? null} onSelect={setPicked} t={t} />
+              <QuestionSource uid={user.uid} lang={L} picked={picked} onPick={setPicked} suggestedCount={suggestCount(minutes === null ? Infinity : neededForMinutes(minutes))} t={t} />
             )}
           </Card>
 

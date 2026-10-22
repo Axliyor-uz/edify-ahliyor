@@ -8,9 +8,10 @@ import type { GameQuestion } from '../_lib/questionDeck';
 import { GAME_TEAMS, OPTION_COLORS, STAGE } from '../_lib/stage';
 
 /**
- * The open question of a team game (Savol doskasi, Omad g'ildiragi): team
- * header + timer, question, answer buttons, then the result row with one
- * continue button. Presentational — the game's engine owns every rule.
+ * The open question of a team game (Savol doskasi, Omad g'ildiragi,
+ * Penalti seriyasi): team header + timer, question, answer buttons, then the
+ * result row with one continue button (none without `onNext` — the game moves
+ * on by itself). Presentational — the game's engine owns every rule.
  */
 
 export type CardOutcome = 'correct' | 'wrong' | 'timeout';
@@ -87,7 +88,8 @@ interface Props {
   /** Shared-layout id to morph out of (the board's tile). */
   morphId?: string;
   onAnswer: (optionId: string) => void;
-  onNext: () => void;
+  /** Continue button after the answer; omit when the game moves on by itself. */
+  onNext?: () => void;
   animate: boolean;
   t: QuestionCardText;
 }
@@ -231,29 +233,31 @@ export default function QuestionCard({
                     )}
                   </div>
 
-                  <motion.button
-                    type="button"
-                    onClick={onNext}
-                    className="inline-flex shrink-0 items-center gap-[0.5em] rounded-full px-[1.4em] py-[0.65em] text-[clamp(14px,2vh,20px)] font-extrabold text-white shadow-elev-2"
-                    style={{ background: nextTeam === null ? `linear-gradient(160deg, ${STAGE.gold}, ${STAGE.goldDeep})` : GAME_TEAMS[nextTeam].solid }}
-                    whileHover={animate ? { scale: 1.04 } : undefined}
-                    whileTap={animate ? { scale: 0.96 } : undefined}
-                  >
-                    {nextTeam === null ? (
-                      <>
-                        <Trophy className="h-[1.2em] w-[1.2em]" />
-                        <span>{t.results}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex flex-col items-start leading-tight">
-                          <span>{t.next}</span>
-                          <span className="text-[0.7em] font-bold opacity-85">{t.nextTurn(names[nextTeam])}</span>
-                        </span>
-                        <ArrowRight className="h-[1.2em] w-[1.2em]" />
-                      </>
-                    )}
-                  </motion.button>
+                  {onNext && (
+                    <motion.button
+                      type="button"
+                      onClick={onNext}
+                      className="inline-flex shrink-0 items-center gap-[0.5em] rounded-full px-[1.4em] py-[0.65em] text-[clamp(14px,2vh,20px)] font-extrabold text-white shadow-elev-2"
+                      style={{ background: nextTeam === null ? `linear-gradient(160deg, ${STAGE.gold}, ${STAGE.goldDeep})` : GAME_TEAMS[nextTeam].solid }}
+                      whileHover={animate ? { scale: 1.04 } : undefined}
+                      whileTap={animate ? { scale: 0.96 } : undefined}
+                    >
+                      {nextTeam === null ? (
+                        <>
+                          <Trophy className="h-[1.2em] w-[1.2em]" />
+                          <span>{t.results}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex flex-col items-start leading-tight">
+                            <span>{t.next}</span>
+                            <span className="text-[0.7em] font-bold opacity-85">{t.nextTurn(names[nextTeam])}</span>
+                          </span>
+                          <ArrowRight className="h-[1.2em] w-[1.2em]" />
+                        </>
+                      )}
+                    </motion.button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

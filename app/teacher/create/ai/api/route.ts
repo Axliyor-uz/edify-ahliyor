@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin'; 
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper"; 
+import { dtmQuestions } from "@/lib/ai/questionPrompts";
 
 export async function POST(req: Request) {
   try {
@@ -36,44 +37,8 @@ export async function POST(req: Request) {
     }
     // ==========================================
 
-    // 🟢 DTM SUBJECT-SPECIFIC RULES (Fanga qarab dinamik mantiq)
-    let subjectSpecificRule = "";
-    const lowerSubject = subject.toLowerCase();
-
-    if (["matematika", "fizika", "kimyo", "informatika"].some(s => lowerSubject.includes(s))) {
-      subjectSpecificRule = "- Yechilishi kerak bo'lgan murakkab masalalar, tenglamalar yoki mantiqiy hisoblashlarni tuzing. Shunchaki formula qanday deb so'ramang. DTM darajasidagi qiyinlikda bo'lsin.";
-    } else if (["tarix", "huquq"].some(s => lowerSubject.includes(s))) {
-      subjectSpecificRule = "- Aniq sanalar, xronologiya, tarixiy shaxslar ishtirok etgan tahliliy va qiyosiy savollar tuzing.";
-    } else if (["ona tili", "ingliz tili", "adabiyot", "language"].some(s => lowerSubject.includes(s))) {
-      subjectSpecificRule = "- Grammatika, so'z boyligi, matn tahlili yoki bo'sh joylarni to'ldirishga oid (fill-in-the-blanks) savollar tuzing. DTM grammatika qoidalariga asoslaning.";
-    } else if (["biologiya", "geografiya"].some(s => lowerSubject.includes(s))) {
-      subjectSpecificRule = "- O'zaro bog'liqlik, qonuniyatlar va chuqur nazariy tahlil talab qiladigan savollar tuzing.";
-    } else {
-      subjectSpecificRule = "- O'quvchini mantiqiy fikrlashga undaydigan chuqur tahliliy va DTM formatidagi savollar tuzing.";
-    }
-
-    // 🟢 TOKEN-SAVER PROMPT
-    let systemPrompt = `Role: Expert Uzbekistan Academic Examiner (DTM Standard). Generate exactly ${count} multiple-choice questions.
-Params: Lang:${language}, Diff:${difficulty}, Subject:${subject}, Topic:${topic}.
-
-CRITICAL FORMATTING & LATEX RULES:
-1. Wrap ALL math, numbers, variables, and formulas in $ (for inline) or $$ (for display/blocks). NEVER use \\( \\) or \\[ \\].
-2. JSON ESCAPING: You MUST double-escape all LaTeX backslashes (e.g., \\\\frac, \\\\alpha, \\\\sqrt).
-3. DTM EXAM STYLE (CRITICAL):
-   ${subjectSpecificRule}
-   DO NOT ask simple trivia or basic definitions.
-4. QUALITY: The 3 incorrect options MUST be plausible misconceptions to test real understanding. Randomize the correct answer index (0-3).
-5. EXPLANATION: Max 15 words. Strictly plain text. Give the core logic or formula used.
-
-OUTPUT SCHEMA EXPLANATION:
-"q" = Question text.
-"o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words plain text).`;
-
-    if (context && context.trim() !== "") {
-      systemPrompt += `\nSTRICT CONTEXT: Base questions ONLY on this text: "${context}"`;
-    }
+    // 🟢 PROMPT — shared with the classroom games (lib/ai/questionPrompts.ts)
+    const { prompt: systemPrompt, temperature } = dtmQuestions({ subject, topic, difficulty, count, language, context });
 
     // 🟢 GEMINI API WITH MINIFIED RESPONSE SCHEMA
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -82,7 +47,7 @@ OUTPUT SCHEMA EXPLANATION:
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt }] }],
         generationConfig: {
-          temperature: 0.3,
+          temperature,
           responseMimeType: "application/json",
           responseSchema: {
             type: "ARRAY",

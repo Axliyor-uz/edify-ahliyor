@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin'; 
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper"; 
+import { ixtisosQuestions } from "@/lib/ai/questionPrompts";
 
 export async function POST(req: Request) {
   try {
@@ -38,45 +39,8 @@ export async function POST(req: Request) {
     const diffLower = difficulty.toLowerCase();
     const diffVal = diffLower === "easy" ? 1 : diffLower === "hard" ? 3 : diffLower === "olympiad" ? 4 : 2;
 
-    // 🟢 DYNAMIC SUBJECT RULES FOR GIFTED STUDENTS (Ixtisoslashtirilgan)
-    let subjectSpecificRule = "";
-    const lowerSubject = subject.toLowerCase();
-
-    if (["matematika", "fizika", "kimyo", "informatika"].some(s => lowerSubject.includes(s))) {
-      subjectSpecificRule = "- Yechilishi qiyin bo'lgan, bir necha bosqichli (multi-step) masalalar va mantiqiy boshqotirmalar tuzing. O'quvchi formulani shunchaki yodlagan emas, uni qo'llay oladigan bo'lishi shart.";
-    } else if (["tarix", "huquq"].some(s => lowerSubject.includes(s))) {
-      subjectSpecificRule = "- Ma'lumotlarni yodlashni emas, balki voqea-hodisalarni tahlil qilishni, sabab-oqibat bog'lanishlarini topishni talab qiladigan qiyosiy savollar tuzing.";
-    } else if (["ona tili", "ingliz tili", "adabiyot", "language"].some(s => lowerSubject.includes(s))) {
-      subjectSpecificRule = "- Murakkab grammatik qoidalar, istisnolar (exceptions), matnni chuqur tushunish (reading comprehension) va mantiqiy tahlilga oid savollar tuzing.";
-    } else {
-      subjectSpecificRule = "- O'quvchining tanqidiy fikrlashini (critical thinking) tekshiradigan va chuqur tahlilni talab qiluvchi murakkab savollar tuzing.";
-    }
-
-    // 🟢 REFINED TOKEN-SAVER PROMPT
-    let systemPrompt = `Act as an expert examiner for the Uzbekistan Specialized Schools curriculum.
-Generate exactly ${count} multiple-choice questions.
-
-TARGET AUDIENCE: Class ${topic}, Subject: ${subject}. Difficulty: ${difficulty}. Language: ${language}.
-
-CURRICULUM BOUNDARIES & SPECIALIZED LOGIC:
-You are generating questions for gifted students. 
-- Avoid simple memory recall questions.
-- ${subjectSpecificRule}
-
-STRICT MATH & FORMAT RULES:
-1. Wrap ALL math/variables in $ (inline) or $$ (blocks). Double-escape backslashes (e.g., \\\\frac).
-2. The 3 incorrect options MUST represent logical traps or common miscalculations. Randomize the correct answer index (0-3).
-3. EXPLANATION: Max 15 words! Extremely concise core logic.
-
-OUTPUT SCHEMA EXPLANATION:
-"q" = Question text.
-"o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words).`;
-
-    if (context && context.trim() !== "") {
-      systemPrompt += `\nSTRICT CONTEXT RULES FOR THIS SUBTOPIC:\n${context}`;
-    }
+    // 🟢 PROMPT — shared with the classroom games (lib/ai/questionPrompts.ts)
+    const { prompt: systemPrompt, temperature } = ixtisosQuestions({ topic, subject, difficulty, count, language, context });
 
     // 🟢 GEMINI API WITH MINIFIED RESPONSE SCHEMA
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -85,7 +49,7 @@ OUTPUT SCHEMA EXPLANATION:
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt }] }],
         generationConfig: { 
-            temperature: 0.35, 
+            temperature,
             responseMimeType: "application/json",
             responseSchema: {
               type: "ARRAY",

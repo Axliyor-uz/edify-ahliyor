@@ -4,23 +4,9 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper";
 
-// 🟢 1. IMPORT THE REGISTRY (Loaded instantly into RAM on Vercel boot)
-import dbRegistry from "@/data/local_dbs/structure.json";
-
-// 🟢 2. GLOBAL RAM CACHE
-const localDbCache: Record<string, any[]> = {};
-
-// 🟢 3. YOUR FIREBASE BUCKET
-const BUCKET_NAME = "scanqr-64512.firebasestorage.app";
-
-const shuffleArray = (array: any[]) => {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-};
+// 🟢 Local bank + prompt — shared with the classroom games (lib/ai/*)
+import { findMaktabBankQuestions } from "@/lib/ai/maktabBank";
+import { maktabQuestions } from "@/lib/ai/questionPrompts";
 
 export async function POST(req: Request) {
   try {
@@ -72,61 +58,33 @@ export async function POST(req: Request) {
     const safeSubject = subject.toLowerCase().trim();
     const safeGrade = topic.toLowerCase().trim();
 
-    // @ts-ignore
-    const availableGradesForSubject = dbRegistry[safeSubject];
+    const bankQuestions = await findMaktabBankQuestions(safeSubject, safeGrade, chapter, subtopic);
+    if (bankQuestions) {
+      const selectedQuestions = bankQuestions.slice(0, count);
 
-    if (availableGradesForSubject && availableGradesForSubject.includes(safeGrade)) {
-      try {
-        const cacheKey = `${safeSubject}_${safeGrade}`;
-        let localDatabase = localDbCache[cacheKey];
+      const formattedQuestions = selectedQuestions.map((q: any) => ({
+        id: `tq_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        type: "mcq",
+        points: 2,
+        uiDifficulty: difficulty, 
+        difficultyId: diffVal,
+        question: { uz: q.question?.[language] || q.question?.uz || q.question || "Savol topilmadi" },
+        options: {
+          A: { uz: q.options?.A?.[language] || q.options?.A?.uz || q.options?.A || "A" },
+          B: { uz: q.options?.B?.[language] || q.options?.B?.uz || q.options?.B || "B" },
+          C: { uz: q.options?.C?.[language] || q.options?.C?.uz || q.options?.C || "C" },
+          D: { uz: q.options?.D?.[language] || q.options?.D?.uz || q.options?.D || "D" }
+        },
+        answer: q.answer || "A",
+        explanation: { uz: q.explanation?.uz || q.explanation || "" } 
+      }));
 
-        if (!localDatabase) {
-          const encodedPath = encodeURIComponent(`local_dbs/${safeSubject}/${safeGrade}.json`);
-          const firebaseUrl = `https://firebasestorage.googleapis.com/v0/b/${BUCKET_NAME}/o/${encodedPath}?alt=media`;
+      await new Promise(resolve => setTimeout(resolve, 3500));
+      
+      // 🟢 Deduct limits securely for cached questions
+      await deductMonthlyAiCredits(userId, formattedQuestions.length);
 
-          const res = await fetch(firebaseUrl);
-          if (!res.ok) throw new Error(`Firebase Storage'dan topilmadi: ${res.statusText}`);
-          
-          localDatabase = await res.json();
-          localDbCache[cacheKey] = localDatabase; 
-        }
-
-        let matchedQuestions = localDatabase.filter((q: any) => 
-          q.chapter === chapter && q.subtopic === subtopic
-        );
-
-        if (matchedQuestions.length > 0) {
-          matchedQuestions = shuffleArray(matchedQuestions);
-          const selectedQuestions = matchedQuestions.slice(0, count);
-
-          // ⚠️ Local DB format parses standard JSON
-          const formattedQuestions = selectedQuestions.map((q: any) => ({
-            id: `tq_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-            type: "mcq",
-            points: 2,
-            uiDifficulty: difficulty, 
-            difficultyId: diffVal,
-            question: { uz: q.question?.[language] || q.question?.uz || q.question || "Savol topilmadi" },
-            options: {
-              A: { uz: q.options?.A?.[language] || q.options?.A?.uz || q.options?.A || "A" },
-              B: { uz: q.options?.B?.[language] || q.options?.B?.uz || q.options?.B || "B" },
-              C: { uz: q.options?.C?.[language] || q.options?.C?.uz || q.options?.C || "C" },
-              D: { uz: q.options?.D?.[language] || q.options?.D?.uz || q.options?.D || "D" }
-            },
-            answer: q.answer || "A",
-            explanation: { uz: q.explanation?.uz || q.explanation || "" } 
-          }));
-
-          await new Promise(resolve => setTimeout(resolve, 3500));
-          
-          // 🟢 Deduct limits securely for cached questions
-          await deductMonthlyAiCredits(userId, formattedQuestions.length);
-
-          return NextResponse.json({ questions: formattedQuestions });
-        }
-      } catch (err) {
-        console.error(`Firebase Storage Error for ${safeSubject} ${safeGrade}:`, err);
-      }
+      return NextResponse.json({ questions: formattedQuestions });
     }
     // =========================================================================
 
@@ -134,67 +92,7 @@ export async function POST(req: Request) {
     // 🔴 TOKEN-SAVER GEMINI AI GENERATION (WITH MINIFIED SCHEMA)
     // =========================================================================
     
-    // 🟢 DINAMIK FAN QOIDALARI
-    let subjectSpecificRule = "";
-    if (["matematika", "fizika", "kimyo", "informatika"].some(s => safeSubject.includes(s))) {
-      subjectSpecificRule = "- Yechilishi kerak bo'lgan amaliy masalalar, tenglamalar yoki mantiqiy hisoblashlarni tuzing.";
-    } else if (["tarix", "huquq"].some(s => safeSubject.includes(s))) {
-      subjectSpecificRule = "- Aniq sanalar, tarixiy shaxslar va voqealarni tahlil qiluvchi savollar tuzing.";
-    } else if (["ona tili"].some(s => safeSubject.includes(s))) {
-      subjectSpecificRule = "- Grammatika qoidalari va tahlilga oid savollar tuzing.";
-    } else if (["english", "ingliz tili", "ingliz"].some(s => safeSubject.includes(s))) {
-      
-      // 🚀 EXTREMELY STRICT ENGLISH RULES
-      subjectSpecificRule = `You MUST generate a diverse mix of exactly these 4 question types. Do not use the same type for all questions.
-
-      THE 4 ALLOWED QUESTION TYPES (t):
-      1. "pure_grammar": Fill-in-the-blanks or choose the correct verb/preposition. 
-      2. "pure_vocab": Match a definition to a word, or logical deduction based on vocabulary. 
-      3. "translate_uz_en": Translate an Uzbek word/phrase into English.
-      4. "translate_en_uz": Translate an English word/phrase into Uzbek.
-
-      CRITICAL LANGUAGE ISOLATION RULES:
-      - If 't' is "pure_grammar" or "pure_vocab": The question (q), options (o), and explanation (e) MUST BE 100% IN ENGLISH. Do NOT use a single word of Uzbek.
-      - If 't' is "translate_uz_en": The question (q) is in Uzbek, but the options (o) MUST be in English.
-      - If 't' is "translate_en_uz": The question (q) is in English, but the options (o) MUST be in Uzbek.
-      - Never use phrases like "in the picture" or "according to the audio".`;
-      
-    } else if (["musiqa", "musiqiy savodxonlik", "musiqa madaniyati"].some(s => safeSubject.includes(s))) {
-      subjectSpecificRule = `MUSIQA FANI UCHUN QAT'IY QOIDALAR:
-      1. Qo'shiq yoki she'r qatorlarini yoddan davom ettirishni so'raydigan savollar (masalan: "keyingi qatorni toping") QAT'IYAN TAQIQLANADI. AI o'zbek she'rlarini xato to'qib chiqarishi mumkin.
-      2. Asosiy e'tiborni berilgan Kontekstdagi qahramonlar tahlili, qo'shiqning tarbiyaviy ma'nosi (Moral) va kayfiyatiga qarating.
-      3. Musiqa nazariyasi so'ralganda cholg'u asboblarining turlari (torli, zarbli, puflama), dinamika (qattiq/sekin), temp va registr bo'yicha mantiqiy savollar tuzing.`;
-    // 👆 ============================= 👆
-
-    } else {
-      subjectSpecificRule = "- O'quvchini mantiqiy fikrlashga undaydigan va darslikka to'liq mos keladigan savollar tuzing.";
-    }
-
-    // 🟢 TOKEN SAVER PROMPT (Qisqartirilgan kalitlar va Massiv javoblar)
-    let systemPrompt = `Act as an expert examiner for the Uzbekistan public school system (Maktab).
-Generate exactly ${count} multiple-choice questions.
-
-TARGET AUDIENCE: Class ${topic}, Subject: ${subject}. Difficulty: ${difficulty}. Language: ${language}.
-
-CURRICULUM BOUNDARIES & STYLE:
-1. You are generating questions purely based on the curriculum topic name. Ensure the logic strictly aligns with what a ${topic} student in Uzbekistan learns in ${subject}. Do not use concepts from higher grades.
-2. ${subjectSpecificRule}
-3. The 3 incorrect options MUST be plausible misconceptions. Randomize the correct answer index (0-3) across the set.
-
-STRICT MATH/SCIENCE FORMATTING (CRITICAL):
-1. Wrap ALL math, numbers, variables, and equations in $ (for inline) or $$ (for display/blocks). NEVER use \\( \\) or \\[ \\].
-2. JSON ESCAPING: You MUST double-escape all LaTeX commands (e.g., \\\\frac, \\\\alpha).
-3. EXPLANATION: Max 15 words! Extremely concise core logic.
-
-OUTPUT SCHEMA EXPLANATION:
-"q" = Question text.
-"o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words).`;
-
-    if (context && context.trim() !== "") {
-      systemPrompt += `\nSTRICT CONTEXT RULES FOR THIS SUBTOPIC:\n${context}`;
-    }
+    const { prompt: systemPrompt, temperature } = maktabQuestions({ topic, subject, difficulty, count, language, context });
 
     // 🟢 GEMINI API CALL WITH MINIFIED RESPONSE SCHEMA
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -203,7 +101,7 @@ OUTPUT SCHEMA EXPLANATION:
       body: JSON.stringify({
         contents: [{ parts: [{ text: systemPrompt }] }],
         generationConfig: { 
-          temperature: 0.25, 
+          temperature,
           responseMimeType: "application/json",
           responseSchema: {
             type: "ARRAY",

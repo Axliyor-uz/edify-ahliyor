@@ -18,6 +18,7 @@ Every Google Gemini-powered feature, the credit/limit systems that meter them, a
 | Image → MCQ (multimodal) | `app/teacher/create/by_image/api/route.tsx` | same-dir page | base64 `inlineData`; guardrail output `{error:'invalid_image', items}`; temp 0.1; **the only route that feature-gates** (`checkUserPermission(userId,'IMAGE_AI',count)`) |
 | Specialized-school MCQ | `app/teacher/create/ixtisoslashtirilgan_maktab/api/route.ts` | same-dir page | olympiad difficulty; temp 0.35 |
 | Public-school (maktab) MCQ | `app/teacher/create/maktab/api/route.ts` | same-dir page | **First tries local JSON banks in Firebase Storage** (`structure.json` registry, bucket `scanqr-64512.firebasestorage.app`, RAM cache, artificial 3.5s delay), falls back to Gemini; temp 0.25 |
+| Classroom-game questions | `app/api/teacher/games/questions/route.ts` | `services/gameQuestionService.ts` ← `games/_components/AiQuestionMaker.tsx` | **ID-token auth** (uid never from the body) + teacher role; `checkUserPermission(uid, null, count)` (monthly limit, no feature lock) → **the same prompt builders as the create routes** (own topic = by_user_input, maktab = local bank then maktab prompt, ixtisos, abiturient = create/ai) → validated → deduct what is returned (bank included); returns legacy-shape questions, nothing saved. See [GAMES.md](GAMES.md) |
 | BSB-CHSB summative | `app/teacher/create/bsb-chsb/api/route.ts` | same-dir page | mixed types (mcq/short_answer/open_ended/matching/true_false) from a `distribution`; output `{t,p,to,q,o,a,m,ru,e}` type-branched |
 | IELTS writing estimate | `app/api/ielts/analyze-writing/route.ts` | student review page + teacher IELTS grading form | raw fetch, JSON `responseSchema` `{ta,cc,lr,gra,feedback{uz,ru,en}}` temp 0.2; result **cached on the attempt** (`aiEstimate`) so one Gemini call per attempt ever; limit: `ielts_ai_usage/{uid}_{date}` UTC daily counter (System-C pattern, env `IELTS_AI_WRITING_DAILY_LIMIT` default 5, check→generate→increment). See [IELTS.md](IELTS.md). |
 
@@ -33,6 +34,7 @@ Fields on `users/{uid}`: `aiDailyQuestionLimit` (fallback 50), `aiQuestionUsedTo
 - `checkUserPermission(userId, featureKey, requestedCount)`: feature-lock check → `FEATURE_LOCKED`; `monthlyAiQuestions >= 5000` means **unlimited**; else over-limit → `LIMIT_REACHED`.
 - `deductMonthlyAiCredits(userId, actualCount)`: `FieldValue.increment` merge; no-op if ≤ 0.
 - Plans (`plansData.ts`): Free 100 / mid 1000 / top 5000 (=unlimited). Admin edits + usage reset: `app/admin/membership/`, `admin/teachers/[id]/_components/MembershipTab.tsx`. UI display: `hooks/useMonthlyLimit.ts`, `teacher/subscription/page.tsx`, teacher layout.
+- `featureKey: null` = a flow open to every plan (only the monthly limit applies) — used by the games route.
 - **Pattern (mandatory for new AI flows): check permission → call Gemini → deduct only the actual generated count** so failed generations don't burn credits. All 6 routes follow the check/deduct-actual shape, **but only `by_image` calls the real gatekeeper** — the other 5 inline a copy of the limit math (no feature-lock, drift risk). When touching those routes, prefer migrating them to `checkUserPermission`.
 
 ### C — Per-day server counter `ai_usage/{userId}_{YYYY-MM-DD}` — **LIVE, analyze route only**
@@ -47,6 +49,9 @@ Fields on `users/{uid}`: `aiDailyQuestionLimit` (fallback 50), `aiQuestionUsedTo
 `msedge-tts` (Azure neural), output MP3 24kHz/48kbit mono. Voice hardcoded `uz-UZ-SardorNeural` — the `voice` param is ignored (female `MadinaNeural` commented out). Writes a temp file via `tts.toFile(os.tmpdir(), ...)`, reads + unlinks, returns the buffer. `export const dynamic = 'force-dynamic'` is **required** (native module + fs); any new route using native modules/fs must do the same. No auth, no rate limit, no credit check. Bottom half of the file is a commented-out Muxlisa implementation.
 
 ## Invariants & traps
+
+- ⚠️ **The generator prompts live in ONE file: [lib/ai/questionPrompts.ts](../lib/ai/questionPrompts.ts)** (`freePromptQuestions`, `dtmQuestions`, `ixtisosQuestions`, `maktabQuestions` → `{prompt, temperature}`), moved verbatim out of the 4 create routes on 2026-10-21 (byte-identical, checked on 16 inputs covering every subject branch). The create routes and the games route both call them — edit a prompt there, never inline it again. The Maktab local bank lookup is likewise shared: [lib/ai/maktabBank.ts](../lib/ai/maktabBank.ts). The create routes keep their own auth/credit/response code (still the body-`userId` pattern).
+- ⚠️ The Maktab banks currently answer **402 Payment Required** from Storage (Blaze needed), so the bank branch never hits — see [GAMES.md](GAMES.md) known issues.
 
 - Unlimited threshold `>= 5000` is duplicated in ~8 places (gatekeeper, `useMonthlyLimit`, and inline in 5 routes) — changing plan numbers requires touching all of them.
 - Check→deduct is **non-atomic** everywhere (read then `increment`) — concurrent requests can overshoot limits. Accepted for now; don't assume the counters are exact.

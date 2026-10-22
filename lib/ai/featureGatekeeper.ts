@@ -9,11 +9,12 @@ export type PermissionResult = {
 };
 
 /**
- * STEP 1: Check if the user has the specific feature AND enough monthly credits
+ * STEP 1: Check if the user has the specific feature AND enough monthly credits.
+ * `featureKey: null` = a flow open to every plan (text AI) — only the monthly limit applies.
  */
 export async function checkUserPermission(
-  userId: string, 
-  featureKey: string, 
+  userId: string,
+  featureKey: string | null,
   requestedCount: number = 1
 ): Promise<PermissionResult> {
   try {
@@ -33,7 +34,7 @@ export async function checkUserPermission(
 
     // 1. CHECK FEATURE LOCK (Is it included in their current plan?)
     const includedFeatures = userData?.includedFeatures || [];
-    if (!includedFeatures.includes(featureKey)) {
+    if (featureKey && !includedFeatures.includes(featureKey)) {
       return { 
         allowed: false, 
         code: 'FEATURE_LOCKED', 

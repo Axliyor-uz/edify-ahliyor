@@ -5,15 +5,19 @@ import { Check, Zap } from "lucide-react";
 
 import Puller from "../tug-of-war/_components/Puller";
 import { FIELD } from "../tug-of-war/_lib/teams";
+import { KeeperFigure } from "../penalty/_components/Keeper";
+import { Ball } from "../penalty/_components/Stadium";
+import { CROWD_NEUTRALS, PITCH } from "../penalty/_lib/theme";
+import { GAME_TEAMS } from "../_lib/stage";
 
 /**
  * Animated card scenes for the games hub (docs/GAMES.md). Each fills its
  * parent box. `on = false` (motion off / reduced motion) renders a still frame.
  * Colors come from M3 tokens so every palette and dark mode work; only the
- * tug scene reuses the game's own fixed FIELD look.
+ * tug and penalty scenes reuse their game's own fixed look (FIELD, PITCH).
  */
 
-export type GameArtKey = "tug" | "quiz" | "board" | "wheel";
+export type GameArtKey = "tug" | "quiz" | "board" | "wheel" | "penalty";
 
 const loop = (duration: number, extra: object = {}) => ({ duration, repeat: Infinity, ease: "easeInOut" as const, ...extra });
 
@@ -170,9 +174,91 @@ function WheelArt({ on }: { on: boolean }) {
   );
 }
 
+/** Penalti seriyasi: a mini stadium; the keeper dives the wrong way, the ball flies into the top corner. */
+const PA_CROWD = Array.from({ length: 7 * 41 }, (_, k) => {
+  const row = Math.floor(k / 41);
+  const i = k % 41;
+  const pick = Math.floor(Math.abs(Math.sin(i * 12.9898 + row * 78.233) * 43758.5453)) % 6;
+  return { x: i * 8 + (row % 2) * 4, y: 6 + row * 8, color: [GAME_TEAMS[0].solid, GAME_TEAMS[1].solid, ...CROWD_NEUTRALS][pick] };
+});
+
+function PenaltyArt({ on }: { on: boolean }) {
+  // One 3.2 s clock for every part: wait → kick (ball in at 0.45) → hold → the
+  // ball fades out, slips back to the spot unseen and fades in; the keeper gets up.
+  const loop = (times: number[]) => ({ duration: 3.2, repeat: Infinity, ease: 'easeInOut' as const, times });
+  const BALL_T = [0, 0.22, 0.45, 0.72, 0.78, 0.9, 1];
+  const goal = { left: 104, right: 216, top: 24, line: 94 };
+  const back = { left: 113, right: 207, top: 29, bottom: 88 };
+  return (
+    <div className="h-full w-full" style={{ background: PITCH.grass }}>
+      <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" className="h-full w-full" aria-hidden>
+        <defs>
+          <pattern id="pa-net" width={6} height={6} patternUnits="userSpaceOnUse">
+            <path d="M6 0 L0 0 0 6" fill="none" stroke={PITCH.net} strokeWidth={0.7} />
+          </pattern>
+          <linearGradient id="pa-fade" x1={0} y1={0} x2={0} y2={1}>
+            <stop offset={0} stopColor={PITCH.standsTop} stopOpacity={0.9} />
+            <stop offset={1} stopColor={PITCH.standsTop} stopOpacity={0.15} />
+          </linearGradient>
+        </defs>
+        {/* stands + LED board */}
+        <rect width={320} height={62} fill={PITCH.stands} />
+        {PA_CROWD.map((f, k) => <circle key={k} cx={f.x} cy={f.y} r={2.7} fill={f.color} />)}
+        <rect width={320} height={62} fill="url(#pa-fade)" />
+        <rect y={56} width={320} height={9} fill={PITCH.board} />
+        {/* pitch */}
+        {[[70, 5], [82, 8], [100, 12], [126, 17], [162, 22]].map(([y, h]) => (
+          <rect key={y} y={y} width={320} height={h} fill={PITCH.grassDark} />
+        ))}
+        <g fill="none" stroke={PITCH.line} strokeWidth={1.4} opacity={0.9}>
+          <line x1={0} y1={goal.line} x2={320} y2={goal.line} />
+          <polyline points="92,94 86,108 234,108 228,94" />
+        </g>
+        {/* net (ripples on the goal) + frame */}
+        <motion.g animate={on ? { scale: [1, 1, 1.05, 1, 1] } : undefined} transition={loop([0, 0.45, 0.5, 0.6, 1])} style={{ originX: 0.5, originY: 0.5 }}>
+          <rect x={back.left} y={back.top} width={back.right - back.left} height={back.bottom - back.top} fill={PITCH.netBack} />
+          <polygon points={`${goal.left},${goal.top} ${goal.right},${goal.top} ${back.right},${back.top} ${back.left},${back.top}`} fill={PITCH.netSide} />
+          <polygon points={`${goal.left},${goal.top} ${back.left},${back.top} ${back.left},${back.bottom} ${goal.left},${goal.line}`} fill={PITCH.netSide} />
+          <polygon points={`${goal.right},${goal.top} ${back.right},${back.top} ${back.right},${back.bottom} ${goal.right},${goal.line}`} fill={PITCH.netSide} />
+          <rect x={goal.left} y={goal.top} width={goal.right - goal.left} height={goal.line - goal.top} fill="url(#pa-net)" />
+        </motion.g>
+        <path d={`M${goal.left} ${goal.line} V${goal.top} H${goal.right} V${goal.line}`} fill="none" stroke={PITCH.post} strokeWidth={4} strokeLinejoin="round" />
+        {/* keeper: the real figure, diving to the left */}
+        <g transform={`translate(160 ${goal.line}) scale(0.3)`}>
+          <motion.g
+            animate={on ? { x: [0, 0, -120, -120, 0, 0], y: [0, 0, -37, -37, 0, 0], rotate: [0, 0, -70, -70, 0, 0] } : undefined}
+            transition={loop([0, 0.24, 0.42, 0.72, 0.92, 1])}
+            style={{ originX: 0.5, originY: 0.5 }}
+          >
+            <KeeperFigure color={GAME_TEAMS[0].solid} />
+          </motion.g>
+        </g>
+        {/* ball: from the spot into the top-right corner */}
+        <ellipse cx={160} cy={160} rx={3} ry={1.4} fill={PITCH.line} />
+        <motion.ellipse
+          cx={160} cy={162} rx={10} ry={3} fill={PITCH.shadow}
+          animate={on ? { x: [0, 0, 36, 36, 36, 0, 0], y: [0, 0, -66, -66, -66, 0, 0], opacity: [1, 1, 0.5, 0.5, 0, 0, 1] } : undefined}
+          transition={loop(BALL_T)}
+        />
+        <g transform="translate(160 154)">
+          <motion.g
+            animate={on
+              ? { x: [0, 0, 38, 38, 38, 0, 0], y: [0, 0, -112, -110, -110, 0, 0], scale: [0.45, 0.45, 0.24, 0.24, 0.24, 0.45, 0.45], opacity: [1, 1, 1, 1, 0, 0, 1], rotate: [0, 0, 360, 360, 360, 360, 360] }
+              : { scale: 0.45 }}
+            transition={loop(BALL_T)}
+          >
+            <Ball />
+          </motion.g>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 export default function GameArt({ game, on }: { game: GameArtKey; on: boolean }) {
   if (game === "tug") return <TugArt on={on} />;
   if (game === "quiz") return <QuizArt on={on} />;
   if (game === "board") return <BoardArt on={on} />;
+  if (game === "penalty") return <PenaltyArt on={on} />;
   return <WheelArt on={on} />;
 }
