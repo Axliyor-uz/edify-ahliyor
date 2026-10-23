@@ -16,7 +16,7 @@ export const AI_PROVIDER: AiProvider = 'gemini';
 /** The model each provider uses. */
 export const AI_MODELS: Record<AiProvider, string> = {
   gemini: 'gemini-3.5-flash-lite',
-  deepseek: 'deepseek-flash',
+  deepseek: 'deepseek-v4-pro',
 };
 
 /**
