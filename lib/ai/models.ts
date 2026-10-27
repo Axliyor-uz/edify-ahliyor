@@ -11,7 +11,7 @@
 export type AiProvider = 'gemini' | 'deepseek';
 
 /** Switch everything at once: 'gemini' or 'deepseek'. */
-export const AI_PROVIDER: AiProvider = 'gemini'; // <== CHANGE THIS TO SWITCH PROVIDERS
+export const AI_PROVIDER: AiProvider = 'deepseek'; // <== CHANGE THIS TO SWITCH PROVIDERS
 
 /** The model each provider uses. */
 export const AI_MODELS: Record<AiProvider, string> = {
