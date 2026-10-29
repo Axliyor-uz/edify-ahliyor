@@ -1,4 +1,4 @@
-import { aiModelFor, aiProviderFor, type AiFeature } from './models';
+import { AI_MODELS, aiModelFor, aiProviderFor, type AiFeature } from './models';
 
 /**
  * The one way server code talks to the AI (docs/AI.md → "Provider switch").
@@ -59,6 +59,36 @@ const keyFor = (feature: AiFeature) => {
 const geminiUrl = (model: string, key: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 
+/** The parts of a Gemini reply we read. */
+interface GeminiReply {
+  error?: { message?: string };
+  candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[];
+}
+
+/** Gemini "busy" answers: overloaded (503) or rate-limited (429). */
+const BUSY = [429, 503];
+
+/**
+ * One Gemini call. When the feature has its own model (e.g. images on
+ * gemini-3.5-flash) and that model is busy, it retries once on the
+ * provider's default model, so teachers don't get an error at peak times.
+ */
+async function geminiPost(feature: AiFeature, body: Record<string, unknown>): Promise<{ res: Response; data: GeminiReply }> {
+  const key = keyFor(feature);
+  const post = async (model: string) => {
+    const res = await fetch(geminiUrl(model, key), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return { res, data: await res.json().catch(() => ({})) };
+  };
+  const model = aiModelFor(feature);
+  const first = await post(model);
+  const fallback = AI_MODELS.gemini;
+  if (BUSY.includes(first.res.status) && fallback !== model) {
+    console.warn(`Gemini ${model} busy (${first.res.status}) — retrying on ${fallback}`);
+    return post(fallback);
+  }
+  return first;
+}
+
 /** A placeholder value of the schema's shape — DeepSeek's JSON mode wants an example. */
 function exampleOf(schema: AiSchema): unknown {
   switch (schema.type) {
@@ -100,15 +130,10 @@ export async function generateJson<T = unknown>({ feature, prompt, temperature, 
   images?: AiImage[];
 }): Promise<T> {
   if (aiProviderFor(feature) === 'gemini') {
-    const res = await fetch(geminiUrl(aiModelFor(feature), keyFor(feature)), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }, ...images.map((img) => ({ inlineData: { data: img.data, mimeType: img.mimeType } }))] }],
-        generationConfig: { temperature, responseMimeType: 'application/json', responseSchema: schema },
-      }),
+    const { res, data } = await geminiPost(feature, {
+      contents: [{ parts: [{ text: prompt }, ...images.map((img) => ({ inlineData: { data: img.data, mimeType: img.mimeType } }))] }],
+      generationConfig: { temperature, responseMimeType: 'application/json', responseSchema: schema },
     });
-    const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new AiError('HTTP', data?.error?.message || `Gemini request failed (${res.status})`);
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new AiError(data?.candidates?.[0]?.finishReason === 'SAFETY' ? 'SAFETY' : 'EMPTY');
@@ -150,15 +175,10 @@ export async function generateChat({ feature, system, history = [], message }: {
   message: string;
 }): Promise<string> {
   if (aiProviderFor(feature) === 'gemini') {
-    const res = await fetch(geminiUrl(aiModelFor(feature), keyFor(feature)), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [...history, { role: 'user', parts: [{ text: message }] }],
-      }),
+    const { res, data } = await geminiPost(feature, {
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [...history, { role: 'user', parts: [{ text: message }] }],
     });
-    const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new AiError('HTTP', data?.error?.message || `Gemini request failed (${res.status})`);
     const parts: { text?: string }[] = data?.candidates?.[0]?.content?.parts ?? [];
     const text = parts.map((p) => p.text ?? '').join('');

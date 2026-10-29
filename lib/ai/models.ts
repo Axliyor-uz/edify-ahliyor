@@ -5,7 +5,7 @@
  * IELTS writing) and every saved `metadata.aiModel` label read from here.
  * Safe in the browser: no keys, just names. Keys live in .env.local:
  * GEMINI_API_KEY for 'gemini', DEEPSEEK_API_KEY for 'deepseek'.
- * deepseek-v4-pro    deepseek-flash
+ * DeepSeek models: deepseek-v4-pro (text only), deepseek-flash (reads images).
  */
 
 export type AiProvider = 'gemini' | 'deepseek';
@@ -13,30 +13,36 @@ export type AiProvider = 'gemini' | 'deepseek';
 /** Switch everything at once: 'gemini' or 'deepseek'. */
 export const AI_PROVIDER: AiProvider = 'deepseek'; // <== CHANGE THIS TO SWITCH PROVIDERS
 
-/** The model each provider uses. */
+/** The default model of each provider. */
 export const AI_MODELS: Record<AiProvider, string> = {
-  gemini: 'gemini-3.5-flash-lite',
+  gemini: 'gemini-3.5-flash',
   deepseek: 'deepseek-v4-pro',
 };
 
+interface FeatureAi {
+  provider: AiProvider;
+  /** Optional: this feature's own model instead of the provider's default. */
+  model?: string;
+}
+
 /**
- * Per feature — all follow AI_PROVIDER. To pin one feature, write
- * 'gemini' or 'deepseek' on its line instead.
+ * Per feature. `{ provider: AI_PROVIDER }` follows the switch above; write
+ * 'gemini' / 'deepseek' (and optionally a `model`) to pin one feature.
  */
-export const AI_FEATURES: Record<'questions' | 'images' | 'analytics' | 'ielts', AiProvider> = {
+export const AI_FEATURES: Record<'questions' | 'images' | 'analytics' | 'ielts', FeatureAi> = {
   /** Every text question generator (create/* + the classroom games). */
-  questions: AI_PROVIDER,
-  /** Questions from photos (create/by_image) — the model must read images. */
-  images: AI_PROVIDER,
+  questions: { provider: AI_PROVIDER },
+  /** Questions from photos (create/by_image) — the model MUST read images, so it stays on Gemini. */
+  images: { provider: 'gemini', model: 'gemini-3.5-flash' },
   /** Analytics mentor chat (/api/analyze). */
-  analytics: AI_PROVIDER,
+  analytics: { provider: AI_PROVIDER },
   /** IELTS writing band estimate. */
-  ielts: AI_PROVIDER,
+  ielts: { provider: AI_PROVIDER },
 };
 
 export type AiFeature = keyof typeof AI_FEATURES;
 
-export const aiProviderFor = (feature: AiFeature): AiProvider => AI_FEATURES[feature];
+export const aiProviderFor = (feature: AiFeature): AiProvider => AI_FEATURES[feature].provider;
 
 /** The model name a feature runs on — also what is saved as `metadata.aiModel`. */
-export const aiModelFor = (feature: AiFeature): string => AI_MODELS[AI_FEATURES[feature]];
+export const aiModelFor = (feature: AiFeature): string => AI_FEATURES[feature].model ?? AI_MODELS[AI_FEATURES[feature].provider];

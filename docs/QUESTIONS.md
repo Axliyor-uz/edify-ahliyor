@@ -17,7 +17,7 @@ Both live in [lib/questionSchema.ts](../lib/questionSchema.ts); the types and en
 
 ## Why a normalizer instead of a migration
 
-The bank already holds thousands of **legacy** questions — `questions1` (bulk-imported, read-only), older `teacher_questions`, and question **snapshots frozen inside `custom_tests.questions[]`** when a test was published. Their shape is flat: `options` is an `{A,B,C,D}` map, `answer` is a letter, `difficulty` is a string.
+The bank already holds thousands of **legacy** questions — `questions1` (bulk-imported; the super admin's `/admin/question-bank` appends to it **in the same legacy shape on purpose** — its readers ([lib/Examquestions.ts](../lib/Examquestions.ts), `RASCHquiz`, `MilliyQuiz`, `Examanswers`) read the flat `QuestionDoc` directly, not through the normalizer, so `questions1` is the one place a new question is NOT v1; contract: [lib/questions1Schema.ts](../lib/questions1Schema.ts), [ADMIN.md](ADMIN.md) "Question bank"), older `teacher_questions`, and question **snapshots frozen inside `custom_tests.questions[]`** when a test was published. Their shape is flat: `options` is an `{A,B,C,D}` map, `answer` is a letter, `difficulty` is a string.
 
 v1 is structurally different (`options` is an array, the answer lives at `correctAnswer.value`, `difficulty` is an object). Rewriting the old docs would mean a mass migration — thousands of writes, and the frozen test snapshots would still have to be handled anyway. So **nothing is migrated**: `normalizeQuestion()` is a pure function that turns any shape into one view model, at zero Firestore cost. Legacy docs keep working forever.
 
