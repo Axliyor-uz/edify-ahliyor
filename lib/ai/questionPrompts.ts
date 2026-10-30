@@ -5,10 +5,26 @@
  *
  * ⚠️ Moved VERBATIM out of the create routes (2026-10-21). Changing a prompt
  * here changes it for the create page AND the games — that is the point.
- * Every route sends it with the same response schema: `[{q, o[4], a, e}]`.
+ * Every route sends it with the same response schema: `[{q, o[4], e, a}]` —
+ * the solution `e` BEFORE the answer index `a` (see SOLUTION_RULE).
  */
 
 import { fixMath } from "./fixMath";
+
+/**
+ * How every generator writes `e` (2026-10-31): a worked solution, not a 15-word
+ * hint. The schema puts `e` before `a`, so the AI solves first and picks the
+ * answer from its own result instead of justifying a letter it already chose.
+ * The solution ends with "Javob: X"; `checkMcqItems` drops a question whose X
+ * is not `a`, then rewrites that tail to the option TEXT (options get shuffled
+ * later, so a stored letter would point at the wrong option).
+ */
+export const SOLUTION_RULE = `SOLUTION RULES for "e" (write it BEFORE choosing "a"):
+1. Solve the question yourself first. At most 4 short numbered steps ("1) ... 2) ..."), about 50 words in total, all on ONE line (no line breaks).
+2. Show the real working: the rule/formula used, the substitution and the calculation, with the exact numbers. Never just "by the formula". For non-math subjects state the exact fact or rule and why it gives this answer.
+3. Same language as the question. Wrap math in $...$ exactly like the question (double-escaped backslashes).
+4. End "e" with "Javob: X" — X is the Latin letter (A, B, C or D) of the option that equals your result.
+5. Then set "a" to that same option (A=0, B=1, C=2, D=3). The option text must be exactly your result; if no option matches, fix the options, never the solution.`;
 
 export interface AiPrompt {
   prompt: string;
@@ -45,13 +61,14 @@ STRICT RULES:
 1. Accuracy: Correct answer must be factually and mathematically flawless.
 2. Distractors: The 3 incorrect options must be plausible misconceptions. Randomize the correct answer index (0-3) across the set.
 3. Formatting: Wrap ALL math/variables in $ (inline) or $$ (blocks). Double-escape backslashes (e.g., \\\\frac, \\\\sqrt).
-4. EXPLANATION: Max 15 words. Explain the core logic briefly. Must be plain text.
 
 OUTPUT SCHEMA EXPLANATION:
 "q" = Question text.
 "o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words).`;
+"e" = Worked solution, written BEFORE "a" (rules below).
+"a" = Index of correct option (0, 1, 2, or 3) — the one your solution's "Javob" names.
+
+${SOLUTION_RULE}`;
 
   return { prompt: systemPrompt, temperature: 0.25 };
 }
@@ -84,13 +101,14 @@ CRITICAL FORMATTING & LATEX RULES:
    ${subjectSpecificRule}
    DO NOT ask simple trivia or basic definitions.
 4. QUALITY: The 3 incorrect options MUST be plausible misconceptions to test real understanding. Randomize the correct answer index (0-3).
-5. EXPLANATION: Max 15 words. Strictly plain text. Give the core logic or formula used.
 
 OUTPUT SCHEMA EXPLANATION:
 "q" = Question text.
 "o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words plain text).`;
+"e" = Worked solution, written BEFORE "a" (rules below).
+"a" = Index of correct option (0, 1, 2, or 3) — the one your solution's "Javob" names.
+
+${SOLUTION_RULE}`;
 
   if (context && context.trim() !== "") {
     systemPrompt += `\nSTRICT CONTEXT: Base questions ONLY on this text: "${context}"`;
@@ -128,13 +146,14 @@ You are generating questions for gifted students.
 STRICT MATH & FORMAT RULES:
 1. Wrap ALL math/variables in $ (inline) or $$ (blocks). Double-escape backslashes (e.g., \\\\frac).
 2. The 3 incorrect options MUST represent logical traps or common miscalculations. Randomize the correct answer index (0-3).
-3. EXPLANATION: Max 15 words! Extremely concise core logic.
 
 OUTPUT SCHEMA EXPLANATION:
 "q" = Question text.
 "o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words).`;
+"e" = Worked solution, written BEFORE "a" (rules below).
+"a" = Index of correct option (0, 1, 2, or 3) — the one your solution's "Javob" names.
+
+${SOLUTION_RULE}`;
 
   if (context && context.trim() !== "") {
     systemPrompt += `\nSTRICT CONTEXT RULES FOR THIS SUBTOPIC:\n${context}`;
@@ -197,13 +216,14 @@ CURRICULUM BOUNDARIES & STYLE:
 STRICT MATH/SCIENCE FORMATTING (CRITICAL):
 1. Wrap ALL math, numbers, variables, and equations in $ (for inline) or $$ (for display/blocks). NEVER use \\( \\) or \\[ \\].
 2. JSON ESCAPING: You MUST double-escape all LaTeX commands (e.g., \\\\frac, \\\\alpha).
-3. EXPLANATION: Max 15 words! Extremely concise core logic.
 
 OUTPUT SCHEMA EXPLANATION:
 "q" = Question text.
 "o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words).`;
+"e" = Worked solution, written BEFORE "a" (rules below).
+"a" = Index of correct option (0, 1, 2, or 3) — the one your solution's "Javob" names.
+
+${SOLUTION_RULE}`;
 
   if (context && context.trim() !== "") {
     systemPrompt += `\nSTRICT CONTEXT RULES FOR THIS SUBTOPIC:\n${context}`;
@@ -212,15 +232,19 @@ OUTPUT SCHEMA EXPLANATION:
   return { prompt: systemPrompt, temperature: 0.25 };
 }
 
-/** One generated question: stem, 4 options, correct index, short explanation. */
+/** One generated question: stem, 4 options, worked solution, correct index. */
 export interface McqItem {
   q: string;
   o: string[];
-  a: number;
   e: string;
+  a: number;
 }
 
-/** The response schema every MCQ generator above is sent with (create routes + games). */
+/**
+ * The response schema every MCQ generator above is sent with (create routes + games).
+ * ⚠️ Key order matters: `e` (solution) before `a` (answer). Claude/DeepSeek follow
+ * the `properties` order; Gemini sorts keys alphabetically unless `propertyOrdering` is set.
+ */
 export const MCQ_SCHEMA = {
   type: "ARRAY",
   items: {
@@ -228,12 +252,40 @@ export const MCQ_SCHEMA = {
     properties: {
       q: { type: "STRING" },
       o: { type: "ARRAY", items: { type: "STRING" } },
-      a: { type: "INTEGER" },
       e: { type: "STRING" },
+      a: { type: "INTEGER" },
     },
-    required: ["q", "o", "a", "e"],
+    required: ["q", "o", "e", "a"],
+    propertyOrdering: ["q", "o", "e", "a"],
   },
 };
+
+/** The word the stored solution ends with, by question language. */
+const ANSWER_WORD: Record<string, string> = { uz: "Javob", ru: "Ответ", en: "Answer" };
+/** "Javob: B" (also "Ответ:"/"Answer:", "B)", "(B)") — the letter the solution concluded. */
+const ANSWER_MARK = /(?:[Jj]avob|JAVOB|[Оо]твет|[Aa]nswer)\s*[:：]?\s*\(?([A-D])(?![A-Za-z])/g;
+
+/**
+ * Keeps only questions whose solution agrees with the marked answer, and turns the
+ * solution's "Javob: B" into "Javob: <option text>". A solution without the mark
+ * cannot be checked and is kept as written.
+ */
+export function checkMcqItems(items: McqItem[], language: string): McqItem[] {
+  const word = ANSWER_WORD[language] ?? ANSWER_WORD.uz;
+  return items.flatMap((item) => {
+    const e = String(item.e ?? "");
+    const marks = [...e.matchAll(ANSWER_MARK)];
+    const mark = marks[marks.length - 1];
+    if (!mark) return [item];
+    if ("ABCD".indexOf(mark[1]) !== Number(item.a)) {
+      console.warn(`AI question dropped: solution says ${mark[1]}, answer index is ${item.a} — "${String(item.q).slice(0, 80)}"`);
+      return [];
+    }
+    const steps = e.slice(0, mark.index).trim().replace(/[\s.,;:—-]+$/, "");
+    const answer = `${word}: ${item.o?.[Number(item.a)] ?? ""}`;
+    return [{ ...item, e: steps ? `${steps}. ${answer}` : answer }];
+  });
+}
 
 /** Generated questions with any math the AI left bare wrapped in `$…$` (see lib/ai/fixMath.ts). */
 export const cleanMcqItems = (items: McqItem[]): McqItem[] =>

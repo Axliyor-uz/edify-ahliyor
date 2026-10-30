@@ -27,6 +27,7 @@ import GeneratorControlPanel from "./_components/GeneratorControlPanel";
 import structureMap from "@/data/maktab/structure.json";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 
+import SolutionSteps from "@/components/SolutionSteps";
 // --- TRANSLATION DICTIONARY ---
 const MAKTAB_TRANSLATIONS: Record<string, any> = {
   uz: {
@@ -300,7 +301,7 @@ const AIQuestionCard = ({ q, idx, onRemove }: { q: AIQuestion, idx: number, onRe
       {showExplanation && getText(q.explanation).trim().length > 0 && (
         <div className="bg-surface-container border border-outline-variant p-2.5 md:p-4.5 rounded-m3-md md:rounded-m3-lg mt-2.5 md:mt-4 animate-in fade-in slide-in-from-top-2">
           <p className="text-[9px] md:text-[11px] font-black text-primary uppercase tracking-widest mb-1.5 md:mb-2 flex items-center gap-1 md:gap-1.5"><Sparkles size={10} className="text-primary md:w-[14px] md:h-[14px]" /> {t.aiSolutionLogic}</p>
-          <p className="text-[11px] md:text-[14px] text-on-surface leading-relaxed font-medium"><FormattedText text={getText(q.explanation)} /></p>
+          <div className="text-[11px] md:text-[14px] text-on-surface leading-relaxed font-medium"><SolutionSteps text={getText(q.explanation)} render={(part) => <FormattedText text={part} />} /></div>
         </div>
       )}
     </div>

@@ -20,6 +20,7 @@ import {
 import { normalizeQuestions, isAnswerCorrect, hasAnswer, gradeQuestion, isPartCorrect, isBlockAnswer, type BlockAnswer } from '@/lib/questionSchema';
 import type { NormalizedPart, NormalizedQuestion } from '@/types/question';
 
+import SolutionSteps from "@/components/SolutionSteps";
 // --- TRANSLATION DICTIONARY ---
 const RESULTS_TRANSLATIONS: any = {
   uz: {
@@ -154,7 +155,7 @@ const PartReviewRow = ({ part, given, t }: {
 
         {getContentText(part.explanation) && (
           <div className="break-words pt-0.5 text-[12px] font-bold leading-relaxed text-on-surface-variant">
-            <LatexRenderer latex={getContentText(part.explanation)} />
+            <SolutionSteps text={getContentText(part.explanation)} />
           </div>
         )}
       </div>
@@ -362,7 +363,7 @@ const QuestionReviewCard = ({ question, index, studentAnswerKey, t }: any) => {
                  <Tile tone="primary" size="sm" className="h-7 w-7 bg-surface text-primary"><Lightbulb size={14} strokeWidth={3}/></Tile>
                  <div className="w-full space-y-1 pt-1">
                     <p className="text-[9px] font-black uppercase tracking-[0.12em] opacity-75">{t.question.solution}</p>
-                    <div className="text-[13px] font-bold leading-relaxed"><LatexRenderer latex={explanationText} /></div>
+                    <SolutionSteps text={explanationText} className="text-[13px] font-bold leading-relaxed" />
                  </div>
               </div>
             </motion.div>

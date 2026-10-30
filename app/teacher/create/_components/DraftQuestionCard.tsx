@@ -6,6 +6,7 @@ import { IconButton, cn } from "@/components/ui";
 import { useTeacherLanguage } from "@/app/teacher/layout";
 import MathText from "./MathText";
 
+import SolutionSteps from "@/components/SolutionSteps";
 const TEXT = {
   uz: { solution: "Yechim", hide: "Yechimni yopish", remove: "O'chirish" },
   en: { solution: "Solution", hide: "Hide solution", remove: "Remove" },
@@ -90,7 +91,7 @@ export default function DraftQuestionCard({ index, question, options = [], corre
           </button>
           {showSolution && (
             <div className="mt-2 rounded-m3-sm bg-surface-container px-3 py-2.5 text-sm leading-relaxed text-on-surface">
-              <MathText text={explanation} />
+              <SolutionSteps text={explanation} render={(part) => <MathText text={part} />} />
             </div>
           )}
         </div>

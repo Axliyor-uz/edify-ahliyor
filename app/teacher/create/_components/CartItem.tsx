@@ -9,6 +9,7 @@ import QuestionCreator from '@/components/QuestionCreator';
 
 import { cn } from '@/components/ui';
 
+import SolutionSteps from "@/components/SolutionSteps";
 interface Props {
   question: any;
   index: number;
@@ -180,7 +181,7 @@ export default function CartItem({ question, index, onRemove }: Props) {
                 <BookOpen size={12} /> Explanation
               </span>
               <div className="pl-3 border-l-2 border-tertiary overflow-x-auto bg-tertiary-container text-on-tertiary-container p-3 rounded-r-m3-md">
-                <LatexRenderer latex={explanation} />
+                <SolutionSteps text={explanation} />
               </div>
             </div>
           )}

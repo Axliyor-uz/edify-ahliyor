@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin'; 
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper";
 import { generateJson } from "@/lib/ai/generate";
+import { SOLUTION_RULE, checkMcqItems } from "@/lib/ai/questionPrompts";
 
 export async function POST(req: Request) {
   try {
@@ -65,19 +66,21 @@ ${distRules}
 
 CRITICAL RULES:
 1. LATEX: Wrap ALL math, numbers, and formulas in $ (inline) or $$ (display). Double-escape LaTeX commands (e.g., \\\\frac, \\\\sqrt).
-2. OUTPUT SCHEMA: You must return a JSON array of objects. EVERY object must include all keys (t, p, to, q, o, a, m, ru, e). If a key is not needed for a specific question type, leave it empty ("" or []).
+2. OUTPUT SCHEMA: You must return a JSON array of objects. EVERY object must include all keys (t, p, to, q, o, m, e, a, ru). If a key is not needed for a specific question type, leave it empty ("" or []).
 3. "t" = type (mcq, short_answer, open_ended, matching, true_false)
 4. "p" = points (integer)
 5. "to" = topic name
 6. "q" = question text
-7. "e" = explanation (Max 10 words)
+7. "e" = worked solution for EVERY type, written BEFORE "a" (SOLUTION RULES below). For non-mcq types end it with "Javob: <the answer itself>" instead of a letter.
 
 TYPE SPECIFIC RULES:
 - mcq: "o" MUST be an array of 4 option strings. "a" MUST be the index of correct option ("0", "1", "2", "3").
 - short_answer: "a" MUST be the exact answer text. "o", "m", "ru" remain empty.
-- open_ended: "a" MUST be step-by-step solution no more than 15 words. "ru" MUST be the grading rubric no more than 10 words. "o", "m" empty.
+- open_ended: "a" MUST be the full model solution: at most 4 numbered steps, about 50 words. "ru" MUST be the grading rubric no more than 10 words. "o", "m" empty.
 - matching: "m" MUST be an array of exactly 3 or 4 objects {"l": "Term", "r": "Definition"}. "a", "o", "ru" empty.
 - true_false: "a" MUST be strictly "true" or "false". "o", "m", "ru" empty.
+
+${SOLUTION_RULE}
 </instructions>`;
 
     // 🟢 AI CALL — provider + model come from lib/ai/models.ts (minified response schema)
@@ -95,19 +98,28 @@ TYPE SPECIFIC RULES:
             to: { type: "STRING" },
             q: { type: "STRING" },
             o: { type: "ARRAY", items: { type: "STRING" } }, // Only for MCQ
-            a: { type: "STRING" }, // Answer (index, text, or boolean string)
             m: { type: "ARRAY", items: { type: "OBJECT", properties: { l: { type: "STRING" }, r: { type: "STRING" } }, required: ["l", "r"] } }, // Only for Matching
-            ru: { type: "STRING" }, // Only for Open Ended
-            e: { type: "STRING" }
+            e: { type: "STRING" }, // Worked solution — BEFORE "a", so the answer comes from it
+            a: { type: "STRING" }, // Answer (index, text, or boolean string)
+            ru: { type: "STRING" } // Only for Open Ended
           },
-          required: ["t", "p", "to", "q", "o", "a", "m", "ru", "e"]
+          required: ["t", "p", "to", "q", "o", "m", "e", "a", "ru"],
+          propertyOrdering: ["t", "p", "to", "q", "o", "m", "e", "a", "ru"]
         }
       },
     });
     const letterMap = ["A", "B", "C", "D"];
 
+    // MCQs whose solution disagrees with the marked answer are dropped (no retry: the distribution is fixed).
+    const checkedQuestions = rawAiQuestions.flatMap((raw) => {
+      const item = (raw ?? {}) as { t?: string; q?: string; o?: string[]; e?: string; a?: string };
+      if (item.t !== "mcq") return [raw];
+      const [ok] = checkMcqItems([{ q: item.q ?? "", o: item.o ?? [], e: item.e ?? "", a: parseInt(item.a ?? "") }], language);
+      return ok ? [{ ...item, e: ok.e }] : [];
+    });
+
     // 🟢 MAP MINIFIED DATA TO THE EXACT FRONTEND FORMAT
-    const formattedQuestions = rawAiQuestions.map((item: any) => {
+    const formattedQuestions = checkedQuestions.map((item: any) => {
       let base: any = {
         id: `tq_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         type: item.t,

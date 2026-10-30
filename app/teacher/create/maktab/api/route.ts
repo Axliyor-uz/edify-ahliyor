@@ -6,8 +6,8 @@ import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper";
 
 // 🟢 Local bank + prompt — shared with the classroom games (lib/ai/*)
 import { findMaktabBankQuestions } from "@/lib/ai/maktabBank";
-import { maktabQuestions, MCQ_SCHEMA, cleanMcqItems, type McqItem } from "@/lib/ai/questionPrompts";
-import { generateJson } from "@/lib/ai/generate";
+import { maktabQuestions, type McqItem } from "@/lib/ai/questionPrompts";
+import { generateMcqs } from "@/lib/ai/generateMcqs";
 
 export async function POST(req: Request) {
   try {
@@ -89,11 +89,9 @@ export async function POST(req: Request) {
     // =========================================================================
     // 🔴 TOKEN-SAVER GEMINI AI GENERATION (WITH MINIFIED SCHEMA)
     // =========================================================================
-    
-    const { prompt: systemPrompt, temperature } = maktabQuestions({ topic, subject, difficulty, count, language, context });
-
-    // 🟢 AI CALL — provider + model come from lib/ai/models.ts
-    const rawAiQuestions: McqItem[] = cleanMcqItems(await generateJson({ feature: 'questions', prompt: systemPrompt, temperature, schema: MCQ_SCHEMA }));
+    // 🟢 AI CALL — prompt shared with the games (lib/ai/questionPrompts.ts), provider from lib/ai/models.ts;
+    // solutions checked against the answer, dropped ones regenerated once (lib/ai/generateMcqs.ts)
+    const rawAiQuestions: McqItem[] = await generateMcqs({ build: (n) => maktabQuestions({ topic, subject, difficulty, count: n, language, context }), count, language });
 
     // 🟢 MAP TO STANDARD FRONTEND FORMAT (Translates [0,1,2,3] -> A, B, C, D)
     const letterMap = ["A", "B", "C", "D"];

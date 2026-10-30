@@ -23,6 +23,7 @@ import { Button } from "@/components/ui";
 // 🟢 NEW AI MONTHLY LIMIT BLOCK START
 import { useMonthlyLimit } from "@/hooks/useMonthlyLimit";
 import AiMonthlyLimitCard from "@/app/teacher/create/_components/AiMonthlyLimitCard"; 
+import SolutionSteps from "@/components/SolutionSteps";
 // 🔴 NEW AI MONTHLY LIMIT BLOCK END
 
 // --- 1. TRANSLATION DICTIONARY ---
@@ -340,7 +341,7 @@ const AIQuestionCard = ({ q, idx, onRemove, t }: { q: any, idx: number, onRemove
       {showExplanation && getText(q.explanation).trim().length > 0 && (
         <div className="bg-tertiary-container p-2.5 md:p-4.5 rounded-m3-md mt-2 md:mt-3 animate-in fade-in slide-in-from-top-2">
           <p className="text-[9px] md:text-[11px] font-black text-on-tertiary-container uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-1 md:gap-1.5"><Sparkles size={10} className="md:w-[14px] md:h-[14px]" /> {t.solutionLogic}</p>
-          <p className="text-[11px] md:text-[14px] text-on-tertiary-container leading-relaxed font-medium"><FormattedText text={getText(q.explanation)} /></p>
+          <div className="text-[11px] md:text-[14px] text-on-tertiary-container leading-relaxed font-medium"><SolutionSteps text={getText(q.explanation)} render={(part) => <FormattedText text={part} />} /></div>
         </div>
       )}
     </div>

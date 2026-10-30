@@ -8,6 +8,7 @@ import { Dialog, cn } from "@/components/student-ui";
 import type { SatQuizItem } from "@/types/SatQuiz";
 import type { Lang } from "@/types/Math";
 
+import SolutionSteps from "@/components/SolutionSteps";
 /**
  * Per-question review for one SAT Math sitting — a green/red grid, tap to open
  * a question in a dialog with prev/next. Mirrors `ExamReview`'s replay-mode
@@ -120,9 +121,10 @@ export default function SatReview({
                 {q.explanation && (q.explanation[lang] || q.explanation.uz) && (
                   <>
                     <p className="mb-1 mt-2 text-[11px] font-black uppercase tracking-wide text-on-surface-variant">{t.explanation}</p>
-                    <p className="text-[12.5px] font-medium leading-relaxed text-on-surface-variant">
-                      <LatexRenderer latex={q.explanation[lang] || q.explanation.uz || ""} />
-                    </p>
+                    <SolutionSteps
+                      text={q.explanation[lang] || q.explanation.uz || ""}
+                      className="text-[12.5px] font-medium leading-relaxed text-on-surface-variant"
+                    />
                   </>
                 )}
               </div>

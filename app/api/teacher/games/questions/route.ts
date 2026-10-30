@@ -3,8 +3,9 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { checkUserPermission, deductMonthlyAiCredits } from '@/lib/ai/featureGatekeeper';
-import { dtmQuestions, freePromptQuestions, ixtisosQuestions, maktabQuestions, MCQ_SCHEMA, type AiPrompt } from '@/lib/ai/questionPrompts';
-import { AiError, generateJson } from '@/lib/ai/generate';
+import { dtmQuestions, freePromptQuestions, ixtisosQuestions, maktabQuestions, type AiPrompt } from '@/lib/ai/questionPrompts';
+import { AiError } from '@/lib/ai/generate';
+import { generateMcqs } from '@/lib/ai/generateMcqs';
 import { fixMath } from '@/lib/ai/fixMath';
 import { findMaktabBankQuestions } from '@/lib/ai/maktabBank';
 import { EXAM_SUBJECTS, MAX_TOPIC, TRACKS, isKnownSubject, normalizeSyllabus, subjectLabel } from '@/app/teacher/games/_lib/aiSource';
@@ -172,13 +173,11 @@ export async function POST(req: Request) {
   const missing = count - questions.length;
   if (missing > 0) {
     try {
-      const { prompt, temperature } = plan.prompt(missing);
-      const items = await generateJson<unknown[]>({ feature: 'questions', prompt, temperature, schema: MCQ_SCHEMA });
-      for (const it of Array.isArray(items) ? items : []) {
+      const items = await generateMcqs({ build: plan.prompt, count: missing, language });
+      for (const it of items) {
         if (questions.length >= count) break;
-        const item = (it ?? {}) as Raw;
-        const opts = Array.isArray(item.o) ? item.o.map(text) : [];
-        const made = playable(text(item.q), opts, Number(item.a), `ai_${stamp}_${questions.length}`, difficulty, language);
+        const opts = Array.isArray(it.o) ? it.o.map(text) : [];
+        const made = playable(text(it.q), opts, Number(it.a), `ai_${stamp}_${questions.length}`, difficulty, language);
         if (made) questions.push(made);
       }
     } catch (error) {

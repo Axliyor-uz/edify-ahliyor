@@ -17,6 +17,7 @@ import { MathText, pickLangText } from './ExamRunner';
 import type { ExamPart, ExamQuestion } from '@/types/Exam';
 import type { Lang, LocalizedText } from '@/types/Math';
 
+import SolutionSteps from "@/components/SolutionSteps";
 /**
  * The per-question review shown after a paper is submitted: what was asked, what
  * the student put down, what was right, and the explanation.
@@ -413,7 +414,7 @@ function QuestionReviewBody({
               transition={{ duration: 0.15 }}
               className="mt-2 border-t border-outline-variant pt-2 text-[12px] font-medium text-on-surface-variant"
             >
-              <MathText text={pick(q.explanation)} />
+              <SolutionSteps text={pick(q.explanation)} render={(part) => <MathText text={part} />} />
             </motion.div>
           )}
         </div>

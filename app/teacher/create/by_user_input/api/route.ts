@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin'; 
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper"; 
-import { freePromptQuestions, MCQ_SCHEMA, cleanMcqItems, type McqItem } from "@/lib/ai/questionPrompts";
-import { generateJson } from "@/lib/ai/generate";
+import { freePromptQuestions, type McqItem } from "@/lib/ai/questionPrompts";
+import { generateMcqs } from "@/lib/ai/generateMcqs";
 
 // 🟢 jsonrepair importi butunlay olib tashlandi, u endi umuman kerak emas!
 
@@ -38,11 +38,9 @@ export async function POST(req: Request) {
     const diffLower = difficulty.toLowerCase();
     const diffVal = diffLower === "easy" ? 1 : diffLower === "hard" ? 3 : 2;
 
-    // 🟢 PROMPT — shared with the classroom games (lib/ai/questionPrompts.ts)
-    const { prompt: systemPrompt, temperature } = freePromptQuestions({ promptText, difficulty, count, language });
-
-    // 🟢 AI CALL — provider + model come from lib/ai/models.ts
-    const rawAiQuestions: McqItem[] = cleanMcqItems(await generateJson({ feature: 'questions', prompt: systemPrompt, temperature, schema: MCQ_SCHEMA }));
+    // 🟢 AI CALL — prompt shared with the games (lib/ai/questionPrompts.ts), provider from lib/ai/models.ts;
+    // solutions checked against the answer, dropped ones regenerated once (lib/ai/generateMcqs.ts)
+    const rawAiQuestions: McqItem[] = await generateMcqs({ build: (n) => freePromptQuestions({ promptText, difficulty, count: n, language }), count, language });
 
     // 🟢 MAP TO STANDARD FRONTEND FORMAT
     const letterMap = ["A", "B", "C", "D"];

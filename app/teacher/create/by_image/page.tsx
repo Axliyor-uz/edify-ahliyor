@@ -27,6 +27,7 @@ import imageCompression from 'browser-image-compression';
 
 import { Button, IconButton, Spinner } from "@/components/ui";
 
+import SolutionSteps from "@/components/SolutionSteps";
 // --- TRANSLATION DICTIONARY ---
 const PAGE_TRANSLATIONS = {
   uz: {
@@ -353,9 +354,9 @@ const AIQuestionCard = ({ q, idx, onRemove, t }: { q: any, idx: number, onRemove
       {showExplanation && getText(q.explanation).trim() && (
         <div className="bg-surface-container border border-outline-variant p-2.5 md:p-4 rounded-m3-md mt-2.5 md:mt-4">
           <p className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-1 md:gap-1.5"><BookOpen size={12} className="text-primary md:w-3.5 md:h-3.5" /> {t.solutionLogic}</p>
-          <p className="text-[11px] md:text-[13.5px] text-on-surface font-medium leading-relaxed">
-            <FormattedText text={getText(q.explanation)} />
-          </p>
+          <div className="text-[11px] md:text-[13.5px] text-on-surface font-medium leading-relaxed">
+            <SolutionSteps text={getText(q.explanation)} render={(part) => <FormattedText text={part} />} />
+          </div>
         </div>
       )}
     </div>

@@ -26,6 +26,7 @@ import {
 
 import { Button, IconButton, Spinner, Skeleton } from "@/components/ui";
 
+import SolutionSteps from "@/components/SolutionSteps";
 // The bank holds questions from every era. A filter chip must match BOTH the
 // legacy creationMethod values and the v1 enum, so each chip queries an `in`
 // list. Firestore bills only the docs returned — no extra reads. The lists live
@@ -769,7 +770,7 @@ export default function MyQuestionsPage() {
                       <div>
                         <h4 className="text-[10px] md:text-[11px] font-black text-on-surface-variant uppercase tracking-widest mb-2 border-b border-outline-variant pb-2">{t.solutionExp}</h4>
                         <div className="bg-tertiary-container border border-transparent p-4 rounded-m3-md">
-                          <p className="text-[12px] md:text-[14px] text-on-tertiary-container leading-relaxed font-medium"><FormattedText text={getText(infoModalData.explanation)} /></p>
+                          <div className="text-[12px] md:text-[14px] text-on-tertiary-container leading-relaxed font-medium"><SolutionSteps text={getText(infoModalData.explanation)} render={(part) => <FormattedText text={part} />} /></div>
                         </div>
                       </div>
                     )}

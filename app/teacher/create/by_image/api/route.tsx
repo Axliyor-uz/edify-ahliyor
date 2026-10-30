@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkUserPermission, deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper"; 
 import { generateJson } from "@/lib/ai/generate";
-import { cleanMcqItems, type McqItem } from "@/lib/ai/questionPrompts";
+import { MCQ_SCHEMA, SOLUTION_RULE, checkMcqItems, cleanMcqItems, type McqItem } from "@/lib/ai/questionPrompts";
 
 export async function POST(req: Request) {
   try {
@@ -27,8 +27,8 @@ export async function POST(req: Request) {
     const diffLower = difficulty.toLowerCase();
     const diffVal = diffLower === "easy" ? 1 : diffLower === "hard" ? 3 : 2;
 
-    // 🟢 TOKEN-SAVER PROMPT WITH ERROR HANDLING
-    const systemPrompt = `Role: Expert Academic Examiner. Generate exactly ${count} multiple-choice questions based on the educational content of the provided image(s).
+    // 🟢 PROMPT WITH ERROR HANDLING — `n` questions (a retry asks only for the dropped ones)
+    const buildPrompt = (n: number) => `Role: Expert Academic Examiner. Generate exactly ${n} multiple-choice questions based on the educational content of the provided image(s).
 Language: ${language}. Difficulty: ${difficulty}. 
 Teacher's Instruction: "${promptText || 'Identify the core concepts and generate questions that test deep understanding and application.'}".
 
@@ -42,15 +42,16 @@ STRICT RULES:
 2. STANDALONE CONTEXT (CRITICAL): The student taking the test will NOT see this image. NEVER use phrases like "Rasmdagi", "As shown in the image". You MUST extract the necessary context from the image and embed it directly into the question text.
 3. HIGH-QUALITY DISTRACTORS: Incorrect options must be highly plausible logical traps. Randomize the correct answer index (0-3).
 4. MATH/LATEX FORMATTING: Wrap ALL math symbols/equations in $ (inline) or $$ (display block). Double-escape backslashes (e.g., \\\\frac, \\\\alpha).
-5. EXPLANATION: Max 15 words. Keep it extremely concise.
 
 OUTPUT SCHEMA EXPLANATION:
 "error" = "invalid_image" (ONLY if the image is inappropriate/not educational).
 "items" = Array of questions.
 "q" = Question text.
 "o" = Array of exactly 4 option strings.
-"a" = Index of correct option (0, 1, 2, or 3).
-"e" = Explanation (Max 15 words).`;
+"e" = Worked solution, written BEFORE "a" (rules below).
+"a" = Index of correct option (0, 1, 2, or 3) — the one your solution's "Javob" names.
+
+${SOLUTION_RULE}`;
 
     const imageParts = images.map((imgBase64: string) => ({
       mimeType: imgBase64.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || "image/jpeg",
@@ -58,38 +59,36 @@ OUTPUT SCHEMA EXPLANATION:
     }));
 
     // 🟢 AI CALL — provider + model come from lib/ai/models.ts ('images': the model must read photos)
-    const parsedJSON = await generateJson<{ error?: string; items?: McqItem[] }>({
+    const ask = (n: number) => generateJson<{ error?: string; items?: McqItem[] }>({
       feature: 'images',
-      prompt: systemPrompt,
+      prompt: buildPrompt(n),
       temperature: 0.1,
       images: imageParts,
       schema: {
         type: "OBJECT",
         properties: {
           error: { type: "STRING" }, // Xavfsizlik qoidasi uchun
-          items: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                q: { type: "STRING" },
-                o: { type: "ARRAY", items: { type: "STRING" } }, // Qisqa Array
-                a: { type: "INTEGER" }, // Javob indeksi
-                e: { type: "STRING" }
-              },
-              required: ["q", "o", "a", "e"]
-            }
-          }
+          items: MCQ_SCHEMA, // q, o, e (solution) THEN a — order matters
         }
       },
     });
+    const parsedJSON = await ask(count);
 
     // Rasm ta'limga oid bo'lmasa, Gatekeeper orqali to'xtatamiz
     if (parsedJSON.error === "invalid_image") {
       return NextResponse.json({ error: "invalid_image" }, { status: 400 });
     }
 
-    const rawAiQuestions = cleanMcqItems(parsedJSON.items || []);
+    // Solutions checked against the answer; dropped/missing ones regenerated once.
+    let rawAiQuestions = checkMcqItems(cleanMcqItems(parsedJSON.items || []), language);
+    if (rawAiQuestions.length > 0 && rawAiQuestions.length < count) {
+      try {
+        const more = await ask(count - rawAiQuestions.length);
+        rawAiQuestions = [...rawAiQuestions, ...checkMcqItems(cleanMcqItems(more.items || []), language)].slice(0, count);
+      } catch (retryError) {
+        console.error("AI image retry failed:", retryError);
+      }
+    }
     if (rawAiQuestions.length === 0) throw new Error("AI savol yarata olmadi.");
 
     // 🟢 MAP MINIFIED SCHEMA TO FRONTEND FORMAT

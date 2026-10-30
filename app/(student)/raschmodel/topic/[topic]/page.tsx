@@ -27,6 +27,7 @@ import {
 } from '@/components/student-ui';
 import type { Lang } from '@/types/Math';
 
+import SolutionSteps from "@/components/SolutionSteps";
 function MathText({ text, className }: { text: string; className?: string }) {
   return <LatexRenderer latex={text} className={className} />;
 }
@@ -160,7 +161,7 @@ function SolvedCard({ item, lang, t, index }: { item: SolvedQuestion; lang: Lang
                 transition={{ duration: 0.15 }}
                 className="mt-2 border-t border-outline-variant pt-2 text-[12px] font-medium text-on-surface-variant"
               >
-                <MathText text={item.explanation[item.lang]} />
+                <SolutionSteps text={item.explanation[item.lang]} render={(part) => <MathText text={part} />} />
               </motion.div>
             )}
           </div>

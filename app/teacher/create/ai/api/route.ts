@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin'; 
 import { deductMonthlyAiCredits } from "@/lib/ai/featureGatekeeper"; 
-import { dtmQuestions, MCQ_SCHEMA, cleanMcqItems, type McqItem } from "@/lib/ai/questionPrompts";
-import { generateJson } from "@/lib/ai/generate";
+import { dtmQuestions, type McqItem } from "@/lib/ai/questionPrompts";
+import { generateMcqs } from "@/lib/ai/generateMcqs";
 
 export async function POST(req: Request) {
   try {
@@ -33,11 +33,9 @@ export async function POST(req: Request) {
     }
     // ==========================================
 
-    // 🟢 PROMPT — shared with the classroom games (lib/ai/questionPrompts.ts)
-    const { prompt: systemPrompt, temperature } = dtmQuestions({ subject, topic, difficulty, count, language, context });
-
-    // 🟢 AI CALL — provider + model come from lib/ai/models.ts
-    const rawAiQuestions: McqItem[] = cleanMcqItems(await generateJson({ feature: 'questions', prompt: systemPrompt, temperature, schema: MCQ_SCHEMA }));
+    // 🟢 AI CALL — prompt shared with the games (lib/ai/questionPrompts.ts), provider from lib/ai/models.ts;
+    // solutions checked against the answer, dropped ones regenerated once (lib/ai/generateMcqs.ts)
+    const rawAiQuestions: McqItem[] = await generateMcqs({ build: (n) => dtmQuestions({ subject, topic, difficulty, count: n, language, context }), count, language });
 
     let diffVal = 2; 
     const lowerDiff = difficulty ? difficulty.toLowerCase() : "medium";

@@ -34,6 +34,7 @@ import {
 } from "@/components/student-ui";
 import type { Lang } from "@/types/Math";
 
+import SolutionSteps from "@/components/SolutionSteps";
 const TR = {
   uz: {
     title: "Mening xatolarim",
@@ -315,10 +316,10 @@ function MistakeRow({
           )}
 
           {localized(m.explanation, lang) && (
-            <p className="rounded-m3-sm bg-surface-container-low p-2.5 text-[12px] font-medium text-on-surface-variant">
-              <b>{t.explanation}: </b>
-              <LatexRenderer latex={localized(m.explanation, lang)} />
-            </p>
+            <div className="rounded-m3-sm bg-surface-container-low p-2.5 text-[12px] font-medium text-on-surface-variant">
+              <b className="mb-1 block">{t.explanation}:</b>
+              <SolutionSteps text={localized(m.explanation, lang)} />
+            </div>
           )}
 
           {/* ── practise ────────────────────────────────────────────────── */}
