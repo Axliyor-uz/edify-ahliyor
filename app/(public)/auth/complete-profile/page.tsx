@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -14,6 +15,7 @@ import { Step0Role } from "../signup/_components/FormSteps";
 import StudentSignupFlow from "../signup/_components/StudentSignupFlow";
 import TeacherSignupFlow from "../signup/_components/TeacherSignupFlow";
 import ManagerSignupFlow from "../signup/_components/ManagerSignupFlow";
+import { roleHome } from "../_components/roleHome";
 import { BookOpen, Loader2, LogOut } from "lucide-react";
 
 const PAGE_T = {
@@ -67,9 +69,7 @@ export default function CompleteProfilePage() {
         const ssoReturnTo = getSsoReturnTo();
         if (ssoReturnTo && (await completeSsoRedirect(ssoReturnTo))) return;
         const profile = snap.data();
-        if (profile.role === "teacher") router.replace("/teacher/dashboard");
-        else if (profile.role === "manager") router.replace("/manager/dashboard");
-        else router.replace("/dashboard");
+        router.replace(roleHome(profile.role));
       } catch (error) {
         console.error("profile check failed:", error);
         if (!cancelled) setCheckFailed(true);
@@ -110,14 +110,14 @@ export default function CompleteProfilePage() {
   return (
     <div className="min-h-screen flex flex-col items-center bg-white px-6 sm:px-12 py-12 relative font-['Inter',sans-serif]">
       {/* Logo */}
-      <div className="absolute top-6 left-6 flex items-center gap-2">
+      <Link href="/" className="absolute top-6 left-6 flex items-center gap-2">
         <div className="w-8 h-8 bg-[#1565C0] rounded-lg flex items-center justify-center text-white">
           <BookOpen size={16} />
         </div>
         <span className="font-extrabold text-[18px] text-[#1C1B1F] tracking-tight">
-          TestEdify<span className="text-[#1565C0]">.</span>
+          Edify<span className="text-[#1565C0]">.</span>
         </span>
-      </div>
+      </Link>
 
       {/* Language toggle */}
       <div className="absolute top-6 right-6 flex items-center bg-[#F1F5F9] p-1 rounded-full border border-[#E2E8F0] z-20">
@@ -163,8 +163,8 @@ export default function CompleteProfilePage() {
         <AnimatePresence mode="wait">
           {!role && (
             <motion.div key="step0" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
-              <div className="mb-10 text-center sm:text-left">
-                <h1 className="text-3xl font-black text-[#0F172A] tracking-tight">{t.steps[0].title}</h1>
+              <div className="mb-8">
+                <h1 className="text-[28px] font-black text-[#0F172A] tracking-tight leading-tight">{t.steps[0].title}</h1>
                 <p className="text-[#64748B] mt-1.5 text-[15px] font-medium">{t.steps[0].sub}</p>
               </div>
               <Step0Role setRole={setRole} t={t} />

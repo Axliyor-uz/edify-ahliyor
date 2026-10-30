@@ -6,10 +6,14 @@ import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { signInWithGoogle } from "@/lib/googleAuth";
 import { getSsoReturnTo, completeSsoRedirect } from "@/lib/sso";
+import { roleHome } from "./roleHome";
+import { rememberLoginMethod } from "./lastLogin";
+import { LastUsedBadge } from "./Field";
 
 const T = {
   uz: {
     divider: "yoki",
+    lastUsed: "Oxirgi marta",
     button: "Google bilan davom etish",
     welcome: "Xush kelibsiz, {name}!",
     popupBlocked: "Brauzer oynani blokladi. Pop-up'larga ruxsat bering.",
@@ -17,6 +21,7 @@ const T = {
   },
   en: {
     divider: "or",
+    lastUsed: "Last used",
     button: "Continue with Google",
     welcome: "Welcome back, {name}!",
     popupBlocked: "The browser blocked the popup. Please allow pop-ups.",
@@ -24,6 +29,7 @@ const T = {
   },
   ru: {
     divider: "или",
+    lastUsed: "В прошлый раз",
     button: "Продолжить с Google",
     welcome: "С возвращением, {name}!",
     popupBlocked: "Браузер заблокировал окно. Разрешите всплывающие окна.",
@@ -48,7 +54,7 @@ const GoogleLogo = () => (
  * super_admin claim → role redirect); a brand-new Google user is sent to
  * /auth/complete-profile to pick a role/username there (docs/AUTH.md).
  */
-export default function GoogleAuthButton({ lang }: { lang: "uz" | "en" | "ru" }) {
+export default function GoogleAuthButton({ lang, lastUsed = false }: { lang: "uz" | "en" | "ru"; lastUsed?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const t = T[lang] || T.uz;
@@ -57,6 +63,7 @@ export default function GoogleAuthButton({ lang }: { lang: "uz" | "en" | "ru" })
     setLoading(true);
     try {
       const { user, profile } = await signInWithGoogle();
+      rememberLoginMethod("google");
       const ssoReturnTo = getSsoReturnTo();
 
       if (!profile) {
@@ -83,9 +90,7 @@ export default function GoogleAuthButton({ lang }: { lang: "uz" | "en" | "ru" })
       }
       toast.dismiss();
       toast.success(t.welcome.replace("{name}", profile.displayName || "User"), { duration: 4000 });
-      if (profile.role === "teacher") router.push("/teacher/dashboard");
-      else if (profile.role === "manager") router.push("/manager/dashboard");
-      else router.push("/dashboard");
+      router.push(roleHome(profile.role));
     } catch (error) {
       setLoading(false);
       const code = (error as { code?: string })?.code;
@@ -106,8 +111,9 @@ export default function GoogleAuthButton({ lang }: { lang: "uz" | "en" | "ru" })
         type="button"
         onClick={handleClick}
         disabled={loading}
-        className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl border-2 border-[#E2E8F0] bg-white text-[#0F172A] font-bold text-[15px] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all active:scale-[0.98] disabled:opacity-50"
+        className="relative w-full flex items-center justify-center gap-3 py-3.5 rounded-xl border-2 border-[#E2E8F0] bg-white text-[#0F172A] font-bold text-[15px] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all active:scale-[0.98] disabled:opacity-50"
       >
+        {lastUsed && !loading && <LastUsedBadge text={t.lastUsed} />}
         {loading ? <Loader2 className="animate-spin" size={18} /> : <GoogleLogo />}
         {t.button}
       </button>

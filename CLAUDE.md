@@ -66,7 +66,7 @@ There is **no test suite for application code** — verify by running the dev se
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 with the **React Compiler enabled** (`reactCompiler: true` in [next.config.ts](next.config.ts)) · TypeScript · Tailwind CSS 3 · Firebase (client + Admin SDK) · AI: Google Gemini or DeepSeek — provider + model chosen ONLY in [lib/ai/models.ts](lib/ai/models.ts), every call goes through [lib/ai/generate.ts](lib/ai/generate.ts) ([docs/AI.md](docs/AI.md)). Path alias `@/*` = repo root.
+Next.js 16 (App Router) · React 19 with the **React Compiler enabled** (`reactCompiler: true` in [next.config.ts](next.config.ts)) · TypeScript · Tailwind CSS 3 · Firebase (client + Admin SDK) · AI: Google Gemini, DeepSeek or Claude — provider + model chosen ONLY in [lib/ai/models.ts](lib/ai/models.ts), every call goes through [lib/ai/generate.ts](lib/ai/generate.ts) ([docs/AI.md](docs/AI.md)). Path alias `@/*` = repo root.
 
 > [README.md](README.md) describes an early "MathMaster" app and is outdated; `membership_details/`, `lib/aouth.txt`, `lib/fireba.md`, and root scratch files (`all.md`, `xps.md`, `*.txt`) are stale planning notes — trust code + docs/ over all of them.
 

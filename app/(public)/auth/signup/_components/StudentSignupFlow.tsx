@@ -8,12 +8,13 @@ import { auth, db } from "@/lib/firebase";
 import { checkUsernameUnique } from "@/services/userService";
 import { suggestUsername } from "@/lib/googleAuth";
 import { getSsoReturnTo, completeSsoRedirect } from "@/lib/sso";
-import { Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
-import { Step1Auth, Step2Profile } from "./FormSteps";
-
-const validatePassword = (pwd: string) => { if (pwd.length < 8) return "Parol kamida 8 ta belgidan iborat bo'lishi kerak."; return null; };
-const validateUsernameFormat = (u: string) => { if (!u) return null; if (u.length < 5) return "Min 5ta belgi."; if (!/^[a-zA-Z]/.test(u)) return "Harf bilan boshlanishi kerak."; if (!/^[a-zA-Z0-9_]+$/.test(u)) return "Faqat a-z, 0-9, _ ruxsat etiladi."; return null; };
+import {
+  Step1Auth, Step2Profile, WizardHeader, WizardFooter, SignupDone, StepFade,
+  passwordError, usernameFormatError, step1ErrorFor, pauseOnDone, type FieldErr,
+} from "./FormSteps";
+import { roleHome } from "../../_components/roleHome";
+import { rememberLoginMethod } from "../../_components/lastLogin";
 
 // googleMode: the user is already authenticated via Google (complete-profile
 // page) — step 1 (email/password) is skipped entirely and the account comes
@@ -23,6 +24,8 @@ export default function StudentSignupFlow({ onBack, t, googleMode = false }: any
   const [step, setStep] = useState(googleMode ? 2 : 1);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldError, setFieldError] = useState<FieldErr>(null);
+  const [done, setDone] = useState(false);
 
   // Enterprise Username Checking State
   const [isCheckingUser, setIsCheckingUser] = useState(false);
@@ -34,11 +37,15 @@ export default function StudentSignupFlow({ onBack, t, googleMode = false }: any
     email: "", password: "",
     fullName: (googleMode && auth.currentUser?.displayName) || "",
     username: googleMode ? suggestUsername(auth.currentUser?.email ?? null) : "",
-    gradeLevel: ""
+    gradeLevel: "",
+    agreed: false
   }));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type } = e.target;
+    const v = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
+    setFormData({ ...formData, [name]: v });
+    if (fieldError?.field === name) setFieldError(null);
   };
 
   // Debounced Username Check
@@ -47,7 +54,7 @@ export default function StudentSignupFlow({ onBack, t, googleMode = false }: any
     setUsernameAvailable(null); setUsernameError(null);
     if (!input) return;
 
-    const error = validateUsernameFormat(input);
+    const error = usernameFormatError(input, t);
     if (error) return setUsernameError(error);
 
     if (cache.current.has(input)) {
@@ -66,14 +73,14 @@ export default function StudentSignupFlow({ onBack, t, googleMode = false }: any
     }, 800);
 
     return () => clearTimeout(timeoutId);
-  }, [formData.username]);
+  }, [formData.username, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step === 1) {
       if (!formData.email || !formData.password) return toast.error(t.validation.fillAll);
-      const pwdError = validatePassword(formData.password);
-      if (pwdError) return toast.error(pwdError);
+      const pwdError = passwordError(formData.password, t);
+      if (pwdError) return setFieldError({ field: "password", text: pwdError });
       setStep(2);
       return;
     }
@@ -92,14 +99,13 @@ export default function StudentSignupFlow({ onBack, t, googleMode = false }: any
       let email: string;
       if (googleMode) {
         user = auth.currentUser;
-        if (!user) { toast.error("Sessiya tugadi. Qaytadan kiring."); router.push("/auth/login"); return; }
+        if (!user) { toast.error(t.validation.sessionExpired); router.push("/auth/login"); return; }
         // A profile may already exist (merged Google/password account, stale
         // tab). Overwriting it would reset XP/role data — redirect instead.
         const existing = await getDoc(doc(db, "users", user.uid));
         if (existing.exists()) {
-          const role = existing.data().role;
-          toast.success("Bu hisob allaqachon ro'yxatdan o'tgan.");
-          router.push(role === "teacher" ? "/teacher/dashboard" : role === "manager" ? "/manager/dashboard" : "/dashboard");
+          toast.success(t.validation.alreadyRegistered);
+          router.push(roleHome(existing.data().role));
           return;
         }
         email = user.email || "";
@@ -154,7 +160,9 @@ export default function StudentSignupFlow({ onBack, t, googleMode = false }: any
       // Execute Write
       await batch.commit();
 
-      toast.success(t.validation.welcome.replace("{role}", "O'quvchi"));
+      rememberLoginMethod(googleMode ? "google" : "password");
+      setDone(true);
+      await pauseOnDone();
       // SSO: a partner app sent this user here — bounce back signed in
       const ssoReturnTo = getSsoReturnTo();
       if (ssoReturnTo && (await completeSsoRedirect(ssoReturnTo))) return;
@@ -163,42 +171,45 @@ export default function StudentSignupFlow({ onBack, t, googleMode = false }: any
       console.error("signup failed:", error);
       // 🛡️ Rollback auth if database write fails. Google accounts pre-exist and
       // onboarding is resumable (complete-profile), so never delete them.
-      if (!googleMode && user && auth.currentUser) await deleteUser(auth.currentUser);
+      if (!googleMode && user && auth.currentUser) await deleteUser(auth.currentUser).catch(() => {});
+      // Email/password problems → back to step 1, shown under the field
+      const step1Err = googleMode ? null : step1ErrorFor(error.code, t);
+      if (step1Err) {
+        setFieldError(step1Err);
+        setStep(1);
+        return;
+      }
       // permission-denied at signup ≈ the immutable usernames/{name} doc already
       // exists — the availability check fails open on network errors (docs/AUTH.md)
-      toast.error(
-        error.code === "auth/email-already-in-use" ? "Bu email band qilingan."
-        : error.code === "permission-denied" ? t.validation.userTaken
-        : "Xatolik yuz berdi."
-      );
+      toast.error(error.code === "permission-denied" ? t.validation.userTaken : t.validation.generic);
     } finally {
       setLoading(false);
     }
   };
 
+  if (done) return <SignupDone role="student" t={t} />;
+
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="text-center mb-10">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-          {googleMode ? t.steps.google.title : t.steps[step].title}
-        </h1>
-        <p className="text-slate-500 mt-2 font-medium">{googleMode ? t.steps.google.sub : t.steps[step].sub}</p>
-        <div className="w-full bg-slate-100 h-1.5 rounded-full mt-6 overflow-hidden">
-          <div className="bg-blue-600 h-full transition-all duration-500 ease-out" style={{ width: `${googleMode ? 100 : step * 50}%` }}></div>
-        </div>
-      </div>
+      <WizardHeader
+        n={step} total={googleMode ? 1 : 2}
+        title={googleMode ? t.steps.google.title : t.steps[step].title}
+        sub={googleMode ? t.steps.google.sub : undefined}
+        t={t}
+      />
 
-      {step === 1 && <Step1Auth formData={formData} handleChange={handleChange} showPassword={showPassword} setShowPassword={setShowPassword} t={t} />}
-      {step === 2 && <Step2Profile formData={formData} handleChange={handleChange} usernameError={usernameError} usernameAvailable={usernameAvailable} isCheckingUser={isCheckingUser} role="student" t={t} />}
+      <StepFade step={step}>
+        {step === 1 && <Step1Auth formData={formData} handleChange={handleChange} showPassword={showPassword} setShowPassword={setShowPassword} fieldError={fieldError} t={t} />}
+        {step === 2 && <Step2Profile formData={formData} handleChange={handleChange} usernameError={usernameError} usernameAvailable={usernameAvailable} isCheckingUser={isCheckingUser} role="student" t={t} />}
+      </StepFade>
 
-      <div className="flex gap-3 mt-8 pt-6 border-t border-slate-100">
-        <button type="button" onClick={() => (step === 1 || googleMode) ? onBack() : setStep(1)} className="px-6 py-3.5 rounded-xl font-bold text-slate-500 bg-white border border-slate-200 shadow-sm flex items-center gap-2">
-          <ArrowLeft size={18} /> {t.buttons.back}
-        </button>
-        <button type="submit" disabled={loading || isCheckingUser || usernameError !== null || usernameAvailable === false} className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-sm hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-          {loading ? <Loader2 className="animate-spin" /> : step === 1 ? <>{t.buttons.next} <ArrowRight size={18} /></> : t.buttons.complete}
-        </button>
-      </div>
+      <WizardFooter
+        onBack={() => (step === 1 || googleMode) ? onBack() : setStep(1)}
+        loading={loading}
+        isLast={step === 2}
+        disabled={loading || (step === 2 && (isCheckingUser || usernameError !== null || usernameAvailable === false))}
+        t={t}
+      />
     </form>
   );
 }

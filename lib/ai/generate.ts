@@ -1,4 +1,5 @@
-import { AI_MODELS, aiModelFor, aiProviderFor, type AiFeature } from './models';
+import Anthropic from '@anthropic-ai/sdk';
+import { AI_MODELS, CLAUDE_EFFORT, aiModelFor, aiProviderFor, type AiFeature, type AiProvider } from './models';
 
 /**
  * The one way server code talks to the AI (docs/AI.md → "Provider switch").
@@ -10,8 +11,12 @@ import { AI_MODELS, aiModelFor, aiProviderFor, type AiFeature } from './models';
  *   no schema enforcement, so the expected shape goes in a system message and
  *   the answer comes back wrapped as `{ "data": … }`. Thinking mode is turned
  *   off: faster, and `temperature` only works without it.
+ * - Claude: the official SDK, streamed. Structured outputs enforce the JSON
+ *   (the Gemini schema is converted to JSON Schema, wrapped as `{ data: … }`).
+ *   `temperature` is not sent (current Claude models reject it); thinking
+ *   depth is `CLAUDE_EFFORT` instead.
  *
- * The prompt text itself is passed through unchanged on both providers.
+ * The prompt text itself is passed through unchanged on every provider.
  * Server only — reads the API keys.
  */
 
@@ -49,8 +54,14 @@ const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 /** Room for 30 questions with LaTeX; DeepSeek's default (8K) can cut a set short. */
 const DEEPSEEK_MAX_TOKENS = 16000;
 
+const KEY_NAMES: Record<AiProvider, string> = {
+  gemini: 'GEMINI_API_KEY',
+  deepseek: 'DEEPSEEK_API_KEY',
+  claude: 'ANTHROPIC_API_KEY',
+};
+
 const keyFor = (feature: AiFeature) => {
-  const name = aiProviderFor(feature) === 'gemini' ? 'GEMINI_API_KEY' : 'DEEPSEEK_API_KEY';
+  const name = KEY_NAMES[aiProviderFor(feature)];
   const key = process.env[name];
   if (!key) throw new AiError('NO_KEY', `${name} is missing in .env.local`);
   return key;
@@ -118,8 +129,66 @@ async function deepseek(feature: AiFeature, body: Record<string, unknown>): Prom
   return String(text);
 }
 
+/** Room for 30 questions with LaTeX plus thinking; streamed, so no HTTP timeout. */
+const CLAUDE_MAX_TOKENS = 32000;
+/** Models that accept `fallbacks: "default"` (a safety decline is retried server-side). */
+const CLAUDE_FALLBACK_MODELS = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1'];
+
+let anthropic: Anthropic | null = null;
+
+/** Gemini schema (OBJECT/ARRAY/STRING…) → JSON Schema for Claude structured outputs. */
+function toJsonSchema(schema: AiSchema): Record<string, unknown> {
+  const type = String(schema.type ?? 'STRING').toLowerCase();
+  const out: Record<string, unknown> = { type: schema.nullable ? [type, 'null'] : type };
+  if (schema.description) out.description = schema.description;
+  if (Array.isArray(schema.enum)) out.enum = schema.enum;
+  if (type === 'array') out.items = toJsonSchema((schema.items ?? {}) as AiSchema);
+  if (type === 'object') {
+    out.properties = Object.fromEntries(
+      Object.entries((schema.properties ?? {}) as Record<string, AiSchema>).map(([k, v]) => [k, toJsonSchema(v)]),
+    );
+    if (Array.isArray(schema.required)) out.required = schema.required;
+    out.additionalProperties = false;
+  }
+  return out;
+}
+
+async function claude(feature: AiFeature, {
+  system,
+  messages,
+  schema,
+}: {
+  system?: string;
+  messages: Anthropic.Beta.BetaMessageParam[];
+  schema?: Record<string, unknown>;
+}): Promise<string> {
+  anthropic ??= new Anthropic({ apiKey: keyFor(feature) });
+  const model = aiModelFor(feature);
+  const fallback = CLAUDE_FALLBACK_MODELS.includes(model);
+  try {
+    const reply = await anthropic.beta.messages
+      .stream({
+        model,
+        max_tokens: CLAUDE_MAX_TOKENS,
+        ...(system ? { system } : {}),
+        messages,
+        output_config: { effort: CLAUDE_EFFORT, ...(schema ? { format: { type: 'json_schema', schema } } : {}) },
+        ...(fallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {}),
+      })
+      .finalMessage();
+    if (reply.stop_reason === 'refusal') throw new AiError('SAFETY');
+    if (reply.stop_reason === 'max_tokens') throw new AiError('TRUNCATED');
+    const text = reply.content.map((block) => (block.type === 'text' ? block.text : '')).join('');
+    if (!text.trim()) throw new AiError('EMPTY');
+    return text;
+  } catch (err) {
+    if (err instanceof Anthropic.APIError) throw new AiError('HTTP', err.message || `Claude request failed (${err.status})`);
+    throw err;
+  }
+}
+
 /**
- * JSON of the given schema. Gemini enforces the schema; DeepSeek is told it.
+ * JSON of the given schema. Gemini and Claude enforce the schema; DeepSeek is told it.
  * Throws AiError, or SyntaxError if the text is not JSON.
  */
 export async function generateJson<T = unknown>({ feature, prompt, temperature, schema, images = [] }: {
@@ -138,6 +207,24 @@ export async function generateJson<T = unknown>({ feature, prompt, temperature, 
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new AiError(data?.candidates?.[0]?.finishReason === 'SAFETY' ? 'SAFETY' : 'EMPTY');
     return JSON.parse(text) as T;
+  }
+
+  if (aiProviderFor(feature) === 'claude') {
+    const text = await claude(feature, {
+      messages: [{
+        role: 'user',
+        content: [
+          ...images.map((img) => ({
+            type: 'image' as const,
+            source: { type: 'base64' as const, media_type: img.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: img.data },
+          })),
+          { type: 'text' as const, text: prompt },
+        ],
+      }],
+      // Root must be an object, so an array answer is wrapped as { data: … }.
+      schema: { type: 'object', properties: { data: toJsonSchema(schema) }, required: ['data'], additionalProperties: false },
+    });
+    return JSON.parse(text).data as T;
   }
 
   const shape = JSON.stringify({ data: exampleOf(schema) });
@@ -184,6 +271,16 @@ export async function generateChat({ feature, system, history = [], message }: {
     const text = parts.map((p) => p.text ?? '').join('');
     if (!text) throw new AiError(data?.candidates?.[0]?.finishReason === 'SAFETY' ? 'SAFETY' : 'EMPTY');
     return text;
+  }
+
+  if (aiProviderFor(feature) === 'claude') {
+    const turns: Anthropic.Beta.BetaMessageParam[] = [
+      ...history.map((turn) => ({ role: turn.role === 'model' ? 'assistant' as const : 'user' as const, content: turn.parts.map((p) => p.text).join('') })),
+      { role: 'user' as const, content: message },
+    ].filter((turn) => turn.content.trim());
+    // Claude needs a user turn first; the analytics chat history opens with the AI's summary.
+    if (turns[0]?.role === 'assistant') turns.unshift({ role: 'user', content: 'Tahlil qiling.' });
+    return claude(feature, { system, messages: turns });
   }
 
   return deepseek(feature, {

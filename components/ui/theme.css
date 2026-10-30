@@ -1903,6 +1903,28 @@
 .t-dot:nth-child(2) { animation-delay: 0.15s; }
 .t-dot:nth-child(3) { animation-delay: 0.3s; }
 
+/* Indeterminate progress bar (work of unknown length, e.g. AI generation).
+   Markup: <div class="t-indeterminate"><span></span></div> */
+@keyframes t-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+.t-indeterminate {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--m3-surface-container-highest);
+}
+.t-indeterminate > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--m3-primary);
+  animation: t-indeterminate 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .m3-interactive::after,
   .m3-switch,
@@ -1914,4 +1936,5 @@
   .m3-spinner { animation-duration: 1.8s; }
   .m3-skeleton { animation: none; }
   .t-dot { animation: none; }
+  .t-indeterminate > span { animation: none; width: 100%; opacity: 0.5; }
 }

@@ -24,6 +24,20 @@ Hub lists 8 methods (the Rasch/Milliy sertifikat card moved out on 2026-07-30 �
 >
 > Full v1 field list + the legacy shape it coexists with: [DATA_MODEL.md](DATA_MODEL.md).
 
+### Shared creation UI (minimal redesign, 2026-10-29 — rolling out page by page)
+
+All creation pages are moving to one plain look (1px borders, one accent, short words, phone-first). Reuse these, don't re-copy them per page:
+
+| File | What |
+|---|---|
+| `create/_components/CreateKit.tsx` | `CreateHeader` (sticky: back · title · right slot), `Field` (label above control), `Segmented`, `Stepper`, `ActionBar` (sticky bottom bar: summary + actions), `EmptyHint`, `INPUT` class (16px on phones so iOS doesn't zoom) |
+| `create/_components/GeneratingOverlay.tsx` | The ONE "AI is working" screen. ⚠️ **Portaled to `<body>`**: the layout's page-transition wrapper is transformed, so an in-page `fixed inset-0` only covers the content column — the sidebar stayed sharp and clickable |
+| `create/_components/MathText.tsx` | Lenient `$…$` renderer for AI output (+ `pickText(value, lang)`) — replaces the per-page `FormattedText` copies, logic unchanged |
+| `create/_components/DraftQuestionCard.tsx` | One AI-generated question under review (number · meta · ✓ correct · "Yechim" toggle · delete) |
+| `create/_components/AiMonthlyLimitCard.tsx` | "⚡ N ta qoldi" chip + small popover |
+
+Done: `create/ai`. Still on the old look: the other AI pages, hub, manual and bank pages. ⚠️ `tailwindcss-animate` is **not installed** — `animate-in`/`fade-in` classes on the old pages are no-ops.
+
 | Method | Route | Writes | Notes |
 |---|---|---|---|
 | Manual "Blank Canvas" | `create/custom/` | both | localStorage draft (1h TTL despite the 24h constant name); MathInput/RichQuestionInput |

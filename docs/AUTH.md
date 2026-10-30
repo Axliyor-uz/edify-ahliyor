@@ -20,6 +20,11 @@ How users sign up, log in, get a role, and get authorized — client-side (layou
 | `app/api/auth/reset-password/route.ts` | Forgot-password by username (sends Firebase reset email server-side; always replies `{ok:true}`) |
 | `lib/server/authRateLimit.ts` | In-memory per-IP throttle shared by the two `/api/auth/*` routes |
 | `app/(public)/auth/signup/_components/{Student,Teacher,Manager}SignupFlow.tsx` | Per-role signup wizards; all three accept a `googleMode` prop (see Google sign-in) |
+| `app/(public)/auth/signup/_components/FormSteps.tsx` | Shared wizard steps + helpers: validation (`passwordError`, `usernameFormatError`), `step1ErrorFor` (auth error → step-1 field), `formatUzPhone`, `slugify`/`isValidSlug`, `TermsAgreement` |
+| `app/(public)/auth/_components/roleHome.ts` | `roleHome(role)` — the ONE role→landing-path map used by login, Google sign-in, complete-profile and the wizards' already-registered redirect |
+| `app/(public)/auth/_components/AuthShell.tsx` | Shared login/signup frame (illustration panel, logo → `/`, language toggle) |
+| `app/(public)/auth/_components/Field.tsx` | `FloatField`/`FloatSelect` — the one floating-label input style of login + signup |
+| `app/(public)/auth/_components/lastLogin.ts` | localStorage `edify:lastLogin` = `password`\|`google` (method only, never the identifier) → "last used" badge on the login page |
 | `lib/googleAuth.ts` | `signInWithGoogle()` (popup + profile-existence check) and `suggestUsername()` |
 | `app/(public)/auth/_components/GoogleAuthButton.tsx` | "Continue with Google" button (login + signup pages) incl. post-sign-in routing |
 | `app/(public)/auth/complete-profile/page.tsx` | Onboarding for authenticated users with no `users/{uid}` doc (role picker + wizards in `googleMode`) |
@@ -44,10 +49,11 @@ How users sign up, log in, get a role, and get authorized — client-side (layou
 Common: `createUserWithEmailAndPassword` → `updateProfile(displayName)` → one atomic `writeBatch` (`users/{uid}` + `usernames/{lowerUsername}`, manager also `centers/{autoId}`) → commit → SSO check (`getSsoReturnTo` → `completeSsoRedirect`) **before** the normal dashboard redirect. On any error: `deleteUser(auth.currentUser)` rolls back the orphaned Auth account (**password path only** — never in `googleMode`, see Google sign-in).
 
 - Password ≥ 8 chars. Username ≥ 5 chars, starts with a letter, `[a-zA-Z0-9_]`.
+- Auth errors that belong to step 1 (`auth/email-already-in-use`, `auth/invalid-email`, `auth/weak-password`) send the wizard back to step 1 with the message under the field (password path only). All wizard copy, incl. grade/subject options and validation messages, lives in `SIGNUP_TRANSLATIONS` (uz/en/ru). After the batch commits, the wizard shows an "account created" screen for ~1.1s (`pauseOnDone`) before the SSO check / redirect.
 - Username availability: debounced 800ms `checkUsernameUnique` with in-memory cache — **fails open** (network error → treated as available); the batch create against immutable `usernames/{name}` is the real uniqueness guarantee.
 - **Student** → `/dashboard`. Writes gamification zeros: `totalXP:0, currentStreak:0, level:1, dailyHistory:{}, progress:{...}`, `location:{country:'Uzbekistan',...}`, `createdAt` ISO string.
 - **Teacher** → `/teacher/dashboard`. Writes `subject`, `grade:'Teacher'`, `verifiedTeacher:false`, `experience:0`.
-- **Manager** → `/manager/dashboard`. 3 steps; phone regex `+998 XX XXX XX XX`; auto-slugified center name (**slug format is NOT validated in the public flow** — only the admin API route validates it). Writes `users` doc (`role:'manager'`, `centerId`) + `centers` doc: `{id, name, slug, ownerUid, size, status:'pending', subscription:{plan:'free_trial', validUntil:+14d ISO}, createdAt}`.
+- **Manager** → `/manager/dashboard`. 3 steps; phone typed as the local part behind a fixed `+998` prefix and stored formatted `+998 XX XXX XX XX`; the center slug follows the center name (`slugify`: Cyrillic transliterated, `o'`/`g'` apostrophes dropped) until the user edits it by hand, and must pass `isValidSlug` (≥3 chars, `a-z0-9` joined by single `-`) before submit. Writes `users` doc (`role:'manager'`, `centerId`) + `centers` doc: `{id, name, slug, ownerUid, size, status:'pending', subscription:{plan:'free_trial', validUntil:+14d ISO}, createdAt}`.
 
 ### Google sign-in (no password ever)
 
@@ -55,7 +61,7 @@ Common: `createUserWithEmailAndPassword` → `updateProfile(displayName)` → on
 
 After the popup, `signInWithGoogle()` checks `users/{uid}`:
 
-- **Profile exists** → the exact post-sign-in precedence as password login (SSO `returnTo` → `super_admin` claim → role redirect).
+- **Profile exists** → the exact post-sign-in precedence as password login (SSO `returnTo` → `super_admin` claim → role redirect via `roleHome`, so director/accountant go to `/office` here too).
 - **No profile (new user)** → redirect to **`/auth/complete-profile`** (forwarding `?returnTo=` if an SSO hand-off is pending). Exception: a `super_admin` claim with no user doc goes to `/admin` (admin accounts are provisioned out-of-band and have no profile).
 
 **`/auth/complete-profile`** = role picker + the same three signup wizards rendered with `googleMode`:
@@ -177,7 +183,6 @@ Not yet locked (see docs/STUDENT.md): `totalXP`, `currentStreak`, `dailyHistory`
 - `users.level` is written at signup but never updated afterwards (`updateUserStats` touches only `totalXP`/`currentStreak`).
 - `getUserProfile(uid, email?, displayName?)` — trailing params unused.
 - `lib/api.ts` has leftover `console.log` debug spam.
-- Public manager signup does not validate slug format (admin route does).
 
 ## How to verify changes
 

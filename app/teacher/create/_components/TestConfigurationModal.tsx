@@ -53,7 +53,7 @@ const CONFIG_TRANSLATIONS = {
   }
 };
 
-interface TestSettings {
+export interface TestSettings {
   duration: number;
   shuffleQuestions: boolean;
   resultsVisibility: 'always' | 'after_due' | 'never';

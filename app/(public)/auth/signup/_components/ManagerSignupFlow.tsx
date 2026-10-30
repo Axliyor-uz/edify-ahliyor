@@ -8,86 +8,65 @@ import { auth, db } from "@/lib/firebase";
 import { checkUsernameUnique } from "@/services/userService";
 import { suggestUsername } from "@/lib/googleAuth";
 import { getSsoReturnTo, completeSsoRedirect } from "@/lib/sso";
-import { Loader2, ArrowRight, ArrowLeft, User, Phone, Building, Hash, FileText, ShieldCheck, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
-import { Step1Auth } from "./FormSteps";
+import {
+  Step1Auth, UsernameField, TermsAgreement, WizardHeader, WizardFooter, SignupDone, StepFade,
+  passwordError, usernameFormatError, step1ErrorFor, formatUzPhone, slugify, isValidSlug, pauseOnDone,
+  type FieldErr,
+} from "./FormSteps";
+import { FloatField, FloatSelect, FieldError, FieldHint } from "../../_components/Field";
+import { roleHome } from "../../_components/roleHome";
+import { rememberLoginMethod } from "../../_components/lastLogin";
 
-const validatePassword = (pwd: string) => { if (pwd.length < 8) return "Parol kamida 8 ta belgidan iborat bo'lishi kerak."; return null; };
-const validateUsernameFormat = (u: string) => { if (!u) return null; if (u.length < 5) return "Min 5ta belgi."; if (!/^[a-zA-Z]/.test(u)) return "Harf bilan boshlanishi kerak."; if (!/^[a-zA-Z0-9_]+$/.test(u)) return "Faqat a-z, 0-9, _ ruxsat etiladi."; return null; };
-const validatePhone = (p: string) => {
-  const phoneRegex = /^\+998\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2}$/;
-  if (!phoneRegex.test(p)) return "Telefon formati: +998 XX XXX XX XX";
-  return null;
-};
+const validatePhone = (p: string) => /^\+998\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2}$/.test(p);
 
 // 🟢 MANAGER STEP 2: PERSONAL PROFILE
-const Step2ManagerProfile = ({ formData, handleChange, usernameError, usernameAvailable, isCheckingUser, t }: any) => {
+const Step2ManagerProfile = ({ formData, handleChange, usernameError, usernameAvailable, isCheckingUser, fieldError, t }: any) => {
+  const phoneErr = fieldError?.field === "phone" ? fieldError.text : null;
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-right">
-      <div className="group relative">
-        <User className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
-        <input name="fullName" type="text" placeholder={t.inputs.fullname} required value={formData.fullName} onChange={handleChange} className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:bg-white outline-none font-semibold transition text-[15px]" autoFocus />
-      </div>
+    <div className="space-y-5">
+      <FloatField id="su-fullname" name="fullName" type="text" autoComplete="name" label={t.inputs.fullname} required value={formData.fullName} onChange={handleChange} autoFocus />
 
-      <div className="relative group">
-        <span className="absolute left-4 top-3.5 text-slate-400 font-bold group-focus-within:text-blue-500 transition-colors">@</span>
-        <input name="username" type="text" placeholder={t.inputs.username} required value={formData.username} onChange={handleChange} className={`w-full pl-10 pr-10 py-3.5 rounded-xl border outline-none font-semibold text-[15px] transition text-slate-900 bg-slate-50 placeholder:text-slate-400 focus:bg-white focus:ring-4 ${usernameError ? "border-red-300 focus:border-red-500" : usernameAvailable === true ? "border-green-300 focus:border-green-500" : usernameAvailable === false ? "border-amber-300 focus:border-amber-500" : "border-slate-200 focus:border-blue-500"}`} />
-        <div className="absolute right-4 top-3.5">
-          {isCheckingUser ? <Loader2 className="animate-spin text-slate-400" size={20} /> : usernameError ? <XCircle className="text-red-500" size={20} /> : usernameAvailable === true ? <CheckCircle className="text-green-500" size={20} /> : usernameAvailable === false ? <XCircle className="text-amber-500" size={20} /> : null}
-        </div>
-        {usernameError && <p className="text-[11px] text-red-500 font-bold mt-1.5 ml-1">{usernameError}</p>}
-        {usernameAvailable === false && <p className="text-[11px] text-amber-500 font-bold mt-1.5 ml-1">{t.validation.userTaken}</p>}
-      </div>
+      <UsernameField formData={formData} handleChange={handleChange} usernameError={usernameError} usernameAvailable={usernameAvailable} isCheckingUser={isCheckingUser} t={t} />
 
-      <div className="relative group">
-        <Phone className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
-        <input name="phone" type="tel" placeholder={t.inputs.phone || "+998 90 123 45 67"} required value={formData.phone} onChange={handleChange} className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:bg-white outline-none font-semibold transition text-[15px]" />
+      {/* "+998" is a fixed prefix; the input holds only the local part and is
+          formatted as you type (formData.phone keeps the full number) */}
+      <div>
+        <FloatField
+          id="su-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel-national" required
+          label={t.inputs.phone} prefix="+998" tone={phoneErr ? "error" : "idle"}
+          value={formData.phone.replace(/^\+998\s?/, "")} onChange={handleChange}
+        />
+        {phoneErr ? <FieldError text={phoneErr} /> : <FieldHint>{t.hints.phone}</FieldHint>}
       </div>
     </div>
   );
 };
 
 // 🟢 MANAGER STEP 3: CENTER PROFILE
-const Step3CenterProfile = ({ formData, handleChange, setShowTerms, setShowPrivacy, t }: any) => {
+const Step3CenterProfile = ({ formData, handleChange, fieldError, t }: any) => {
+  const slugErr = fieldError?.field === "centerSlug" ? fieldError.text : null;
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-right">
-      <div className="group relative">
-        <Building className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
-        <input name="centerName" type="text" placeholder={t.inputs.centerName || "O'quv markazi nomi"} required value={formData.centerName} onChange={handleChange} className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:bg-white outline-none font-semibold transition text-[15px]" autoFocus />
+    <div className="space-y-5">
+      <FloatField id="su-center" name="centerName" type="text" autoComplete="organization" label={t.inputs.centerName} required value={formData.centerName} onChange={handleChange} autoFocus />
+
+      <div>
+        <FloatField
+          id="su-slug" name="centerSlug" type="text" autoCapitalize="none" spellCheck={false} required
+          label={t.inputs.centerSlug} value={formData.centerSlug} onChange={handleChange}
+          tone={slugErr ? "error" : "idle"} className="font-mono"
+        />
+        {slugErr ? <FieldError text={slugErr} /> : <FieldHint>{t.hints.slug}</FieldHint>}
       </div>
 
-      <div className="group relative">
-        <Hash className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
-        <input name="centerSlug" type="text" placeholder="center-slug" required value={formData.centerSlug} onChange={handleChange} className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:bg-white outline-none font-semibold transition text-[15px]" />
-      </div>
+      <FloatSelect id="su-size" name="studentCount" label={t.inputs.studentCount} value={formData.studentCount} onChange={handleChange} required>
+        <option value="1-50">1-50</option>
+        <option value="51-200">51-200</option>
+        <option value="200-500">200-500</option>
+        <option value="500+">500+</option>
+      </FloatSelect>
 
-      <div className="relative group">
-        <div className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors">
-          <User size={20} />
-        </div>
-        <select name="studentCount" value={formData.studentCount} onChange={handleChange} required className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:bg-white outline-none font-semibold text-[15px] transition appearance-none">
-          <option value="" disabled>{t.inputs.studentCount || "O'quvchilar soni"}</option>
-          <option value="1-50">1-50</option>
-          <option value="51-200">51-200</option>
-          <option value="200-500">200-500</option>
-          <option value="500+">500+</option>
-        </select>
-      </div>
-
-      <div className="flex items-start gap-3 mt-5 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-        <input type="checkbox" required id="terms-checkbox" className="mt-0.5 w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shadow-sm" />
-        <label htmlFor="terms-checkbox" className="text-[13px] font-medium text-slate-600 leading-relaxed cursor-pointer select-none">
-          {t.terms.text1}
-          <button type="button" onClick={(e) => { e.preventDefault(); setShowTerms(true); }} className="text-blue-600 font-bold hover:text-blue-800 hover:underline underline-offset-2 transition-colors">
-            {t.terms.link1}
-          </button>
-          {t.terms.text2}
-          <button type="button" onClick={(e) => { e.preventDefault(); setShowPrivacy(true); }} className="text-blue-600 font-bold hover:text-blue-800 hover:underline underline-offset-2 transition-colors">
-            {t.terms.link2}
-          </button>
-          {t.terms.text3}
-        </label>
-      </div>
+      <TermsAgreement formData={formData} handleChange={handleChange} t={t} />
     </div>
   );
 };
@@ -100,10 +79,10 @@ export default function ManagerSignupFlow({ onBack, t, googleMode = false }: any
   const [step, setStep] = useState(googleMode ? 2 : 1);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Modals for Terms and Privacy
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [fieldError, setFieldError] = useState<FieldErr>(null);
+  const [done, setDone] = useState(false);
+  // The slug follows the center name until the user edits it by hand
+  const [slugTouched, setSlugTouched] = useState(false);
 
   // Enterprise Username Checking State
   const [isCheckingUser, setIsCheckingUser] = useState(false);
@@ -116,19 +95,25 @@ export default function ManagerSignupFlow({ onBack, t, googleMode = false }: any
     fullName: (googleMode && auth.currentUser?.displayName) || "",
     username: googleMode ? suggestUsername(auth.currentUser?.email ?? null) : "",
     phone: "",
-    centerName: "", centerSlug: "", studentCount: ""
+    centerName: "", centerSlug: "", studentCount: "",
+    agreed: false
   }));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    // Auto-generate slug when center name changes
-    if (name === "centerName" && !formData.centerSlug) {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        centerSlug: value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
-      }));
+    const { name, value, type } = e.target;
+    if (fieldError?.field === name || (name === "centerName" && !slugTouched)) setFieldError(null);
+
+    if (type === "checkbox") {
+      setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
+    } else if (name === "phone") {
+      setFormData(prev => ({ ...prev, phone: formatUzPhone(value) }));
+    } else if (name === "centerName") {
+      setFormData(prev => ({ ...prev, centerName: value, ...(slugTouched ? {} : { centerSlug: slugify(value) }) }));
+    } else if (name === "centerSlug") {
+      const slug = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+      // Clearing the field hands the slug back to the center name
+      setSlugTouched(slug !== "");
+      setFormData(prev => ({ ...prev, centerSlug: slug || slugify(prev.centerName) }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -140,7 +125,7 @@ export default function ManagerSignupFlow({ onBack, t, googleMode = false }: any
     setUsernameAvailable(null); setUsernameError(null);
     if (!input) return;
 
-    const error = validateUsernameFormat(input);
+    const error = usernameFormatError(input, t);
     if (error) return setUsernameError(error);
 
     if (cache.current.has(input)) {
@@ -154,34 +139,34 @@ export default function ManagerSignupFlow({ onBack, t, googleMode = false }: any
         const isUnique = await checkUsernameUnique(input);
         cache.current.set(input, isUnique);
         setUsernameAvailable(isUnique);
-      } catch (err) { setUsernameAvailable(true); } 
+      } catch (err) { setUsernameAvailable(true); }
       finally { setIsCheckingUser(false); }
     }, 800);
 
     return () => clearTimeout(timeoutId);
-  }, [formData.username]);
+  }, [formData.username, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step === 1) {
       if (!formData.email || !formData.password) return toast.error(t.validation.fillAll);
-      const pwdError = validatePassword(formData.password);
-      if (pwdError) return toast.error(pwdError);
+      const pwdError = passwordError(formData.password, t);
+      if (pwdError) return setFieldError({ field: "password", text: pwdError });
       setStep(2);
       return;
     }
-    
+
     if (step === 2) {
       if (!formData.fullName || !formData.username || !formData.phone) return toast.error(t.validation.fillAll);
       if (usernameError || usernameAvailable === false) return toast.error(t.validation.userTaken);
-      const phoneErr = validatePhone(formData.phone);
-      if (phoneErr) return toast.error(phoneErr);
+      if (!validatePhone(formData.phone)) return setFieldError({ field: "phone", text: t.validation.phone });
       setStep(3);
       return;
     }
-    
+
     if (step === 3) {
       if (!formData.centerName || !formData.centerSlug || !formData.studentCount) return toast.error(t.validation.fillAll);
+      if (!isValidSlug(formData.centerSlug)) return setFieldError({ field: "centerSlug", text: t.validation.slug });
       await handleSignup();
     }
   };
@@ -193,14 +178,13 @@ export default function ManagerSignupFlow({ onBack, t, googleMode = false }: any
       let email: string;
       if (googleMode) {
         user = auth.currentUser;
-        if (!user) { toast.error("Sessiya tugadi. Qaytadan kiring."); router.push("/auth/login"); return; }
+        if (!user) { toast.error(t.validation.sessionExpired); router.push("/auth/login"); return; }
         // A profile may already exist (merged Google/password account, stale
         // tab). Overwriting it would reset XP/role data — redirect instead.
         const existing = await getDoc(doc(db, "users", user.uid));
         if (existing.exists()) {
-          const role = existing.data().role;
-          toast.success("Bu hisob allaqachon ro'yxatdan o'tgan.");
-          router.push(role === "teacher" ? "/teacher/dashboard" : role === "manager" ? "/manager/dashboard" : "/dashboard");
+          toast.success(t.validation.alreadyRegistered);
+          router.push(roleHome(existing.data().role));
           return;
         }
         email = user.email || "";
@@ -214,7 +198,7 @@ export default function ManagerSignupFlow({ onBack, t, googleMode = false }: any
 
       const batch = writeBatch(db);
       const lowerUsername = formData.username.toLowerCase();
-      
+
       const centerRef = doc(collection(db, 'centers'));
       const centerId = centerRef.id;
 
@@ -262,7 +246,9 @@ export default function ManagerSignupFlow({ onBack, t, googleMode = false }: any
       // Execute Write
       await batch.commit();
 
-      toast.success(t.validation.welcome.replace("{role}", "Menejer"));
+      rememberLoginMethod(googleMode ? "google" : "password");
+      setDone(true);
+      await pauseOnDone();
       // SSO: a partner app sent this user here — bounce back signed in
       const ssoReturnTo = getSsoReturnTo();
       if (ssoReturnTo && (await completeSsoRedirect(ssoReturnTo))) return;
@@ -271,45 +257,49 @@ export default function ManagerSignupFlow({ onBack, t, googleMode = false }: any
       console.error("signup failed:", error);
       // 🛡️ Rollback auth if database write fails. Google accounts pre-exist and
       // onboarding is resumable (complete-profile), so never delete them.
-      if (!googleMode && user && auth.currentUser) await deleteUser(auth.currentUser);
+      if (!googleMode && user && auth.currentUser) await deleteUser(auth.currentUser).catch(() => {});
+      // Email/password problems → back to step 1, shown under the field
+      const step1Err = googleMode ? null : step1ErrorFor(error.code, t);
+      if (step1Err) {
+        setFieldError(step1Err);
+        setStep(1);
+        return;
+      }
       // permission-denied at signup ≈ the immutable usernames/{name} doc already
       // exists — the availability check fails open on network errors (docs/AUTH.md)
-      toast.error(
-        error.code === "auth/email-already-in-use" ? "Bu email band qilingan."
-        : error.code === "permission-denied" ? t.validation.userTaken
-        : "Xatolik yuz berdi."
-      );
+      toast.error(error.code === "permission-denied" ? t.validation.userTaken : t.validation.generic);
     } finally {
       setLoading(false);
     }
   };
 
+  // googleMode skips step 1, so its steps 2–3 are shown as 1–2 of 2
+  const shownStep = googleMode ? step - 1 : step;
+  const totalSteps = googleMode ? 2 : 3;
+
+  if (done) return <SignupDone role="manager" t={t} />;
+
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="text-center mb-10">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-          {step === 3 ? "Markaz profilini yarating" : googleMode ? t.steps.google.title : t.steps[step].title}
-        </h1>
-        <p className="text-slate-500 mt-2 font-medium">
-          {googleMode ? `${step - 1} / 2 qadam` : `${step} / 3 qadam`}
-        </p>
-        <div className="w-full bg-slate-100 h-1.5 rounded-full mt-6 overflow-hidden">
-          <div className="bg-blue-600 h-full transition-all duration-500 ease-out" style={{ width: `${googleMode ? ((step - 1) / 2) * 100 : (step / 3) * 100}%` }}></div>
-        </div>
-      </div>
+      <WizardHeader
+        n={shownStep} total={totalSteps}
+        title={step === 3 ? t.steps.center.title : googleMode ? t.steps.google.title : t.steps[step].title}
+        t={t}
+      />
 
-      {step === 1 && <Step1Auth formData={formData} handleChange={handleChange} showPassword={showPassword} setShowPassword={setShowPassword} t={t} />}
-      {step === 2 && <Step2ManagerProfile formData={formData} handleChange={handleChange} usernameError={usernameError} usernameAvailable={usernameAvailable} isCheckingUser={isCheckingUser} t={t} />}
-      {step === 3 && <Step3CenterProfile formData={formData} handleChange={handleChange} setShowTerms={setShowTerms} setShowPrivacy={setShowPrivacy} t={t} />}
+      <StepFade step={step}>
+        {step === 1 && <Step1Auth formData={formData} handleChange={handleChange} showPassword={showPassword} setShowPassword={setShowPassword} fieldError={fieldError} t={t} />}
+        {step === 2 && <Step2ManagerProfile formData={formData} handleChange={handleChange} usernameError={usernameError} usernameAvailable={usernameAvailable} isCheckingUser={isCheckingUser} fieldError={fieldError} t={t} />}
+        {step === 3 && <Step3CenterProfile formData={formData} handleChange={handleChange} fieldError={fieldError} t={t} />}
+      </StepFade>
 
-      <div className="flex gap-3 mt-8 pt-6 border-t border-slate-100">
-        <button type="button" onClick={() => (step === 1 || (googleMode && step === 2)) ? onBack() : setStep(step - 1)} className="px-6 py-3.5 rounded-xl font-bold text-slate-500 bg-white border border-slate-200 shadow-sm flex items-center gap-2">
-          <ArrowLeft size={18} /> {t.buttons.back}
-        </button>
-        <button type="submit" disabled={loading || isCheckingUser || usernameError !== null || usernameAvailable === false} className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-sm hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-          {loading ? <Loader2 className="animate-spin" /> : step < 3 ? <>{t.buttons.next} <ArrowRight size={18} /></> : t.buttons.complete}
-        </button>
-      </div>
+      <WizardFooter
+        onBack={() => (step === 1 || (googleMode && step === 2)) ? onBack() : setStep(step - 1)}
+        loading={loading}
+        isLast={step === 3}
+        disabled={loading || (step === 2 && (isCheckingUser || usernameError !== null || usernameAvailable === false))}
+        t={t}
+      />
     </form>
   );
 }
