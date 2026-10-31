@@ -334,9 +334,8 @@ function Slide({
       <h3 className="s-display mt-3 text-[19px] font-bold leading-tight tracking-tight sm:text-[21px]">
         {say(item.title, lang)}
       </h3>
-      <p className="mt-1.5 max-w-2xl text-[13px] font-bold leading-snug opacity-90">
-        {say(item.body, lang)}
-      </p>
+      {/* The long body copy was dropped (Edify style: title + facts + action).
+          `item.body` stays in lib/announcements.ts for other surfaces. */}
 
       {meta.length > 0 && (
         <p className="s-num mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-black opacity-85">
@@ -361,8 +360,8 @@ function Slide({
                   fullWidth
                   size="lg"
                   variant={filled ? 'filled' : 'outlined'}
-                  tone={filled ? 'gold' : 'primary'}
-                  className={filled ? undefined : 'border-white/60 text-white'}
+                  tone="primary"
+                  className={filled ? '!bg-white !text-[var(--s-accent,var(--m3-primary))] shadow-elev-2' : 'border-white/60 text-white'}
                   trailingIcon={filled ? <ArrowRight size={17} strokeWidth={3} /> : undefined}
                 >
                   {say(cta.label, lang)}

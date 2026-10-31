@@ -191,7 +191,8 @@ built subject directly (`Matematika` → `/raschmodel`, `Biologiya`/`Kimyo` →
 
 `MmsCard` (`app/(student)/raschmodel/components/MmsCard.tsx`) names the mock exam
 the way a student actually knows it: **Matematika Milliy Sertifikat**, `45`
-questions, `150` minutes, `100` points. Those three numbers are read from
+questions, `150` minutes (the card prints only these two since the 2026-10-31
+Edify restyle; `100` points is the expected-score denominator). They are read from
 `EXAM_TOTAL_QUESTIONS` / `EXAM_DURATION_MINUTES` ([lib/Examblueprint.ts](../lib/Examblueprint.ts))
 and `PAPER_TOTAL` ([lib/RASCHmarks.ts](../lib/RASCHmarks.ts)), never typed into
 the copy — the paper's shape must not be able to drift from what the app
@@ -201,8 +202,9 @@ advertises.
   Built for the dashboard on 2026-07-29, moved on 2026-07-30 when that hero slot
   became the generic announcement carousel. On the hub it replaced a purely
   decorative "Imtihonga tayyorlaning!" gradient banner (whose `bannerTitle` /
-  `bannerDesc` strings went with it) and spends the same single `gradient` card,
-  so the swap is neutral on the kit's one-hero budget and strictly better content.
+  `bannerDesc` strings went with it). Since 2026-10-31 (Edify style) it is a
+  `.s-glass` panel, not a `gradient` Card: the start CTA is an `.s-chip` pill, the
+  code route a glass pill, and the locked state a `bg-disabled-bg` pill.
 - **Why it exists.** Nothing named what the exam IS or let a student start one, so
   the feature the whole Rasch subsystem exists for sat behind a four-letter word
   (`RASCH`) that means nothing to a student. The dashboard's *announcement* now

@@ -488,7 +488,8 @@ version turned a mock file into ONE fixed test listed via a `catalog` flag — a
 | [lib/SatPractice.ts](../lib/SatPractice.ts) | **Pure.** `SAT_MODULE_PLAN` (per module: 22 Q / 35 min Math — Algebra 7, Advanced 7, PSDA 4, Geometry 4; 27 Q / 32 min R&W — C&S 7, I&I 7, SEC 7, EoI 6), `buildSatPoolItems` (validated rows → `SatQuizItem`s with `subtopic`, ids `<batchId>-0001`), `chunkSatPool` (< 700 KB per chunk), `generateSatPractice`. |
 | [services/satPoolService.ts](../services/satPoolService.ts) | `saveSatPoolBatch` (sequential chunk writes), `loadSatPool(subject)` (one `subject ==` query, content-deduped across uploads), `listMySatPoolBatches`, `deleteSatPoolBatch`. |
 | [lib/SatExamImport.ts](../lib/SatExamImport.ts) | **Pure.** File STRUCTURE only: `detectSatExam` finds modules/sections so a whole mock or a Math + R&W file can be imported; `sectionAllRows` / `allExamRows` flatten them. Module boundaries no longer matter. |
-| [app/(student)/sat/_components/SatPracticeGenerator.tsx](../app/(student)/sat/_components/SatPracticeGenerator.tsx) | The student card on `/sat/math` and `/sat/english`: bank size + domain-mix bar, "Generate a practice test", the practice-score chart. Hidden until the bank holds ≥ 2 modules' worth. |
+| [app/(student)/sat/_components/SatMockMaker.tsx](../app/(student)/sat/_components/SatMockMaker.tsx) | **"Full SAT mock"** card, ALWAYS shown on `/sat/math` (Math-only mock) and `/sat/english` (R&W-only): source counts, domain-mix bar, "Create a … mock" (disabled with "N of 44/54" when short), **My mocks** (every created mock stays: start / retake), mock-score chart. |
+| [services/satMockSourceService.ts](../services/satMockSourceService.ts) | `loadSatMockSources(slug)` — the mock's question pool, see §Student mocks. |
 | `app/teacher/create/import/_components/ModuleMixChart.tsx` | Bank tab: questions by domain, one bar per difficulty. |
 
 **Bank tab.** Any file shape — a question list, a full mock (`module1`/`module2`…),
@@ -510,9 +511,30 @@ Module 2 pools MAY share questions (a student sits only one). A domain the bank
 can't fill is topped up from others (`shortages`). Order: Math easiest →
 hardest; R&W grouped by domain in plan order, then difficulty.
 
+### Student mocks — sources and persistence (2026-10-31)
+
+`loadSatMockSources(slug)` merges, content-deduped in this priority:
+**(1) practice bank** `sat_pool` (imports, incl. whole mock files); **(2) question
+bank** — `teacher_questions` of the SAT subject that is meant to be shared:
+`fetchSharedQuestionsPage(slug, 300)` (`sharedBank == true`) +
+`fetchMyQuestionsPage('', 300, …, slug)` (anonymous platform pool), each via
+`satQuizItem` + `subtopic`; **(3) full mocks** — PLATFORM ones only:
+`sat_*_tests where teacherId == ''` (≤ 10) + the bundled Namunaviy paper (Math).
+⚠️ Teachers' own code-gated tests are deliberately NOT mined (their questions
+would reach students before the exam). Sources load with `allSettled` — one
+failing (e.g. `sat_pool` rules not deployed → permission-denied) only shows a
+"some sources unavailable" hint. Cached 5 min per subject; bank queries capped
+at 300 newest each (reads per session ≈ pool chunks + ≤ 600 + ≤ 10).
+
+**Persistence:** each created mock is saved (below) and listed under **My
+mocks** — `listMySat*Tests(uid, 20)` (`teacherId ==` + `createdAt desc`, the
+teacher index) filtered to `practice`/the id prefix; the module cache is patched
+on create. Start/Retake → the normal pending screen. Title
+`SAT Math|Reading and Writing Mock N`, `teacherName: 'Edify mock'`.
+
 **The generated test is a normal `sat_*_tests` doc owned by the student**:
 id `satp_…` (Math) / `satep_…` (English), `teacherId` = the student's uid,
-`teacherName: 'Edify practice'`, `accessCode: ''` (never matched by the code
+`accessCode: ''` (never matched by the code
 box), `practice: true`, `status: 'published'`, title
 `SAT Math|Reading and Writing Practice Test N` (N = `count(teacherId == uid) + 1`).
 It then goes through the same pending → Start screen as a code lookup, so
