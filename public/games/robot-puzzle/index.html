@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>RoboCoding</title>
+<link rel="icon" href="data:,">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script type="module" crossorigin src="./assets/index-D42Ne7Xw.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-D5m8hs2Q.css">
+</head>
+<body>
+<div id="app">
+  <section id="room">
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <div id="hud">
+        <button id="btn-menu" class="panel"><span class="burger">≡</span> <span data-i18n="menu"></span></button>
+        <div id="banners"></div>
+        <div id="countdown" class="panel"></div>
+        <button id="b-run" class="panel" aria-label="run"><span id="run-icon">▶</span><b id="attempts"></b></button>
+      </div>
+      <button id="rot-l" class="rot" aria-label="rotate left">↺</button>
+      <button id="rot-r" class="rot" aria-label="rotate right">↻</button>
+    </div>
+  </section>
+  <section id="side">
+    <div id="editor" class="panel"></div>
+    <div id="split" role="separator" aria-label="resize"><i></i></div>
+    <div id="numrow"></div>
+    <div id="condrow" hidden></div>
+    <div id="palette"></div>
+  </section>
+  <div id="overlay" hidden></div>
+</div>
+</body>
+</html>

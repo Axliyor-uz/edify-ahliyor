@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Gamepad2, ChevronRight, Crown, Sparkles } from 'lucide-react';
+import { Gamepad2, ChevronRight, Crown, Sparkles, Bot } from 'lucide-react';
 import { Page, PageHeader, Card, Tile, Chip } from '@/components/student-ui';
 import { useStudentLanguage } from '../layout'; // Assuming your context is exported from the layout
 
@@ -15,7 +15,8 @@ const PAGE_TRANSLATIONS = {
         title: "Shashka",
         desc: "Klassik mantiqiy stol o'yini. Kompyuterga qarshi yoki do'stingiz bilan o'ynang.",
         play: "O'ynash"
-      }
+      },
+      robot: { title: "RoboCoding", desc: "Robotni buyruqlar bilan dasturlang va labirintdan olib chiqing. Ovozli o'yin.", play: "O'ynash" }
     }
   },
   en: {
@@ -26,7 +27,8 @@ const PAGE_TRANSLATIONS = {
         title: "Checkers",
         desc: "The classic strategic board game. Play against the computer or a friend.",
         play: "Play Now"
-      }
+      },
+      robot: { title: "RoboCoding", desc: "Program the robot with commands and guide it through the rooms. With sound effects.", play: "Play Now" }
     }
   },
   ru: {
@@ -37,7 +39,8 @@ const PAGE_TRANSLATIONS = {
         title: "Шашки",
         desc: "Классическая стратегическая настольная игра. Играйте против компьютера или друга.",
         play: "Играть"
-      }
+      },
+      robot: { title: "RoboCoding", desc: "Программируйте робота командами и проведите его по комнатам. Со звуками.", play: "Играть" }
     }
   }
 };
@@ -90,6 +93,30 @@ export default function GamesPage() {
               <span className="text-[15px] font-extrabold text-primary">
                 {t.games.checkers.play}
               </span>
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-state-hover text-on-surface-variant transition-colors duration-m3-fast group-hover:bg-primary group-hover:text-on-primary">
+                <ChevronRight size={18} strokeWidth={3} />
+              </span>
+            </div>
+          </Card>
+        </Link>
+
+        {/* RoboCoding Card */}
+        <Link href="/games/robot-puzzle" className="block">
+          <Card interactive className="group flex h-full flex-col">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <Tile tone="primary" size="lg">
+                <Bot size={28} strokeWidth={2.5} />
+              </Tile>
+              <Chip status="gold" icon={<Sparkles size={12} />}>
+                New
+              </Chip>
+            </div>
+            <div className="flex-1">
+              <h3 className="s-display mb-2 text-[19px] font-bold leading-tight">{t.games.robot.title}</h3>
+              <p className="mb-6 text-[13.5px] font-bold leading-relaxed text-on-surface-variant">{t.games.robot.desc}</p>
+            </div>
+            <div className="mt-auto flex items-center justify-between pt-2">
+              <span className="text-[15px] font-extrabold text-primary">{t.games.robot.play}</span>
               <span className="grid h-8 w-8 place-items-center rounded-full bg-state-hover text-on-surface-variant transition-colors duration-m3-fast group-hover:bg-primary group-hover:text-on-primary">
                 <ChevronRight size={18} strokeWidth={3} />
               </span>

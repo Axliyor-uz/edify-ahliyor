@@ -17,7 +17,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import {
   LayoutDashboard, BookOpen, User as UserIcon,
   LogOut, Flame, Trophy, ChevronDown, Check, Bell,
-  Settings, BookMarked, Gamepad2, Globe, Building2, BadgeCheck, Target, Brain, MoreVertical,
+  Settings, BookMarked, Gamepad2, Globe, Building2, BadgeCheck, Target, Brain, MoreVertical, Compass,
 } from 'lucide-react';
 import { fetchMyCenters } from '@/services/studentCenterService';
 
@@ -55,7 +55,7 @@ export function useStudentLanguage() {
 // ============================================================================
 const LAYOUT_TRANSLATIONS: any = {
   uz: {
-    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", ielts: "IELTS", profile: "Profil", raschmodel: "Rasch", milliy: "Milliy sertifikat", sat: "SAT", center: "Markazim", mistakes: "Xatolarim" },
+    menu: { dashboard: "Boshqaruv", classes: "Sinflarim", explore: "Kurslar", library: "Kutubxona", games: "O'yinlar", leaderboard: "Reyting", ielts: "IELTS", profile: "Profil", raschmodel: "Rasch", milliy: "Milliy sertifikat", sat: "SAT", center: "Markazim", mistakes: "Xatolarim", futureMap: "Kelajak xaritasi" },
     groups: { main: "Asosiy", exams: "Imtihonlar", resources: "Resurslar" },
     mobileMenu: "Menyu",
     topbar: { streak: "Seriya", profile: "Profil", settings: "Sozlamalar", logout: "Chiqish", language: "Til", notifications: "Bildirishnomalar", light: "Yorug'", dark: "Tun" },
@@ -63,7 +63,7 @@ const LAYOUT_TRANSLATIONS: any = {
     logoutConfirm: { title: "Tizimdan chiqish", desc: "Haqiqatan ham hisobingizdan chiqmoqchimisiz?", cancel: "Bekor qilish", confirm: "Ha, chiqish" }
   },
   en: {
-    menu: { dashboard: "Dashboard", classes: "Classes", explore: "Courses", library: "Library", games: "Games", leaderboard: "Rank", ielts: "IELTS", profile: "Profile", raschmodel: "Rasch", milliy: "Milliy sertifikat", sat: "SAT" , mistakes: "My Mistakes", center: "My center" },
+    menu: { dashboard: "Dashboard", classes: "Classes", explore: "Courses", library: "Library", games: "Games", leaderboard: "Rank", ielts: "IELTS", profile: "Profile", raschmodel: "Rasch", milliy: "Milliy sertifikat", sat: "SAT" , mistakes: "My Mistakes", center: "My center", futureMap: "Future Map" },
     groups: { main: "Main", exams: "Exams", resources: "Resources" },
     mobileMenu: "Menu",
     topbar: { streak: "Streak", profile: "Profile", settings: "Settings", logout: "Sign Out", language: "Language", notifications: "Notifications", light: "Light", dark: "Dark" },
@@ -71,7 +71,7 @@ const LAYOUT_TRANSLATIONS: any = {
     logoutConfirm: { title: "Sign Out", desc: "Are you sure you want to sign out of your account?", cancel: "Cancel", confirm: "Yes, Sign Out" }
   },
   ru: {
-    menu: { dashboard: "Главная", classes: "Классы", explore: "Курсы", library: "Библиотека", games: "Игры", leaderboard: "Рейтинг", ielts: "IELTS", profile: "Профиль", raschmodel: "Rasch", milliy: "Milliy sertifikat", sat: "SAT" , mistakes: "Мои ошибки", center: "Мой центр" },
+    menu: { dashboard: "Главная", classes: "Классы", explore: "Курсы", library: "Библиотека", games: "Игры", leaderboard: "Рейтинг", ielts: "IELTS", profile: "Профиль", raschmodel: "Rasch", milliy: "Milliy sertifikat", sat: "SAT" , mistakes: "Мои ошибки", center: "Мой центр", futureMap: "Карта будущего" },
     groups: { main: "Главное", exams: "Экзамены", resources: "Ресурсы" },
     mobileMenu: "Меню",
     topbar: { streak: "Серия", profile: "Профиль", settings: "Настройки", logout: "Выйти", language: "Язык", notifications: "Уведомления", light: "Светлая", dark: "Тёмная" },
@@ -257,6 +257,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     // teacher's "Yangi Test"), not a dropdown row; `group` still files it under
     // Resources for any shell that uses groups without `pillCta`.
     { href: '/mistakes', label: t.menu.mistakes, icon: Brain, hideOnMobile: true, group: 'resources', pillCta: true },
+    // Future Map (docs/STUDENT.md) — a static, informational careers→subjects
+    // guide. No dock slot (M3's 5-item cap is already spoken for); lives in
+    // the drawer's Resources box next to Library and My Mistakes.
+    { href: '/future-map', label: t.menu.futureMap, icon: Compass, hideOnMobile: true, group: 'resources' },
     // Hidden from the mobile dock: M3 caps a bottom bar at 5 destinations, and
     // Profile is already one tap away in the avatar menu.
     { href: '/profile', label: t.menu.profile, icon: UserIcon, hideOnMobile: true, hideInPillbar: true },
