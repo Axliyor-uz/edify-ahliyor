@@ -172,7 +172,7 @@ test('games: speed is capped per round; hunt texts repeat at the reduced rate', 
   assert.equal(h2.award.total, 3); // 5 × 50 %
 });
 
-test('seeding from the app keeps passes, never pays them again, clamps junk', () => {
+test('seeding keeps unlocks and clamps junk; a seeded pass still earns its reward ONCE', () => {
   const s = seedState({
     a: { passed: true, crowns: 9, best: 100, step: 2, due: 1 },
     b: { passed: false },
@@ -181,7 +181,23 @@ test('seeding from the app keeps passes, never pays them again, clamps junk', ()
   assert.deepEqual(Object.keys(s.points), ['a']);
   assert.equal(s.points.a.crowns, 3);
   assert.equal(s.points.a.due, NOW);
-  const replay = run(s, fullLesson('a'));
-  assert.equal(replay.award.lines.some((l) => l.kind === 'PASS'), false);
+  assert.equal(s.points.a.paidPass, undefined);
   assert.deepEqual([...completed(content, s.points)], []);
+  // Unlocks carry over: a round on the seeded point is allowed.
+  assert.equal(code(() => run(s, { id: 'r', kind: 'round', topicId: 't1', pointId: 'a', answers: [right('a0')] })), 'OK');
+  // The reward was never paid by the server → the first lesson pays it…
+  const first = run(s, fullLesson('a'));
+  assert.deepEqual(first.award.lines.map((l) => l.kind), ['ANSWERS', 'PASS', 'PERFECT']);
+  // …and only once.
+  const again = run(first.state, fullLesson('a'), NOW + 3_600_000);
+  assert.deepEqual(again.award.lines.map((l) => l.kind), ['ANSWERS']);
+});
+
+test('first contact race: the app saved this very pass a moment before submitting', () => {
+  // The client progress already says "a passed" (pushed just before the XP call).
+  const seeded = seedState({ a: { passed: true, crowns: 1, best: 100 } }, content, NOW);
+  const r = run(seeded, fullLesson('a'));
+  assert.equal(r.award.total, 12 * 5 + 25 + 10);
+  assert.equal(r.state.points.a.paidPass, true);
+  assert.equal(r.state.points.a.paidPerfect, true);
 });

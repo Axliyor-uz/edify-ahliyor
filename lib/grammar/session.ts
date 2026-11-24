@@ -11,7 +11,10 @@
 //   1. Every answer must name a real item of the right topic / point; the
 //      server grades it (a client can't claim "13 correct").
 //   2. One-time rewards (first pass, first 100 %, crowns, sub-level / level)
-//      come from the server record, so they pay exactly once.
+//      come from the server record, so they pay exactly once. "Passed" (unlock)
+//      and "pass reward paid" are separate: a point seeded as passed from the
+//      app (old progress, or this very session saved a moment earlier) still
+//      earns its one-time reward from the server once.
 //   3. The same point again the same UTC day pays 100 % → 50 % → 20 %.
 //   4. Time budget: each answer costs MS_PER_ANSWER of wall time (a game round
 //      its length); at most BACKLOG_MS may be "banked" (offline play queued),
@@ -38,7 +41,11 @@ const DAY_MS = 86_400_000;
 export const NEVER = Number.MAX_SAFE_INTEGER;
 
 export interface PointState {
+  /** Unlock state (may be seeded from the app's progress). */
   passed?: boolean;
+  /** The one-time pass / 100 % rewards were PAID by the server (never seeded). */
+  paidPass?: boolean;
+  paidPerfect?: boolean;
   best?: number;
   crowns?: number;
   step?: number;
@@ -252,11 +259,15 @@ export function evaluate(
       correct = check.filter((g) => g.clean).length;
       percent = pct(correct, check.length);
       passed = percent >= passPercent;
-      const wasPassed = !!cur.passed;
-      session = wasPassed ? 'ROUND' : 'LESSON';
-      firstPass = passed && !wasPassed;
-      firstPerfect = passed && percent === 100 && (cur.best || 0) < 100;
-      state.points[pointId] = finishLesson(cur, percent, passPercent, now);
+      const rewarded = !!cur.paidPass;
+      session = rewarded ? 'ROUND' : 'LESSON';
+      firstPass = passed && !rewarded;
+      firstPerfect = passed && percent === 100 && !cur.paidPerfect;
+      state.points[pointId] = {
+        ...finishLesson(cur, percent, passPercent, now),
+        ...(firstPass ? { paidPass: true } : {}),
+        ...(firstPerfect ? { paidPerfect: true } : {}),
+      };
     } else {
       if (!cur.passed) throw new GrammarXpError('Bu qism hali o‘tilmagan.', 409, 'NOT_PASSED');
       correct = correctByPoint[pointId];
@@ -277,10 +288,14 @@ export function evaluate(
     correct = graded.filter((g) => g.clean).length;
     percent = pct(correct, graded.length);
     passed = percent >= passPercent;
-    session = cur.passed ? 'ROUND' : 'TEST';
-    firstPass = passed && !cur.passed;
-    firstPerfect = passed && percent === 100 && (cur.best || 0) < 100;
-    state.points[key] = finishLessonTest(cur, percent, passPercent);
+    session = cur.paidPass ? 'ROUND' : 'TEST';
+    firstPass = passed && !cur.paidPass;
+    firstPerfect = passed && percent === 100 && !cur.paidPerfect;
+    state.points[key] = {
+      ...finishLessonTest(cur, percent, passPercent),
+      ...(firstPass ? { paidPass: true } : {}),
+      ...(firstPerfect ? { paidPerfect: true } : {}),
+    };
     payPoints = [key];
     correctByPoint[key] = correct;
     title = `${content.topicTitle(sub.topicId)} · Lesson test`;
@@ -305,7 +320,11 @@ export function evaluate(
   }
 
   const crownsOf = (pts: Record<string, PointState>) => Object.values(pts).reduce((s, p) => s + (p.crowns || 0), 0);
-  const crowns = Math.max(0, crownsOf(state.points) - crownsOf(before));
+  let crowns = Math.max(0, crownsOf(state.points) - crownsOf(before));
+  // grammarAward treats a LESSON pass's first crown as part of PASS (it subtracts
+  // one). A point seeded as passed already had that crown — add it back so a
+  // later earned crown is never swallowed.
+  if (session === 'LESSON' && firstPass && before[sub.pointId || '']?.passed) crowns += 1;
 
   // One-time sub-level / level completions (only a lesson test can complete one).
   const newlyDone = [...completed(content, state.points)].filter((k) => !state.done.includes(k));
