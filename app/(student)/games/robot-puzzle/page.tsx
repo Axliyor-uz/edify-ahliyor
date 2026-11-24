@@ -16,12 +16,12 @@ export default function RobotPuzzlePage() {
 
   useEffect(() => {
     root.current?.requestFullscreen?.().catch(() => { /* needs a user gesture on some browsers */ });
-    return () => { if (document.fullscreenElement) void document.exitFullscreen().catch(() => {}); };
+    return () => { if (document.fullscreenElement) void document.exitFullscreen().catch(() => { }); };
   }, []);
 
   const toggleFs = () => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    else void root.current?.requestFullscreen?.().catch(() => {});
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => { });
+    else void root.current?.requestFullscreen?.().catch(() => { });
   };
 
   return (
