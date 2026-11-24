@@ -5,7 +5,8 @@
  *
  * Content (meta / syllabus / topics / questions) is published by the Admin SDK
  * only: any signed-in user reads it, NO client writes it. Progress is one
- * private doc per student (id == uid) in a fixed, size-capped shape.
+ * private doc per student (id == uid) in a fixed, size-capped shape. XP
+ * (enggrammar_xp) is written only by the server route /api/xp/grammar.
  */
 import { before, after, beforeEach, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
@@ -36,6 +37,8 @@ const SEED = {
   "enggrammar_topics/a1.be": { schema: 1, version: "v1", topicJson: "{}" },
   "enggrammar_questions/a1.be": { schema: 1, version: "v1", questionsJson: "[]" },
   "enggrammar_progress/student1": progress(),
+  "enggrammar_xp/student1": { schema: 1, xp: 100, points: {}, done: [], clockAt: 0 },
+  "enggrammar_xp/student1/subs/abcdefgh": { kind: "lesson", result: { ok: true } },
 };
 
 before(async () => {
@@ -147,5 +150,31 @@ describe("ENGGRAMMAR progress — shape is enforced", () => {
   it("rejects a doc missing points", async () => {
     const { points, ...rest } = progress();
     await assertFails(setDoc(doc(as("student2"), "enggrammar_progress/student2"), rest));
+  });
+});
+
+describe("ENGGRAMMAR xp — server-only, the owner may read", () => {
+  it("the owner reads their grammar XP record", async () => {
+    await assertSucceeds(getDoc(doc(as("student1"), "enggrammar_xp/student1")));
+  });
+  it("another student cannot read it", async () => {
+    await assertFails(getDoc(doc(as("student2"), "enggrammar_xp/student1")));
+  });
+  it("a signed-out visitor cannot read it", async () => {
+    await assertFails(getDoc(doc(anon(), "enggrammar_xp/student1")));
+  });
+  it("the owner cannot raise their own XP", async () => {
+    await assertFails(updateDoc(doc(as("student1"), "enggrammar_xp/student1"), { xp: 999999 }));
+  });
+  it("a student cannot create their own record", async () => {
+    await assertFails(setDoc(doc(as("student2"), "enggrammar_xp/student2"), { schema: 1, xp: 5000, points: {}, done: [], clockAt: 0 }));
+  });
+  it("the owner cannot delete it", async () => {
+    await assertFails(deleteDoc(doc(as("student1"), "enggrammar_xp/student1")));
+  });
+  it("receipts are invisible and unwritable, even to the owner", async () => {
+    await assertFails(getDoc(doc(as("student1"), "enggrammar_xp/student1/subs/abcdefgh")));
+    await assertFails(setDoc(doc(as("student1"), "enggrammar_xp/student1/subs/zzzzzzzz"), { result: { ok: true } }));
+    await assertFails(deleteDoc(doc(as("student1"), "enggrammar_xp/student1/subs/abcdefgh")));
   });
 });

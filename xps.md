@@ -99,6 +99,27 @@ The entire submission process is wrapped in a single **Firestore Transaction**. 
 
 ---
 
+## 4b. Code map & server-paid XP (2026-11)
+
+* **One math, two SDKs:** `lib/xpCore.ts` holds the streak / daily-goal / level-up
+  rules and constants (pure). `lib/xp.ts` (`applyUserXp`, `mirrorLeaderboards` —
+  client SDK, used by the test runner + checkers) and `lib/server/xpAdmin.ts`
+  (`applyUserXpAdmin`, `mirrorLeaderboardsAdmin`, `notifyLevelUpAdmin` — Admin
+  SDK, used by server routes) both call it. Tests: `npm run test:xp`.
+* **Grammar XP is paid by the server** — `POST /api/xp/grammar`
+  (`app/api/xp/grammar/route.ts`) for the Android grammar block. The app sends
+  what the student answered; the server re-grades it against the published
+  `enggrammar_questions` (`lib/grammar/grade.ts`), decides the award from its own
+  record `enggrammar_xp/{uid}` (`lib/grammar/session.ts` — one-time rewards,
+  same-day repeat factor 100 → 50 → 20 %, a 4 s/answer time budget with 1 h
+  banked) using the table in `lib/grammar/xp.ts` (one sub-lesson ≈ 100, no daily
+  cap; the Android app's `GrammarXp.kt` is the same table), and writes grammar XP
+  + `totalXP` / streak / dailyHistory / leaderboards + an idempotency receipt in
+  ONE Admin transaction. Clients can read `enggrammar_xp/{uid}` but never write it.
+* **Direction:** every XP source moves to server-paid routes like this one; then
+  the rules lock `totalXP` / streak / leaderboards against client writes (today
+  they are still client-writable — see the XP plan in EdifyStudent docs/GRAMMAR.md).
+
 ## 5. Security & Cost Efficiency
 
 ### Security

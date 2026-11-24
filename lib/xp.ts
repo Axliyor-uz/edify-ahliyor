@@ -20,17 +20,14 @@
 import type { Transaction, DocumentReference, DocumentSnapshot } from 'firebase/firestore';
 import { doc, increment, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { xpDayKey, getPeriodIds } from '@/lib/xpDays';
+import { getPeriodIds } from '@/lib/xpDays';
+import { computeUserXp, LEVEL_UP_BONUS } from '@/lib/xpCore';
 import { sendNotification } from '@/services/notificationService';
 
-export const STREAK_BONUS_7 = 30;
-export const STREAK_BONUS_30 = 200;
-export const DAILY_GOAL_BONUS = 25;
-export const LEVEL_UP_BONUS = 50;
-/** Max XP a student can earn from games per UTC day (anti-farming). */
-export const GAMES_DAILY_XP_CAP = 60;
-
-export const levelFromXP = (totalXP: number) => Math.floor((totalXP || 0) / 1000) + 1;
+// The numbers and the math live in lib/xpCore.ts (shared with the server writer).
+export {
+  STREAK_BONUS_7, STREAK_BONUS_30, DAILY_GOAL_BONUS, LEVEL_UP_BONUS, GAMES_DAILY_XP_CAP, levelFromXP,
+} from '@/lib/xpCore';
 
 export interface ApplyUserXpOptions {
   /** Base XP the caller computed (may be 0 — the doc is still touched for activity). */
@@ -67,67 +64,9 @@ export function applyUserXp(
   opts: ApplyUserXpOptions,
 ): ApplyUserXpResult {
   const userData: Record<string, any> = userSnap.exists() ? userSnap.data()! : {};
-  const todayStr = xpDayKey();
-  const yesterdayStr = xpDayKey(new Date(Date.now() - 86_400_000));
-  const breakdown = [...opts.breakdown];
-
-  let xpToAward = opts.xp;
-  let currentStreak = userData.currentStreak || 0;
-  const lastActive = userData.lastActiveDate || '';
-  let streakAdvanced = false;
-
-  // The streak only moves on a day that actually earns XP (zero-XP submissions
-  // used to keep the stored counter alive while the displayed streak broke).
-  if (xpToAward > 0) {
-    if (lastActive === todayStr) {
-      if (currentStreak === 0) currentStreak = 1;
-    } else if (lastActive === yesterdayStr) {
-      currentStreak += 1;
-      streakAdvanced = true;
-    } else {
-      currentStreak = 1;
-    }
-    if (streakAdvanced && currentStreak === 7) { xpToAward += STREAK_BONUS_7; breakdown.push(`7 Day Streak!: +${STREAK_BONUS_7}`); }
-    if (streakAdvanced && currentStreak === 30) { xpToAward += STREAK_BONUS_30; breakdown.push(`30 Day Streak!: +${STREAK_BONUS_30}`); }
-  }
-
-  // Daily-goal bonus — once per UTC day, on the write that crosses the goal.
-  const dailyGoal = userData.dailyGoal || 200;
-  const earnedTodayBefore = (userData.dailyHistory || {})[todayStr] || 0;
-  let goalReached = false;
-  if (
-    xpToAward > 0 &&
-    earnedTodayBefore < dailyGoal &&
-    earnedTodayBefore + xpToAward >= dailyGoal &&
-    userData.dailyGoalRewardedOn !== todayStr
-  ) {
-    goalReached = true;
-    xpToAward += DAILY_GOAL_BONUS;
-    breakdown.push(`Daily Goal!: +${DAILY_GOAL_BONUS}`);
-  }
-
-  // Level-up bonus — level is derived from totalXP, never stored.
-  const prevTotal = userData.totalXP || 0;
-  const levelBefore = levelFromXP(prevTotal);
-  let leveledUp = false;
-  if (xpToAward > 0 && levelFromXP(prevTotal + xpToAward) > levelBefore) {
-    leveledUp = true;
-    xpToAward += LEVEL_UP_BONUS;
-    breakdown.push(`Level Up!: +${LEVEL_UP_BONUS}`);
-  }
-  const newLevel = levelFromXP(prevTotal + xpToAward);
-
-  // dailyHistory: UTC keys, trimmed to the last 30 entries on every write.
-  let dailyHistory: Record<string, number> = { ...(userData.dailyHistory || {}) };
-  if (xpToAward > 0) {
-    dailyHistory[todayStr] = (dailyHistory[todayStr] || 0) + xpToAward;
-    const sortedDates = Object.keys(dailyHistory).sort();
-    if (sortedDates.length > 30) {
-      const trimmed: Record<string, number> = {};
-      sortedDates.slice(-30).forEach((d) => (trimmed[d] = dailyHistory[d]));
-      dailyHistory = trimmed;
-    }
-  }
+  const {
+    finalXp: xpToAward, breakdown, currentStreak, leveledUp, newLevel, goalReached, todayStr, dailyHistory,
+  } = computeUserXp(userData, opts.xp, opts.breakdown);
 
   const existingActivity = Array.isArray(userData.recentActivity) ? userData.recentActivity : [];
   const recentActivity = [opts.activityEntry, ...existingActivity].slice(0, opts.activityLimit);

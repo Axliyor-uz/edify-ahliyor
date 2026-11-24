@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:xp": "node --import tsx --test tests/xp/*.test.ts",
     "test:rules": "firebase emulators:exec --only firestore --project demo-edify-rules \"node --test tests/rules/*.test.mjs\"",
     "backfill:rand": "tsx scripts/backfillrandfield.ts",
     "ielts:verify": "tsx \"data/ielts practise/verify.ts\"",

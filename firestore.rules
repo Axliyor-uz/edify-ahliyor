@@ -1287,7 +1287,8 @@ service cloud.firestore {
     // signed-in client just reads it. Docs hold the dataset JSON as strings, so
     // nothing here is client-writable.
     // PROGRESS — one private doc per student, id == uid: only the owner reads /
-    // writes it, in a fixed shape (local grammar XP; never users.totalXP).
+    // writes it, in a fixed shape (the path state; its xp is display-only —
+    // grammar XP is paid by the server into enggrammar_xp + users.totalXP).
     // ═══════════════════════════════════════════════════════════════════════
     function isGrammarProgress(d) {
       return d.keys().hasAll(['schema', 'xp', 'points', 'items', 'tags'])
@@ -1320,6 +1321,16 @@ service cloud.firestore {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && isGrammarProgress(request.resource.data);
       allow delete: if false;
+    }
+    // XP — server-authoritative (POST /api/xp/grammar, Admin SDK): the student
+    // may read their own grammar XP record; no client ever writes it, and the
+    // per-submission receipts underneath are server-only.
+    match /enggrammar_xp/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+      match /subs/{subId} {
+        allow read, write: if false;
+      }
     }
 
   }
