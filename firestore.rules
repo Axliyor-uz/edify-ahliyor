@@ -1280,5 +1280,58 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📘 ENGLISH GRAMMAR — `enggrammar_*` (EdifyStudent Android, its docs/GRAMMAR.md)
+    // CONTENT — meta / syllabus / topics / questions — is published ONLY by the
+    // Admin-SDK script scripts/publishGrammar.mjs (dataset → Firestore); every
+    // signed-in client just reads it. Docs hold the dataset JSON as strings, so
+    // nothing here is client-writable.
+    // PROGRESS — one private doc per student, id == uid: only the owner reads /
+    // writes it, in a fixed shape (the path state; its xp is display-only —
+    // grammar XP is paid by the server into enggrammar_xp + users.totalXP).
+    // ═══════════════════════════════════════════════════════════════════════
+    function isGrammarProgress(d) {
+      return d.keys().hasAll(['schema', 'xp', 'points', 'items', 'tags'])
+          && d.keys().hasOnly(['schema', 'xp', 'points', 'items', 'tags', 'games', 'updatedAt'])
+          && d.schema == 1
+          && d.xp is int && d.xp >= 0 && d.xp <= 10000000
+          && d.points is map && d.points.size() <= 2000
+          && d.items is map && d.items.size() <= 20000
+          && d.tags is map && d.tags.size() <= 1000
+          && (!('games' in d) || d.games is map)
+          && (!('updatedAt' in d) || d.updatedAt == request.time);
+    }
+    match /enggrammar_meta/{docId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+    match /enggrammar_syllabus/{docId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+    match /enggrammar_topics/{topicId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+    match /enggrammar_questions/{topicId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+    match /enggrammar_progress/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isGrammarProgress(request.resource.data);
+      allow delete: if false;
+    }
+    // XP — server-authoritative (POST /api/xp/grammar, Admin SDK): the student
+    // may read their own grammar XP record; no client ever writes it, and the
+    // per-submission receipts underneath are server-only.
+    match /enggrammar_xp/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+      match /subs/{subId} {
+        allow read, write: if false;
+      }
+    }
+
   }
 }

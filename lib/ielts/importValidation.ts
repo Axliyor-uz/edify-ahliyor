@@ -305,8 +305,8 @@ function validateBlock(
         // unguessable, so this is all but always an authoring mistake.
         iss.warn(`${path}.diagram_url`, 'no diagram image — students see an empty placeholder frame',
           'Upload the image to Firebase Storage (ielts_diagrams/) and paste the download URL.', human());
-      } else if (!/^https?:\/\//i.test(qb.diagram_url)) {
-        iss.err(`${path}.diagram_url`, 'must be an absolute http(s) URL', undefined, human());
+      } else if (!isMediaUrl(qb.diagram_url)) {
+        iss.err(`${path}.diagram_url`, 'must be an absolute http(s) URL or a same-site path starting with "/"', undefined, human());
       }
       if (!nonEmptyStr(qb.diagram_alt_text)) {
         iss.warn(`${path}.diagram_alt_text`, 'no alt text — screen readers get nothing', undefined, human());
@@ -605,9 +605,12 @@ function validateBlock(
               'Either shorten the answer or raise word_limit to match the rubric.', label);
           }
         }
-        if (t === 'summary_completion' && /^[a-z]{1,3}$/i.test(alt.trim())) {
+        // grading.ts only reads an ARRAY key as option letters when every accepted form is a
+        // single letter ("map"/"son"/"gut" in an array grade as text — verified). The ≤3-letter
+        // trap applies to plain-string keys, which this branch never sees.
+        if (arr.every((x) => /^[a-z]$/i.test(String(x).trim()))) {
           iss.warn(`${rp}.correct_answer`,
-            `"${alt}" is ≤3 letters — the grader treats short summary_completion answers as OPTION LETTERS`,
+            `"${alt}" is a single letter — the grader treats single-letter answers as OPTION LETTERS`,
             'Use a longer accepted form, or switch the block to a word bank.', label);
         }
         if (/\[\s*\d*\s*\]/.test(alt)) {
@@ -677,6 +680,13 @@ function validateBlockContainer(
 // ---------------------------------------------------------------------------
 // Normalization — build clean docs (known fields only, never undefined)
 // ---------------------------------------------------------------------------
+
+/** Hosted media: an absolute http(s) URL (Firebase Storage) or a same-site path
+ *  served from the app's `public/` folder (`/ielts/listening/…/part1.mp3`).
+ *  Protocol-relative `//host` is rejected — it would silently point off-site. */
+function isMediaUrl(u: string): boolean {
+  return /^https?:\/\//i.test(u) || /^\/(?!\/)\S+$/.test(u);
+}
 
 function cleanRow(row: Record<string, unknown>): IeltsQuestionRow {
   const out: IeltsQuestionRow = {
@@ -874,8 +884,8 @@ export function validateIeltsImport(input: unknown, opts?: ValidateOptions): Imp
         if (!nonEmptyStr(p.audio_url)) {
           iss.err(`${pp}.audio_url`, 'audio_url required — a part without audio cannot be taken',
             'Upload the mp3 to Firebase Storage (ielts_audio/{testId}/…) and paste the download URL.', section);
-        } else if (!/^https?:\/\//i.test(p.audio_url)) {
-          iss.err(`${pp}.audio_url`, 'must be an absolute http(s) URL', undefined, section);
+        } else if (!isMediaUrl(p.audio_url)) {
+          iss.err(`${pp}.audio_url`, 'must be an absolute http(s) URL or a same-site path starting with "/"', undefined, section);
         }
         if (p.audio_duration_seconds != null
           && (typeof p.audio_duration_seconds !== 'number' || p.audio_duration_seconds <= 0)) {
